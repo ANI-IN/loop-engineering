@@ -1,0 +1,266 @@
+{
+  "measured_on": "2026-07-29",
+  "noise_floors": {
+    "claude-haiku-4-5": {
+      "spread_pp": 3.3,
+      "pinned": true,
+      "note": "temperature=0 pinned; spread across 3 replicates of the L0 loop cell"
+    },
+    "claude-sonnet-5": {
+      "spread_pp": 18.8,
+      "pinned": false,
+      "note": "cannot be pinned \u2014 Sonnet 5 rejects non-default sampling with a 400 \u2014 so this floor cannot be removed, and its bars never meant the same thing as Haiku's"
+    }
+  },
+  "cells": [
+    {
+      "key": "frontier_L0_loop_r0",
+      "label": "Sonnet \u00b7 L0 \u00b7 loop",
+      "role": "frontier",
+      "level": "L0",
+      "mode": "loop",
+      "replicate": 0,
+      "complete": true,
+      "seconds": 65.9,
+      "n_done": 50,
+      "ran_and_returned": 44,
+      "correct": 27,
+      "silent_errors": 17,
+      "silent_error_rate": "38.6% (n=44, \u00b114.7, measured 2026-07-29)",
+      "rate_value": 0.38636363636363635,
+      "rate_ci_low": 0.2572120275052556,
+      "rate_ci_high": 0.5337642460762172,
+      "rate_n": 44,
+      "cost_usd": {
+        "value": 0.756765,
+        "source": "estimated"
+      },
+      "tokens": {
+        "n_calls": 89,
+        "input_tokens": 64285,
+        "output_tokens": 37594,
+        "total_tokens": 101879
+      },
+      "rejections": 39,
+      "termination": {
+        "success": 50
+      },
+      "patterns_with_interventions": [
+        "p03_customers_in_region",
+        "p04_gross_revenue",
+        "p05_net_revenue",
+        "p06_top_products",
+        "p07_aov_by_region",
+        "p08_revenue_by_category",
+        "p09_refund_rate",
+        "p10_repeat_customer_rate"
+      ],
+      "reference": true,
+      "measured_on": "2026-07-29"
+    },
+    {
+      "key": "frontier_L0_loop_r1",
+      "label": "Sonnet \u00b7 L0 \u00b7 loop (rep 2)",
+      "role": "frontier",
+      "level": "L0",
+      "mode": "loop",
+      "replicate": 1,
+      "complete": true,
+      "seconds": 56.9,
+      "n_done": 50,
+      "ran_and_returned": 45,
+      "correct": 24,
+      "silent_errors": 21,
+      "silent_error_rate": "46.7% (n=45, \u00b114.3, measured 2026-07-29)",
+      "rate_value": 0.4666666666666667,
+      "rate_ci_low": 0.32935132065011297,
+      "rate_ci_high": 0.6092254525987463,
+      "rate_n": 45,
+      "cost_usd": {
+        "value": 0.685071,
+        "source": "estimated"
+      },
+      "tokens": {
+        "n_calls": 89,
+        "input_tokens": 64297,
+        "output_tokens": 32812,
+        "total_tokens": 97109
+      },
+      "rejections": 38,
+      "termination": {
+        "success": 50
+      },
+      "patterns_with_interventions": [
+        "p03_customers_in_region",
+        "p04_gross_revenue",
+        "p05_net_revenue",
+        "p06_top_products",
+        "p07_aov_by_region",
+        "p08_revenue_by_category",
+        "p09_refund_rate",
+        "p10_repeat_customer_rate"
+      ],
+      "reference": true,
+      "measured_on": "2026-07-29"
+    },
+    {
+      "key": "frontier_L0_loop_r2",
+      "label": "Sonnet \u00b7 L0 \u00b7 loop (rep 3)",
+      "role": "frontier",
+      "level": "L0",
+      "mode": "loop",
+      "replicate": 2,
+      "complete": true,
+      "seconds": 76.3,
+      "n_done": 50,
+      "ran_and_returned": 43,
+      "correct": 31,
+      "silent_errors": 12,
+      "silent_error_rate": "27.9% (n=43, \u00b114.8, measured 2026-07-29)",
+      "rate_value": 0.27906976744186046,
+      "rate_ci_low": 0.16746613786237488,
+      "rate_ci_high": 0.42691028681878873,
+      "rate_n": 43,
+      "cost_usd": {
+        "value": 0.796158,
+        "source": "estimated"
+      },
+      "tokens": {
+        "n_calls": 91,
+        "input_tokens": 67411,
+        "output_tokens": 39595,
+        "total_tokens": 107006
+      },
+      "rejections": 41,
+      "termination": {
+        "max_attempts": 1,
+        "success": 49
+      },
+      "patterns_with_interventions": [
+        "p03_customers_in_region",
+        "p04_gross_revenue",
+        "p05_net_revenue",
+        "p06_top_products",
+        "p07_aov_by_region",
+        "p08_revenue_by_category",
+        "p09_refund_rate",
+        "p10_repeat_customer_rate"
+      ],
+      "reference": true,
+      "measured_on": "2026-07-29"
+    },
+    {
+      "key": "frontier_L0_one_shot_r0",
+      "label": "Sonnet \u00b7 L0 \u00b7 one-shot",
+      "role": "frontier",
+      "level": "L0",
+      "mode": "one_shot",
+      "replicate": 0,
+      "complete": true,
+      "seconds": 38.2,
+      "n_done": 50,
+      "ran_and_returned": 40,
+      "correct": 6,
+      "silent_errors": 34,
+      "silent_error_rate": "85.0% (n=40, \u00b114.1, measured 2026-07-29)",
+      "rate_value": 0.85,
+      "rate_ci_low": 0.709276756335103,
+      "rate_ci_high": 0.9293881228267964,
+      "rate_n": 40,
+      "cost_usd": {
+        "value": 0.38313,
+        "source": "estimated"
+      },
+      "tokens": {
+        "n_calls": 50,
+        "input_tokens": 28560,
+        "output_tokens": 19830,
+        "total_tokens": 48390
+      },
+      "rejections": 0,
+      "termination": {
+        "success": 50
+      },
+      "patterns_with_interventions": [],
+      "reference": true,
+      "measured_on": "2026-07-29"
+    },
+    {
+      "key": "frontier_L3_loop_r0",
+      "label": "Sonnet \u00b7 L3 \u00b7 loop",
+      "role": "frontier",
+      "level": "L3",
+      "mode": "loop",
+      "replicate": 0,
+      "complete": true,
+      "seconds": 31.7,
+      "n_done": 50,
+      "ran_and_returned": 43,
+      "correct": 41,
+      "silent_errors": 2,
+      "silent_error_rate": "4.7% (n=43, \u00b110.8, measured 2026-07-29)",
+      "rate_value": 0.046511627906976744,
+      "rate_ci_low": 0.012849260094380227,
+      "rate_ci_high": 0.15455498004063967,
+      "rate_n": 43,
+      "cost_usd": {
+        "value": 0.406794,
+        "source": "estimated"
+      },
+      "tokens": {
+        "n_calls": 52,
+        "input_tokens": 56098,
+        "output_tokens": 15900,
+        "total_tokens": 71998
+      },
+      "rejections": 3,
+      "termination": {
+        "no_progress": 1,
+        "success": 49
+      },
+      "patterns_with_interventions": [
+        "p07_aov_by_region",
+        "p09_refund_rate"
+      ],
+      "reference": true,
+      "measured_on": "2026-07-29"
+    },
+    {
+      "key": "frontier_L3_one_shot_r0",
+      "label": "Sonnet \u00b7 L3 \u00b7 one-shot",
+      "role": "frontier",
+      "level": "L3",
+      "mode": "one_shot",
+      "replicate": 0,
+      "complete": true,
+      "seconds": 26.0,
+      "n_done": 50,
+      "ran_and_returned": 43,
+      "correct": 43,
+      "silent_errors": 0,
+      "silent_error_rate": "0.0% (n=43, \u00b18.2, measured 2026-07-29)",
+      "rate_value": 0.0,
+      "rate_ci_low": 0.0,
+      "rate_ci_high": 0.08200980322579117,
+      "rate_n": 43,
+      "cost_usd": {
+        "value": 0.37491,
+        "source": "estimated"
+      },
+      "tokens": {
+        "n_calls": 50,
+        "input_tokens": 53010,
+        "output_tokens": 14392,
+        "total_tokens": 67402
+      },
+      "rejections": 0,
+      "termination": {
+        "success": 50
+      },
+      "patterns_with_interventions": [],
+      "reference": true,
+      "measured_on": "2026-07-29"
+    }
+  ],
+  "how": "Measured once under the development profile. Cited at delivery, never recomputed \u2014 recomputing would cost about ten times the delivery budget."
+}

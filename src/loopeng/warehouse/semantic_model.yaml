@@ -1,0 +1,87 @@
+# Written to look like dbt on purpose: a data engineer in the room should
+# recognise the shape. Every rule below is enforced by a verifier in Phase 2.
+# A rule declared here that nothing enforces is the defect this workshop is about.
+version: 2
+
+tables:
+  - name: customers
+    primary_key: customer_id
+    columns: [customer_id, region, is_internal, deleted_at]
+  - name: orders
+    primary_key: order_id
+    columns: [order_id, customer_id, status, currency, amount_minor, placed_at, deleted_at]
+  - name: order_items
+    primary_key: order_item_id
+    columns: [order_item_id, order_id, product_id, qty, unit_price_minor]
+  - name: products
+    primary_key: product_id
+    columns: [product_id, category, list_price_minor]
+  - name: refunds
+    primary_key: refund_id
+    columns: [refund_id, order_id, amount_minor, issued_at]
+
+joins:
+  - {from: orders, to: customers, on: "orders.customer_id = customers.customer_id", cardinality: many_to_one}
+  - {from: order_items, to: orders, on: "order_items.order_id = orders.order_id", cardinality: many_to_one}
+  - {from: order_items, to: products, on: "order_items.product_id = products.product_id", cardinality: many_to_one}
+  - {from: refunds, to: orders, on: "refunds.order_id = orders.order_id", cardinality: many_to_one}
+
+rules:
+  soft_delete:
+    statement: >-
+      Rows where deleted_at IS NOT NULL are deleted and must be excluded from every
+      result. This applies to customers and to orders independently.
+    applies_to: [customers, orders]
+  cancelled_orders:
+    statement: >-
+      Orders with status = 'cancelled' must be excluded from all revenue, order-count,
+      and average-order-value metrics.
+    applies_to: [orders]
+  internal_accounts:
+    statement: >-
+      Customers where is_internal is true are internal test accounts and must be
+      excluded from every business metric.
+    applies_to: [customers]
+  multi_currency:
+    statement: >-
+      orders.amount_minor is denominated in orders.currency. Amounts in different
+      currencies must never be summed directly; convert to USD first using usd_factor.
+    applies_to: [orders]
+  minor_units:
+    statement: >-
+      Money columns are in minor units. USD and EUR have two decimal places; JPY has
+      zero. usd_factor already folds both the decimal scale and the FX rate together.
+    applies_to: [orders, order_items, products, refunds]
+  fan_out:
+    statement: >-
+      orders to order_items is one-to-many. Aggregating orders.amount_minor after
+      joining order_items double-counts. Aggregate order-level money at order grain,
+      or use order_items.qty * order_items.unit_price_minor at line grain.
+    applies_to: [orders, order_items]
+  refunds_net:
+    statement: >-
+      Net revenue is gross revenue minus refunds. orders to refunds is also one-to-many,
+      so refunds must be aggregated per order before being subtracted.
+    applies_to: [orders, refunds]
+
+# Declared as configuration rather than data. At L0 the model does not know
+# conversion is required and confidently sums mixed currencies, which is the
+# single best item in the TRAP view.
+usd_factor:
+  USD: 0.01
+  EUR: 0.0108
+  JPY: 0.0067
+
+metrics:
+  - name: gross_revenue_usd
+    grain: order
+    rules: [soft_delete, cancelled_orders, internal_accounts, multi_currency, minor_units]
+  - name: net_revenue_usd
+    grain: order
+    rules: [soft_delete, cancelled_orders, internal_accounts, multi_currency, minor_units, refunds_net]
+  - name: units_sold
+    grain: order_item
+    rules: [soft_delete, cancelled_orders, internal_accounts]
+  - name: average_order_value_usd
+    grain: order
+    rules: [soft_delete, cancelled_orders, internal_accounts, multi_currency, minor_units, fan_out]

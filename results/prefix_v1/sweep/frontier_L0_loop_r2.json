@@ -1,0 +1,996 @@
+{
+  "key": "frontier_L0_loop_r2",
+  "label": "Sonnet \u00b7 L0 \u00b7 loop (rep 3)",
+  "role": "frontier",
+  "level": "L0",
+  "mode": "loop",
+  "replicate": 2,
+  "complete": true,
+  "seconds": 76.3,
+  "n_done": 50,
+  "ran_and_returned": 43,
+  "correct": 31,
+  "silent_errors": 12,
+  "silent_error_rate": "27.9% (n=43, \u00b114.8, computed 19:08 today)",
+  "rate_value": 0.27906976744186046,
+  "rate_ci_low": 0.16746613786237488,
+  "rate_ci_high": 0.42691028681878873,
+  "rate_n": 43,
+  "cost_usd": {
+    "value": 0.796158,
+    "source": "estimated"
+  },
+  "tokens": {
+    "n_calls": 91,
+    "input_tokens": 67411,
+    "output_tokens": 39595,
+    "total_tokens": 107006
+  },
+  "rejections": 41,
+  "termination": {
+    "max_attempts": 1,
+    "success": 49
+  },
+  "patterns_with_interventions": [
+    "p03_customers_in_region",
+    "p04_gross_revenue",
+    "p05_net_revenue",
+    "p06_top_products",
+    "p07_aov_by_region",
+    "p08_revenue_by_category",
+    "p09_refund_rate",
+    "p10_repeat_customer_rate"
+  ],
+  "items": [
+    {
+      "item_id": "p01_product_count__00",
+      "pattern_key": "p01_product_count",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 1,
+      "rejections": 0,
+      "cost_usd": 0.002328,
+      "tokens": {
+        "n_calls": 1,
+        "input_tokens": 566,
+        "output_tokens": 42,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 608
+      }
+    },
+    {
+      "item_id": "p01_product_count__01",
+      "pattern_key": "p01_product_count",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 1,
+      "rejections": 0,
+      "cost_usd": 0.002328,
+      "tokens": {
+        "n_calls": 1,
+        "input_tokens": 566,
+        "output_tokens": 42,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 608
+      }
+    },
+    {
+      "item_id": "p01_product_count__02",
+      "pattern_key": "p01_product_count",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 1,
+      "rejections": 0,
+      "cost_usd": 0.002292,
+      "tokens": {
+        "n_calls": 1,
+        "input_tokens": 564,
+        "output_tokens": 40,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 604
+      }
+    },
+    {
+      "item_id": "p01_product_count__03",
+      "pattern_key": "p01_product_count",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 1,
+      "rejections": 0,
+      "cost_usd": 0.002346,
+      "tokens": {
+        "n_calls": 1,
+        "input_tokens": 567,
+        "output_tokens": 43,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 610
+      }
+    },
+    {
+      "item_id": "p01_product_count__04",
+      "pattern_key": "p01_product_count",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 1,
+      "rejections": 0,
+      "cost_usd": 0.002328,
+      "tokens": {
+        "n_calls": 1,
+        "input_tokens": 566,
+        "output_tokens": 42,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 608
+      }
+    },
+    {
+      "item_id": "p02_orders_in_month__00",
+      "pattern_key": "p02_orders_in_month",
+      "outcome": "silent_error",
+      "ran_and_returned": true,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 1,
+      "rejections": 0,
+      "cost_usd": 0.00291,
+      "tokens": {
+        "n_calls": 1,
+        "input_tokens": 565,
+        "output_tokens": 81,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 646
+      }
+    },
+    {
+      "item_id": "p02_orders_in_month__01",
+      "pattern_key": "p02_orders_in_month",
+      "outcome": "silent_error",
+      "ran_and_returned": true,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 1,
+      "rejections": 0,
+      "cost_usd": 0.00288,
+      "tokens": {
+        "n_calls": 1,
+        "input_tokens": 565,
+        "output_tokens": 79,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 644
+      }
+    },
+    {
+      "item_id": "p02_orders_in_month__02",
+      "pattern_key": "p02_orders_in_month",
+      "outcome": "silent_error",
+      "ran_and_returned": true,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 1,
+      "rejections": 0,
+      "cost_usd": 0.00291,
+      "tokens": {
+        "n_calls": 1,
+        "input_tokens": 565,
+        "output_tokens": 81,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 646
+      }
+    },
+    {
+      "item_id": "p02_orders_in_month__03",
+      "pattern_key": "p02_orders_in_month",
+      "outcome": "silent_error",
+      "ran_and_returned": true,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 1,
+      "rejections": 0,
+      "cost_usd": 0.00291,
+      "tokens": {
+        "n_calls": 1,
+        "input_tokens": 565,
+        "output_tokens": 81,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 646
+      }
+    },
+    {
+      "item_id": "p02_orders_in_month__04",
+      "pattern_key": "p02_orders_in_month",
+      "outcome": "silent_error",
+      "ran_and_returned": true,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 1,
+      "rejections": 0,
+      "cost_usd": 0.00291,
+      "tokens": {
+        "n_calls": 1,
+        "input_tokens": 565,
+        "output_tokens": 81,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 646
+      }
+    },
+    {
+      "item_id": "p03_customers_in_region__00",
+      "pattern_key": "p03_customers_in_region",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.005562,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1269,
+        "output_tokens": 117,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1386
+      }
+    },
+    {
+      "item_id": "p03_customers_in_region__01",
+      "pattern_key": "p03_customers_in_region",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.0057,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1275,
+        "output_tokens": 125,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1400
+      }
+    },
+    {
+      "item_id": "p03_customers_in_region__02",
+      "pattern_key": "p03_customers_in_region",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.005601,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1272,
+        "output_tokens": 119,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1391
+      }
+    },
+    {
+      "item_id": "p03_customers_in_region__03",
+      "pattern_key": "p03_customers_in_region",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.00564,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1275,
+        "output_tokens": 121,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1396
+      }
+    },
+    {
+      "item_id": "p03_customers_in_region__04",
+      "pattern_key": "p03_customers_in_region",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.00564,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1275,
+        "output_tokens": 121,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1396
+      }
+    },
+    {
+      "item_id": "p04_gross_revenue__00",
+      "pattern_key": "p04_gross_revenue",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.020028,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1476,
+        "output_tokens": 1040,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2516
+      }
+    },
+    {
+      "item_id": "p04_gross_revenue__01",
+      "pattern_key": "p04_gross_revenue",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.031508999999999995,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1658,
+        "output_tokens": 1769,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 3427
+      }
+    },
+    {
+      "item_id": "p04_gross_revenue__02",
+      "pattern_key": "p04_gross_revenue",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.021975,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1530,
+        "output_tokens": 1159,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2689
+      }
+    },
+    {
+      "item_id": "p04_gross_revenue__03",
+      "pattern_key": "p04_gross_revenue",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 3,
+      "rejections": 2,
+      "cost_usd": 0.048624,
+      "tokens": {
+        "n_calls": 3,
+        "input_tokens": 3323,
+        "output_tokens": 2577,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 5900
+      }
+    },
+    {
+      "item_id": "p04_gross_revenue__04",
+      "pattern_key": "p04_gross_revenue",
+      "outcome": "silent_error",
+      "ran_and_returned": true,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.016902,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1464,
+        "output_tokens": 834,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2298
+      }
+    },
+    {
+      "item_id": "p05_net_revenue__00",
+      "pattern_key": "p05_net_revenue",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.026166000000000002,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1617,
+        "output_tokens": 1421,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 3038
+      }
+    },
+    {
+      "item_id": "p05_net_revenue__01",
+      "pattern_key": "p05_net_revenue",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 1,
+      "rejections": 0,
+      "cost_usd": 0.024825,
+      "tokens": {
+        "n_calls": 1,
+        "input_tokens": 580,
+        "output_tokens": 1539,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2119
+      }
+    },
+    {
+      "item_id": "p05_net_revenue__02",
+      "pattern_key": "p05_net_revenue",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.023841,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1617,
+        "output_tokens": 1266,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2883
+      }
+    },
+    {
+      "item_id": "p05_net_revenue__03",
+      "pattern_key": "p05_net_revenue",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.062967,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1784,
+        "output_tokens": 3841,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 5625
+      }
+    },
+    {
+      "item_id": "p05_net_revenue__04",
+      "pattern_key": "p05_net_revenue",
+      "outcome": "silent_error",
+      "ran_and_returned": true,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.031689,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1563,
+        "output_tokens": 1800,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 3363
+      }
+    },
+    {
+      "item_id": "p06_top_products__00",
+      "pattern_key": "p06_top_products",
+      "outcome": "visible_failure",
+      "ran_and_returned": false,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.010134,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1418,
+        "output_tokens": 392,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1810
+      }
+    },
+    {
+      "item_id": "p06_top_products__01",
+      "pattern_key": "p06_top_products",
+      "outcome": "visible_failure",
+      "ran_and_returned": false,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.009633000000000001,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1441,
+        "output_tokens": 354,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1795
+      }
+    },
+    {
+      "item_id": "p06_top_products__02",
+      "pattern_key": "p06_top_products",
+      "outcome": "visible_failure",
+      "ran_and_returned": false,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.009588,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1436,
+        "output_tokens": 352,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1788
+      }
+    },
+    {
+      "item_id": "p06_top_products__03",
+      "pattern_key": "p06_top_products",
+      "outcome": "visible_failure",
+      "ran_and_returned": false,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.009474,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1438,
+        "output_tokens": 344,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1782
+      }
+    },
+    {
+      "item_id": "p06_top_products__04",
+      "pattern_key": "p06_top_products",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.009237,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1429,
+        "output_tokens": 330,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1759
+      }
+    },
+    {
+      "item_id": "p07_aov_by_region__00",
+      "pattern_key": "p07_aov_by_region",
+      "outcome": "silent_error",
+      "ran_and_returned": true,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.014936999999999999,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1489,
+        "output_tokens": 698,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2187
+      }
+    },
+    {
+      "item_id": "p07_aov_by_region__01",
+      "pattern_key": "p07_aov_by_region",
+      "outcome": "silent_error",
+      "ran_and_returned": true,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.021263999999999998,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1488,
+        "output_tokens": 1120,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2608
+      }
+    },
+    {
+      "item_id": "p07_aov_by_region__02",
+      "pattern_key": "p07_aov_by_region",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.020721,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1552,
+        "output_tokens": 1071,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2623
+      }
+    },
+    {
+      "item_id": "p07_aov_by_region__03",
+      "pattern_key": "p07_aov_by_region",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.019323,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1496,
+        "output_tokens": 989,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2485
+      }
+    },
+    {
+      "item_id": "p07_aov_by_region__04",
+      "pattern_key": "p07_aov_by_region",
+      "outcome": "visible_failure",
+      "ran_and_returned": false,
+      "correct": false,
+      "termination": "max_attempts",
+      "n_attempts": 3,
+      "rejections": 2,
+      "cost_usd": 0.06525600000000001,
+      "tokens": {
+        "n_calls": 3,
+        "input_tokens": 3127,
+        "output_tokens": 3725,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 6852
+      }
+    },
+    {
+      "item_id": "p08_revenue_by_category__00",
+      "pattern_key": "p08_revenue_by_category",
+      "outcome": "silent_error",
+      "ran_and_returned": true,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.025374,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1553,
+        "output_tokens": 1381,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2934
+      }
+    },
+    {
+      "item_id": "p08_revenue_by_category__01",
+      "pattern_key": "p08_revenue_by_category",
+      "outcome": "silent_error",
+      "ran_and_returned": true,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.034413,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1571,
+        "output_tokens": 1980,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 3551
+      }
+    },
+    {
+      "item_id": "p08_revenue_by_category__02",
+      "pattern_key": "p08_revenue_by_category",
+      "outcome": "visible_failure",
+      "ran_and_returned": false,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.023265,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1495,
+        "output_tokens": 1252,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2747
+      }
+    },
+    {
+      "item_id": "p08_revenue_by_category__03",
+      "pattern_key": "p08_revenue_by_category",
+      "outcome": "visible_failure",
+      "ran_and_returned": false,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.020798999999999998,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1523,
+        "output_tokens": 1082,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2605
+      }
+    },
+    {
+      "item_id": "p08_revenue_by_category__04",
+      "pattern_key": "p08_revenue_by_category",
+      "outcome": "silent_error",
+      "ran_and_returned": true,
+      "correct": false,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.024129,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1568,
+        "output_tokens": 1295,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2863
+      }
+    },
+    {
+      "item_id": "p09_refund_rate__00",
+      "pattern_key": "p09_refund_rate",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.010473,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1431,
+        "output_tokens": 412,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1843
+      }
+    },
+    {
+      "item_id": "p09_refund_rate__01",
+      "pattern_key": "p09_refund_rate",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.011595000000000001,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1465,
+        "output_tokens": 480,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1945
+      }
+    },
+    {
+      "item_id": "p09_refund_rate__02",
+      "pattern_key": "p09_refund_rate",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.010428,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1426,
+        "output_tokens": 410,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1836
+      }
+    },
+    {
+      "item_id": "p09_refund_rate__03",
+      "pattern_key": "p09_refund_rate",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.011337,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1459,
+        "output_tokens": 464,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1923
+      }
+    },
+    {
+      "item_id": "p09_refund_rate__04",
+      "pattern_key": "p09_refund_rate",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.010614,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1438,
+        "output_tokens": 420,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1858
+      }
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__00",
+      "pattern_key": "p10_repeat_customer_rate",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.0126,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1515,
+        "output_tokens": 537,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2052
+      }
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__01",
+      "pattern_key": "p10_repeat_customer_rate",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.012774,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1523,
+        "output_tokens": 547,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2070
+      }
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__02",
+      "pattern_key": "p10_repeat_customer_rate",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.012576,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1517,
+        "output_tokens": 535,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 2052
+      }
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__03",
+      "pattern_key": "p10_repeat_customer_rate",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.011916,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1497,
+        "output_tokens": 495,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1992
+      }
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__04",
+      "pattern_key": "p10_repeat_customer_rate",
+      "outcome": "correct",
+      "ran_and_returned": true,
+      "correct": true,
+      "termination": "success",
+      "n_attempts": 2,
+      "rejections": 1,
+      "cost_usd": 0.011487,
+      "tokens": {
+        "n_calls": 2,
+        "input_tokens": 1484,
+        "output_tokens": 469,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 1953
+      }
+    }
+  ]
+}

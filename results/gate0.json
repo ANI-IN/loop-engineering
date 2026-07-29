@@ -1,0 +1,328 @@
+{
+  "phase": "0",
+  "generated_at": "2026-07-29T17:00:08+0530",
+  "warehouse": {
+    "row_counts": {
+      "value": {
+        "customers": 500,
+        "orders": 5000,
+        "order_items": 9486,
+        "products": 200,
+        "refunds": 431
+      },
+      "how": "COUNT(*) per table after generate()"
+    },
+    "seed_seconds": {
+      "value": 0.123,
+      "how": "perf_counter around generate()"
+    },
+    "db_file_bytes": {
+      "value": 2895872,
+      "how": "Path.stat().st_size"
+    },
+    "content_identical_across_runs": {
+      "value": true,
+      "how": "SHA-256 over every table's sorted rows, two runs, same seed"
+    },
+    "byte_identical_across_runs": {
+      "value": false,
+      "how": "raw file bytes compared across two runs at the same seed",
+      "note": "False. DuckDB writes non-deterministic file metadata, so the contract is content-identity, which the spec already stated. Kept in the report rather than dropped, because a later DuckDB making it true is worth noticing."
+    }
+  },
+  "query_latency": {
+    "n": 50,
+    "p50_ms": {
+      "value": 6.01,
+      "how": "wall clock around run_sql, 50 gold SQLs"
+    },
+    "p95_ms": {
+      "value": 7.39,
+      "how": "wall clock around run_sql, 50 gold SQLs, 95th percentile"
+    },
+    "max_ms": {
+      "value": 15.9,
+      "how": "slowest of the 50 gold SQLs"
+    }
+  },
+  "gold_set": {
+    "n_items": 50,
+    "clustering": {
+      "n_items": 50,
+      "n_clusters": 10,
+      "items_per_cluster": 5,
+      "items_by_pattern": {
+        "p01_product_count": 5,
+        "p02_orders_in_month": 5,
+        "p03_customers_in_region": 5,
+        "p04_gross_revenue": 5,
+        "p05_net_revenue": 5,
+        "p06_top_products": 5,
+        "p07_aov_by_region": 5,
+        "p08_revenue_by_category": 5,
+        "p09_refund_rate": 5,
+        "p10_repeat_customer_rate": 5
+      },
+      "caveat": "The 50 items are 10 clusters of 5 parameterisations, not 50 independent trials. A systematic flaw in one pattern fails all five of its items together, so an interval computed as if n=50 is narrower than the evidence supports. Report alongside the templating disclosure."
+    },
+    "templating_disclosure": "Questions are templated: 10 patterns x 5 parameterisations. That caps how far these numbers generalise to freely-phrased questions, and it is stated on screen rather than left in a footnote.",
+    "rule_coverage": {
+      "by_pattern": {
+        "p01_product_count": {
+          "n_items": 5,
+          "rules": [
+            "(none - the L0 floor)"
+          ]
+        },
+        "p02_orders_in_month": {
+          "n_items": 5,
+          "rules": [
+            "soft_delete"
+          ]
+        },
+        "p03_customers_in_region": {
+          "n_items": 5,
+          "rules": [
+            "soft_delete",
+            "internal_accounts"
+          ]
+        },
+        "p04_gross_revenue": {
+          "n_items": 5,
+          "rules": [
+            "soft_delete",
+            "cancelled_orders",
+            "internal_accounts",
+            "multi_currency",
+            "minor_units"
+          ]
+        },
+        "p05_net_revenue": {
+          "n_items": 5,
+          "rules": [
+            "soft_delete",
+            "cancelled_orders",
+            "internal_accounts",
+            "multi_currency",
+            "minor_units",
+            "refunds_net"
+          ]
+        },
+        "p06_top_products": {
+          "n_items": 5,
+          "rules": [
+            "soft_delete",
+            "cancelled_orders",
+            "internal_accounts"
+          ]
+        },
+        "p07_aov_by_region": {
+          "n_items": 5,
+          "rules": [
+            "soft_delete",
+            "cancelled_orders",
+            "internal_accounts",
+            "multi_currency",
+            "minor_units",
+            "fan_out"
+          ]
+        },
+        "p08_revenue_by_category": {
+          "n_items": 5,
+          "rules": [
+            "soft_delete",
+            "cancelled_orders",
+            "internal_accounts",
+            "multi_currency",
+            "minor_units",
+            "fan_out"
+          ]
+        },
+        "p09_refund_rate": {
+          "n_items": 5,
+          "rules": [
+            "soft_delete",
+            "cancelled_orders",
+            "internal_accounts",
+            "fan_out"
+          ]
+        },
+        "p10_repeat_customer_rate": {
+          "n_items": 5,
+          "rules": [
+            "soft_delete",
+            "cancelled_orders",
+            "internal_accounts"
+          ]
+        }
+      },
+      "items_per_rule": {
+        "soft_delete": 45,
+        "internal_accounts": 40,
+        "cancelled_orders": 35,
+        "multi_currency": 20,
+        "minor_units": 20,
+        "fan_out": 15,
+        "refunds_net": 5
+      },
+      "clusters_per_rule": {
+        "soft_delete": 9,
+        "internal_accounts": 8,
+        "cancelled_orders": 7,
+        "multi_currency": 4,
+        "minor_units": 4,
+        "fan_out": 3,
+        "refunds_net": 1
+      },
+      "rules_carried_by_a_single_cluster": [
+        "refunds_net"
+      ],
+      "caveat": "refunds_net is exercised by ONE pattern only (p05_net_revenue, 5 items, 1 cluster). The sweep can therefore make no claim about that rule: with a single cluster there is no independent evidence, and the Phase 3 ablation will show it as unmeasurable for reasons that have nothing to do with the verifier under test. Read a flat refunds_net line as 'not measured here', not as 'the verifier missed it'. Rule enforcement is still covered by the Phase 2 rule-surface probes, which test the verifier directly rather than inferring it from sweep outcomes."
+    },
+    "ambiguity": {
+      "n_ambiguous_items": 1,
+      "of_total": 50,
+      "groups": {
+        "internal_accounts | soft_delete": 1
+      },
+      "by_item": {
+        "p03_customers_in_region__02": [
+          [
+            "internal_accounts",
+            "soft_delete"
+          ]
+        ]
+      },
+      "how": "Naive variants compared pairwise per item with rows_equal. A collision marks the item partial; it is never dropped or regenerated."
+    }
+  },
+  "langsmith": {
+    "dataset_url": "https://smith.langchain.com/datasets/REDACTED-IDENTIFIER",
+    "dataset_id": "REDACTED-IDENTIFIER",
+    "resumability": {
+      "verdict": "NO CLEAN RESUME",
+      "plain_english": "A 5-item experiment was started, killed after 2 items had been invoked, then restarted against the same experiment name. LangSmith re-invoked all 5 targets, including the 2 that had already completed. The experiment ended with 7 root runs for a 5-item dataset: 2 duplicates, plus 1 run left in \"pending\" forever because it was in flight when the process was killed. Completed work was neither skipped nor replaced - it was repeated and appended.",
+      "decision": "Phase 3 resumes from results/*.json itself. LangSmith is trace-viewing only and must not be relied on to skip completed cells - doing so would double the cost of any interrupted sweep and leave orphaned pending runs in the report.",
+      "raw_evidence_files": [
+        "results/_resume_first.log",
+        "results/_resume_marker.txt"
+      ],
+      "root_runs_after_restart": 7,
+      "dataset_size": 5,
+      "duplicated_items": 2,
+      "orphaned_pending_runs": 1
+    },
+    "role": "ADVISORY ONLY. results/*.json is the system of record. A test runs a cell with the LangSmith client stubbed to raise and asserts the results file is still complete and correct.",
+    "project": "loop-eng-workshop",
+    "dataset_scope_note": "LangSmith datasets are account-scoped, not project-scoped. LANGSMITH_PROJECT controls where traces and experiment sessions are filed, not where a dataset lives. Re-uploaded under the corrected project setting so future experiment sessions land alongside it."
+  },
+  "prompts": {
+    "token_counts": {
+      "frontier": {
+        "model_id": "claude-sonnet-5",
+        "cache_minimum": 1024,
+        "L0": {
+          "tokens": 548,
+          "cacheable": false,
+          "shortfall": 476
+        },
+        "L3": {
+          "tokens": 1037,
+          "cacheable": true,
+          "shortfall": 0
+        }
+      },
+      "worker": {
+        "model_id": "claude-haiku-4-5",
+        "cache_minimum": 4096,
+        "L0": {
+          "tokens": 286,
+          "cacheable": false,
+          "shortfall": 3810
+        },
+        "L3": {
+          "tokens": 648,
+          "cacheable": false,
+          "shortfall": 3448
+        }
+      }
+    },
+    "findings": [
+      "L0 clears the cache minimum on no model; its prefix is too short to cache anywhere, so caching cannot reduce sweep cost for this level.",
+      "L3 caches on frontier but NOT on worker. This is silent \u2014 no error, just a different cost per cell \u2014 and it lands directly on the cost comparison, because the cheaper model is the one paying full price for its prefix on every call."
+    ],
+    "how": "client.messages.count_tokens against each model; no inference run."
+  },
+  "rate_limits": {
+    "observed": {
+      "frontier": {
+        "model_id": "claude-sonnet-5",
+        "anthropic-ratelimit-input-tokens-limit": "10000000",
+        "anthropic-ratelimit-input-tokens-remaining": "10000000",
+        "anthropic-ratelimit-input-tokens-reset": "2026-07-29T11:26:46Z",
+        "anthropic-ratelimit-output-tokens-limit": "2000000",
+        "anthropic-ratelimit-output-tokens-remaining": "2000000",
+        "anthropic-ratelimit-output-tokens-reset": "2026-07-29T11:26:46Z",
+        "anthropic-ratelimit-requests-limit": "10000",
+        "anthropic-ratelimit-requests-remaining": "9999",
+        "anthropic-ratelimit-requests-reset": "2026-07-29T11:26:45Z",
+        "anthropic-ratelimit-tokens-limit": "12000000",
+        "anthropic-ratelimit-tokens-remaining": "12000000",
+        "anthropic-ratelimit-tokens-reset": "2026-07-29T11:26:46Z"
+      },
+      "worker": {
+        "model_id": "claude-haiku-4-5",
+        "anthropic-ratelimit-input-tokens-limit": "10000000",
+        "anthropic-ratelimit-input-tokens-remaining": "10000000",
+        "anthropic-ratelimit-input-tokens-reset": "2026-07-29T11:26:47Z",
+        "anthropic-ratelimit-output-tokens-limit": "2000000",
+        "anthropic-ratelimit-output-tokens-remaining": "2000000",
+        "anthropic-ratelimit-output-tokens-reset": "2026-07-29T11:26:47Z",
+        "anthropic-ratelimit-requests-limit": "10000",
+        "anthropic-ratelimit-requests-remaining": "9999",
+        "anthropic-ratelimit-requests-reset": "2026-07-29T11:26:46Z",
+        "anthropic-ratelimit-tokens-limit": "12000000",
+        "anthropic-ratelimit-tokens-remaining": "12000000",
+        "anthropic-ratelimit-tokens-reset": "2026-07-29T11:26:47Z"
+      }
+    },
+    "how": "One minimal request per model via .with_raw_response; every header matching 'ratelimit' plus retry-after recorded verbatim. No loop toward a 429.",
+    "note": "Pools are per-model. The two models report identical published ceilings, which is not the same as sharing a bucket - remaining counts and reset timestamps move independently, so Phase 3 still caps concurrency per model."
+  },
+  "spend": {
+    "tokens": {
+      "value": {
+        "n_calls": 2,
+        "input_tokens": 16,
+        "output_tokens": 2,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "total_tokens": 18
+      },
+      "how": "usage fields read off every response, all four classes"
+    },
+    "by_outcome": {
+      "value": {
+        "ok": 2
+      },
+      "how": "every call recorded, including failed and timed-out"
+    },
+    "by_model": {
+      "claude-sonnet-5": {
+        "n_calls": 1,
+        "total_tokens": 9,
+        "cost_usd_estimated": 3.9e-05
+      },
+      "claude-haiku-4-5": {
+        "n_calls": 1,
+        "total_tokens": 9,
+        "cost_usd_estimated": 1.3e-05
+      }
+    },
+    "cost_usd": {
+      "value": 5.2e-05,
+      "source": "estimated",
+      "how": "measured token counts x a hand-entered price table (taken 2026-07-29 from https://claude.com/pricing (per million tokens)). Only a billing export would make this a measurement, so the 'est.' label never comes off."
+    }
+  }
+}

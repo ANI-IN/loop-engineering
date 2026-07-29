@@ -1,0 +1,101 @@
+# ---------------------------------------------------------------------------
+# Secrets. Never commit. Real values live in .env; .env.example holds names only.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# ---------------------------------------------------------------------------
+# Python and tooling
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# ---------------------------------------------------------------------------
+# Editor and agent scaffolding
+# ---------------------------------------------------------------------------
+.claude/
+.DS_Store
+.idea/
+.vscode/
+
+# ---------------------------------------------------------------------------
+# Gradio. The launch writes a certificate and a flagging directory next to the
+# app, and the share tunnel binary is downloaded rather than vendored.
+# ---------------------------------------------------------------------------
+.gradio/
+flagged/
+
+# ---------------------------------------------------------------------------
+# Generated data. Rebuilt from the seed, never a source artifact.
+# ---------------------------------------------------------------------------
+*.duckdb
+*.duckdb.wal
+question_queue.duckdb
+
+# ---------------------------------------------------------------------------
+# Results.
+#
+# The rule is not "results are noise". Some of it is evidence and some of it is
+# live output, and the difference decides whether the demo works.
+#
+# LIVE CELL OUTPUT IS IGNORED, and that is load-bearing. The sweep resumes from
+# results/sweep/. A committed cell would arrive on every clone and make the FIRST
+# live sweep on a fresh machine resume-and-complete instantly, rendering finished
+# numbers to a room told nothing is precomputed. A test asserts a fresh clone
+# renders "not yet measured".
+# ---------------------------------------------------------------------------
+results/*.json
+results/*.jsonl
+results/sweep/
+results/ablation/
+results/charts/
+results/*.log
+results/*.png
+results/*.svg
+results/_resume_marker*.txt
+
+# Kept deliberately: the delivery reads reference cells for the frozen Sonnet
+# measurements, and without them the DIAL chart has nothing to cite. This is
+# also the only data tools/render_readme_charts.py is allowed to read.
+!results/reference/
+
+# Kept deliberately: the pre-fix measurements are the Stage 3 triage artifact —
+# the under-specification we found in our own gold set and what it cost.
+!results/prefix_v1/
+
+# Kept deliberately: Gate 0 evidence, cited throughout the design record.
+!results/gate0.json
+
+# Raw kill-and-restart output, cited verbatim as the evidence that LangSmith
+# does not resume. Not a stray log.
+!results/_resume_first.log
+!results/_resume_marker.txt
+
+# ---------------------------------------------------------------------------
+# README images.
+#
+# assets/ IS committed — the README needs it on GitHub, and every file there is
+# written by tools/render_readme_charts.py from results/reference/ and by
+# nothing else. Anything that lands here by another route is a stray.
+# ---------------------------------------------------------------------------
+assets/*
+!assets/*.png
+!assets/manifest.json
+
+# ---------------------------------------------------------------------------
+# Staging and backups
+# ---------------------------------------------------------------------------
+*.bundle
+.hf-staging/

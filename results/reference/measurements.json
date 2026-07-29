@@ -1,0 +1,324 @@
+{
+  "measured_on": "2026-07-29",
+  "noise_floors": {
+    "claude-haiku-4-5": {
+      "spread_pp": 3.3,
+      "pinned": true,
+      "note": "temperature=0 pinned; spread across 3 replicates of the L0 loop cell"
+    },
+    "claude-sonnet-5": {
+      "spread_pp": 18.8,
+      "pinned": false,
+      "note": "cannot be pinned \u2014 Sonnet 5 rejects non-default sampling with a 400 \u2014 so this floor cannot be removed, and its bars never meant the same thing as Haiku's"
+    }
+  },
+  "cells": [
+    {
+      "key": "frontier_L0_loop_r0",
+      "label": "Sonnet \u00b7 L0 \u00b7 loop",
+      "role": "frontier",
+      "level": "L0",
+      "mode": "loop",
+      "replicate": 0,
+      "complete": true,
+      "seconds": 65.9,
+      "n_done": 50,
+      "ran_and_returned": 47,
+      "correct": 27,
+      "silent_errors": 20,
+      "silent_error_rate": "42.6% (n=47, \u00b114.2, measured 2026-07-29)",
+      "rate_value": 0.425531914893617,
+      "rate_ci_low": 0.2951362834367996,
+      "rate_ci_high": 0.5671808065450721,
+      "rate_n": 47,
+      "cost_usd": {
+        "value": 0.723996,
+        "source": "estimated"
+      },
+      "tokens": {
+        "n_calls": 89,
+        "input_tokens": 64252,
+        "output_tokens": 35416,
+        "total_tokens": 99668
+      },
+      "rejections": 39,
+      "termination": {
+        "success": 50
+      },
+      "patterns_with_interventions": [
+        "p03_customers_in_region",
+        "p04_gross_revenue",
+        "p05_net_revenue",
+        "p06_top_products",
+        "p07_aov_by_region",
+        "p08_revenue_by_category",
+        "p09_refund_rate",
+        "p10_repeat_customer_rate"
+      ],
+      "spliced": {
+        "n_rerun": 10,
+        "n_kept": 40,
+        "affected_prefixes": [
+          "p07_aov_by_region",
+          "p08_revenue_by_category"
+        ],
+        "why": "Two patterns were under-specified about whether refunds are netted. The wording was corrected and only those items re-run; every item is scored independently, so the rebuilt cell is valid.",
+        "drift_note": "frontier cannot be pinned; its 18.8pp replicate spread dwarfs any splice drift"
+      },
+      "reference": true,
+      "measured_on": "2026-07-29"
+    },
+    {
+      "key": "frontier_L0_loop_r1",
+      "label": "Sonnet \u00b7 L0 \u00b7 loop (rep 2)",
+      "role": "frontier",
+      "level": "L0",
+      "mode": "loop",
+      "replicate": 1,
+      "complete": true,
+      "seconds": 56.9,
+      "n_done": 50,
+      "ran_and_returned": 44,
+      "correct": 24,
+      "silent_errors": 20,
+      "silent_error_rate": "45.5% (n=44, \u00b114.5, measured 2026-07-29)",
+      "rate_value": 0.45454545454545453,
+      "rate_ci_low": 0.31705234142220895,
+      "rate_ci_high": 0.5993381680103802,
+      "rate_n": 44,
+      "cost_usd": {
+        "value": 0.697836,
+        "source": "estimated"
+      },
+      "tokens": {
+        "n_calls": 90,
+        "input_tokens": 65237,
+        "output_tokens": 33475,
+        "total_tokens": 98712
+      },
+      "rejections": 39,
+      "termination": {
+        "success": 50
+      },
+      "patterns_with_interventions": [
+        "p03_customers_in_region",
+        "p04_gross_revenue",
+        "p05_net_revenue",
+        "p06_top_products",
+        "p07_aov_by_region",
+        "p08_revenue_by_category",
+        "p09_refund_rate",
+        "p10_repeat_customer_rate"
+      ],
+      "spliced": {
+        "n_rerun": 10,
+        "n_kept": 40,
+        "affected_prefixes": [
+          "p07_aov_by_region",
+          "p08_revenue_by_category"
+        ],
+        "why": "Two patterns were under-specified about whether refunds are netted. The wording was corrected and only those items re-run; every item is scored independently, so the rebuilt cell is valid.",
+        "drift_note": "frontier cannot be pinned; its 18.8pp replicate spread dwarfs any splice drift"
+      },
+      "reference": true,
+      "measured_on": "2026-07-29"
+    },
+    {
+      "key": "frontier_L0_loop_r2",
+      "label": "Sonnet \u00b7 L0 \u00b7 loop (rep 3)",
+      "role": "frontier",
+      "level": "L0",
+      "mode": "loop",
+      "replicate": 2,
+      "complete": true,
+      "seconds": 76.3,
+      "n_done": 50,
+      "ran_and_returned": 46,
+      "correct": 31,
+      "silent_errors": 15,
+      "silent_error_rate": "32.6% (n=46, \u00b114.4, measured 2026-07-29)",
+      "rate_value": 0.32608695652173914,
+      "rate_ci_low": 0.2086594330925565,
+      "rate_ci_high": 0.4703226758067758,
+      "rate_n": 46,
+      "cost_usd": {
+        "value": 0.756342,
+        "source": "estimated"
+      },
+      "tokens": {
+        "n_calls": 91,
+        "input_tokens": 67314,
+        "output_tokens": 36960,
+        "total_tokens": 104274
+      },
+      "rejections": 40,
+      "termination": {
+        "success": 50
+      },
+      "patterns_with_interventions": [
+        "p03_customers_in_region",
+        "p04_gross_revenue",
+        "p05_net_revenue",
+        "p06_top_products",
+        "p07_aov_by_region",
+        "p08_revenue_by_category",
+        "p09_refund_rate",
+        "p10_repeat_customer_rate"
+      ],
+      "spliced": {
+        "n_rerun": 10,
+        "n_kept": 40,
+        "affected_prefixes": [
+          "p07_aov_by_region",
+          "p08_revenue_by_category"
+        ],
+        "why": "Two patterns were under-specified about whether refunds are netted. The wording was corrected and only those items re-run; every item is scored independently, so the rebuilt cell is valid.",
+        "drift_note": "frontier cannot be pinned; its 18.8pp replicate spread dwarfs any splice drift"
+      },
+      "reference": true,
+      "measured_on": "2026-07-29"
+    },
+    {
+      "key": "frontier_L0_one_shot_r0",
+      "label": "Sonnet \u00b7 L0 \u00b7 one-shot",
+      "role": "frontier",
+      "level": "L0",
+      "mode": "one_shot",
+      "replicate": 0,
+      "complete": true,
+      "seconds": 38.2,
+      "n_done": 50,
+      "ran_and_returned": 37,
+      "correct": 6,
+      "silent_errors": 31,
+      "silent_error_rate": "83.8% (n=37, \u00b114.9, measured 2026-07-29)",
+      "rate_value": 0.8378378378378378,
+      "rate_ci_low": 0.6886351629906503,
+      "rate_ci_high": 0.9234879276598885,
+      "rate_n": 37,
+      "cost_usd": {
+        "value": 0.392115,
+        "source": "estimated"
+      },
+      "tokens": {
+        "n_calls": 50,
+        "input_tokens": 28620,
+        "output_tokens": 20417,
+        "total_tokens": 49037
+      },
+      "rejections": 0,
+      "termination": {
+        "success": 50
+      },
+      "patterns_with_interventions": [],
+      "spliced": {
+        "n_rerun": 10,
+        "n_kept": 40,
+        "affected_prefixes": [
+          "p07_aov_by_region",
+          "p08_revenue_by_category"
+        ],
+        "why": "Two patterns were under-specified about whether refunds are netted. The wording was corrected and only those items re-run; every item is scored independently, so the rebuilt cell is valid.",
+        "drift_note": "frontier cannot be pinned; its 18.8pp replicate spread dwarfs any splice drift"
+      },
+      "reference": true,
+      "measured_on": "2026-07-29"
+    },
+    {
+      "key": "frontier_L3_loop_r0",
+      "label": "Sonnet \u00b7 L3 \u00b7 loop",
+      "role": "frontier",
+      "level": "L3",
+      "mode": "loop",
+      "replicate": 0,
+      "complete": true,
+      "seconds": 31.7,
+      "n_done": 50,
+      "ran_and_returned": 43,
+      "correct": 41,
+      "silent_errors": 2,
+      "silent_error_rate": "4.7% (n=43, \u00b110.8, measured 2026-07-29)",
+      "rate_value": 0.046511627906976744,
+      "rate_ci_low": 0.012849260094380227,
+      "rate_ci_high": 0.15455498004063967,
+      "rate_n": 43,
+      "cost_usd": {
+        "value": 0.383016,
+        "source": "estimated"
+      },
+      "tokens": {
+        "n_calls": 51,
+        "input_tokens": 54662,
+        "output_tokens": 14602,
+        "total_tokens": 69264
+      },
+      "rejections": 2,
+      "termination": {
+        "success": 49,
+        "no_progress": 1
+      },
+      "patterns_with_interventions": [
+        "p09_refund_rate"
+      ],
+      "spliced": {
+        "n_rerun": 10,
+        "n_kept": 40,
+        "affected_prefixes": [
+          "p07_aov_by_region",
+          "p08_revenue_by_category"
+        ],
+        "why": "Two patterns were under-specified about whether refunds are netted. The wording was corrected and only those items re-run; every item is scored independently, so the rebuilt cell is valid.",
+        "drift_note": "frontier cannot be pinned; its 18.8pp replicate spread dwarfs any splice drift"
+      },
+      "reference": true,
+      "measured_on": "2026-07-29"
+    },
+    {
+      "key": "frontier_L3_one_shot_r0",
+      "label": "Sonnet \u00b7 L3 \u00b7 one-shot",
+      "role": "frontier",
+      "level": "L3",
+      "mode": "one_shot",
+      "replicate": 0,
+      "complete": true,
+      "seconds": 26.0,
+      "n_done": 50,
+      "ran_and_returned": 43,
+      "correct": 43,
+      "silent_errors": 0,
+      "silent_error_rate": "0.0% (n=43, \u00b18.2, measured 2026-07-29)",
+      "rate_value": 0.0,
+      "rate_ci_low": 0.0,
+      "rate_ci_high": 0.08200980322579117,
+      "rate_n": 43,
+      "cost_usd": {
+        "value": 0.36465,
+        "source": "estimated"
+      },
+      "tokens": {
+        "n_calls": 50,
+        "input_tokens": 53070,
+        "output_tokens": 13696,
+        "total_tokens": 66766
+      },
+      "rejections": 0,
+      "termination": {
+        "success": 50
+      },
+      "patterns_with_interventions": [],
+      "spliced": {
+        "n_rerun": 10,
+        "n_kept": 40,
+        "affected_prefixes": [
+          "p07_aov_by_region",
+          "p08_revenue_by_category"
+        ],
+        "why": "Two patterns were under-specified about whether refunds are netted. The wording was corrected and only those items re-run; every item is scored independently, so the rebuilt cell is valid.",
+        "drift_note": "frontier cannot be pinned; its 18.8pp replicate spread dwarfs any splice drift"
+      },
+      "reference": true,
+      "measured_on": "2026-07-29"
+    }
+  ],
+  "how": "Measured once under the development profile. Cited at delivery, never recomputed \u2014 recomputing would cost about ten times the delivery budget."
+}

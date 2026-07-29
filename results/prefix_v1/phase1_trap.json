@@ -1,0 +1,3294 @@
+{
+  "arms": [
+    "worker@L3",
+    "worker@L0"
+  ],
+  "wall_clock_seconds": 16.07,
+  "n_cells": 100,
+  "usage": {
+    "totals": {
+      "n_calls": 100,
+      "input_tokens": 48514,
+      "output_tokens": 17550,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "total_tokens": 66064
+    },
+    "by_outcome": {
+      "ok": 100
+    },
+    "by_model": {
+      "claude-haiku-4-5": {
+        "n_calls": 100,
+        "total_tokens": 66064,
+        "cost_usd_estimated": 0.136264
+      }
+    },
+    "cost_usd_estimated": 0.136264,
+    "calls": [
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 662,
+        "output_tokens": 37,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 663,
+        "output_tokens": 33,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 662,
+        "output_tokens": 37,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 663,
+        "output_tokens": 33,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 660,
+        "output_tokens": 49,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 661,
+        "output_tokens": 49,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 662,
+        "output_tokens": 117,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 662,
+        "output_tokens": 118,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 662,
+        "output_tokens": 121,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 662,
+        "output_tokens": 50,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 662,
+        "output_tokens": 121,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 662,
+        "output_tokens": 121,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 662,
+        "output_tokens": 32,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 673,
+        "output_tokens": 186,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 662,
+        "output_tokens": 50,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 662,
+        "output_tokens": 50,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 673,
+        "output_tokens": 186,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 673,
+        "output_tokens": 184,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 660,
+        "output_tokens": 177,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 673,
+        "output_tokens": 269,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 673,
+        "output_tokens": 269,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 660,
+        "output_tokens": 177,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 673,
+        "output_tokens": 268,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 673,
+        "output_tokens": 190,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 660,
+        "output_tokens": 177,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 661,
+        "output_tokens": 178,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 672,
+        "output_tokens": 281,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 673,
+        "output_tokens": 194,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 670,
+        "output_tokens": 286,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 671,
+        "output_tokens": 287,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 672,
+        "output_tokens": 282,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 668,
+        "output_tokens": 287,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 672,
+        "output_tokens": 336,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 668,
+        "output_tokens": 370,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 668,
+        "output_tokens": 287,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 663,
+        "output_tokens": 129,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 664,
+        "output_tokens": 271,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 664,
+        "output_tokens": 176,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 663,
+        "output_tokens": 177,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 669,
+        "output_tokens": 347,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 661,
+        "output_tokens": 178,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 669,
+        "output_tokens": 481,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 300,
+        "output_tokens": 32,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 301,
+        "output_tokens": 33,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 300,
+        "output_tokens": 32,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 300,
+        "output_tokens": 60,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 673,
+        "output_tokens": 273,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 666,
+        "output_tokens": 307,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 663,
+        "output_tokens": 175,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 300,
+        "output_tokens": 60,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 300,
+        "output_tokens": 32,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 300,
+        "output_tokens": 60,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 666,
+        "output_tokens": 320,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 301,
+        "output_tokens": 33,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 300,
+        "output_tokens": 60,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 298,
+        "output_tokens": 39,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 666,
+        "output_tokens": 267,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 300,
+        "output_tokens": 41,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 300,
+        "output_tokens": 41,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 666,
+        "output_tokens": 334,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 299,
+        "output_tokens": 40,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 300,
+        "output_tokens": 41,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 300,
+        "output_tokens": 60,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 311,
+        "output_tokens": 174,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 311,
+        "output_tokens": 200,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 311,
+        "output_tokens": 200,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 311,
+        "output_tokens": 200,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 311,
+        "output_tokens": 200,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 673,
+        "output_tokens": 706,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 666,
+        "output_tokens": 515,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 298,
+        "output_tokens": 139,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 311,
+        "output_tokens": 261,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 299,
+        "output_tokens": 140,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 298,
+        "output_tokens": 139,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 311,
+        "output_tokens": 257,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 311,
+        "output_tokens": 277,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 308,
+        "output_tokens": 115,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 299,
+        "output_tokens": 140,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 311,
+        "output_tokens": 261,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 307,
+        "output_tokens": 133,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 311,
+        "output_tokens": 261,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 310,
+        "output_tokens": 167,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 310,
+        "output_tokens": 168,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 309,
+        "output_tokens": 101,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 298,
+        "output_tokens": 139,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 310,
+        "output_tokens": 189,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 306,
+        "output_tokens": 132,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 307,
+        "output_tokens": 133,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 302,
+        "output_tokens": 140,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 302,
+        "output_tokens": 155,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 301,
+        "output_tokens": 129,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 304,
+        "output_tokens": 128,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 306,
+        "output_tokens": 366,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 301,
+        "output_tokens": 147,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 301,
+        "output_tokens": 150,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 304,
+        "output_tokens": 128,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 304,
+        "output_tokens": 180,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 304,
+        "output_tokens": 128,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 304,
+        "output_tokens": 128,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      },
+      {
+        "model_id": "claude-haiku-4-5",
+        "outcome": "ok",
+        "input_tokens": 306,
+        "output_tokens": 436,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0
+      }
+    ]
+  },
+  "cells": [
+    {
+      "item_id": "p01_product_count__00",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many products do we sell in the apparel range?",
+      "seconds": 1.29,
+      "sql": "SELECT COUNT(DISTINCT product_id) as product_count\nFROM products\nWHERE category = 'apparel';",
+      "rows": [
+        [
+          38
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p01_product_count__00",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many products do we sell in the apparel range?",
+      "seconds": 1.416,
+      "sql": "SELECT COUNT(DISTINCT product_id) as product_count\nFROM products\nWHERE category = 'apparel';",
+      "rows": [
+        [
+          38
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p01_product_count__01",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many products do we sell in the electronics range?",
+      "seconds": 1.198,
+      "sql": "SELECT COUNT(DISTINCT product_id) as product_count\nFROM products\nWHERE category = 'electronics';",
+      "rows": [
+        [
+          40
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p01_product_count__01",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many products do we sell in the electronics range?",
+      "seconds": 2.567,
+      "sql": "SELECT COUNT(DISTINCT product_id) as product_count\nFROM products\nWHERE category = 'electronics';",
+      "rows": [
+        [
+          40
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p01_product_count__02",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many products do we sell in the home range?",
+      "seconds": 1.216,
+      "sql": "SELECT COUNT(DISTINCT product_id) as product_count\nFROM products\nWHERE category = 'home';",
+      "rows": [
+        [
+          40
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p01_product_count__02",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many products do we sell in the home range?",
+      "seconds": 1.39,
+      "sql": "SELECT COUNT(DISTINCT p.product_id) as product_count\nFROM products p\nWHERE p.category = 'home'",
+      "rows": [
+        [
+          40
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p01_product_count__03",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many products do we sell in the outdoors range?",
+      "seconds": 1.961,
+      "sql": "SELECT COUNT(DISTINCT product_id) as product_count\nFROM products\nWHERE category = 'outdoors';",
+      "rows": [
+        [
+          37
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p01_product_count__03",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many products do we sell in the outdoors range?",
+      "seconds": 1.332,
+      "sql": "SELECT COUNT(DISTINCT product_id) as product_count\nFROM products\nWHERE category = 'outdoors';",
+      "rows": [
+        [
+          37
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p01_product_count__04",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many products do we sell in the beauty range?",
+      "seconds": 1.794,
+      "sql": "SELECT COUNT(DISTINCT product_id) as product_count\nFROM products\nWHERE category = 'beauty';",
+      "rows": [
+        [
+          45
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p01_product_count__04",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many products do we sell in the beauty range?",
+      "seconds": 1.33,
+      "sql": "SELECT COUNT(DISTINCT p.product_id) as product_count\nFROM products p\nWHERE p.category = 'beauty';",
+      "rows": [
+        [
+          45
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p02_orders_in_month__00",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many orders were placed in January 2025?",
+      "seconds": 1.203,
+      "sql": "SELECT COUNT(*) as order_count\nFROM orders\nWHERE EXTRACT(YEAR FROM placed_at) = 2025\n  AND EXTRACT(MONTH FROM placed_at) = 1\n  AND deleted_at IS NULL;",
+      "rows": [
+        [
+          431
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p02_orders_in_month__00",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many orders were placed in January 2025?",
+      "seconds": 1.73,
+      "sql": "SELECT COUNT(DISTINCT o.order_id) as order_count\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.placed_at >= '2025-01-01'\n  AND o.placed_at < '2025-02-01'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status != 'cancelled'\n  AND c.is_internal = false;",
+      "rows": [
+        [
+          319
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p02_orders_in_month__01",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many orders were placed in February 2025?",
+      "seconds": 1.408,
+      "sql": "SELECT COUNT(*) as order_count\nFROM orders\nWHERE EXTRACT(YEAR FROM placed_at) = 2025\n  AND EXTRACT(MONTH FROM placed_at) = 2\n  AND deleted_at IS NULL;",
+      "rows": [
+        [
+          333
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p02_orders_in_month__01",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many orders were placed in February 2025?",
+      "seconds": 1.688,
+      "sql": "SELECT COUNT(DISTINCT o.order_id) as order_count\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.status != 'cancelled'\n  AND o.placed_at >= '2025-02-01'\n  AND o.placed_at < '2025-03-01'",
+      "rows": [
+        [
+          264
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p02_orders_in_month__02",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many orders were placed in March 2025?",
+      "seconds": 1.385,
+      "sql": "SELECT COUNT(*) as order_count\nFROM orders\nWHERE EXTRACT(YEAR FROM placed_at) = 2025\n  AND EXTRACT(MONTH FROM placed_at) = 3\n  AND deleted_at IS NULL;",
+      "rows": [
+        [
+          418
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p02_orders_in_month__02",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many orders were placed in March 2025?",
+      "seconds": 1.93,
+      "sql": "SELECT COUNT(DISTINCT o.order_id) as order_count\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status != 'cancelled'\n  AND c.is_internal = FALSE\n  AND EXTRACT(YEAR FROM o.placed_at) = 2025\n  AND EXTRACT(MONTH FROM o.placed_at) = 3;",
+      "rows": [
+        [
+          318
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p02_orders_in_month__03",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many orders were placed in April 2025?",
+      "seconds": 1.24,
+      "sql": "SELECT COUNT(*) as order_count\nFROM orders\nWHERE EXTRACT(YEAR FROM placed_at) = 2025\n  AND EXTRACT(MONTH FROM placed_at) = 4\n  AND deleted_at IS NULL;",
+      "rows": [
+        [
+          356
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p02_orders_in_month__03",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many orders were placed in April 2025?",
+      "seconds": 2.245,
+      "sql": "SELECT COUNT(DISTINCT o.order_id) as order_count\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.status != 'cancelled'\n  AND EXTRACT(YEAR FROM o.placed_at) = 2025\n  AND EXTRACT(MONTH FROM o.placed_at) = 4;",
+      "rows": [
+        [
+          268
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p02_orders_in_month__04",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many orders were placed in May 2025?",
+      "seconds": 2.415,
+      "sql": "SELECT COUNT(*) as order_count\nFROM orders\nWHERE EXTRACT(YEAR FROM placed_at) = 2025\n  AND EXTRACT(MONTH FROM placed_at) = 5\n  AND deleted_at IS NULL;",
+      "rows": [
+        [
+          402
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p02_orders_in_month__04",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many orders were placed in May 2025?",
+      "seconds": 2.444,
+      "sql": "SELECT COUNT(DISTINCT o.order_id) as order_count\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.status != 'cancelled'\n  AND EXTRACT(YEAR FROM o.placed_at) = 2025\n  AND EXTRACT(MONTH FROM o.placed_at) = 5;",
+      "rows": [
+        [
+          289
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p03_customers_in_region__00",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many customers do we have in NA?",
+      "seconds": 1.208,
+      "sql": "SELECT COUNT(DISTINCT customer_id) as customer_count\nFROM customers\nWHERE region = 'NA' AND deleted_at IS NULL;",
+      "rows": [
+        [
+          90
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [
+        "internal_accounts"
+      ],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p03_customers_in_region__00",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many customers do we have in NA?",
+      "seconds": 1.437,
+      "sql": "SELECT COUNT(DISTINCT customer_id) as customer_count\nFROM customers\nWHERE region = 'NA'\n  AND deleted_at IS NULL\n  AND is_internal = FALSE;",
+      "rows": [
+        [
+          82
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p03_customers_in_region__01",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many customers do we have in EMEA?",
+      "seconds": 1.329,
+      "sql": "SELECT COUNT(DISTINCT customer_id) as customer_count\nFROM customers\nWHERE region = 'EMEA' AND deleted_at IS NULL;",
+      "rows": [
+        [
+          97
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [
+        "internal_accounts"
+      ],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p03_customers_in_region__01",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many customers do we have in EMEA?",
+      "seconds": 2.583,
+      "sql": "SELECT COUNT(DISTINCT customer_id) as customer_count\nFROM customers\nWHERE region = 'EMEA'\n  AND deleted_at IS NULL\n  AND is_internal = FALSE",
+      "rows": [
+        [
+          91
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p03_customers_in_region__02",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many customers do we have in APAC?",
+      "seconds": 1.278,
+      "sql": "SELECT COUNT(DISTINCT customer_id) as customer_count\nFROM customers\nWHERE region = 'APAC' AND deleted_at IS NULL;",
+      "rows": [
+        [
+          86
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [
+        "internal_accounts",
+        "soft_delete"
+      ],
+      "ambiguous": true
+    },
+    {
+      "item_id": "p03_customers_in_region__02",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many customers do we have in APAC?",
+      "seconds": 2.699,
+      "sql": "SELECT COUNT(DISTINCT customer_id) as customer_count\nFROM customers\nWHERE region = 'APAC'\n  AND deleted_at IS NULL\n  AND is_internal = FALSE",
+      "rows": [
+        [
+          80
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p03_customers_in_region__03",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many customers do we have in LATAM?",
+      "seconds": 1.553,
+      "sql": "SELECT COUNT(DISTINCT customer_id) as customer_count\nFROM customers\nWHERE region = 'LATAM' AND deleted_at IS NULL;",
+      "rows": [
+        [
+          92
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [
+        "internal_accounts"
+      ],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p03_customers_in_region__03",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many customers do we have in LATAM?",
+      "seconds": 1.965,
+      "sql": "SELECT COUNT(DISTINCT customer_id) as customer_count\nFROM customers\nWHERE region = 'LATAM'\n  AND deleted_at IS NULL\n  AND is_internal = FALSE",
+      "rows": [
+        [
+          86
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p03_customers_in_region__04",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many customers do we have in ANZ?",
+      "seconds": 1.052,
+      "sql": "SELECT COUNT(DISTINCT customer_id) as customer_count\nFROM customers\nWHERE region = 'ANZ' AND deleted_at IS NULL;",
+      "rows": [
+        [
+          96
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [
+        "internal_accounts"
+      ],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p03_customers_in_region__04",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "How many customers do we have in ANZ?",
+      "seconds": 1.396,
+      "sql": "SELECT COUNT(DISTINCT customer_id) as customer_count\nFROM customers\nWHERE region = 'ANZ'\n  AND deleted_at IS NULL\n  AND is_internal = FALSE",
+      "rows": [
+        [
+          92
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p04_gross_revenue__00",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was gross revenue in January 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 2.345,
+      "sql": "SELECT \n    SUM(\n        CASE \n            WHEN o.currency = 'EUR' THEN o.amount_minor * 1.10 / 100\n            WHEN o.currency = 'JPY' THEN o.amount_minor * 0.0067 / 100\n            ELSE 0\n        END\n    ) as gross_revenue_usd\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.currency IN ('EUR', 'JPY')\n    AND EXTRACT(YEAR FROM o.placed_at) = 2025\n    AND EXTRACT(MONTH FROM o.placed_at) = 1\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL;",
+      "rows": [
+        [
+          82208.05339099996
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p04_gross_revenue__00",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was gross revenue in January 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 2.522,
+      "sql": "SELECT\n  SUM(o.amount_minor * CASE o.currency\n    WHEN 'EUR' THEN 0.0108\n    WHEN 'JPY' THEN 0.0067\n    WHEN 'USD' THEN 0.01\n  END) AS gross_revenue_usd\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status != 'cancelled'\n  AND c.is_internal = FALSE\n  AND o.currency IN ('EUR', 'JPY')\n  AND DATE_TRUNC('month', o.placed_at) = '2025-01-01'::TIMESTAMP;",
+      "rows": [
+        [
+          76744.6571
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p04_gross_revenue__01",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was gross revenue in February 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 2.041,
+      "sql": "SELECT \n    SUM(\n        CASE \n            WHEN o.currency = 'EUR' THEN o.amount_minor * 1.10 / 100\n            WHEN o.currency = 'JPY' THEN o.amount_minor * 0.0067 / 100\n            ELSE 0\n        END\n    ) as gross_revenue_usd\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.currency IN ('EUR', 'JPY')\n    AND EXTRACT(YEAR FROM o.placed_at) = 2025\n    AND EXTRACT(MONTH FROM o.placed_at) = 2\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL;",
+      "rows": [
+        [
+          82636.84817700004
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p04_gross_revenue__01",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was gross revenue in February 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 3.634,
+      "sql": "SELECT\n  SUM(o.amount_minor * CASE o.currency\n    WHEN 'EUR' THEN 0.0108\n    WHEN 'JPY' THEN 0.0067\n    WHEN 'USD' THEN 0.01\n  END) AS gross_revenue_usd\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.status != 'cancelled'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.placed_at >= '2025-02-01'\n  AND o.placed_at < '2025-03-01'",
+      "rows": [
+        [
+          78969.8165
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p04_gross_revenue__02",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was gross revenue in March 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 2.086,
+      "sql": "SELECT \n    SUM(\n        CASE \n            WHEN o.currency = 'EUR' THEN o.amount_minor * 1.10 / 100\n            WHEN o.currency = 'JPY' THEN o.amount_minor * 0.0067 / 100\n            ELSE 0\n        END\n    ) as gross_revenue_usd\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.currency IN ('EUR', 'JPY')\n    AND EXTRACT(YEAR FROM o.placed_at) = 2025\n    AND EXTRACT(MONTH FROM o.placed_at) = 3\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL;",
+      "rows": [
+        [
+          104573.95459000001
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p04_gross_revenue__02",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was gross revenue in March 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 1.992,
+      "sql": "SELECT\n  SUM(o.amount_minor * CASE o.currency\n    WHEN 'EUR' THEN 0.0108\n    WHEN 'JPY' THEN 0.0067\n    WHEN 'USD' THEN 0.01\n  END) AS gross_revenue_usd\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status != 'cancelled'\n  AND c.is_internal = FALSE\n  AND o.currency IN ('EUR', 'JPY')\n  AND DATE_TRUNC('month', o.placed_at) = '2025-03-01'::TIMESTAMP;",
+      "rows": [
+        [
+          98238.9142
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p04_gross_revenue__03",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was gross revenue in April 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 2.036,
+      "sql": "SELECT \n    SUM(\n        CASE \n            WHEN o.currency = 'EUR' THEN o.amount_minor * 1.10 / 100\n            WHEN o.currency = 'JPY' THEN o.amount_minor * 0.0067 / 100\n            ELSE 0\n        END\n    ) as gross_revenue_usd\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.currency IN ('EUR', 'JPY')\n    AND EXTRACT(YEAR FROM o.placed_at) = 2025\n    AND EXTRACT(MONTH FROM o.placed_at) = 4\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL;",
+      "rows": [
+        [
+          82747.88310900003
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p04_gross_revenue__03",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was gross revenue in April 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 2.352,
+      "sql": "SELECT\n  SUM(o.amount_minor * CASE o.currency\n    WHEN 'EUR' THEN 0.0108\n    WHEN 'JPY' THEN 0.0067\n    ELSE 0.01\n  END) AS gross_revenue_usd\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status != 'cancelled'\n  AND c.is_internal = FALSE\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.placed_at >= '2025-04-01'\n  AND o.placed_at < '2025-05-01'",
+      "rows": [
+        [
+          75948.6182
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p04_gross_revenue__04",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was gross revenue in May 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 1.874,
+      "sql": "SELECT \n    SUM(\n        CASE \n            WHEN o.currency = 'EUR' THEN o.amount_minor * 1.10 / 100\n            WHEN o.currency = 'JPY' THEN o.amount_minor * 0.0067 / 100\n            ELSE 0\n        END\n    ) as gross_revenue_usd\nFROM orders o\nWHERE o.status != 'cancelled'\n    AND o.deleted_at IS NULL\n    AND o.currency IN ('EUR', 'JPY')\n    AND EXTRACT(YEAR FROM o.placed_at) = 2025\n    AND EXTRACT(MONTH FROM o.placed_at) = 5;",
+      "rows": [
+        [
+          96910.60722599995
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p04_gross_revenue__04",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was gross revenue in May 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 4.145,
+      "sql": "SELECT\n  SUM(o.amount_minor * CASE o.currency\n    WHEN 'EUR' THEN 0.0108\n    WHEN 'JPY' THEN 0.0067\n    WHEN 'USD' THEN 0.01\n  END) AS gross_revenue_usd\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status != 'cancelled'\n  AND c.is_internal = FALSE\n  AND o.currency IN ('EUR', 'JPY')\n  AND EXTRACT(YEAR FROM o.placed_at) = 2025\n  AND EXTRACT(MONTH FROM o.placed_at) = 5;",
+      "rows": [
+        [
+          83596.9839
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p05_net_revenue__00",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was net revenue in January 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 2.497,
+      "sql": "SELECT \n  SUM(\n    CASE \n      WHEN o.currency = 'EUR' THEN (o.amount_minor - COALESCE(SUM(r.amount_minor) OVER (PARTITION BY o.order_id), 0)) / 100.0 * 1.10\n      WHEN o.currency = 'JPY' THEN (o.amount_minor - COALESCE(SUM(r.amount_minor) OVER (PARTITION BY o.order_id), 0)) / 100.0 * 0.0067\n      ELSE 0\n    END\n  ) as net_revenue_usd\nFROM orders o\nLEFT JOIN refunds r ON o.order_id = r.order_id\nWHERE o.currency IN ('EUR', 'JPY')\n  AND o.deleted_at IS NULL\n  AND EXTRACT(YEAR FROM o.placed_at) = 2025\n  AND EXTRACT(MONTH FROM o.placed_at) = 1\n  AND o.status NOT IN ('cancelled', 'failed');",
+      "rows": null,
+      "error": "BinderException: Binder Error: aggregate function calls cannot contain window function calls\n\nLINE 4: ...      WHEN o.currency = 'EUR' THEN (o.amount_minor - COALESCE(SUM(r.amount_minor) OVER (PARTITION BY o.order_id), 0))...\n                                                                         ^",
+      "termination": "max_attempts",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "execution_error",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p05_net_revenue__00",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was net revenue in January 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 2.679,
+      "sql": "SELECT\n  SUM(\n    (o.amount_minor - COALESCE(r.total_refunds_minor, 0)) * \n    CASE \n      WHEN o.currency = 'EUR' THEN 0.0108\n      WHEN o.currency = 'JPY' THEN 0.0067\n      ELSE 0.01\n    END\n  ) AS net_revenue_usd\nFROM orders o\nLEFT JOIN customers c ON o.customer_id = c.customer_id\nLEFT JOIN (\n  SELECT order_id, SUM(amount_minor) AS total_refunds_minor\n  FROM refunds\n  GROUP BY order_id\n) r ON o.order_id = r.order_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.status != 'cancelled'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.placed_at >= '2025-01-01'\n  AND o.placed_at < '2025-02-01'",
+      "rows": [
+        [
+          76491.8431
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p05_net_revenue__01",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was net revenue in February 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 3.57,
+      "sql": "SELECT \n  SUM(\n    CASE \n      WHEN o.currency = 'EUR' THEN (o.amount_minor - COALESCE(SUM(r.amount_minor) OVER (PARTITION BY o.order_id), 0)) / 100.0 * 1.10\n      WHEN o.currency = 'JPY' THEN (o.amount_minor - COALESCE(SUM(r.amount_minor) OVER (PARTITION BY o.order_id), 0)) / 100.0 * 0.0067\n      ELSE 0\n    END\n  ) as net_revenue_usd\nFROM orders o\nLEFT JOIN refunds r ON o.order_id = r.order_id\nWHERE o.deleted_at IS NULL\n  AND EXTRACT(YEAR FROM o.placed_at) = 2025\n  AND EXTRACT(MONTH FROM o.placed_at) = 2\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status NOT IN ('cancelled', 'failed');",
+      "rows": null,
+      "error": "BinderException: Binder Error: aggregate function calls cannot contain window function calls\n\nLINE 4: ...      WHEN o.currency = 'EUR' THEN (o.amount_minor - COALESCE(SUM(r.amount_minor) OVER (PARTITION BY o.order_id), 0))...\n                                                                         ^",
+      "termination": "max_attempts",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "execution_error",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p05_net_revenue__01",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was net revenue in February 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 10.664,
+      "sql": "SELECT\n  SUM(\n    COALESCE(o.amount_minor, 0) * \n    CASE \n      WHEN o.currency = 'EUR' THEN 0.0108\n      WHEN o.currency = 'JPY' THEN 0.0067\n      ELSE 0\n    END\n  ) - \n  SUM(\n    COALESCE(r.refund_amount_usd, 0)\n  ) AS net_revenue_usd\nFROM orders o\nLEFT JOIN customers c ON o.customer_id = c.customer_id\nLEFT JOIN (\n  SELECT order_id, SUM(amount_minor * usd_factor) AS refund_amount_usd\n  FROM refunds\n  CROSS JOIN (\n    SELECT 0.0108 AS usd_factor WHERE FALSE\n    UNION ALL SELECT 0.0067\n    UNION ALL SELECT 0.01\n  )\n  GROUP BY order_id\n) r ON o.order_id = r.order_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.status != 'cancelled'\n  AND o.currency IN ('EUR', 'JPY')\n  AND EXTRACT(YEAR FROM o.placed_at) = 2025\n  AND EXTRACT(MONTH FROM o.placed_at) = 2;",
+      "rows": [
+        [
+          70584.0785
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p05_net_revenue__02",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was net revenue in March 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 3.321,
+      "sql": "SELECT \n  SUM(\n    CASE \n      WHEN o.currency = 'EUR' THEN (o.amount_minor - COALESCE(SUM(r.amount_minor) OVER (PARTITION BY o.order_id), 0)) / 100.0 * 1.10\n      WHEN o.currency = 'JPY' THEN (o.amount_minor - COALESCE(SUM(r.amount_minor) OVER (PARTITION BY o.order_id), 0)) / 100.0 * 0.0067\n      ELSE 0\n    END\n  ) as net_revenue_usd\nFROM orders o\nLEFT JOIN refunds r ON o.order_id = r.order_id\nWHERE o.currency IN ('EUR', 'JPY')\n  AND o.deleted_at IS NULL\n  AND EXTRACT(YEAR FROM o.placed_at) = 2025\n  AND EXTRACT(MONTH FROM o.placed_at) = 3\n  AND o.status NOT IN ('cancelled', 'failed');",
+      "rows": null,
+      "error": "BinderException: Binder Error: aggregate function calls cannot contain window function calls\n\nLINE 4: ...      WHEN o.currency = 'EUR' THEN (o.amount_minor - COALESCE(SUM(r.amount_minor) OVER (PARTITION BY o.order_id), 0))...\n                                                                         ^",
+      "termination": "max_attempts",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "execution_error",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p05_net_revenue__02",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was net revenue in March 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 2.543,
+      "sql": "SELECT\n  SUM(\n    (o.amount_minor - COALESCE(r.total_refunds_minor, 0)) * \n    CASE o.currency\n      WHEN 'EUR' THEN 0.0108\n      WHEN 'JPY' THEN 0.0067\n      WHEN 'USD' THEN 0.01\n    END\n  ) AS net_revenue_usd\nFROM orders o\nLEFT JOIN customers c ON o.customer_id = c.customer_id\nLEFT JOIN (\n  SELECT order_id, SUM(amount_minor) AS total_refunds_minor\n  FROM refunds\n  GROUP BY order_id\n) r ON o.order_id = r.order_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.status != 'cancelled'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.placed_at >= '2025-03-01'\n  AND o.placed_at < '2025-04-01'",
+      "rows": [
+        [
+          93940.301
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p05_net_revenue__03",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was net revenue in April 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 2.364,
+      "sql": "SELECT \n    SUM(\n        CASE \n            WHEN o.currency = 'EUR' THEN (o.amount_minor - COALESCE(SUM(r.amount_minor) OVER (PARTITION BY o.order_id), 0)) * 1.10 / 100\n            WHEN o.currency = 'JPY' THEN (o.amount_minor - COALESCE(SUM(r.amount_minor) OVER (PARTITION BY o.order_id), 0)) * 0.0067 / 100\n            ELSE 0\n        END\n    ) as net_revenue_usd\nFROM orders o\nLEFT JOIN refunds r ON o.order_id = r.order_id\nWHERE o.deleted_at IS NULL\n    AND EXTRACT(YEAR FROM o.placed_at) = 2025\n    AND EXTRACT(MONTH FROM o.placed_at) = 4\n    AND o.currency IN ('EUR', 'JPY')\n    AND o.status NOT IN ('cancelled', 'failed');",
+      "rows": null,
+      "error": "BinderException: Binder Error: aggregate function calls cannot contain window function calls\n\nLINE 4: ...       WHEN o.currency = 'EUR' THEN (o.amount_minor - COALESCE(SUM(r.amount_minor) OVER (PARTITION BY o.order_id), 0))...\n                                                                          ^",
+      "termination": "max_attempts",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "execution_error",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p05_net_revenue__03",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was net revenue in April 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 2.819,
+      "sql": "SELECT\n  SUM(\n    (o.amount_minor - COALESCE(r.total_refunds_minor, 0)) *\n    CASE o.currency\n      WHEN 'EUR' THEN 0.0108\n      WHEN 'JPY' THEN 0.0067\n      WHEN 'USD' THEN 0.01\n    END\n  ) AS net_revenue_usd\nFROM orders o\nLEFT JOIN customers c ON o.customer_id = c.customer_id\nLEFT JOIN (\n  SELECT order_id, SUM(amount_minor) AS total_refunds_minor\n  FROM refunds\n  GROUP BY order_id\n) r ON o.order_id = r.order_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.status != 'cancelled'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.placed_at >= '2025-04-01'\n  AND o.placed_at < '2025-05-01'",
+      "rows": [
+        [
+          74198.6008
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p05_net_revenue__04",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was net revenue in May 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 2.436,
+      "sql": "SELECT \n    SUM(\n        CASE \n            WHEN o.currency = 'EUR' THEN (o.amount_minor - COALESCE(SUM(r.amount_minor) OVER (PARTITION BY o.order_id), 0)) * 1.10\n            WHEN o.currency = 'JPY' THEN (o.amount_minor - COALESCE(SUM(r.amount_minor) OVER (PARTITION BY o.order_id), 0)) * 0.0067\n            ELSE 0\n        END\n    ) / 100 AS net_revenue_usd\nFROM orders o\nLEFT JOIN refunds r ON o.order_id = r.order_id\nLEFT JOIN customers c ON o.customer_id = c.customer_id\nWHERE EXTRACT(YEAR FROM o.placed_at) = 2025\n    AND EXTRACT(MONTH FROM o.placed_at) = 5\n    AND o.currency IN ('EUR', 'JPY')\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL;",
+      "rows": null,
+      "error": "BinderException: Binder Error: aggregate function calls cannot contain window function calls\n\nLINE 4: ...       WHEN o.currency = 'EUR' THEN (o.amount_minor - COALESCE(SUM(r.amount_minor) OVER (PARTITION BY o.order_id), 0))...\n                                                                          ^",
+      "termination": "max_attempts",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "execution_error",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p05_net_revenue__04",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was net revenue in May 2025 from our euro and yen orders, in US dollars?",
+      "seconds": 7.154,
+      "sql": "SELECT\n  SUM(\n    (o.amount_minor - COALESCE(r.total_refunds_minor, 0)) * \n    CASE o.currency\n      WHEN 'EUR' THEN 0.0108\n      WHEN 'JPY' THEN 0.0067\n      WHEN 'USD' THEN 0.01\n    END\n  ) AS net_revenue_usd\nFROM orders o\nLEFT JOIN customers c ON o.customer_id = c.customer_id\nLEFT JOIN (\n  SELECT order_id, SUM(amount_minor) AS total_refunds_minor\n  FROM refunds\n  GROUP BY order_id\n) r ON o.order_id = r.order_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.status != 'cancelled'\n  AND o.currency IN ('EUR', 'JPY')\n  AND EXTRACT(YEAR FROM o.placed_at) = 2025\n  AND EXTRACT(MONTH FROM o.placed_at) = 5;",
+      "rows": [
+        [
+          81424.5648
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p06_top_products__00",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "Which five apparel products sold the most units?",
+      "seconds": 2.004,
+      "sql": "SELECT \n    p.product_id,\n    p.category,\n    SUM(oi.qty) as total_units_sold\nFROM products p\nJOIN order_items oi ON p.product_id = oi.product_id\nJOIN orders o ON oi.order_id = o.order_id\nWHERE p.category = 'apparel'\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\nGROUP BY p.product_id, p.category\nORDER BY total_units_sold DESC\nLIMIT 5;",
+      "rows": [
+        [
+          98,
+          "apparel",
+          135
+        ],
+        [
+          173,
+          "apparel",
+          125
+        ],
+        [
+          91,
+          "apparel",
+          124
+        ],
+        [
+          27,
+          "apparel",
+          120
+        ],
+        [
+          37,
+          "apparel",
+          119
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "shape_mismatch",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p06_top_products__00",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "Which five apparel products sold the most units?",
+      "seconds": 3.256,
+      "sql": "SELECT \n    p.product_id,\n    p.category,\n    SUM(oi.qty) as total_units\nFROM products p\nINNER JOIN order_items oi ON p.product_id = oi.product_id\nINNER JOIN orders o ON oi.order_id = o.order_id\nINNER JOIN customers c ON o.customer_id = c.customer_id\nWHERE p.category = 'apparel'\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL\n    AND c.is_internal = FALSE\nGROUP BY p.product_id, p.category\nORDER BY total_units DESC\nLIMIT 5;",
+      "rows": [
+        [
+          98,
+          "apparel",
+          130
+        ],
+        [
+          27,
+          "apparel",
+          114
+        ],
+        [
+          91,
+          "apparel",
+          107
+        ],
+        [
+          180,
+          "apparel",
+          104
+        ],
+        [
+          181,
+          "apparel",
+          103
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "shape_mismatch",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p06_top_products__01",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "Which five electronics products sold the most units?",
+      "seconds": 1.742,
+      "sql": "SELECT \n    p.product_id,\n    p.category,\n    SUM(oi.qty) as total_units_sold\nFROM products p\nJOIN order_items oi ON p.product_id = oi.product_id\nJOIN orders o ON oi.order_id = o.order_id\nWHERE p.category = 'electronics'\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\nGROUP BY p.product_id, p.category\nORDER BY total_units_sold DESC\nLIMIT 5;",
+      "rows": [
+        [
+          5,
+          "electronics",
+          125
+        ],
+        [
+          151,
+          "electronics",
+          125
+        ],
+        [
+          55,
+          "electronics",
+          121
+        ],
+        [
+          116,
+          "electronics",
+          121
+        ],
+        [
+          96,
+          "electronics",
+          117
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "shape_mismatch",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p06_top_products__01",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "Which five electronics products sold the most units?",
+      "seconds": 1.697,
+      "sql": "SELECT \n    p.product_id,\n    p.category,\n    SUM(oi.qty) as total_units\nFROM products p\nINNER JOIN order_items oi ON p.product_id = oi.product_id\nINNER JOIN orders o ON oi.order_id = o.order_id\nINNER JOIN customers c ON o.customer_id = c.customer_id\nWHERE p.category = 'electronics'\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL\n    AND o.status != 'cancelled'\n    AND c.is_internal = FALSE\nGROUP BY p.product_id, p.category\nORDER BY total_units DESC\nLIMIT 5;",
+      "rows": [
+        [
+          5,
+          "electronics",
+          113
+        ],
+        [
+          116,
+          "electronics",
+          113
+        ],
+        [
+          66,
+          "electronics",
+          105
+        ],
+        [
+          40,
+          "electronics",
+          105
+        ],
+        [
+          151,
+          "electronics",
+          103
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "shape_mismatch",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p06_top_products__02",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "Which five home products sold the most units?",
+      "seconds": 1.531,
+      "sql": "SELECT \n    p.product_id,\n    p.category,\n    SUM(oi.qty) as total_units_sold\nFROM products p\nJOIN order_items oi ON p.product_id = oi.product_id\nJOIN orders o ON oi.order_id = o.order_id\nWHERE p.category = 'home'\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\nGROUP BY p.product_id, p.category\nORDER BY total_units_sold DESC\nLIMIT 5;",
+      "rows": [
+        [
+          29,
+          "home",
+          136
+        ],
+        [
+          10,
+          "home",
+          126
+        ],
+        [
+          192,
+          "home",
+          125
+        ],
+        [
+          183,
+          "home",
+          115
+        ],
+        [
+          125,
+          "home",
+          112
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "shape_mismatch",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p06_top_products__02",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "Which five home products sold the most units?",
+      "seconds": 1.888,
+      "sql": "SELECT \n    p.product_id,\n    p.category,\n    SUM(oi.qty) as total_units\nFROM products p\nINNER JOIN order_items oi ON p.product_id = oi.product_id\nINNER JOIN orders o ON oi.order_id = o.order_id\nINNER JOIN customers c ON o.customer_id = c.customer_id\nWHERE p.category = 'home'\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL\n    AND c.is_internal = FALSE\nGROUP BY p.product_id, p.category\nORDER BY total_units DESC\nLIMIT 5;",
+      "rows": [
+        [
+          10,
+          "home",
+          112
+        ],
+        [
+          29,
+          "home",
+          111
+        ],
+        [
+          49,
+          "home",
+          111
+        ],
+        [
+          115,
+          "home",
+          111
+        ],
+        [
+          44,
+          "home",
+          105
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "shape_mismatch",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p06_top_products__03",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "Which five outdoors products sold the most units?",
+      "seconds": 2.062,
+      "sql": "SELECT \n    p.product_id,\n    p.category,\n    SUM(oi.qty) as total_units_sold\nFROM products p\nJOIN order_items oi ON p.product_id = oi.product_id\nJOIN orders o ON oi.order_id = o.order_id\nWHERE p.category = 'outdoors'\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\nGROUP BY p.product_id, p.category\nORDER BY total_units_sold DESC\nLIMIT 5;",
+      "rows": [
+        [
+          74,
+          "outdoors",
+          132
+        ],
+        [
+          117,
+          "outdoors",
+          127
+        ],
+        [
+          2,
+          "outdoors",
+          124
+        ],
+        [
+          190,
+          "outdoors",
+          118
+        ],
+        [
+          97,
+          "outdoors",
+          116
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "shape_mismatch",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p06_top_products__03",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "Which five outdoors products sold the most units?",
+      "seconds": 5.579,
+      "sql": "SELECT \n    p.product_id,\n    p.category,\n    SUM(oi.qty) as total_units\nFROM products p\nINNER JOIN order_items oi ON p.product_id = oi.product_id\nINNER JOIN orders o ON oi.order_id = o.order_id\nINNER JOIN customers c ON o.customer_id = c.customer_id\nWHERE p.category = 'outdoors'\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL\n    AND o.status != 'cancelled'\n    AND c.is_internal = FALSE\nGROUP BY p.product_id, p.category\nORDER BY total_units DESC\nLIMIT 5;",
+      "rows": [
+        [
+          74,
+          "outdoors",
+          117
+        ],
+        [
+          197,
+          "outdoors",
+          108
+        ],
+        [
+          190,
+          "outdoors",
+          107
+        ],
+        [
+          97,
+          "outdoors",
+          105
+        ],
+        [
+          140,
+          "outdoors",
+          105
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "shape_mismatch",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p06_top_products__04",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "Which five beauty products sold the most units?",
+      "seconds": 2.047,
+      "sql": "SELECT \n    p.product_id,\n    p.category,\n    SUM(oi.qty) as total_units_sold\nFROM products p\nJOIN order_items oi ON p.product_id = oi.product_id\nJOIN orders o ON oi.order_id = o.order_id\nWHERE p.category = 'beauty'\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\nGROUP BY p.product_id, p.category\nORDER BY total_units_sold DESC\nLIMIT 5;",
+      "rows": [
+        [
+          137,
+          "beauty",
+          140
+        ],
+        [
+          92,
+          "beauty",
+          137
+        ],
+        [
+          188,
+          "beauty",
+          136
+        ],
+        [
+          163,
+          "beauty",
+          135
+        ],
+        [
+          127,
+          "beauty",
+          133
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "shape_mismatch",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p06_top_products__04",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "Which five beauty products sold the most units?",
+      "seconds": 2.499,
+      "sql": "SELECT \n    p.product_id,\n    p.category,\n    SUM(oi.qty) as total_units\nFROM products p\nINNER JOIN order_items oi ON p.product_id = oi.product_id\nINNER JOIN orders o ON oi.order_id = o.order_id\nINNER JOIN customers c ON o.customer_id = c.customer_id\nWHERE p.category = 'beauty'\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL\n    AND o.status != 'cancelled'\n    AND c.is_internal = FALSE\nGROUP BY p.product_id, p.category\nORDER BY total_units DESC\nLIMIT 5;",
+      "rows": [
+        [
+          137,
+          "beauty",
+          121
+        ],
+        [
+          188,
+          "beauty",
+          120
+        ],
+        [
+          127,
+          "beauty",
+          120
+        ],
+        [
+          163,
+          "beauty",
+          119
+        ],
+        [
+          92,
+          "beauty",
+          117
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "shape_mismatch",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p07_aov_by_region__00",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was the average order value in NA for euro and yen orders, in US dollars?",
+      "seconds": 1.508,
+      "sql": "SELECT \n    AVG(o.amount_minor / 100.0) as average_order_value_usd\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE c.region = 'NA'\n    AND o.currency IN ('EUR', 'JPY')\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL\n    AND o.status NOT IN ('cancelled', 'failed')",
+      "rows": [
+        [
+          628.808511904762
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p07_aov_by_region__00",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was the average order value in NA for euro and yen orders, in US dollars?",
+      "seconds": 2.971,
+      "sql": "SELECT\n  AVG(net_revenue_usd) as average_order_value_usd\nFROM (\n  SELECT\n    o.order_id,\n    (o.amount_minor * CASE o.currency\n      WHEN 'EUR' THEN 0.0108\n      WHEN 'JPY' THEN 0.0067\n      WHEN 'USD' THEN 0.01\n    END - COALESCE(r.refund_amount_usd, 0)) as net_revenue_usd\n  FROM orders o\n  JOIN customers c ON o.customer_id = c.customer_id\n  LEFT JOIN (\n    SELECT order_id, SUM(amount_minor * 0.01) as refund_amount_usd\n    FROM refunds\n    GROUP BY order_id\n  ) r ON o.order_id = r.order_id\n  WHERE c.deleted_at IS NULL\n    AND o.deleted_at IS NULL\n    AND c.is_internal = FALSE\n    AND o.status != 'cancelled'\n    AND c.region = 'NA'\n    AND o.currency IN ('EUR', 'JPY')\n) subquery;",
+      "rows": [
+        [
+          660.7181054140127
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p07_aov_by_region__01",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was the average order value in EMEA for euro and yen orders, in US dollars?",
+      "seconds": 1.96,
+      "sql": "SELECT \n    AVG(o.amount_minor / 100.0 * CASE \n        WHEN o.currency = 'EUR' THEN 1.10\n        WHEN o.currency = 'JPY' THEN 0.0067\n        ELSE 1.0\n    END) as average_order_value_usd\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE c.region = 'EMEA'\n    AND o.currency IN ('EUR', 'JPY')\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL;",
+      "rows": [
+        [
+          646.5665132394821
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p07_aov_by_region__01",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was the average order value in EMEA for euro and yen orders, in US dollars?",
+      "seconds": 2.601,
+      "sql": "SELECT\n  AVG(net_revenue_usd) as average_order_value_usd\nFROM (\n  SELECT\n    o.order_id,\n    (o.amount_minor * CASE o.currency\n      WHEN 'EUR' THEN 0.0108\n      WHEN 'JPY' THEN 0.0067\n      WHEN 'USD' THEN 0.01\n    END - COALESCE(refunds_total_usd, 0)) as net_revenue_usd\n  FROM orders o\n  INNER JOIN customers c ON o.customer_id = c.customer_id\n  LEFT JOIN (\n    SELECT order_id, SUM(amount_minor) as refunds_total_minor\n    FROM refunds\n    GROUP BY order_id\n  ) r ON o.order_id = r.order_id\n  WHERE c.deleted_at IS NULL\n    AND o.deleted_at IS NULL\n    AND c.is_internal = FALSE\n    AND o.status != 'cancelled'\n    AND c.region = 'EMEA'\n    AND o.currency IN ('EUR', 'JPY')\n) subquery",
+      "rows": null,
+      "error": "BinderException: Binder Error: Referenced column \"refunds_total_usd\" not found in FROM clause!\nCandidate bindings: \"refunds_total_minor\", \"is_internal\", \"c.customer_id\", \"o.customer_id\", \"region\"\n\nLINE 10:     END - COALESCE(refunds_total_usd, 0)) as net_revenue_usd\n                            ^",
+      "termination": "max_attempts",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "execution_error",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p07_aov_by_region__02",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was the average order value in APAC for euro and yen orders, in US dollars?",
+      "seconds": 1.872,
+      "sql": "SELECT \n    AVG(o.amount_minor / 100.0 * CASE \n        WHEN o.currency = 'EUR' THEN 1.10\n        WHEN o.currency = 'JPY' THEN 0.0067\n        ELSE 1.0\n    END) as average_order_value_usd\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE c.region = 'APAC'\n    AND o.currency IN ('EUR', 'JPY')\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL",
+      "rows": [
+        [
+          705.8683644021352
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p07_aov_by_region__02",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was the average order value in APAC for euro and yen orders, in US dollars?",
+      "seconds": 3.383,
+      "sql": "SELECT\n  AVG(net_revenue_usd) as average_order_value_usd\nFROM (\n  SELECT\n    o.order_id,\n    (o.amount_minor * CASE o.currency\n      WHEN 'EUR' THEN 0.0108\n      WHEN 'JPY' THEN 0.0067\n      WHEN 'USD' THEN 0.01\n    END - COALESCE(refunds_total_usd, 0)) as net_revenue_usd\n  FROM orders o\n  INNER JOIN customers c ON o.customer_id = c.customer_id\n  LEFT JOIN (\n    SELECT order_id, SUM(amount_minor) as refunds_total_minor\n    FROM refunds\n    GROUP BY order_id\n  ) r ON o.order_id = r.order_id\n  WHERE c.deleted_at IS NULL\n    AND o.deleted_at IS NULL\n    AND c.is_internal = FALSE\n    AND o.status != 'cancelled'\n    AND c.region = 'APAC'\n    AND o.currency IN ('EUR', 'JPY')\n) subquery;",
+      "rows": null,
+      "error": "BinderException: Binder Error: Referenced column \"refunds_total_usd\" not found in FROM clause!\nCandidate bindings: \"refunds_total_minor\", \"is_internal\", \"c.customer_id\", \"o.customer_id\", \"region\"\n\nLINE 10:     END - COALESCE(refunds_total_usd, 0)) as net_revenue_usd\n                            ^",
+      "termination": "max_attempts",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "execution_error",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p07_aov_by_region__03",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was the average order value in LATAM for euro and yen orders, in US dollars?",
+      "seconds": 2.006,
+      "sql": "SELECT \n    AVG(\n        CASE \n            WHEN o.currency = 'EUR' THEN o.amount_minor / 100.0 * 1.10\n            WHEN o.currency = 'JPY' THEN o.amount_minor / 100.0 * 0.0067\n            ELSE o.amount_minor / 100.0\n        END\n    ) as average_order_value_usd\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE c.region = 'LATAM'\n    AND o.currency IN ('EUR', 'JPY')\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL",
+      "rows": [
+        [
+          768.85359196519
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p07_aov_by_region__03",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was the average order value in LATAM for euro and yen orders, in US dollars?",
+      "seconds": 3.1,
+      "sql": "SELECT\n  AVG(net_revenue_usd) as average_order_value_usd\nFROM (\n  SELECT\n    o.order_id,\n    (o.amount_minor * CASE o.currency\n      WHEN 'EUR' THEN 0.0108\n      WHEN 'JPY' THEN 0.0067\n      WHEN 'USD' THEN 0.01\n    END - COALESCE(refunds_total_minor, 0) * CASE o.currency\n      WHEN 'EUR' THEN 0.0108\n      WHEN 'JPY' THEN 0.0067\n      WHEN 'USD' THEN 0.01\n    END) as net_revenue_usd\n  FROM orders o\n  INNER JOIN customers c ON o.customer_id = c.customer_id\n  LEFT JOIN (\n    SELECT order_id, SUM(amount_minor) as refunds_total_minor\n    FROM refunds\n    GROUP BY order_id\n  ) r ON o.order_id = r.order_id\n  WHERE c.deleted_at IS NULL\n    AND o.deleted_at IS NULL\n    AND o.status != 'cancelled'\n    AND c.is_internal = FALSE\n    AND c.region = 'LATAM'\n    AND o.currency IN ('EUR', 'JPY')\n) subquery;",
+      "rows": [
+        [
+          735.724531292517
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p07_aov_by_region__04",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was the average order value in ANZ for euro and yen orders, in US dollars?",
+      "seconds": 1.53,
+      "sql": "SELECT \n    AVG(o.amount_minor / 100.0) as average_order_value_usd\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE c.region = 'ANZ'\n    AND o.currency IN ('EUR', 'JPY')\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL",
+      "rows": [
+        [
+          615.9469054441263
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p07_aov_by_region__04",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was the average order value in ANZ for euro and yen orders, in US dollars?",
+      "seconds": 2.696,
+      "sql": "SELECT\n  AVG(net_revenue_usd) as average_order_value_usd\nFROM (\n  SELECT\n    o.order_id,\n    (o.amount_minor * CASE o.currency\n      WHEN 'EUR' THEN 0.0108\n      WHEN 'JPY' THEN 0.0067\n      WHEN 'USD' THEN 0.01\n    END - COALESCE(refunds_total_usd, 0)) as net_revenue_usd\n  FROM orders o\n  JOIN customers c ON o.customer_id = c.customer_id\n  LEFT JOIN (\n    SELECT order_id, SUM(amount_minor * 0.01) as refunds_total_usd\n    FROM refunds\n    GROUP BY order_id\n  ) r ON o.order_id = r.order_id\n  WHERE c.deleted_at IS NULL\n    AND o.deleted_at IS NULL\n    AND o.status != 'cancelled'\n    AND c.is_internal = FALSE\n    AND c.region IN ('Australia', 'New Zealand')\n    AND o.currency IN ('EUR', 'JPY')\n) subquery",
+      "rows": [
+        [
+          null
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "null_result",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p08_revenue_by_category__00",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was revenue from apparel products for euro and yen orders, in US dollars?",
+      "seconds": 1.302,
+      "sql": "SELECT \n    SUM(oi.qty * oi.unit_price_minor) / 100.0 AS revenue_usd\nFROM order_items oi\nJOIN orders o ON oi.order_id = o.order_id\nJOIN products p ON oi.product_id = p.product_id\nWHERE p.category = 'apparel'\n    AND o.currency IN ('EUR', 'JPY')\n    AND o.deleted_at IS NULL\n    AND o.status NOT IN ('cancelled', 'refunded');",
+      "rows": [
+        [
+          174196.26
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p08_revenue_by_category__00",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was revenue from apparel products for euro and yen orders, in US dollars?",
+      "seconds": 4.083,
+      "sql": "SELECT\n  SUM(\n    COALESCE(order_gross.gross_revenue_usd, 0) - COALESCE(order_refunds.refunds_usd, 0)\n  ) AS net_revenue_usd\nFROM (\n  SELECT\n    o.order_id,\n    SUM(oi.qty * oi.unit_price_minor) * CASE o.currency\n      WHEN 'EUR' THEN 0.0108\n      WHEN 'JPY' THEN 0.0067\n      WHEN 'USD' THEN 0.01\n    END AS gross_revenue_usd\n  FROM orders o\n  INNER JOIN order_items oi ON o.order_id = oi.order_id\n  INNER JOIN products p ON oi.product_id = p.product_id\n  INNER JOIN customers c ON o.customer_id = c.customer_id\n  WHERE o.deleted_at IS NULL\n    AND c.deleted_at IS NULL\n    AND o.status != 'cancelled'\n    AND c.is_internal = FALSE\n    AND p.category = 'apparel'\n    AND o.currency IN ('EUR', 'JPY')\n  GROUP BY o.order_id, o.currency\n) order_gross\nLEFT JOIN (\n  SELECT\n    r.order_id,\n    SUM(r.amount_minor) * CASE o.currency\n      WHEN 'EUR' THEN 0.0108\n      WHEN 'JPY' THEN 0.0067\n      WHEN 'USD' THEN 0.01\n    END AS refunds_usd\n  FROM refunds r\n  INNER JOIN orders o ON r.order_id = o.order_id\n  WHERE o.deleted_at IS NULL\n    AND o.status != 'cancelled'\n  GROUP BY r.order_id, o.currency\n) order_refunds ON order_gross.order_id = order_refunds.order_id;",
+      "rows": [
+        [
+          151949.3976
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p08_revenue_by_category__01",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was revenue from electronics products for euro and yen orders, in US dollars?",
+      "seconds": 3.752,
+      "sql": "SELECT \n    SUM(oi.qty * oi.unit_price_minor) / 100.0 AS revenue_usd\nFROM order_items oi\nJOIN orders o ON oi.order_id = o.order_id\nJOIN products p ON oi.product_id = p.product_id\nWHERE p.category = 'electronics'\n    AND o.currency IN ('EUR', 'JPY')\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\n    AND (CASE \n        WHEN o.currency = 'EUR' THEN oi.qty * oi.unit_price_minor / 100.0 / 0.92\n        WHEN o.currency = 'JPY' THEN oi.qty * oi.unit_price_minor / 100.0 / 110.0\n    END);",
+      "rows": [
+        [
+          229735.92
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p08_revenue_by_category__01",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was revenue from electronics products for euro and yen orders, in US dollars?",
+      "seconds": 2.574,
+      "sql": "SELECT\n  SUM(\n    CASE\n      WHEN o.currency = 'EUR' THEN (o.amount_minor - COALESCE(r.refund_amount, 0)) * 0.0108\n      WHEN o.currency = 'JPY' THEN (o.amount_minor - COALESCE(r.refund_amount, 0)) * 0.0067\n    END\n  ) AS revenue_usd\nFROM orders o\nJOIN order_items oi ON o.order_id = oi.order_id\nJOIN products p ON oi.product_id = p.product_id\nJOIN customers c ON o.customer_id = c.customer_id\nLEFT JOIN (\n  SELECT order_id, SUM(amount_minor) AS refund_amount\n  FROM refunds\n  GROUP BY order_id\n) r ON o.order_id = r.order_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status != 'cancelled'\n  AND c.is_internal = FALSE\n  AND p.category = 'electronics'\n  AND o.currency IN ('EUR', 'JPY');",
+      "rows": [
+        [
+          500283.9437
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p08_revenue_by_category__02",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was revenue from home products for euro and yen orders, in US dollars?",
+      "seconds": 1.658,
+      "sql": "SELECT \n    SUM(oi.qty * oi.unit_price_minor) / 100.0 AS revenue_usd\nFROM order_items oi\nJOIN orders o ON oi.order_id = o.order_id\nJOIN products p ON oi.product_id = p.product_id\nWHERE p.category = 'home'\n    AND o.currency IN ('EUR', 'JPY')\n    AND o.deleted_at IS NULL\n    AND o.status NOT IN ('cancelled', 'refunded');",
+      "rows": [
+        [
+          187572.39
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p08_revenue_by_category__02",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was revenue from home products for euro and yen orders, in US dollars?",
+      "seconds": 2.993,
+      "sql": "SELECT\n  SUM(\n    CASE\n      WHEN o.currency = 'EUR' THEN o.amount_minor * 0.0108\n      WHEN o.currency = 'JPY' THEN o.amount_minor * 0.0067\n      ELSE 0\n    END\n  ) - COALESCE(SUM(\n    CASE\n      WHEN o.currency = 'EUR' THEN COALESCE(r.total_refunds_minor, 0) * 0.0108\n      WHEN o.currency = 'JPY' THEN COALESCE(r.total_refunds_minor, 0) * 0.0067\n      ELSE 0\n    END\n  ), 0) AS revenue_usd\nFROM orders o\nINNER JOIN order_items oi ON o.order_id = oi.order_id\nINNER JOIN products p ON oi.product_id = p.product_id\nINNER JOIN customers c ON o.customer_id = c.customer_id\nLEFT JOIN (\n  SELECT order_id, SUM(amount_minor) AS total_refunds_minor\n  FROM refunds\n  GROUP BY order_id\n) r ON o.order_id = r.order_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status != 'cancelled'\n  AND c.is_internal = FALSE\n  AND p.category = 'home'\n  AND o.currency IN ('EUR', 'JPY');",
+      "rows": [
+        [
+          442253.1569
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p08_revenue_by_category__03",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was revenue from outdoors products for euro and yen orders, in US dollars?",
+      "seconds": 1.684,
+      "sql": "SELECT \n    SUM(oi.qty * oi.unit_price_minor) / 100.0 AS revenue_usd\nFROM order_items oi\nJOIN orders o ON oi.order_id = o.order_id\nJOIN products p ON oi.product_id = p.product_id\nWHERE p.category = 'outdoors'\n    AND o.currency IN ('EUR', 'JPY')\n    AND o.deleted_at IS NULL\n    AND o.status NOT IN ('cancelled', 'refunded');",
+      "rows": [
+        [
+          218432.35
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p08_revenue_by_category__03",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was revenue from outdoors products for euro and yen orders, in US dollars?",
+      "seconds": 3.311,
+      "sql": "SELECT\n  SUM(\n    CASE\n      WHEN o.currency = 'EUR' THEN o.amount_minor * 0.0108\n      WHEN o.currency = 'JPY' THEN o.amount_minor * 0.0067\n      ELSE 0\n    END\n  ) - COALESCE(SUM(\n    CASE\n      WHEN o.currency = 'EUR' THEN r.refund_amount * 0.0108\n      WHEN o.currency = 'JPY' THEN r.refund_amount * 0.0067\n      ELSE 0\n    END\n  ), 0) AS revenue_usd\nFROM orders o\nINNER JOIN order_items oi ON o.order_id = oi.order_id\nINNER JOIN products p ON oi.product_id = p.product_id\nINNER JOIN customers c ON o.customer_id = c.customer_id\nLEFT JOIN (\n  SELECT order_id, SUM(amount_minor) AS refund_amount\n  FROM refunds\n  GROUP BY order_id\n) r ON o.order_id = r.order_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status != 'cancelled'\n  AND c.is_internal = FALSE\n  AND p.category = 'outdoors'\n  AND o.currency IN ('EUR', 'JPY');",
+      "rows": [
+        [
+          427773.0895
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p08_revenue_by_category__04",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was revenue from beauty products for euro and yen orders, in US dollars?",
+      "seconds": 2.785,
+      "sql": "SELECT \n    SUM(oi.qty * oi.unit_price_minor) / 100.0 AS revenue_usd\nFROM order_items oi\nJOIN orders o ON oi.order_id = o.order_id\nJOIN products p ON oi.product_id = p.product_id\nWHERE p.category = 'beauty'\n    AND o.currency IN ('EUR', 'JPY')\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\n    AND (CASE \n        WHEN o.currency = 'EUR' THEN oi.qty * oi.unit_price_minor / 100.0 / 0.92\n        WHEN o.currency = 'JPY' THEN oi.qty * oi.unit_price_minor / 100.0 / 110.0\n    END) IS NOT NULL;",
+      "rows": [
+        [
+          246348.15
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p08_revenue_by_category__04",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What was revenue from beauty products for euro and yen orders, in US dollars?",
+      "seconds": 2.418,
+      "sql": "SELECT\n  SUM(\n    CASE\n      WHEN o.currency = 'EUR' THEN (o.amount_minor - COALESCE(r.refund_amount, 0)) * 0.0108\n      WHEN o.currency = 'JPY' THEN (o.amount_minor - COALESCE(r.refund_amount, 0)) * 0.0067\n    END\n  ) AS revenue_usd\nFROM orders o\nJOIN order_items oi ON o.order_id = oi.order_id\nJOIN products p ON oi.product_id = p.product_id\nJOIN customers c ON o.customer_id = c.customer_id\nLEFT JOIN (\n  SELECT order_id, SUM(amount_minor) AS refund_amount\n  FROM refunds\n  GROUP BY order_id\n) r ON o.order_id = r.order_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status != 'cancelled'\n  AND c.is_internal = FALSE\n  AND p.category = 'beauty'\n  AND o.currency IN ('EUR', 'JPY');",
+      "rows": [
+        [
+          523290.6671
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p09_refund_rate__00",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of apparel orders ended up with a refund?",
+      "seconds": 2.18,
+      "sql": "SELECT \n    COUNT(DISTINCT CASE WHEN r.refund_id IS NOT NULL THEN o.order_id END)::FLOAT / \n    COUNT(DISTINCT o.order_id) AS refund_share\nFROM orders o\nINNER JOIN order_items oi ON o.order_id = oi.order_id\nINNER JOIN products p ON oi.product_id = p.product_id\nLEFT JOIN refunds r ON o.order_id = r.order_id\nWHERE p.category = 'apparel'\n    AND o.deleted_at IS NULL\n    AND o.status != 'cancelled';",
+      "rows": [
+        [
+          0.08781225979328156
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p09_refund_rate__00",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of apparel orders ended up with a refund?",
+      "seconds": 2.374,
+      "sql": "WITH apparel_orders AS (\n  SELECT DISTINCT o.order_id\n  FROM orders o\n  JOIN customers c ON o.customer_id = c.customer_id\n  JOIN order_items oi ON o.order_id = oi.order_id\n  JOIN products p ON oi.product_id = p.product_id\n  WHERE p.category = 'apparel'\n    AND o.status != 'cancelled'\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL\n    AND c.is_internal = FALSE\n),\napparel_orders_with_refunds AS (\n  SELECT ao.order_id,\n         CASE WHEN r.refund_id IS NOT NULL THEN 1 ELSE 0 END AS has_refund\n  FROM apparel_orders ao\n  LEFT JOIN refunds r ON ao.order_id = r.order_id\n)\nSELECT ROUND(100.0 * SUM(has_refund) / COUNT(DISTINCT order_id), 2) AS refund_share_percent\nFROM apparel_orders_with_refunds;",
+      "rows": [
+        [
+          10.5
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p09_refund_rate__01",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of electronics orders ended up with a refund?",
+      "seconds": 2.579,
+      "sql": "SELECT \n  COUNT(DISTINCT CASE WHEN r.refund_id IS NOT NULL THEN o.order_id END)::FLOAT / \n  COUNT(DISTINCT o.order_id) AS refund_share\nFROM orders o\nJOIN order_items oi ON o.order_id = oi.order_id\nJOIN products p ON oi.product_id = p.product_id\nLEFT JOIN refunds r ON o.order_id = r.order_id\nWHERE p.category = 'electronics'\n  AND o.deleted_at IS NULL\n  AND o.status != 'cancelled';",
+      "rows": [
+        [
+          0.0907759889960289
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p09_refund_rate__01",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of electronics orders ended up with a refund?",
+      "seconds": 4.247,
+      "sql": "SELECT\n  COUNT(DISTINCT CASE WHEN o.order_id IN (SELECT DISTINCT order_id FROM refunds) THEN o.order_id END)::FLOAT \n  / COUNT(DISTINCT o.order_id) AS refund_share\nFROM orders o\nJOIN order_items oi ON o.order_id = oi.order_id\nJOIN products p ON oi.product_id = p.product_id\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status != 'cancelled'\n  AND c.is_internal = FALSE\n  AND p.category = 'electronics'",
+      "rows": [
+        [
+          0.09159664064645767
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p09_refund_rate__02",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of home orders ended up with a refund?",
+      "seconds": 2.167,
+      "sql": "SELECT \n    COUNT(DISTINCT CASE WHEN r.refund_id IS NOT NULL THEN o.order_id END)::FLOAT / \n    COUNT(DISTINCT o.order_id) AS refund_share\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nLEFT JOIN refunds r ON o.order_id = r.order_id\nWHERE c.region = 'home'\n    AND o.deleted_at IS NULL\n    AND c.deleted_at IS NULL;",
+      "rows": [
+        [
+          NaN
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "null_result",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p09_refund_rate__02",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of home orders ended up with a refund?",
+      "seconds": 2.094,
+      "sql": "SELECT\n  COUNT(CASE WHEN o.order_id IN (SELECT DISTINCT order_id FROM refunds) THEN 1 END)::FLOAT \n  / COUNT(*) AS share_with_refund\nFROM orders o\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status != 'cancelled'\n  AND c.is_internal = FALSE\n  AND c.region = 'home'",
+      "rows": [
+        [
+          NaN
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "visible_failure",
+      "visible_kind": "null_result",
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p09_refund_rate__03",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of outdoors orders ended up with a refund?",
+      "seconds": 1.689,
+      "sql": "SELECT \n    COUNT(DISTINCT CASE WHEN r.refund_id IS NOT NULL THEN o.order_id END)::FLOAT / \n    COUNT(DISTINCT o.order_id) AS refund_share\nFROM orders o\nJOIN order_items oi ON o.order_id = oi.order_id\nJOIN products p ON oi.product_id = p.product_id\nLEFT JOIN refunds r ON o.order_id = r.order_id\nWHERE p.category = 'outdoors'\n    AND o.deleted_at IS NULL",
+      "rows": [
+        [
+          0.07887516915798187
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p09_refund_rate__03",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of outdoors orders ended up with a refund?",
+      "seconds": 2.243,
+      "sql": "SELECT\n  COUNT(DISTINCT CASE WHEN o.order_id IN (SELECT DISTINCT order_id FROM refunds) THEN o.order_id END)::FLOAT \n  / COUNT(DISTINCT o.order_id) AS refund_share\nFROM orders o\nJOIN order_items oi ON o.order_id = oi.order_id\nJOIN products p ON oi.product_id = p.product_id\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status != 'cancelled'\n  AND c.is_internal = FALSE\n  AND p.category = 'outdoors'",
+      "rows": [
+        [
+          0.08896797150373459
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p09_refund_rate__04",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of beauty orders ended up with a refund?",
+      "seconds": 2.073,
+      "sql": "SELECT \n    CAST(COUNT(DISTINCT CASE WHEN r.refund_id IS NOT NULL THEN o.order_id END) AS FLOAT) \n    / COUNT(DISTINCT o.order_id) AS refund_share\nFROM orders o\nINNER JOIN order_items oi ON o.order_id = oi.order_id\nINNER JOIN products p ON oi.product_id = p.product_id\nLEFT JOIN refunds r ON o.order_id = r.order_id\nWHERE p.category = 'beauty'\n    AND o.deleted_at IS NULL",
+      "rows": [
+        [
+          0.07856730371713638
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p09_refund_rate__04",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of beauty orders ended up with a refund?",
+      "seconds": 2.206,
+      "sql": "SELECT\n  COUNT(DISTINCT CASE WHEN o.order_id IN (SELECT DISTINCT order_id FROM refunds) THEN o.order_id END)::FLOAT \n  / COUNT(DISTINCT o.order_id) AS share_with_refund\nFROM orders o\nJOIN order_items oi ON o.order_id = oi.order_id\nJOIN products p ON oi.product_id = p.product_id\nJOIN customers c ON o.customer_id = c.customer_id\nWHERE p.category = 'beauty'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status != 'cancelled'\n  AND c.is_internal = FALSE",
+      "rows": [
+        [
+          0.08812260627746582
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__00",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of customers placed more than one order in January 2025?",
+      "seconds": 1.892,
+      "sql": "SELECT \n  CAST(COUNT(DISTINCT customer_id) FILTER (WHERE order_count > 1) AS FLOAT) / \n  COUNT(DISTINCT customer_id) AS share\nFROM (\n  SELECT \n    customer_id,\n    COUNT(*) AS order_count\n  FROM orders\n  WHERE EXTRACT(YEAR FROM placed_at) = 2025\n    AND EXTRACT(MONTH FROM placed_at) = 1\n    AND deleted_at IS NULL\n  GROUP BY customer_id\n)",
+      "rows": [
+        [
+          0.3881118893623352
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__00",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of customers placed more than one order in January 2025?",
+      "seconds": 3.277,
+      "sql": "WITH valid_customers AS (\n  SELECT customer_id\n  FROM customers\n  WHERE deleted_at IS NULL\n    AND is_internal = FALSE\n),\nvalid_orders AS (\n  SELECT customer_id\n  FROM orders\n  WHERE deleted_at IS NULL\n    AND status != 'cancelled'\n    AND placed_at >= '2025-01-01'\n    AND placed_at < '2025-02-01'\n),\ncustomer_order_counts AS (\n  SELECT \n    vc.customer_id,\n    COUNT(DISTINCT vo.customer_id) > 0 AS placed_order,\n    COUNT(*) as order_count\n  FROM valid_customers vc\n  LEFT JOIN valid_orders vo ON vc.customer_id = vo.customer_id\n  GROUP BY vc.customer_id\n)\nSELECT \n  ROUND(\n    100.0 * SUM(CASE WHEN order_count > 1 THEN 1 ELSE 0 END) / COUNT(*),\n    2\n  ) as pct_customers_multiple_orders\nFROM customer_order_counts;",
+      "rows": [
+        [
+          18.1
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__01",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of customers placed more than one order in February 2025?",
+      "seconds": 2.159,
+      "sql": "SELECT \n  CAST(COUNT(DISTINCT c.customer_id) FILTER (WHERE order_count > 1) AS FLOAT) / \n  COUNT(DISTINCT c.customer_id) AS share\nFROM customers c\nLEFT JOIN (\n  SELECT \n    customer_id,\n    COUNT(*) AS order_count\n  FROM orders\n  WHERE status != 'cancelled'\n    AND deleted_at IS NULL\n    AND EXTRACT(YEAR FROM placed_at) = 2025\n    AND EXTRACT(MONTH FROM placed_at) = 2\n  GROUP BY customer_id\n) o ON c.customer_id = o.customer_id\nWHERE c.deleted_at IS NULL\n  AND o.customer_id IS NOT NULL;",
+      "rows": [
+        [
+          0.25853657722473145
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [
+        "internal_accounts"
+      ],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__01",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of customers placed more than one order in February 2025?",
+      "seconds": 2.739,
+      "sql": "WITH valid_customers AS (\n  SELECT customer_id\n  FROM customers\n  WHERE deleted_at IS NULL\n    AND is_internal = FALSE\n),\nvalid_orders AS (\n  SELECT customer_id\n  FROM orders\n  WHERE deleted_at IS NULL\n    AND status != 'cancelled'\n    AND EXTRACT(YEAR FROM placed_at) = 2025\n    AND EXTRACT(MONTH FROM placed_at) = 2\n),\ncustomer_order_counts AS (\n  SELECT \n    vc.customer_id,\n    COUNT(DISTINCT vo.customer_id) > 0 AS placed_order,\n    COUNT(DISTINCT vo.customer_id) AS order_count\n  FROM valid_customers vc\n  LEFT JOIN valid_orders vo ON vc.customer_id = vo.customer_id\n  GROUP BY vc.customer_id\n),\nsummary AS (\n  SELECT\n    COUNT(*) AS total_customers,\n    SUM(CASE WHEN order_count > 1 THEN 1 ELSE 0 END) AS customers_with_multiple_orders\n  FROM customer_order_counts\n)\nSELECT\n  ROUND(100.0 * customers_with_multiple_orders / total_customers, 2) AS share_percentage\nFROM summary;",
+      "rows": [
+        [
+          0.0
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__02",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of customers placed more than one order in March 2025?",
+      "seconds": 2.185,
+      "sql": "SELECT \n  CAST(COUNT(DISTINCT customer_id) FILTER (WHERE order_count > 1) AS FLOAT) / \n  COUNT(DISTINCT customer_id) AS share\nFROM (\n  SELECT \n    customer_id,\n    COUNT(*) AS order_count\n  FROM orders\n  WHERE EXTRACT(YEAR FROM placed_at) = 2025\n    AND EXTRACT(MONTH FROM placed_at) = 3\n    AND deleted_at IS NULL\n  GROUP BY customer_id\n)",
+      "rows": [
+        [
+          0.3658536672592163
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__02",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of customers placed more than one order in March 2025?",
+      "seconds": 3.718,
+      "sql": "WITH march_2025_orders AS (\n  SELECT DISTINCT c.customer_id\n  FROM orders o\n  JOIN customers c ON o.customer_id = c.customer_id\n  WHERE o.deleted_at IS NULL\n    AND c.deleted_at IS NULL\n    AND c.is_internal = FALSE\n    AND o.status != 'cancelled'\n    AND DATE_TRUNC('month', o.placed_at) = '2025-03-01'::DATE\n),\ncustomer_order_counts AS (\n  SELECT c.customer_id, COUNT(DISTINCT o.order_id) as order_count\n  FROM customers c\n  LEFT JOIN orders o ON c.customer_id = o.customer_id\n    AND o.deleted_at IS NULL\n    AND o.status != 'cancelled'\n    AND DATE_TRUNC('month', o.placed_at) = '2025-03-01'::DATE\n  WHERE c.deleted_at IS NULL\n    AND c.is_internal = FALSE\n    AND c.customer_id IN (SELECT customer_id FROM march_2025_orders)\n  GROUP BY c.customer_id\n)\nSELECT \n  CAST(SUM(CASE WHEN order_count > 1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) as share_with_multiple_orders\nFROM customer_order_counts;",
+      "rows": [
+        [
+          0.3185840845108032
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__03",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of customers placed more than one order in April 2025?",
+      "seconds": 2.007,
+      "sql": "SELECT \n  CAST(COUNT(DISTINCT customer_id) FILTER (WHERE order_count > 1) AS FLOAT) / \n  COUNT(DISTINCT customer_id) AS share\nFROM (\n  SELECT \n    customer_id,\n    COUNT(*) AS order_count\n  FROM orders\n  WHERE EXTRACT(YEAR FROM placed_at) = 2025\n    AND EXTRACT(MONTH FROM placed_at) = 4\n    AND deleted_at IS NULL\n  GROUP BY customer_id\n)",
+      "rows": [
+        [
+          0.29527559876441956
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__03",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of customers placed more than one order in April 2025?",
+      "seconds": 2.761,
+      "sql": "WITH april_2025_orders AS (\n  SELECT DISTINCT c.customer_id\n  FROM customers c\n  INNER JOIN orders o ON c.customer_id = o.customer_id\n  WHERE c.deleted_at IS NULL\n    AND c.is_internal = FALSE\n    AND o.deleted_at IS NULL\n    AND o.status != 'cancelled'\n    AND DATE_TRUNC('month', o.placed_at) = '2025-04-01'::DATE\n),\ncustomers_with_order_counts AS (\n  SELECT c.customer_id,\n         COUNT(o.order_id) as order_count\n  FROM customers c\n  INNER JOIN orders o ON c.customer_id = o.customer_id\n  WHERE c.deleted_at IS NULL\n    AND c.is_internal = FALSE\n    AND o.deleted_at IS NULL\n    AND o.status != 'cancelled'\n    AND DATE_TRUNC('month', o.placed_at) = '2025-04-01'::DATE\n  GROUP BY c.customer_id\n)\nSELECT CAST(SUM(CASE WHEN order_count > 1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) as share_of_customers_with_multiple_orders\nFROM customers_with_order_counts;",
+      "rows": [
+        [
+          0.26499998569488525
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__04",
+      "arm": "worker@L0",
+      "role": "worker",
+      "level": "L0",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of customers placed more than one order in May 2025?",
+      "seconds": 2.208,
+      "sql": "SELECT \n  CAST(COUNT(DISTINCT customer_id) FILTER (WHERE order_count > 1) AS FLOAT) / \n  COUNT(DISTINCT customer_id) AS share\nFROM (\n  SELECT \n    customer_id,\n    COUNT(*) AS order_count\n  FROM orders\n  WHERE EXTRACT(YEAR FROM placed_at) = 2025\n    AND EXTRACT(MONTH FROM placed_at) = 5\n    AND deleted_at IS NULL\n  GROUP BY customer_id\n)",
+      "rows": [
+        [
+          0.32871973514556885
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "silent_error",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__04",
+      "arm": "worker@L3",
+      "role": "worker",
+      "level": "L3",
+      "model_id": "claude-haiku-4-5",
+      "question": "What share of customers placed more than one order in May 2025?",
+      "seconds": 4.787,
+      "sql": "WITH may_2025_orders AS (\n  SELECT DISTINCT c.customer_id\n  FROM customers c\n  INNER JOIN orders o ON c.customer_id = o.customer_id\n  WHERE c.deleted_at IS NULL\n    AND c.is_internal = FALSE\n    AND o.deleted_at IS NULL\n    AND o.status != 'cancelled'\n    AND EXTRACT(YEAR FROM o.placed_at) = 2025\n    AND EXTRACT(MONTH FROM o.placed_at) = 5\n),\ncustomer_order_counts AS (\n  SELECT c.customer_id, COUNT(DISTINCT o.order_id) as order_count\n  FROM customers c\n  INNER JOIN orders o ON c.customer_id = o.customer_id\n  WHERE c.deleted_at IS NULL\n    AND c.is_internal = FALSE\n    AND o.deleted_at IS NULL\n    AND o.status != 'cancelled'\n    AND EXTRACT(YEAR FROM o.placed_at) = 2025\n    AND EXTRACT(MONTH FROM o.placed_at) = 5\n  GROUP BY c.customer_id\n),\ncustomers_with_multiple_orders AS (\n  SELECT customer_id\n  FROM customer_order_counts\n  WHERE order_count > 1\n),\nall_customers_in_may AS (\n  SELECT DISTINCT c.customer_id\n  FROM customers c\n  INNER JOIN orders o ON c.customer_id = o.customer_id\n  WHERE c.deleted_at IS NULL\n    AND c.is_internal = FALSE\n    AND o.deleted_at IS NULL\n    AND o.status != 'cancelled'\n    AND EXTRACT(YEAR FROM o.placed_at) = 2025\n    AND EXTRACT(MONTH FROM o.placed_at) = 5\n)\nSELECT \n  CAST(COUNT(DISTINCT cwm.customer_id) AS FLOAT) / COUNT(DISTINCT acm.customer_id) AS share_with_multiple_orders\nFROM all_customers_in_may acm\nLEFT JOIN customers_with_multiple_orders cwm ON acm.customer_id = cwm.customer_id;",
+      "rows": [
+        [
+          0.29816514253616333
+        ]
+      ],
+      "error": null,
+      "termination": "success",
+      "n_attempts": 1,
+      "outcome": "correct",
+      "visible_kind": null,
+      "attributed_rules": [],
+      "ambiguous": false
+    }
+  ],
+  "summary_by_arm": {
+    "worker@L3": {
+      "n_total": 50,
+      "n_ran_and_returned": 41,
+      "n_correct": 30,
+      "n_silent_errors": 11,
+      "n_visible_failures": 9,
+      "visible_failure_kinds": {
+        "execution_error": 2,
+        "null_result": 2,
+        "shape_mismatch": 5
+      },
+      "termination_reasons": {
+        "max_attempts": 2,
+        "success": 48
+      },
+      "attribution": {},
+      "n_unclassified": 11,
+      "n_ambiguous_attributions": 0
+    },
+    "worker@L0": {
+      "n_total": 50,
+      "n_ran_and_returned": 39,
+      "n_correct": 5,
+      "n_silent_errors": 34,
+      "n_visible_failures": 11,
+      "visible_failure_kinds": {
+        "execution_error": 5,
+        "null_result": 1,
+        "shape_mismatch": 5
+      },
+      "termination_reasons": {
+        "max_attempts": 5,
+        "success": 45
+      },
+      "attribution": {
+        "internal_accounts": 5,
+        "internal_accounts or soft_delete": 1
+      },
+      "n_unclassified": 28,
+      "n_ambiguous_attributions": 1
+    }
+  },
+  "paired": {
+    "label_a": "worker@L3",
+    "label_b": "worker@L0",
+    "both_correct": 5,
+    "only_a_correct": 21,
+    "only_b_correct": 0,
+    "both_wrong": 10,
+    "n_pairs": 36,
+    "n_discordant": 21,
+    "p_value": 9.5367431640625e-07,
+    "verdict": "worker@L0 is worse than worker@L3; we cannot put a number on how much (21 discordant of 36 pairs, McNemar exact p=0.000, clustered)",
+    "caveat": "McNemar assumes the pairs are independent. These are not: 50 items are 10 clusters of 5 parameterisations, so a systematic weakness in one pattern can produce up to five discordant pairs that are really one observation. The p-value is therefore optimistic and the honest statement is directional only \u2014 'this arm is worse', never a specific gap."
+  }
+}

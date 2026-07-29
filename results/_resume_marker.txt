@@ -1,0 +1,7 @@
+1785324472.883	INVOKED	What share of customers placed more than one order in March 2025?
+1785324478.896	INVOKED	What was gross revenue in January 2025 from our euro and yen orders, i
+1785324508.370	INVOKED	What share of customers placed more than one order in March 2025?
+1785324514.387	INVOKED	What was gross revenue in January 2025 from our euro and yen orders, i
+1785324520.395	INVOKED	What was the average order value in ANZ for euro and yen orders, in US
+1785324526.406	INVOKED	Which five beauty products sold the most units?
+1785324532.417	INVOKED	Which five electronics products sold the most units?

@@ -1,0 +1,62 @@
+[project]
+name = "loopeng"
+version = "0.1.0"
+description = "Four nested agent loops over a text-to-SQL agent, built to show the gap between a rule declared in config and a rule something enforces"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "ANI-IN", email = "44803072+ANI-IN@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=0.120.2",
+    "duckdb>=1.5.5",
+    "gradio>=6.20.0",
+    "langsmith>=0.10.11",
+    "pydantic-settings>=2.14.2",
+    "pyyaml>=6.0.3",
+    "qrcode>=8.2",
+    "sqlglot>=30.14.0",
+    "structlog>=26.1.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.20,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "matplotlib>=3.10",
+    "pytest>=9.1.1",
+    "pytest-timeout>=2.4.0",
+    "ruff>=0.16.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "live: hits the network and costs money; deselected by default",
+]
+# The default suite must be runnable with no keys and no network. Opting in to
+# live tests is an explicit act: `pytest -m live`.
+addopts = "-m 'not live'"
+
+# A hung test must fail loudly, naming itself.
+#
+# One CI run was cancelled at the job timeout after sitting at 63% for nine
+# minutes, and the log said nothing about which test was stuck — the whole job
+# just stopped. A suite that can consume its budget and report nothing is the
+# same defect this project is about: a check that produces no evidence.
+#
+# 300s is deliberately generous. The slowest honest test here spawns a nested
+# pytest, and a cold CI runner rebuilding matplotlib's font cache adds real time
+# on top. This is a backstop against a hang, not a performance budget.
+timeout = 300
+timeout_method = "thread"

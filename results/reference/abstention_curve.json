@@ -1,0 +1,477 @@
+{
+  "measured_on": "2026-07-29",
+  "cell": "worker_L0_loop_r0",
+  "label": "Haiku \u00b7 L0 \u00b7 loop",
+  "points": [
+    {
+      "threshold": 0.0,
+      "n_total": 50,
+      "n_answered": 50,
+      "n_declined": 0,
+      "n_correct_of_answered": 13,
+      "coverage": "100.0% (n=50, \u00b17.1, measured 2026-07-29)",
+      "precision": "26.0% (n=50, \u00b113.6, measured 2026-07-29)",
+      "coverage_value": 1.0,
+      "precision_value": 0.26,
+      "precision_ci_low": 0.15871527493552393,
+      "precision_ci_high": 0.39553157264848837,
+      "declined": []
+    },
+    {
+      "threshold": 0.15,
+      "n_total": 50,
+      "n_answered": 41,
+      "n_declined": 9,
+      "n_correct_of_answered": 13,
+      "coverage": "82.0% (n=50, \u00b112.8, measured 2026-07-29)",
+      "precision": "31.7% (n=41, \u00b115.3, measured 2026-07-29)",
+      "coverage_value": 0.82,
+      "precision_value": 0.3170731707317073,
+      "precision_ci_low": 0.19564613898988575,
+      "precision_ci_high": 0.4698419964434429,
+      "declined": [
+        {
+          "item_id": "p06_top_products__00",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__01",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__02",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__03",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__04",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p09_refund_rate__02",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__00",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__01",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__02",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        }
+      ]
+    },
+    {
+      "threshold": 0.2,
+      "n_total": 50,
+      "n_answered": 41,
+      "n_declined": 9,
+      "n_correct_of_answered": 13,
+      "coverage": "82.0% (n=50, \u00b112.8, measured 2026-07-29)",
+      "precision": "31.7% (n=41, \u00b115.3, measured 2026-07-29)",
+      "coverage_value": 0.82,
+      "precision_value": 0.3170731707317073,
+      "precision_ci_low": 0.19564613898988575,
+      "precision_ci_high": 0.4698419964434429,
+      "declined": [
+        {
+          "item_id": "p06_top_products__00",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__01",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__02",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__03",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__04",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p09_refund_rate__02",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__00",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__01",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__02",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        }
+      ]
+    },
+    {
+      "threshold": 0.3,
+      "n_total": 50,
+      "n_answered": 41,
+      "n_declined": 9,
+      "n_correct_of_answered": 13,
+      "coverage": "82.0% (n=50, \u00b112.8, measured 2026-07-29)",
+      "precision": "31.7% (n=41, \u00b115.3, measured 2026-07-29)",
+      "coverage_value": 0.82,
+      "precision_value": 0.3170731707317073,
+      "precision_ci_low": 0.19564613898988575,
+      "precision_ci_high": 0.4698419964434429,
+      "declined": [
+        {
+          "item_id": "p06_top_products__00",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__01",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__02",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__03",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__04",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p09_refund_rate__02",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__00",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__01",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__02",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        }
+      ]
+    },
+    {
+      "threshold": 0.7,
+      "n_total": 50,
+      "n_answered": 41,
+      "n_declined": 9,
+      "n_correct_of_answered": 13,
+      "coverage": "82.0% (n=50, \u00b112.8, measured 2026-07-29)",
+      "precision": "31.7% (n=41, \u00b115.3, measured 2026-07-29)",
+      "coverage_value": 0.82,
+      "precision_value": 0.3170731707317073,
+      "precision_ci_low": 0.19564613898988575,
+      "precision_ci_high": 0.4698419964434429,
+      "declined": [
+        {
+          "item_id": "p06_top_products__00",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__01",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__02",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__03",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__04",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p09_refund_rate__02",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__00",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__01",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__02",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        }
+      ]
+    },
+    {
+      "threshold": 1.0,
+      "n_total": 50,
+      "n_answered": 10,
+      "n_declined": 40,
+      "n_correct_of_answered": 5,
+      "coverage": "20.0% (n=50, \u00b113.0, measured 2026-07-29)",
+      "precision": "50.0% (n=10, \u00b126.3, measured 2026-07-29)",
+      "coverage_value": 0.2,
+      "precision_value": 0.5,
+      "precision_ci_low": 0.236593090512564,
+      "precision_ci_high": 0.7634069094874361,
+      "declined": [
+        {
+          "item_id": "p03_customers_in_region__00",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p03_customers_in_region__01",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p03_customers_in_region__02",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p03_customers_in_region__03",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p03_customers_in_region__04",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p04_gross_revenue__00",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p04_gross_revenue__01",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p04_gross_revenue__02",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p04_gross_revenue__03",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p04_gross_revenue__04",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p05_net_revenue__00",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p05_net_revenue__01",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p05_net_revenue__02",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p05_net_revenue__03",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p05_net_revenue__04",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p06_top_products__00",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__01",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__02",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__03",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p06_top_products__04",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p07_aov_by_region__00",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p07_aov_by_region__01",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p07_aov_by_region__02",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p07_aov_by_region__03",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p07_aov_by_region__04",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p08_revenue_by_category__00",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p08_revenue_by_category__01",
+          "reason": "accepted, but only after 2 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p08_revenue_by_category__02",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p08_revenue_by_category__03",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p08_revenue_by_category__04",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p09_refund_rate__00",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p09_refund_rate__01",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p09_refund_rate__02",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p09_refund_rate__03",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p09_refund_rate__04",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__00",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__01",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__02",
+          "reason": "the query never returned a usable result, so there is nothing to report",
+          "confidence": 0.0
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__03",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        },
+        {
+          "item_id": "p10_repeat_customer_rate__04",
+          "reason": "accepted, but only after 1 revision(s) \u2014 the first attempt broke a business rule",
+          "confidence": 0.7
+        }
+      ]
+    }
+  ],
+  "how": "Recomputed from an already-measured cell; the confidence signal is loop telemetry, so this cost nothing."
+}

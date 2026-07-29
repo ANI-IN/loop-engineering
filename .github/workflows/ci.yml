@@ -1,0 +1,85 @@
+name: CI
+
+# The offline suite only: zero network, zero API keys, zero cost. That is a property
+# of the suite rather than a CI trick — `addopts = -m 'not live'` deselects everything
+# that touches the network, so this runs free on every push and cannot be broken by a
+# missing secret.
+on:
+  push:
+  pull_request:
+
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    # Raised from 10. A run was cancelled here at 10m18s and the cancellation told
+    # nobody which test was stuck. The real fix is the per-test timeout in
+    # pyproject.toml, which fails the run with a traceback naming the test; this
+    # ceiling is now only a backstop against the whole job wedging.
+    timeout-minutes: 20
+
+    env:
+      # matplotlib rebuilds its font cache on first import, which costs real time on
+      # a cold runner. Pointed at a cached directory so it is paid once.
+      MPLCONFIGDIR: ${{ github.workspace }}/.mplcache
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Cache the matplotlib font cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.mplcache
+          key: mplcache-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Numeric-literal rule
+        # Bans typed numbers in the modules that render to a projector. A typed
+        # number is indistinguishable from a measured one once it is on screen.
+        # Also fails when a declared target does not resolve — a rule pointing at a
+        # missing path passes while enforcing nothing.
+        run: uv run python tools/lint_no_numbers.py
+
+      - name: Offline test suite
+        # No ANTHROPIC_API_KEY is set anywhere in this job, on purpose. If a test ever
+        # starts needing one, this fails and that is the correct outcome.
+        #
+        # -p no:randomly and --durations make a slow or hung run diagnosable from the
+        # log alone, which the cancelled run was not.
+        run: uv run pytest -q --durations=15
+
+      - name: Confirm live tests were deselected, not skipped silently
+        run: |
+          uv run pytest --collect-only -q -m live 2>&1 | tail -3
+
+      - name: README images render, and are current with the reference data
+        # Renders to a scratch directory, NOT over assets/.
+        #
+        # An earlier version re-rendered in place and ran `git diff --exit-code`,
+        # which cannot work: matplotlib rasterises through FreeType, so a Linux
+        # runner does not reproduce the pixels a macOS machine committed. That
+        # step failed for a reason that had nothing to do with the images being
+        # wrong.
+        #
+        # Byte-identity within an environment, and freshness against the source
+        # data, are both asserted by tests/test_readme_charts.py — which is
+        # platform-independent because it compares manifest hashes rather than
+        # pixels.
+        run: uv run python tools/render_readme_charts.py "${RUNNER_TEMP}/assets-check"
+
+      - name: Space sync stages cleanly and refuses what it must
+        # Pushes nothing. Asserts .env, live cell output and generated databases
+        # cannot reach a public Space, and that the Space frontmatter still builds.
+        run: uv run python tools/sync_hf.py --dry-run

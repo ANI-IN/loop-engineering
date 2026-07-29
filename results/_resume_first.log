@@ -1,0 +1,8 @@
+[first] starting experiment 'resume-probe-a'
+  using 5 examples from loop-eng-gold-v1
+View the evaluation results for experiment: 'resume-probe-a-231d5907' at:
+https://smith.langchain.com/o/REDACTED-IDENTIFIER/datasets/REDACTED-IDENTIFIER/compare?selectedSessions=REDACTED-IDENTIFIER
+
+
+  [target] invoked: What share of customers placed more than one order in March 2025?
+  [target] invoked: What was gross revenue in January 2025 from our euro and yen orders, i
