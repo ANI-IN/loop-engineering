@@ -18,8 +18,8 @@ from loopeng.sweep.orchestrator import load_all
 from loopeng.sweep.runner import SWEEP_DIR
 from loopeng.triage.abstain import DEFAULT_THRESHOLD, curve, operating_point
 from loopeng.triage.escalate import MAX_ESCALATIONS
-from loopeng.triage.ui import render_declined
 from loopeng.views.chrome import NOT_MEASURED, stamp
+from loopeng.views.render import render_declined
 
 CELL_KEY = "worker_L0_loop_r0"
 

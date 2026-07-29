@@ -7,9 +7,10 @@ renders. The loop itself lives in src/loopeng/agent/loop.py.
 import argparse
 
 from loopeng.agent.loop import run_question
-from loopeng.agent.ui import build_run_app, render_attempts, render_cost
 from loopeng.logging import configure_logging
 from loopeng.settings import load_settings
+from loopeng.views.agent import build_run_app
+from loopeng.views.render import render_attempt_timeline, render_cost
 from loopeng.warehouse.connect import ensure_warehouse
 
 
@@ -35,7 +36,7 @@ def main(argv: list[str] | None = None) -> int:
             level=args.level,
             max_attempts=args.max_attempts,
         )
-        print(render_attempts(run))
+        print(render_attempt_timeline(run))
         print(render_cost(run.ledger))
         return 0
 

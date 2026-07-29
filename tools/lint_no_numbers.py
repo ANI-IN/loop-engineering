@@ -61,13 +61,22 @@ _VIEWS = REPO_ROOT / "src" / "loopeng" / "views"
 
 # The modules that build what a room reads.
 #
-#   sweep/charts.py    the DIAL and COST SVGs — the densest numeric surface here
+#   sweep/charts.py    the DIAL, COST, DELTA and ABSTENTION SVGs — the densest
+#                      numeric surface here
+#   sweep/chart_model.py the captions and the cell-to-row transform BOTH renderers
+#                      consume; a typed number here reaches the projector and the README
+#   views/render.py    every string renderer the views share — the reveal scoreboard,
+#                      the attempt timeline, the declined list. Added when the
+#                      duplicated renderers were consolidated into it: moving that
+#                      prose out of a scanned file into an unscanned one would have
+#                      quietly reduced the rule's coverage while looking like cleanup.
 #   views/dial.py      silent-error rate per cell and the named-secondary table,
 #                      the single most quoted screen in the session
 #   views/oversight.py the coverage/precision curve and the escalation panel
-#   views/trap.py      the reveal scoreboard
+#   views/trap.py      the reveal grid
 #   views/verify.py    the swap table and the probe surface
 #   views/agent.py     the attempt timeline and the queue table
+#   views/intervention.py what the loop declined and why
 #   views/exhibit.py   the public frozen exhibit, which outlives the session
 #   demos/.../charts.py the entry point that renders them live
 #
@@ -75,11 +84,14 @@ _VIEWS = REPO_ROOT / "src" / "loopeng" / "views"
 # bounds, a socket probe, a CSS string — and renders no measurement of its own.
 TARGETS = (
     REPO_ROOT / "src" / "loopeng" / "sweep" / "charts.py",
+    REPO_ROOT / "src" / "loopeng" / "sweep" / "chart_model.py",
+    _VIEWS / "render.py",
     _VIEWS / "dial.py",
     _VIEWS / "oversight.py",
     _VIEWS / "trap.py",
     _VIEWS / "verify.py",
     _VIEWS / "agent.py",
+    _VIEWS / "intervention.py",
     _VIEWS / "exhibit.py",
     REPO_ROOT / "demos" / "04_hill_climbing_loop" / "charts.py",
 )

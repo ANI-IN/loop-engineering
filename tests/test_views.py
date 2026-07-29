@@ -1,5 +1,6 @@
 """The five views. Rendering only — no view makes a model call in these tests."""
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -7,8 +8,10 @@ import pytest
 from loopeng.agent.classify import Outcome
 from loopeng.agent.trap import TrapState, run_trap
 from loopeng.gold.build import build_gold
-from loopeng.views import agent, chrome, dial, trap, verify
+from loopeng.views import agent, chrome, dial, render, verify
 from loopeng.warehouse.connect import ensure_warehouse
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 @pytest.fixture(scope="module")
@@ -47,10 +50,10 @@ def test_reveal_makes_zero_model_calls_through_the_view(items, warehouse):
     after_run = client.calls
 
     ids = [i.item_id for i in subset]
-    trap.grid(state, ids)
+    render.grid(state, ids)
     state.reveal()
-    trap.grid(state, ids)
-    trap.scoreboard(state)
+    render.grid(state, ids)
+    render.scoreboard(state)
 
     assert client.calls == after_run, "the view's reveal path made a model call"
 
@@ -63,26 +66,26 @@ def test_visible_failures_look_identical_to_successes_before_reveal(items, wareh
     state = run_trap(subset, warehouse, arms=(("worker", "L3"),), client=client)
     ids = [i.item_id for i in subset]
 
-    before = trap.grid(state, ids)
+    before = render.grid(state, ids)
     outcomes = {c.judgement.outcome for c in state.cells.values()}
     assert Outcome.VISIBLE_FAILURE in outcomes, "this fixture should produce failures"
     assert "failure" not in before.lower()
     assert "wrong" not in before.lower()
-    assert before.count(trap.LANDED) == len(subset)
+    assert before.count(render.LANDED) == len(subset)
 
     state.reveal()
-    assert "visible failure" in trap.grid(state, ids)
+    assert "visible failure" in render.grid(state, ids)
 
 
 def test_the_scoreboard_is_withheld_not_absent(items, warehouse):
     client = ScriptedClient("SELECT COUNT(*) FROM products")
     state = run_trap(items[:2], warehouse, arms=(("worker", "L3"),), client=client)
-    assert "withheld, not deferred" in trap.scoreboard(state)
+    assert "withheld, not deferred" in render.scoreboard(state)
 
 
 def test_an_unlanded_cell_renders_as_pending():
     state = TrapState()
-    assert trap.PENDING in trap.grid(state, ["p01_product_count__00"])
+    assert render.PENDING in render.grid(state, ["p01_product_count__00"])
 
 
 # ---- AGENT: the enqueue box works with no worker running --------------------
@@ -227,3 +230,109 @@ def test_launch_binds_to_all_interfaces_so_the_lan_fallback_resolves():
 
     source = inspect.getsource(chrome.launch)
     assert '"0.0.0.0"' in source
+
+
+# ---- one boundary, and it is enforced ---------------------------------------
+#
+# There were two `build_trap_app` implementations, in `agent/ui.py` and `views/trap.py`,
+# and they had ALREADY drifted: different outcome labels, different withheld-scores
+# wording, one checking `len(state.arms) == 2` and the other `PAIRED_ARM_COUNT`, one
+# rendering a null metric through a helper and the other inline. `render_attempts` was
+# also defined twice, as two genuinely different functions sharing a name. And
+# `views/agent.py` imported from `agent/ui.py` while `views/oversight.py` imported from
+# `triage/ui.py`, so the boundary was crossed in both directions.
+#
+# The rule now: `views/` owns all Gradio composition; `*/ui.py` modules own none, and
+# there are none left.
+
+
+def _src_files():
+    root = REPO_ROOT / "src" / "loopeng"
+    return sorted(root.rglob("*.py"))
+
+
+def _definitions_of(name: str) -> list[str]:
+    import ast
+
+    found = []
+    for path in _src_files():
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == name:
+                found.append(str(path.relative_to(REPO_ROOT)))
+    return sorted(found)
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["build_trap_app", "build_run_app", "build_agent_app", "build_intervention_app",
+     "render_attempt_timeline", "render_cost", "render_metric", "render_declined",
+     "grid", "scoreboard"],
+)
+def test_each_view_helper_is_defined_exactly_once(name):
+    assert len(_definitions_of(name)) == 1, (
+        f"{name} is defined in {_definitions_of(name)}; two copies is two places for "
+        f"the wording of a disclosure to diverge"
+    )
+
+
+def test_render_attempts_is_gone_as_a_name():
+    """It named two different functions over two different inputs. That is how
+    views/agent.py and views/oversight.py ended up importing "the same" helper from two
+    different modules."""
+    assert _definitions_of("render_attempts") == []
+
+
+def test_no_ui_module_survives_outside_views():
+    """`*/ui.py` owning gr.Blocks is what made the boundary meaningless."""
+    strays = [
+        str(path.relative_to(REPO_ROOT)) for path in _src_files()
+        if path.name == "ui.py"
+    ]
+    assert strays == [], f"{strays} still exist; views/ owns Gradio composition"
+
+
+def test_only_views_import_gradio():
+    """The enforcement, aimed at imports rather than at file names, so a differently
+    named module cannot reintroduce the same problem."""
+    offenders = []
+    for path in _src_files():
+        if path.parent.name == "views":
+            continue
+        if "import gradio" in path.read_text(encoding="utf-8"):
+            offenders.append(str(path.relative_to(REPO_ROOT)))
+    assert offenders == [], f"{offenders} import gradio outside views/"
+
+
+def test_the_render_module_composes_nothing():
+    """It holds pure string renderers. A gr.Blocks here would put the boundary back
+    where it was.
+
+    Checked against the AST rather than the text, because the docstring says the words
+    "no `gr.Blocks` in this file, ever" and a substring search cannot tell a rule from
+    its violation.
+    """
+    import ast
+
+    path = REPO_ROOT / "src" / "loopeng" / "views" / "render.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    calls = [
+        node for node in ast.walk(tree)
+        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
+        and node.value.id == "gr"
+    ]
+    assert calls == [], f"views/render.py touches gr.{calls[0].attr}"
+    assert "import gradio" not in path.read_text(encoding="utf-8")
+
+
+def test_the_surviving_outcome_labels_are_not_emoji():
+    """Chosen deliberately. Emoji render at the mercy of whichever font the projector's
+    browser resolves, and a missing glyph in the cell that should read "silently wrong"
+    is the worst place in this project for a rendering failure."""
+    for label in render.OUTCOME_LABELS.values():
+        assert label.isascii(), f"{label!r} will not survive a projector's font stack"
+    assert "SILENTLY WRONG" in render.OUTCOME_LABELS[Outcome.SILENT_ERROR]
+
+
+def test_the_withheld_line_states_the_property_not_the_button():
+    assert "withheld, not deferred" in render.WITHHELD

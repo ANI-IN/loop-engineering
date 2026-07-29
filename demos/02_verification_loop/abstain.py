@@ -8,7 +8,8 @@ import argparse
 from loopeng.logging import configure_logging
 from loopeng.sweep.orchestrator import load_all
 from loopeng.triage.abstain import curve
-from loopeng.triage.ui import build_intervention_app, render_declined
+from loopeng.views.intervention import build_intervention_app
+from loopeng.views.render import render_declined
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -6,10 +6,10 @@ Thin by rule. The runner, the scoring and the grid all live in src/loopeng/agent
 import argparse
 
 from loopeng.agent.trap import estimate_trap_cost, print_grid, run_trap, save_state
-from loopeng.agent.ui import build_trap_app
 from loopeng.gold.build import build_gold
 from loopeng.logging import configure_logging
 from loopeng.settings import load_settings
+from loopeng.views.trap import build_trap_app
 from loopeng.warehouse.connect import ensure_warehouse
 
 

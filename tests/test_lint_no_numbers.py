@@ -138,13 +138,22 @@ def test_the_targets_are_the_modules_that_render():
     the modules that actually build what a room reads.
     """
     views = REPO_ROOT / "src" / "loopeng" / "views"
+    sweep = REPO_ROOT / "src" / "loopeng" / "sweep"
     assert set(TARGETS) == {
-        REPO_ROOT / "src" / "loopeng" / "sweep" / "charts.py",
+        sweep / "charts.py",
+        # The captions and the cell-to-row transform both renderers consume: a typed
+        # number here reaches the projector AND the README.
+        sweep / "chart_model.py",
+        # Added when the duplicated view renderers were consolidated here. Moving that
+        # prose out of a scanned file into an unscanned one would have reduced the
+        # rule's coverage while looking like cleanup.
+        views / "render.py",
         views / "dial.py",
         views / "oversight.py",
         views / "trap.py",
         views / "verify.py",
         views / "agent.py",
+        views / "intervention.py",
         views / "exhibit.py",
         REPO_ROOT / "demos" / "04_hill_climbing_loop" / "charts.py",
     }

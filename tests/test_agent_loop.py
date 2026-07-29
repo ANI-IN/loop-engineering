@@ -9,8 +9,8 @@ from loopeng.agent.loop import (
     extract_sql,
     run_question,
 )
-from loopeng.agent.ui import render_attempts
 from loopeng.usage import CallUsage
+from loopeng.views.render import render_attempt_timeline
 from loopeng.warehouse.connect import ensure_warehouse
 
 
@@ -307,7 +307,7 @@ def test_a_model_failure_is_never_reported_as_a_database_failure(warehouse):
     client = RefusingClient(_auth_error())
     run = run_question("q", warehouse=warehouse, client=client)
 
-    rendered = render_attempts(run)
+    rendered = render_attempt_timeline(run)
     assert "database said" not in rendered
     assert "the API said" in rendered
     assert "the model call failed" in rendered
