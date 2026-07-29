@@ -16,6 +16,7 @@ from loopeng.sweep.runner import (
     SWEEP_DIR,
     Profile,
     SweepAborted,
+    apply_item_limit,
     build_cells,
     load_cell,
     project_remaining,
@@ -89,12 +90,15 @@ REPLICATES
 def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
               cap_usd: float | None = None, directory: Path = SWEEP_DIR,
               verifier=None, on_cell=None, quiet: bool = False,
-              fresh: bool = False) -> dict:
+              fresh: bool = False, item_limit: int | None = None) -> dict:
     directory = Path(directory)
     if fresh:
         # Checked before anything else, including the pre-registration: refusing after
         # printing a hypothesis to the room reads as a crash rather than a guard.
         require_fresh(directory)
+    # The profile's own item cap, and the refusal when --limit is not permitted here.
+    # Applied in the runner so no caller can report a trimmed run as a full profile.
+    items = apply_item_limit(items, profile, item_limit)
     cells = build_cells(profile)
     cap_usd = profile.cap_usd if cap_usd is None else cap_usd
     projected = project_remaining(cells, len(items))

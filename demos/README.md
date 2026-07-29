@@ -47,6 +47,7 @@ the order a room sees things. They do not line up and are not meant to.
 
 | folder | loop level | what it adds | the failure it can finally see |
 |---|---|---|---|
+| [`00_preflight/`](00_preflight/) | — (not a loop) | Proves the key and the checkout for a fraction of a cent | A credential or model-access problem, before anything expensive |
 | [`01_agent_loop/`](01_agent_loop/) | Level 1 | Retry on execution failure | SQL that crashes |
 | [`02_verification_loop/`](02_verification_loop/) | Level 2 | Rule checks over the parse tree | SQL that runs and breaks a declared rule |
 | [`03_event_driven_loop/`](03_event_driven_loop/) | Level 3 | A queue and a worker, no human | — (it removes the human, it adds no new check) |

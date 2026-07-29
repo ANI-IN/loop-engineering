@@ -33,6 +33,9 @@ STAGES = (
 # tests below pass trivially while a file is absent and bite the moment it lands,
 # which is the same discipline as the numeric-literal rule.
 ENTRY_POINTS = {
+    # Not a loop stage, so it is absent from STAGES — but it is an entry point a cloner
+    # runs first, and it has to cold-start like every other one.
+    "00_preflight": ("check.py",),
     "01_agent_loop": ("run.py", "trap.py"),
     "02_verification_loop": ("run.py", "regex_swap.py", "failure_paths.py", "abstain.py"),
     "03_event_driven_loop": ("worker.py", "enqueue.py"),

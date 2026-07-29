@@ -266,6 +266,81 @@ def test_delivery_runs_no_ablation():
     assert DEVELOPMENT.runs_ablation is True
 
 
+# ---- the smoke profile: the pipeline, on a cloner's key, for pennies ---------
+
+
+def test_smoke_is_two_l0_cells():
+    from loopeng.sweep.runner import SMOKE
+
+    cells = build_cells(SMOKE)
+    assert len(cells) == 2
+    assert {c.key for c in cells} == {"worker_L0_one_shot_r0", "worker_L0_loop_r0"}
+    assert {c.role for c in cells} == {"worker"}
+
+
+def test_smoke_projects_to_a_few_cents():
+    """The cheapest live path there is. Before it existed, the smallest was `delivery`
+    at 4 cells x 50 items."""
+    from loopeng.sweep.runner import DELIVERY, SMOKE
+
+    smoke = project_remaining(build_cells(SMOKE), SMOKE.item_limit)
+    delivery = project_remaining(build_cells(DELIVERY), 50)
+
+    assert smoke < SMOKE.cap_usd
+    assert smoke * 10 < delivery, f"smoke projects est. ${smoke:.4f}, not cheap enough"
+
+
+def test_smoke_carries_its_own_item_limit():
+    """A cost ceiling that depends on someone typing --limit is not a ceiling."""
+    from loopeng.sweep.runner import SMOKE, resolve_item_limit
+
+    assert SMOKE.item_limit is not None
+    assert resolve_item_limit(SMOKE, None) == SMOKE.item_limit
+
+
+# ---- --limit was documented "development only" and applied everywhere ---------
+
+
+def test_limit_is_refused_where_the_docs_said_it_was():
+    """The flag's help text said "(development only)" and it was applied to any
+    profile unconditionally — a declared restriction nothing enforced, in the tool
+    that runs the sweep."""
+    from loopeng.sweep.runner import DELIVERY, LimitNotAllowed, resolve_item_limit
+
+    with pytest.raises(LimitNotAllowed) as exc:
+        resolve_item_limit(DELIVERY, 5)
+    assert "delivery" in str(exc.value)
+
+
+def test_limit_is_accepted_where_it_is_declared():
+    from loopeng.sweep.runner import DEVELOPMENT, SMOKE, resolve_item_limit
+
+    assert resolve_item_limit(DEVELOPMENT, 5) == 5
+    assert resolve_item_limit(SMOKE, 3) == 3
+
+
+def test_every_profile_declares_whether_it_takes_a_limit():
+    """So a new profile has to make the decision rather than inherit a default that
+    happens to be permissive."""
+    from loopeng.sweep.runner import PROFILES
+
+    permissive = {p.name for p in PROFILES.values() if p.allows_limit}
+    assert permissive == {"smoke", "development"}
+
+
+def test_the_limit_spreads_across_clusters_rather_than_taking_a_prefix(tmp_path):
+    """items[:8] is two of the ten clusters. Round-robin maximises clusters at small
+    n, which matters because clustering is the caveat everything here carries."""
+    from loopeng.gold.build import build_gold
+    from loopeng.warehouse.connect import ensure_warehouse
+
+    warehouse = ensure_warehouse(tmp_path / "w.duckdb", seed=20260729)
+    subset = build_gold(warehouse, limit=8)
+
+    assert len(subset) == 8
+    assert len({item.pattern_key for item in subset}) == 8
+
+
 def test_the_profile_flag_is_required(tmp_path):
     """A delivery run must not inherit development settings by omission — that is a
     tenfold cost difference decided by a flag nobody typed."""

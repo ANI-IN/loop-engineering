@@ -28,7 +28,7 @@ import structlog
 
 from loopeng.agent.classify import Outcome, judge
 from loopeng.agent.loop import run_question
-from loopeng.gold.build import json_default
+from loopeng.gold.build import json_default, spread_across_clusters
 from loopeng.metric import Metric
 from loopeng.pricing import prices_for
 from loopeng.registry import spec_for
@@ -84,6 +84,22 @@ class Profile:
     # rather than being cited — an escalation nobody watches run is a slide.
     escalation_allowance: int = 0
 
+    # Which prompt levels this profile measures. Both, except for `smoke`, whose whole
+    # job is to prove the pipeline for pennies rather than to measure the L0/L3 gap.
+    levels: tuple[str, ...] = ("L0", "L3")
+
+    # How many gold items a cell runs. None means all of them.
+    #
+    # Declared on the profile rather than left to a flag, because a cost ceiling that
+    # depends on someone remembering to type `--limit` is not a ceiling.
+    item_limit: int | None = None
+
+    # Whether `--limit` may override the above. `demos/.../sweep.py` documented the
+    # flag as "(development only)" and then applied it to every profile — a declared
+    # restriction nothing enforced, in the tool that runs the sweep. Now it is a
+    # property of the profile and the flag is refused where the docs said it was.
+    allows_limit: bool = False
+
 
 DELIVERY = Profile(
     name="delivery",
@@ -107,7 +123,27 @@ DEVELOPMENT = Profile(
     cap_usd=8.0,
     runs_ablation=True,
     escalation_allowance=12,
+    allows_limit=True,
     note="Both models, replicates on both L0 loop cells, ablation. Run once, not per delivery.",
+)
+
+SMOKE = Profile(
+    name="smoke",
+    roles=("worker",),
+    levels=("L0",),
+    replicates=1,
+    cap_usd=0.05,
+    runs_ablation=False,
+    item_limit=8,
+    allows_limit=True,
+    note=(
+        "Two cells (L0 one-shot, L0 loop), Haiku, 8 items, a few cents. It measures "
+        "nothing worth quoting — 8 items cannot separate anything — and that is not "
+        "what it is for. It proves the whole pipeline on YOUR key: real calls, cells on "
+        "disk, charts rendered, and the delta computed against the stored baseline. The "
+        "smallest live path used to be `delivery` at 4 cells x 50 items, so a first-time "
+        "cloner had no way to spend two cents finding out whether their key worked."
+    ),
 )
 
 EXHIBIT = Profile(
@@ -124,7 +160,47 @@ EXHIBIT = Profile(
     ),
 )
 
-PROFILES = {p.name: p for p in (DELIVERY, DEVELOPMENT, EXHIBIT)}
+PROFILES = {p.name: p for p in (SMOKE, DELIVERY, DEVELOPMENT, EXHIBIT)}
+
+
+class LimitNotAllowed(RuntimeError):
+    """`--limit` was passed to a profile that does not accept it.
+
+    The flag was documented "(development only)" and applied unconditionally, so a
+    delivery run could be silently cut to a handful of items and still be reported as
+    delivery. Refused rather than ignored: an operator who typed a flag should be told
+    it did nothing, not left to assume it worked.
+    """
+
+
+def resolve_item_limit(profile: Profile, requested: int | None) -> int | None:
+    """The item cap for this run. Raises when the flag is not permitted here."""
+    if requested is None:
+        return profile.item_limit
+    if not profile.allows_limit:
+        allowed = sorted(p.name for p in PROFILES.values() if p.allows_limit)
+        raise LimitNotAllowed(
+            f"--limit is not accepted by the '{profile.name}' profile. Profiles that "
+            f"accept it: {', '.join(allowed)}.\n"
+            f"A cell run over fewer items than the profile declares is not that "
+            f"profile's measurement, and reporting it as one is how a number nobody "
+            f"can reproduce ends up on a chart."
+        )
+    return requested
+
+
+def apply_item_limit(items, profile: Profile, requested: int | None = None) -> list:
+    """The items this profile may run, with the limit rule enforced HERE.
+
+    Enforced in the runner rather than at the call site: the caller that forgets is the
+    one that reports a five-item run as a delivery measurement, and every caller —
+    demos, tests, the orchestrator — should get the same refusal.
+    """
+    limit = resolve_item_limit(profile, requested)
+    items = list(items)
+    if limit is None or limit >= len(items):
+        return items
+    return spread_across_clusters(items, limit)
 
 
 @dataclass(frozen=True)
@@ -163,7 +239,7 @@ def build_cells(profile: Profile = DEVELOPMENT) -> tuple[Cell, ...]:
     """
     cells = []
     for role in profile.roles:
-        for level in ("L0", "L3"):
+        for level in profile.levels:
             for mode in ("one_shot", "loop"):
                 reps = profile.replicates if (mode == "loop" and level == "L0") else 1
                 for replicate in range(reps):

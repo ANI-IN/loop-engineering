@@ -172,17 +172,54 @@ def _build_item(pattern: Pattern, params: dict, index: int, warehouse: Path) -> 
     )
 
 
-def build_gold(warehouse: Path) -> list[GoldItem]:
+def spread_across_clusters(items: list[GoldItem], limit: int) -> list[GoldItem]:
+    """The first `limit` items, taking one per pattern before taking a second of any.
+
+    A prefix would be wrong here. The items are 10 clusters of 5, and `items[:8]` is
+    two clusters — so a subset run would concentrate every observation on two patterns
+    and inherit the worst version of the clustering problem the rest of this project
+    keeps warning about. Round-robin maximises clusters at small n.
+
+    Deterministic: pattern order and parameter order are both fixed, so the same limit
+    always yields the same items and a subset run stays comparable to itself.
+    """
+    by_pattern: dict[str, list[GoldItem]] = {}
+    for item in items:
+        by_pattern.setdefault(item.pattern_key, []).append(item)
+
+    picked: list[GoldItem] = []
+    depth = 0
+    while len(picked) < limit:
+        added = False
+        for key in sorted(by_pattern):
+            group = by_pattern[key]
+            if depth < len(group) and len(picked) < limit:
+                picked.append(group[depth])
+                added = True
+        if not added:
+            break
+        depth += 1
+    return picked
+
+
+def build_gold(warehouse: Path, *, limit: int | None = None) -> list[GoldItem]:
     """Execute every pattern at every parameterisation. Raises rather than looping.
 
     There is deliberately no retry loop here. The plan's regeneration budget is two
     attempts, and the third attempt is the one that would paper over a real defect,
     so a failure surfaces as an exception naming the item and what went wrong.
+
+    `limit` trims the returned set for the cheap profiles. The FULL set is always built
+    first: the discriminating and non-degenerate gates are what make an item usable, and
+    a limit that skipped building the rest would also skip finding out that a pattern
+    had stopped discriminating.
     """
     items: list[GoldItem] = []
     for pattern in PATTERNS:
         for index, params in enumerate(pattern.params):
             items.append(_build_item(pattern, params, index, warehouse))
+    if limit is not None and limit < len(items):
+        return spread_across_clusters(items, limit)
     return items
 
 

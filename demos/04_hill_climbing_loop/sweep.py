@@ -17,7 +17,13 @@ from loopeng.gold.build import build_gold
 from loopeng.logging import configure_logging
 from loopeng.settings import load_settings
 from loopeng.sweep.orchestrator import run_sweep
-from loopeng.sweep.runner import PROFILES, SWEEP_DIR, StaleCellsPresent, SweepAborted
+from loopeng.sweep.runner import (
+    PROFILES,
+    SWEEP_DIR,
+    LimitNotAllowed,
+    StaleCellsPresent,
+    SweepAborted,
+)
 from loopeng.warehouse.connect import ensure_warehouse
 
 
@@ -45,10 +51,14 @@ def main(argv: list[str] | None = None) -> int:
     # development settings by omission — that is a 10x cost difference decided by a
     # flag nobody typed.
     parser.add_argument("--profile", required=True, choices=sorted(PROFILES),
-                        help="delivery: Haiku only, 4 cells, under $1. "
-                             "development: both models, replicates, ablation.")
+                        help="smoke: 2 cells, 8 items, a few cents — proves your key "
+                             "and the whole pipeline. delivery: Haiku only, 4 cells, "
+                             "under $1. development: both models, replicates, ablation.")
     parser.add_argument("--cap-usd", type=float, help="Override the profile's cap.")
-    parser.add_argument("--limit", type=int, help="Fewer items (development only).")
+    parser.add_argument("--limit", type=int,
+                        help="Fewer items. Accepted by the smoke and development "
+                             "profiles only; refused elsewhere, because a delivery "
+                             "run over 5 items is not a delivery measurement.")
     parser.add_argument("--dir", default=str(SWEEP_DIR), help="Where cell files live.")
     parser.add_argument("--foreground", action="store_true",
                         help="Block the terminal instead of detaching.")
@@ -65,16 +75,13 @@ def main(argv: list[str] | None = None) -> int:
     configure_logging()
     settings = load_settings()
     warehouse = ensure_warehouse(settings.warehouse_path, seed=settings.warehouse_seed)
-    items = build_gold(warehouse)
-    if args.limit:
-        items = items[: args.limit]
 
-    profile = PROFILES[args.profile]
     try:
-        report = run_sweep(items, warehouse, profile=profile, cap_usd=args.cap_usd,
+        report = run_sweep(build_gold(warehouse), warehouse, cap_usd=args.cap_usd,
+                           profile=PROFILES[args.profile], item_limit=args.limit,
                            directory=args.dir, fresh=args.fresh)
-    except StaleCellsPresent as stale:
-        print(f"\nREFUSING TO START\n{stale}")
+    except (StaleCellsPresent, LimitNotAllowed) as refused:
+        print(f"\nREFUSING TO START\n{refused}")
         return 3
     except SweepAborted as abort:
         # Report the last completed cell and stop. Retrying into the cap is how a
