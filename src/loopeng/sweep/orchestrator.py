@@ -12,6 +12,7 @@ import structlog
 
 from loopeng.sweep.reference import as_measured
 from loopeng.sweep.runner import (
+    CONCURRENCY_PER_MODEL,
     DEVELOPMENT,
     HEADROOM,
     SWEEP_DIR,
@@ -124,7 +125,8 @@ REPLICATES
 def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
               cap_usd: float | None = None, directory: Path = SWEEP_DIR,
               verifier=None, on_cell=None, quiet: bool = False,
-              fresh: bool = False, item_limit: int | None = None) -> dict:
+              fresh: bool = False, item_limit: int | None = None,
+              concurrency: int = CONCURRENCY_PER_MODEL) -> dict:
     directory = Path(directory)
     if fresh:
         # Checked before anything else, including the pre-registration: refusing after
@@ -174,7 +176,8 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
                   f"(spent est. ${spent:.4f}, projected total est. "
                   f"${projected_total:.4f} of ${cap_usd:.2f})", flush=True)
         kwargs = {"verifier": verifier} if verifier is not None else {}
-        report = run_cell(cell, items, warehouse, directory=directory, **kwargs)
+        report = run_cell(cell, items, warehouse, directory=directory,
+                          concurrency=concurrency, **kwargs)
         spent += report["cost_usd"]["value"]
         completed.append(report)
         if on_cell:
@@ -188,7 +191,7 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
         "n_resumed": len(skipped), "resumed": skipped,
         "projected_usd": round(projected, 6),
         "spend_usd": {"value": round(spent, 6), "source": "estimated"},
-        "cap_usd": cap_usd, "cells": completed,
+        "cap_usd": cap_usd, "concurrency": concurrency, "cells": completed,
     }
 
 

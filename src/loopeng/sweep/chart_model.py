@@ -104,6 +104,10 @@ ABSTENTION_LIVE_NOTE = (
 
 NOT_MEASURED = "not yet measured"
 
+# A proportion becomes a percentage for display. Furniture, not a finding:
+# the measurement is the proportion, and this only changes its units.
+PERCENT = 100  # layout: proportion to display percentage
+
 # The palette, shared so a role is the same colour in both media.
 WORKER_COLOUR = "#0ea5e9"
 FRONTIER_COLOUR = "#f97316"
@@ -149,6 +153,56 @@ def note_for(cell: dict, text: str) -> str:
 def money(value: float | None) -> str:
     """Always `est.`. Tokens are measured; dollars are a hand-entered price table."""
     return f"est. ${value:.4f}" if value else NOT_MEASURED
+
+
+def cache_note(cells) -> str:
+    """What caching achieved across these cells, or why it did not apply.
+
+    Reported on the COST chart because that is where the number it changes lives. It is a
+    teaching beat as much as a figure: the apparatus for this — cache pricing, cache token
+    accounting, a probe that measured which prefixes clear which model's minimum — was all
+    present and `cache_control` was never set anywhere. The instrument existed, the number
+    was known, and the optimisation was never switched on.
+
+    Never a zero. A cell where caching could not apply did not achieve a nil hit rate; it
+    had no cache to hit, and the note says which.
+    """
+    from loopeng.caching import hit_rate, saving_usd
+    from loopeng.registry import spec_for
+
+    read = written = 0
+    saved = 0.0
+    applied = []
+    for cell in cells:
+        tokens = cell.get("tokens") or {}
+        cell_read = tokens.get("cache_read_input_tokens", 0)
+        cell_written = tokens.get("cache_creation_input_tokens", 0)
+        if not cell_read and not cell_written:
+            continue
+        applied.append(cell["key"])
+        read += cell_read
+        written += cell_written
+        saved += saving_usd(tokens, spec_for(cell["role"]).model_id) or 0.0
+
+    if not applied:
+        return (
+            "PROMPT CACHING did not apply to any cell here. The prefix has to clear the "
+            "model's minimum cacheable length, and — measured, not assumed — only the "
+            "frontier role at L3 does: 1024 minimum against 1037 prefix tokens. Haiku's "
+            "minimum is four times higher than Sonnet's and its prefix is shorter, so no "
+            "Haiku cell in this project can cache at all. That asymmetry is silent: no "
+            "error, just a different cost per cell, on the cheaper model."
+        )
+    rate = hit_rate({"cache_read_input_tokens": read,
+                     "cache_creation_input_tokens": written})
+    return (
+        f"PROMPT CACHING applied to {len(applied)} of {len(cells)} cell(s): "
+        f"{rate * PERCENT:.0f}% of prefix tokens served from cache "
+        f"({read} read, {written} written), saving est. ${saved:.4f} against paying full "
+        f"input price. Estimated, like every dollar here — the same hand-entered table. "
+        f"It applies only where the prefix clears the model's minimum, which is the "
+        f"frontier role at L3 and nothing else."
+    )
 
 
 def bar_rows(cells, *, metric: str) -> list[dict]:

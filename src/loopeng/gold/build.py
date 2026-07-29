@@ -22,6 +22,7 @@ Everything runs through `run_sql`, the read-only factory. Gold that could only b
 produced with write access would be gold the agent cannot reach.
 """
 
+import hashlib
 import json
 from collections import Counter
 from dataclasses import dataclass, field
@@ -202,7 +203,100 @@ def spread_across_clusters(items: list[GoldItem], limit: int) -> list[GoldItem]:
     return picked
 
 
-def build_gold(warehouse: Path, *, limit: int | None = None) -> list[GoldItem]:
+# ---------------------------------------------------------------------------
+# The cache.
+#
+# `build_gold` executes 10 patterns x 5 parameterisations x (gold + composite naive + one
+# naive per rule) against DuckDB. Measured at 3.7 s, and it was paid fresh by every demo
+# entry point, the worker, every view and every test fixture that needed items.
+#
+# The key is the warehouse seed plus a hash of the two inputs that decide what gold IS:
+# the pattern definitions and the semantic model. Editing either invalidates the cache
+# automatically, which is the only version of this worth having — a cache keyed on the
+# seed alone would serve stale gold after a rule change, and stale gold is a wrong answer
+# key that nothing downstream can detect.
+#
+# The file is gitignored. It is derived, not evidence.
+# ---------------------------------------------------------------------------
+CACHE_PATH = Path("results/gold_cache.json")
+
+_CACHE_INPUTS = (
+    Path(__file__).resolve().parent / "patterns.py",
+    Path(__file__).resolve().parent.parent / "warehouse" / "semantic_model.yaml",
+)
+
+
+def cache_key(seed: int) -> str:
+    """Seed plus a hash of everything that decides what the gold answers are."""
+    digest = hashlib.sha256(str(seed).encode())
+    for path in _CACHE_INPUTS:
+        # The path is part of the key as well as its content, so a renamed input is a
+        # different key rather than a silently shorter one.
+        digest.update(path.name.encode())
+        digest.update(path.read_bytes() if path.is_file() else b"<absent>")
+    return digest.hexdigest()
+
+
+def read_cache(key: str, path: Path = CACHE_PATH) -> list[GoldItem] | None:
+    """The cached set, or None on any mismatch or damage.
+
+    Every failure path returns None rather than raising. A cache is an optimisation, and
+    an optimisation that can break a cold start is worse than no optimisation — but note
+    that it returns None rather than a PARTIAL set, because a short gold set would quietly
+    change every denominator downstream.
+    """
+    path = Path(path)
+    if not path.is_file():
+        return None
+    try:
+        body = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if body.get("key") != key:
+        return None
+    try:
+        return [_item_from_dict(row) for row in body["items"]]
+    except (KeyError, TypeError):
+        return None
+
+
+def write_cache(key: str, items: list[GoldItem], path: Path = CACHE_PATH) -> Path:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"key": key, "items": [_item_to_dict(item) for item in items]},
+                   default=json_default),
+        encoding="utf-8",
+    )
+    return path
+
+
+def canonical(items: list[GoldItem]) -> list[GoldItem]:
+    """Put items through the serialisation round trip, whether or not a cache was used.
+
+    **This exists because the cache was making the RETURN TYPE depend on cache state.**
+    DuckDB hands back `Decimal('76744.66')` from the revenue aggregates; `json_default`
+    turns it into `76744.66` on the way to disk, so a warm cache returned floats where a
+    cold build returned Decimals — 14 of 50 items differed by `==`. `rows_equal`
+    normalises numeric types and tolerated all of it, so nothing measured moved. But a
+    value whose type depends on whether a cache file happened to exist is exactly the kind
+    of thing that behaves one way in CI and another on a laptop.
+
+    So both paths go through the same transform, and cold and warm are identical by
+    construction rather than by luck. It is also the form `gold.jsonl` already had, which
+    is what reaches LangSmith and what grading compares against.
+
+    Applied AFTER `_build_item`, so the discriminating and non-degenerate gates and the
+    ambiguity grouping all still run against the raw DuckDB values.
+    """
+    return [
+        _item_from_dict(json.loads(json.dumps(_item_to_dict(item), default=json_default)))
+        for item in items
+    ]
+
+
+def build_gold(warehouse: Path, *, limit: int | None = None, seed: int | None = None,
+               cache_path: Path | None = CACHE_PATH) -> list[GoldItem]:
     """Execute every pattern at every parameterisation. Raises rather than looping.
 
     There is deliberately no retry loop here. The plan's regeneration budget is two
@@ -210,17 +304,42 @@ def build_gold(warehouse: Path, *, limit: int | None = None) -> list[GoldItem]:
     so a failure surfaces as an exception naming the item and what went wrong.
 
     `limit` trims the returned set for the cheap profiles. The FULL set is always built
-    first: the discriminating and non-degenerate gates are what make an item usable, and
-    a limit that skipped building the rest would also skip finding out that a pattern
-    had stopped discriminating.
+    or loaded first: the discriminating and non-degenerate gates are what make an item
+    usable, and a limit that skipped building the rest would also skip finding out that a
+    pattern had stopped discriminating. It is also why the cache is not keyed on the
+    limit — one cache serves every subset.
+
+    `cache_path=None` forces a rebuild. Tests that care about the gates use it.
     """
-    items: list[GoldItem] = []
-    for pattern in PATTERNS:
-        for index, params in enumerate(pattern.params):
-            items.append(_build_item(pattern, params, index, warehouse))
+    key = cache_key(settings_seed(seed))
+    items = read_cache(key, cache_path) if cache_path else None
+    if items is None:
+        built = []
+        for pattern in PATTERNS:
+            for index, params in enumerate(pattern.params):
+                built.append(_build_item(pattern, params, index, warehouse))
+        if cache_path:
+            write_cache(key, built, cache_path)
+        # Canonicalised even when nothing was cached, so a cold build and a warm one
+        # return the same types. See `canonical`.
+        items = canonical(built)
     if limit is not None and limit < len(items):
         return spread_across_clusters(items, limit)
     return items
+
+
+def settings_seed(seed: int | None) -> int:
+    """The warehouse seed, from the argument or from configuration.
+
+    Read off the Settings class rather than instantiated, so building gold does not
+    require a credential — the offline suite and the exhibit both need this to work with
+    no key present.
+    """
+    if seed is not None:
+        return seed
+    from loopeng.settings import Settings
+
+    return Settings.model_fields["warehouse_seed"].default
 
 
 def clustering_summary(items: list[GoldItem]) -> dict:
@@ -264,55 +383,54 @@ def ambiguity_summary(items: list[GoldItem]) -> dict:
     }
 
 
+def _item_to_dict(item: GoldItem) -> dict:
+    """One serialisation, used by both `write_gold` and the cache.
+
+    They were the same shape written twice; a cache that round-tripped differently from
+    the file LangSmith reads would be a second definition of what a gold item is.
+    """
+    return {
+        "item_id": item.item_id,
+        "pattern_key": item.pattern_key,
+        "question": item.question,
+        "gold_sql": item.gold_sql,
+        "gold_rows": item.gold_rows,
+        "naive_sql": item.naive_sql,
+        "naive_rows": item.naive_rows,
+        "naive_by_rule": item.naive_by_rule,
+        "ambiguous_rule_groups": [list(group) for group in item.ambiguous_rule_groups],
+        "rules": list(item.rules),
+        "order_sensitive": item.order_sensitive,
+    }
+
+
+def _item_from_dict(body: dict) -> GoldItem:
+    return GoldItem(
+        item_id=body["item_id"],
+        pattern_key=body["pattern_key"],
+        question=body["question"],
+        gold_sql=body["gold_sql"],
+        gold_rows=body["gold_rows"],
+        naive_sql=body["naive_sql"],
+        naive_rows=body["naive_rows"],
+        naive_by_rule=body["naive_by_rule"],
+        ambiguous_rule_groups=tuple(tuple(g) for g in body["ambiguous_rule_groups"]),
+        rules=tuple(body["rules"]),
+        order_sensitive=body["order_sensitive"],
+    )
+
+
 def write_gold(items: list[GoldItem], path: Path) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
         for item in items:
-            handle.write(
-                json.dumps(
-                    {
-                        "item_id": item.item_id,
-                        "pattern_key": item.pattern_key,
-                        "question": item.question,
-                        "gold_sql": item.gold_sql,
-                        "gold_rows": item.gold_rows,
-                        "naive_sql": item.naive_sql,
-                        "naive_rows": item.naive_rows,
-                        "naive_by_rule": item.naive_by_rule,
-                        "ambiguous_rule_groups": [
-                            list(group) for group in item.ambiguous_rule_groups
-                        ],
-                        "rules": list(item.rules),
-                        "order_sensitive": item.order_sensitive,
-                    },
-                    default=json_default,
-                )
-                + "\n"
-            )
+            handle.write(json.dumps(_item_to_dict(item), default=json_default) + "\n")
 
 
 def read_gold(path: Path) -> list[GoldItem]:
-    items = []
-    for line in Path(path).read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        body = json.loads(line)
-        items.append(
-            GoldItem(
-                item_id=body["item_id"],
-                pattern_key=body["pattern_key"],
-                question=body["question"],
-                gold_sql=body["gold_sql"],
-                gold_rows=body["gold_rows"],
-                naive_sql=body["naive_sql"],
-                naive_rows=body["naive_rows"],
-                naive_by_rule=body["naive_by_rule"],
-                ambiguous_rule_groups=tuple(
-                    tuple(group) for group in body["ambiguous_rule_groups"]
-                ),
-                rules=tuple(body["rules"]),
-                order_sensitive=body["order_sensitive"],
-            )
-        )
-    return items
+    return [
+        _item_from_dict(json.loads(line))
+        for line in Path(path).read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]

@@ -58,6 +58,10 @@ question_queue.duckdb
 # ---------------------------------------------------------------------------
 results/*.json
 results/*.jsonl
+# Derived, not evidence: build_gold memoises here, keyed on the warehouse seed plus a
+# hash of gold/patterns.py and warehouse/semantic_model.yaml, so a rule edit invalidates
+# it automatically. Committing it would ship an answer key nobody re-derived.
+results/gold_cache.json
 results/sweep/
 results/ablation/
 results/charts/

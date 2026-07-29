@@ -27,6 +27,7 @@ zero return.
 """
 
 import re
+import time
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
@@ -35,6 +36,7 @@ from typing import Protocol
 import anthropic
 import structlog
 
+from loopeng.caching import user_content
 from loopeng.prompts import render_prompt
 from loopeng.registry import spec_for
 from loopeng.settings import load_settings
@@ -95,6 +97,34 @@ RETRYABLE_CALL_ERRORS = (
     anthropic.APIConnectionError,    # transport
     anthropic.APIStatusError,        # 5xx, after the fatal subclasses above are taken
 )
+
+
+# Backoff for the retryable branch. README §18 tells the operator to "lower the per-model
+# concurrency before the sweep rather than after it starts failing" — and until now there
+# was no flag to do it with, and no backoff either, so a 429 was retried immediately into
+# the same limit. Sleeping is what turns a retry into a retry rather than a second refusal.
+#
+# `retry-after` is honoured when the API sends it, because the server knows when the pool
+# refills and we do not. The doubling below is the fallback.
+BACKOFF_BASE_SECONDS = 1.0
+BACKOFF_CEILING_SECONDS = 30.0
+
+
+def retry_after_seconds(exc: Exception, attempt: int) -> float:
+    """How long to wait before the next attempt.
+
+    The server's own `retry-after` wins. It knows when the pool refills; a client
+    doubling a guess is what makes a rate limit last longer than it had to.
+    """
+    header = getattr(getattr(exc, "response", None), "headers", None)
+    if header is not None:
+        raw = header.get("retry-after")
+        if raw:
+            try:
+                return min(float(raw), BACKOFF_CEILING_SECONDS)
+            except (TypeError, ValueError):
+                pass
+    return min(BACKOFF_BASE_SECONDS * (2 ** (attempt - 1)), BACKOFF_CEILING_SECONDS)
 
 
 def triage_call_failure(
@@ -212,9 +242,24 @@ def extract_sql(text: str) -> str:
     return text.strip()
 
 
-def _build_messages(question: str, level: str, history: list[Attempt]) -> list[dict]:
+def _build_messages(question: str, level: str, history: list[Attempt],
+                    *, role: str = "worker") -> list[dict]:
+    """The conversation. The static prefix is marked cacheable where it can be.
+
+    `role` decides only whether `cache_control` is attached — see `loopeng.caching`, which
+    reads the committed token measurement rather than estimating. Where the prefix cannot
+    cache the first turn is the same single string it always was, so the request stays
+    byte-identical to what the reference measurements were taken with.
+
+    The retry feedback below is appended as later turns and therefore sits OUTSIDE the
+    cached prefix. It has to: feedback inside the prefix would break the cache on every
+    retry, which is every call a loop makes beyond the first.
+    """
     messages: list[dict] = [
-        {"role": "user", "content": f"{render_prompt(level)}\n\nQuestion: {question}"}
+        {
+            "role": "user",
+            "content": user_content(render_prompt(level), question, role=role, level=level),
+        }
     ]
     for attempt in history:
         messages.append({"role": "assistant", "content": attempt.sql})
@@ -243,6 +288,7 @@ def run_question(
     client: SupportsMessages | None = None,
     item_id: str | None = None,
     timeout_s: float = 30.0,
+    sleeper=time.sleep,
 ) -> AgentRun:
     """Run one question to termination. Never raises on a model or SQL failure."""
     spec = spec_for(role)
@@ -266,7 +312,7 @@ def run_question(
         try:
             response = client.messages.create(
                 model=spec.model_id,
-                messages=_build_messages(question, level, attempts),
+                messages=_build_messages(question, level, attempts, role=role),
                 **spec.request_kwargs,
             )
             usage = CallUsage.from_response(spec.model_id, response, outcome="ok")
@@ -287,7 +333,12 @@ def run_question(
                           termination=str(fatal), error=str(exc))
                 termination = fatal
                 break
-            log.warning("model_call_failed", question=question[:60], attempt=n, error=str(exc))
+            log.warning("model_call_failed", question=question[:60], attempt=n,
+                        error=str(exc))
+            # Retryable, so wait before going round. Retrying a 429 immediately
+            # arrives back at the same limit and makes it last longer.
+            if n < max_attempts:
+                sleeper(retry_after_seconds(exc, n))
             continue
 
         ledger.record(usage)

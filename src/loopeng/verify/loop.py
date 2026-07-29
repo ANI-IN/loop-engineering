@@ -16,6 +16,7 @@ Termination reasons extend Level 1's four. `max_attempts` is raised above 1 here
 they were structurally unable to fire, which means Phase 1 was no evidence they work.
 """
 
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -27,6 +28,7 @@ from loopeng.agent.loop import (
     TerminationReason,
     _build_messages,
     extract_sql,
+    retry_after_seconds,
     triage_call_failure,
 )
 from loopeng.contracts import VerifyContext
@@ -133,6 +135,7 @@ def run_verified(
     item_id: str | None = None,
     timeout_s: float = 30.0,
     verifier=verify,
+    sleeper=time.sleep,
 ) -> VerifiedRun:
     """Run one question until a query both executes and passes the verifiers."""
     spec = spec_for(role)
@@ -157,7 +160,7 @@ def run_verified(
         try:
             response = client.messages.create(
                 model=spec.model_id,
-                messages=_build_messages(question, level, plain_attempts),
+                messages=_build_messages(question, level, plain_attempts, role=role),
                 **spec.request_kwargs,
             )
             usage = CallUsage.from_response(spec.model_id, response, outcome="ok")
@@ -180,6 +183,9 @@ def run_verified(
                           error=str(exc))
                 termination = fatal
                 break
+            # Retryable, so wait before going round. See agent.loop.
+            if n < max_attempts:
+                sleeper(retry_after_seconds(exc, n))
             continue
 
         ledger.record(usage)

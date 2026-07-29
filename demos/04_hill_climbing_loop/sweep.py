@@ -8,16 +8,15 @@ reason it exists. `--foreground` is available for tests and for watching it run.
 """
 
 import argparse
-import os
-import subprocess
-import sys
 from pathlib import Path
 
 from loopeng.gold.build import build_gold
 from loopeng.logging import configure_logging
 from loopeng.settings import load_settings
+from loopeng.sweep.detach import detach
 from loopeng.sweep.orchestrator import run_sweep
 from loopeng.sweep.runner import (
+    CONCURRENCY_PER_MODEL,
     PROFILES,
     SWEEP_DIR,
     LimitNotAllowed,
@@ -25,24 +24,6 @@ from loopeng.sweep.runner import (
     SweepAborted,
 )
 from loopeng.warehouse.connect import ensure_warehouse
-
-
-def _detach(argv: list[str] | None, log_path: str) -> int:
-    """Re-launch this script in its own session and hand the terminal straight back."""
-    log = Path(log_path)
-    log.parent.mkdir(parents=True, exist_ok=True)
-    command = [sys.executable, __file__, *(argv or sys.argv[1:]), "--foreground"]
-    with log.open("w") as handle:
-        process = subprocess.Popen(
-            command, stdout=handle, stderr=subprocess.STDOUT,
-            start_new_session=True,  # survives the terminal closing
-            env={**os.environ, "PYTHONUNBUFFERED": "1"},
-        )
-    print(f"sweep detached: pid {process.pid}")
-    print(f"  progress : tail -f {log}")
-    print("  charts   : uv run python demos/04_hill_climbing_loop/charts.py")
-    print("  the terminal is yours again.")
-    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -62,6 +43,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dir", default=str(SWEEP_DIR), help="Where cell files live.")
     parser.add_argument("--foreground", action="store_true",
                         help="Block the terminal instead of detaching.")
+    parser.add_argument("--concurrency", type=int, default=CONCURRENCY_PER_MODEL,
+                        help="Requests in flight per model. Lower it BEFORE the sweep "
+                             "on a lower-tier account; the default was chosen against "
+                             "ceilings measured on one account.")
     parser.add_argument("--log", default="results/sweep_run.log")
     parser.add_argument("--fresh", action="store_true",
                         help="Refuse to start if completed cells are already on disk. "
@@ -70,7 +55,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if not args.foreground:
-        return _detach(argv, args.log)
+        return detach(Path(__file__), argv, args.log)
 
     configure_logging()
     settings = load_settings()
@@ -79,7 +64,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         report = run_sweep(build_gold(warehouse), warehouse, cap_usd=args.cap_usd,
                            profile=PROFILES[args.profile], item_limit=args.limit,
-                           directory=args.dir, fresh=args.fresh)
+                           directory=args.dir, fresh=args.fresh,
+                           concurrency=args.concurrency)
     except (StaleCellsPresent, LimitNotAllowed) as refused:
         print(f"\nREFUSING TO START\n{refused}")
         return 3

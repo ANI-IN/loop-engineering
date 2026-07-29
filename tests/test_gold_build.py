@@ -1,4 +1,5 @@
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -248,3 +249,137 @@ def test_every_pattern_contributes_five_items(items):
     counts = Counter(item.pattern_key for item in items)
     assert set(counts) == {pattern.key for pattern in PATTERNS}
     assert set(counts.values()) == {5}
+
+
+# ---- the cache: derived, invalidated by its inputs, and type-stable ----------
+#
+# build_gold executes 10 patterns x 5 parameterisations x (gold + composite naive + one
+# naive per rule) against DuckDB. It was paid fresh by every demo entry point, the worker,
+# every view and every test fixture that needed items.
+
+
+def test_a_warm_cache_returns_exactly_what_a_cold_build_returns(tmp_path, warehouse):
+    """Including types. The first version of this cache did NOT: DuckDB hands back
+    Decimal from the revenue aggregates and json_default writes floats, so a warm cache
+    returned floats where a cold build returned Decimals — 14 of 50 items differed by
+    `==`. rows_equal tolerated all of it and nothing measured moved, but a value whose
+    type depends on whether a cache file exists behaves one way in CI and another on a
+    laptop. Both paths now go through the same round trip."""
+    cache = tmp_path / "gold_cache.json"
+
+    cold = build_gold(warehouse, cache_path=cache)
+    warm = build_gold(warehouse, cache_path=cache)
+
+    assert cold == warm
+    assert [type(v) for v in cold[0].gold_rows[0]] == [type(v) for v in warm[0].gold_rows[0]]
+
+
+def test_a_forced_rebuild_also_matches(tmp_path, warehouse):
+    """cache_path=None is the escape hatch for tests that care about the gates, and it
+    must not be a different code path with different output."""
+    cache = tmp_path / "gold_cache.json"
+    assert build_gold(warehouse, cache_path=cache) == build_gold(warehouse, cache_path=None)
+
+
+def test_the_cache_is_written_and_then_actually_used(tmp_path, warehouse, monkeypatch):
+    cache = tmp_path / "gold_cache.json"
+    build_gold(warehouse, cache_path=cache)
+    assert cache.is_file()
+
+    # If the cache were ignored, _build_item would run and this would raise.
+    from loopeng.gold import build as build_module
+
+    monkeypatch.setattr(build_module, "_build_item",
+                        lambda *a, **k: pytest.fail("rebuilt despite a valid cache"))
+    assert len(build_gold(warehouse, cache_path=cache)) == 50
+
+
+def test_editing_the_patterns_invalidates_the_cache(tmp_path, monkeypatch):
+    """A cache keyed on the seed alone would serve stale gold after a rule change, and
+    stale gold is a wrong answer key nothing downstream can detect."""
+    from loopeng.gold import build as build_module
+
+    before = build_module.cache_key(20260729)
+    fake = tmp_path / "patterns.py"
+    fake.write_text("# a different pattern file\n", encoding="utf-8")
+    monkeypatch.setattr(build_module, "_CACHE_INPUTS", (fake,))
+    assert build_module.cache_key(20260729) != before
+
+
+def test_editing_the_semantic_model_invalidates_the_cache(tmp_path, monkeypatch):
+    from loopeng.gold import build as build_module
+
+    unedited = build_module.cache_key(20260729)
+
+    real = build_module._CACHE_INPUTS[1]
+    edited = tmp_path / real.name
+    edited.write_text(real.read_text(encoding="utf-8") + "\n# a new rule\n", encoding="utf-8")
+    monkeypatch.setattr(build_module, "_CACHE_INPUTS",
+                        (build_module._CACHE_INPUTS[0], edited))
+
+    assert build_module.cache_key(20260729) != unedited
+
+
+def test_the_seed_is_part_of_the_key():
+    """Changing the seed changes every gold answer."""
+    from loopeng.gold.build import cache_key
+
+    assert cache_key(20260729) != cache_key(1)
+
+
+def test_a_damaged_cache_is_ignored_rather_than_raising(tmp_path, warehouse):
+    """A cache is an optimisation, and one that can break a cold start is worse than
+    none. It returns None rather than a PARTIAL set: a short gold set would quietly
+    change every denominator downstream."""
+    from loopeng.gold.build import cache_key, read_cache
+
+    cache = tmp_path / "gold_cache.json"
+    cache.write_text("{not json", encoding="utf-8")
+    assert read_cache(cache_key(20260729), cache) is None
+    assert len(build_gold(warehouse, cache_path=cache)) == 50
+
+    cache.write_text('{"key": "stale", "items": []}', encoding="utf-8")
+    assert read_cache(cache_key(20260729), cache) is None
+
+
+def test_the_cache_is_gitignored():
+    """Derived, not evidence. Committing it would ship an answer key nobody re-derived."""
+    import subprocess
+
+    from loopeng.gold.build import CACHE_PATH
+
+    root = Path(__file__).resolve().parent.parent
+    result = subprocess.run(["git", "check-ignore", "-q", str(CACHE_PATH)], cwd=root)
+    assert result.returncode == 0, f"{CACHE_PATH} is not gitignored"
+
+
+def test_the_limit_is_not_part_of_the_key(tmp_path, warehouse):
+    """One cache serves every subset: the full set is always built or loaded first, so
+    the gates cannot be skipped by asking for fewer items."""
+    cache = tmp_path / "gold_cache.json"
+    subset = build_gold(warehouse, limit=8, cache_path=cache)
+    full = build_gold(warehouse, cache_path=cache)
+
+    assert len(subset) == 8
+    assert len(full) == 50
+    assert {i.item_id for i in subset} <= {i.item_id for i in full}
+
+
+def test_building_gold_needs_no_credential(tmp_path, monkeypatch, warehouse):
+    """The offline suite and the exhibit both build gold with no key present, so the
+    seed is read off the Settings class rather than an instantiated Settings."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+    assert len(build_gold(warehouse, cache_path=tmp_path / "c.json")) == 50
+
+
+def test_one_serialisation_serves_the_file_and_the_cache():
+    """They were the same shape written twice. A cache that round-tripped differently
+    from the file LangSmith reads would be a second definition of a gold item."""
+    from loopeng.gold import build as build_module
+
+    source = Path(build_module.__file__).read_text(encoding="utf-8")
+    assert source.count('"ambiguous_rule_groups": [') == 1, (
+        "the item serialisation is written more than once"
+    )

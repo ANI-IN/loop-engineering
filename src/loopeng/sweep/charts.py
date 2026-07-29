@@ -35,6 +35,7 @@ from loopeng.sweep.chart_model import (
     NOT_MEASURED,
     REFERENCE_CAPTION,
     bar_rows,
+    cache_note,
     role_colour,
 )
 from loopeng.sweep.diff import (
@@ -174,7 +175,10 @@ def dial_chart(cells: list[dict]) -> str:
 
 
 def cost_chart(cells: list[dict]) -> str:
-    return _svg("COST — estimated spend by cell", COST_CAPTION,
+    # The cache note goes on the COST chart because that is where the number it changes
+    # lives. Composed at render time from the cells on screen, never stored.
+    return _svg("COST — estimated spend by cell",
+                f"{COST_CAPTION} {cache_note(cells)}",
                 bar_rows(cells, metric="cost"),
                 "Estimated, not billed. Includes calls that failed.")
 

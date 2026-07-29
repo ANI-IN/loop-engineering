@@ -42,6 +42,14 @@ SWEEP_DIR = Path("results/sweep")
 
 # Per-model pools. The measured ceiling is 10,000 requests/minute per model
 # (results/gate0.json); this is far below it and exists to be predictable.
+#
+# It is now the DEFAULT rather than the only value. README §18 tells the operator to
+# "lower the per-model concurrency before the sweep rather than after it starts failing",
+# and doing that required editing this line — advice that can only be followed by patching
+# source is advice most people will not follow. `--concurrency` on the sweep entry point
+# passes through to here. It matters more now than it did: the ceilings were measured on
+# one account, and a cloner on a lower tier has a smaller pool than the one this number
+# was chosen against.
 CONCURRENCY_PER_MODEL = 8
 
 # Measured per-call token shapes, 2026-07-29. Used ONLY to project spend before
@@ -55,6 +63,16 @@ SHAPES = {
 CALLS_PER_ITEM = {("one_shot", "L3"): 1.0, ("one_shot", "L0"): 1.0,
                   ("loop", "L3"): 1.16, ("loop", "L0"): 1.9}
 HEADROOM = 1.3
+
+# Token classes carried into a cell report. The two cache fields were missing, which made
+# a cell's own file unable to answer whether caching fired in it — the accounting existed
+# in `usage.py` all the way to here and was then dropped at the last step. Additive: a
+# cell written before this simply has no cache keys, and every reader treats absence as
+# "caching did not apply" rather than as a zero.
+TOKEN_FIELDS = (
+    "n_calls", "input_tokens", "output_tokens", "total_tokens",
+    "cache_creation_input_tokens", "cache_read_input_tokens",
+)
 
 
 @dataclass(frozen=True)
@@ -318,7 +336,8 @@ def load_cell(cell: Cell, directory: Path = SWEEP_DIR) -> dict | None:
 
 
 def run_cell(cell: Cell, items, warehouse: Path, *, verifier=verify_governed,
-             directory: Path = SWEEP_DIR, on_progress=None) -> dict:
+             directory: Path = SWEEP_DIR, on_progress=None,
+             concurrency: int = CONCURRENCY_PER_MODEL) -> dict:
     """Run one cell, writing partial state as items land so progress is observable."""
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -353,7 +372,7 @@ def run_cell(cell: Cell, items, warehouse: Path, *, verifier=verify_governed,
             "tokens": run.ledger.totals(),
         }
 
-    with ThreadPoolExecutor(max_workers=CONCURRENCY_PER_MODEL) as pool:
+    with ThreadPoolExecutor(max_workers=max(1, concurrency)) as pool:
         futures = [pool.submit(_one, item) for item in items]
         for future in as_completed(futures):
             rows.append(future.result())
@@ -391,10 +410,12 @@ def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: flo
         "rate_n": metric.n if metric else 0,
         "cost_usd": {"value": round(sum(r["cost_usd"] for r in rows), 6),
                      "source": "estimated"},
-        "tokens": {
-            k: sum(r["tokens"][k] for r in rows)
-            for k in ("n_calls", "input_tokens", "output_tokens", "total_tokens")
-        } if rows else {},
+        # `.get(k, 0)` because the two cache fields are additive: a row recorded before
+        # they existed simply has none, and a missing class summed as zero is correct —
+        # no cache tokens is what "caching did not apply" looks like. Every reader tells
+        # that apart from a measured zero by checking whether BOTH are absent.
+        "tokens": {k: sum(r["tokens"].get(k, 0) for r in rows) for k in TOKEN_FIELDS}
+        if rows else {},
         "rejections": sum(r["rejections"] for r in rows),
         "termination": {t: sum(1 for r in rows if r["termination"] == t)
                         for t in {r["termination"] for r in rows}},
