@@ -26,8 +26,18 @@ cross-model pair renders no p-value at all.
 from pathlib import Path
 
 from loopeng.paired import PairedComparison
+from loopeng.sweep.chart_model import (
+    ABSTENTION_CAPTION,
+    ABSTENTION_LIVE_NOTE,
+    COST_CAPTION,
+    DELTA_CAPTION,
+    DIAL_CAPTION,
+    NOT_MEASURED,
+    REFERENCE_CAPTION,
+    bar_rows,
+    role_colour,
+)
 from loopeng.sweep.diff import (
-    ALPHA,
     CROSS_MODEL_REFUSAL,
     MIN_DISCORDANT,
     NO_PER_ITEM_DETAIL,
@@ -62,58 +72,6 @@ WRAP_COLUMNS = 118      # layout: caption wrap width
 CAPTION_TOP = 24        # layout: caption first baseline
 CAPTION_LEADING = 17    # layout: caption line height
 FOOTER_GAP = 12         # layout: unit line above the bottom edge
-
-REFERENCE_CAPTION = (
-    "Cells marked REFERENCE were NOT computed in this session. They are measurements "
-    "taken on the date shown and are displayed for context only. Recomputing them here "
-    "would cost roughly ten times the delivery budget, so they are cited rather than "
-    "re-run — and they are drawn differently so that is impossible to miss. Presenting "
-    "a stored number as though it had just been computed would break the cost "
-    "constraint quietly, which is worse than not showing it at all."
-)
-
-DIAL_CAPTION = (
-    "Silent-error rate, over answers that ran and returned. Error bars are Wilson 95%. "
-    "THE BARS ARE NOT COMPARABLE ACROSS MODELS: Haiku is pinned to temperature=0, "
-    "Sonnet 5 rejects non-default sampling parameters and cannot be pinned, so Haiku's "
-    "bars carry sampling noise only while Sonnet's carry sampling noise plus "
-    "run-to-run variance. Within a model they are comparable. Items are 10 clusters of "
-    "5 parameterisations, not 50 independent trials, so every interval is narrower "
-    "than the evidence supports."
-)
-
-COST_CAPTION = (
-    "Estimated cost per cell. Tokens are measured; dollars are those tokens times a "
-    "hand-entered price table, so every figure here is an estimate and keeps the est. "
-    "prefix. Failed, timed-out and budget-exhausted calls are included, because they "
-    "billed."
-)
-
-DELTA_CAPTION = (
-    "Paired differences in silent-error rate, in percentage points. Positive means the "
-    "second arm has MORE silent errors. Zero is drawn: it is a real delta, not a missing "
-    "one. The difference is computed over items BOTH arms answered, which is the same "
-    "set the p-value uses — so it will not always equal the gap between the two bars on "
-    "DIAL, and where it does not, the bars are the misleading pair. Significance is "
-    f"exact McNemar. Below {MIN_DISCORDANT} discordant pairs no split of the data can "
-    f"reach p < {ALPHA}, so those rows say so instead of showing a number. Intervals are a "
-    "normal approximation on the paired difference. Items are 10 clusters of 5 "
-    "parameterisations, not independent trials, so a systematic weakness in one pattern "
-    "can produce five discordant pairs that are really one observation — every interval "
-    "here is narrower than the evidence supports and the honest statement is directional."
-)
-
-ABSTENTION_CAPTION = (
-    "Coverage against precision as the abstention threshold moves, computed from the "
-    "cell's own per-item telemetry — whether the query ran, how many times the verifier "
-    "sent it back, and which branch terminated the run. No extra model call, so the "
-    "whole curve is free to recompute. Moving right answers more questions; moving up "
-    "gets more of the answered ones right. The trade is the point, and a single accuracy "
-    "number hides it completely. Error bars are Wilson 95% on precision. Items are "
-    "clustered parameterisations rather than independent trials, so every interval is "
-    "narrower than the evidence supports."
-)
-
 
 def _esc(text: str) -> str:
     return (text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
@@ -150,9 +108,7 @@ def _svg(title: str, caption: str, bars: list[dict], unit: str) -> str:
     y = PAD_TOP
     for bar in bars:
         reference = bar.get("reference")
-        colour = "#94a3b8" if bar["pending"] else (
-            "#0ea5e9" if bar["role"] == "worker" else "#f97316"
-        )
+        colour = role_colour(bar["role"], pending=bar["pending"])
         parts.append(
             f'<text x="{PAD_LEFT - LABEL_GAP}" y="{y + TEXT_BASELINE}" '
             f'text-anchor="end">{_esc(bar["label"])}</text>'
@@ -211,52 +167,15 @@ def _svg(title: str, caption: str, bars: list[dict], unit: str) -> str:
     return "\n".join(parts)
 
 
-def _label(cell: dict) -> str:
-    if cell.get("reference"):
-        return f"REFERENCE · {cell['label']}"
-    return cell["label"]
-
-
-def _note(cell: dict, text: str) -> str:
-    if cell.get("reference"):
-        return f"{text}  [REFERENCE, measured {cell.get('measured_on', 'date unknown')}]"
-    return text
-
-
 def dial_chart(cells: list[dict]) -> str:
-    bars = []
-    for cell in sorted(cells, key=lambda c: (c.get("reference", False), c["role"],
-                                             c["level"], c["mode"], c["replicate"])):
-        pending = not cell["complete"]
-        bars.append({
-            "label": _label(cell),
-            "role": cell["role"],
-            "value": cell["rate_value"],
-            "lo": cell["rate_ci_low"],
-            "hi": cell["rate_ci_high"],
-            "pending": pending,
-            "reference": cell.get("reference", False),
-            "note": _note(cell, cell["silent_error_rate"]),
-        })
-    return _svg("DIAL — silent-error rate by cell", DIAL_CAPTION, bars,
+    return _svg("DIAL — silent-error rate by cell", DIAL_CAPTION,
+                bar_rows(cells, metric="rate"),
                 "Lower is better. Bars are hollow while a cell is still running.")
 
 
 def cost_chart(cells: list[dict]) -> str:
-    bars = []
-    for cell in sorted(cells, key=lambda c: (c.get("reference", False), c["role"],
-                                             c["level"], c["mode"], c["replicate"])):
-        value = cell["cost_usd"]["value"]
-        bars.append({
-            "label": _label(cell),
-            "role": cell["role"],
-            "value": value if value else None,
-            "lo": None, "hi": None,
-            "pending": not cell["complete"],
-            "reference": cell.get("reference", False),
-            "note": _note(cell, f"est. ${value:.4f}" if value else "not yet measured"),
-        })
-    return _svg("COST — estimated spend by cell", COST_CAPTION, bars,
+    return _svg("COST — estimated spend by cell", COST_CAPTION,
+                bar_rows(cells, metric="cost"),
                 "Estimated, not billed. Includes calls that failed.")
 
 
@@ -407,7 +326,7 @@ def delta_chart(comparisons) -> str:
         rows = [{
             "label": "no comparable cells yet", "provenance": "",
             "value": None, "lo": None, "hi": None, "testable": False,
-            "note": "not yet measured — run a sweep, or render with --reference=compare",
+            "note": f"{NOT_MEASURED} — run a sweep, or render with --reference=compare",
         }]
     return _delta_svg(rows, DELTA_CAPTION, notes)
 
@@ -453,7 +372,7 @@ def abstention_chart(points: list[dict]) -> str:
             f"is undefined. A dot on the floor would read as 'always wrong'."
         )
 
-    caption_lines = _wrap(ABSTENTION_CAPTION)
+    caption_lines = _wrap(f"{ABSTENTION_LIVE_NOTE} {ABSTENTION_CAPTION}")
     height = (ABSTAIN_H + CAPTION_BLOCK + len(notes) * CAPTION_LEADING
               + len(caption_lines) * CAPTION_LEADING)
     parts = [

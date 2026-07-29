@@ -117,11 +117,78 @@ def test_the_provenance_band_says_not_computed_now(monkeypatch, tmp_path):
 def test_the_captions_are_imported_not_retyped():
     """The disclosures come from the module the live views use. Retyping them is
     how the README ends up carrying a warning the app no longer makes."""
-    from loopeng.sweep.charts import COST_CAPTION, DIAL_CAPTION, REFERENCE_CAPTION
+    from loopeng.sweep.chart_model import COST_CAPTION, DIAL_CAPTION, REFERENCE_CAPTION
 
     assert charts.DIAL_CAPTION is DIAL_CAPTION
     assert charts.COST_CAPTION is COST_CAPTION
     assert charts.REFERENCE_CAPTION is REFERENCE_CAPTION
+
+
+CAPTION_NAMES = (
+    "REFERENCE_CAPTION", "DIAL_CAPTION", "COST_CAPTION",
+    "DELTA_CAPTION", "ABSTENTION_CAPTION",
+    "CROSS_MODEL_CAVEAT", "CLUSTER_CAVEAT",
+)
+
+
+def test_every_caption_string_is_defined_in_exactly_one_module():
+    """THE anti-drift assertion, and it is grep-shaped on purpose.
+
+    Both renderers used to carry their own copy of DIAL_CAPTION and REFERENCE_CAPTION,
+    and the Wilson and cluster caveats were typed out twice. A correction to one did not
+    reach the other. Importing is fine; assigning is not.
+    """
+    import re
+
+    src = REPO_ROOT / "src" / "loopeng"
+    scanned = [
+        src / "sweep" / "chart_model.py",
+        src / "sweep" / "charts.py",
+        REPO_ROOT / "tools" / "render_readme_charts.py",
+    ]
+    for name in CAPTION_NAMES:
+        assigning = [
+            path.relative_to(REPO_ROOT) for path in scanned
+            if re.search(rf"^{name}\s*=", path.read_text(encoding="utf-8"), re.MULTILINE)
+        ]
+        assert assigning == [Path("src/loopeng/sweep/chart_model.py")], (
+            f"{name} is assigned in {assigning}; it belongs to chart_model alone"
+        )
+
+
+def test_the_two_caveats_are_composed_into_the_captions_not_restated():
+    """One correction, one place. If the temperature asymmetry changes, it changes in
+    every caption that mentions it."""
+    from loopeng.sweep.chart_model import (
+        CLUSTER_CAVEAT,
+        CROSS_MODEL_CAVEAT,
+        DELTA_CAPTION,
+        DIAL_CAPTION,
+    )
+
+    assert CROSS_MODEL_CAVEAT in DIAL_CAPTION
+    assert CLUSTER_CAVEAT in DIAL_CAPTION
+    assert CLUSTER_CAVEAT in DELTA_CAPTION
+
+
+def test_both_backends_draw_the_same_rows_for_the_same_cells():
+    """Cell ordering, role colour, the reference badge and the note text were each
+    implemented twice. One transform now, so the two figures cannot disagree."""
+    from loopeng.sweep.chart_model import bar_rows
+
+    payload = charts.load_reference()
+    assert charts.rows_for(payload, metric="rate") == bar_rows(payload["cells"],
+                                                               metric="rate")
+    assert charts.rows_for(payload, metric="cost") == bar_rows(payload["cells"],
+                                                               metric="cost")
+
+
+def test_the_readme_figure_does_not_claim_the_live_charts_provenance():
+    """"free to recompute" is true of a live curve and false of a frozen PNG."""
+    from loopeng.sweep.chart_model import ABSTENTION_CAPTION, ABSTENTION_LIVE_NOTE
+
+    assert ABSTENTION_LIVE_NOTE not in ABSTENTION_CAPTION
+    assert "free to recompute" in ABSTENTION_LIVE_NOTE
 
 
 # ---- layout and weight ------------------------------------------------------

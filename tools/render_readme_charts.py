@@ -27,10 +27,15 @@ figure is redrawn every few seconds while a sweep lands and must degrade to "in
 progress, n=NN so far". This renders static PNGs of a frozen measurement for
 GitHub. Different medium, different lifetime, different failure mode.
 
-What is NOT forked is the part that would actually drift: the data comes from the
-same `results/reference/` files the app reads, and the captions are imported from
-`loopeng.sweep.charts` rather than retyped. If the disclosure about temperature
-asymmetry changes there, it changes here.
+What is NOT forked is `loopeng.sweep.chart_model`: the caption prose, the cell
+ordering, the role colours, and the cell-to-row transform all come from there, so
+both backends draw the same rows for the same payload and only the geometry differs.
+
+That boundary used to be drawn in the wrong place. The captions were imported, but
+cell ordering, worker/frontier colouring, the hatched-outline convention for stored
+bars and the value-and-n gutter were each implemented twice — and the wrapping of
+`DIAL_CAPTION` with `REFERENCE_CAPTION` was assembled differently in each. Two
+implementations of a disclosure's layout is one that can be shortened in one place.
 
 DETERMINISM, AND ITS LIMIT
 --------------------------
@@ -73,10 +78,16 @@ import matplotlib.pyplot as plt  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from loopeng.sweep.charts import (  # noqa: E402
+from loopeng.sweep.chart_model import (  # noqa: E402
+    ABSTENTION_CAPTION,
     COST_CAPTION,
     DIAL_CAPTION,
+    FRONTIER_COLOUR,
     REFERENCE_CAPTION,
+    WORKER_COLOUR,
+    bar_rows,
+    money,
+    role_colour,
 )
 
 REFERENCE_DIR = REPO_ROOT / "results" / "reference"
@@ -112,14 +123,23 @@ N_COLUMN = 1.26
 # that costs a megabyte to open is a README people stop opening.
 MAX_TOTAL_BYTES = 400_000
 
+# A proportion becomes an axis percentage. Named because it appears in three figures.
+PERCENT = 100
+
+# Room past the longest cost bar so its printed value is not flush against the frame.
+COST_HEADROOM = 1.06
+
 INK = "#0b1220"
 BODY = "#1e293b"
 MUTED = "#64748b"
 HAIRLINE = "#cbd5e1"
-WORKER = "#0ea5e9"
-FRONTIER = "#f97316"
 REF_BAND = "#fef3c7"
 REF_INK = "#92400e"
+
+# The role palette comes from the shared model, so a role is the same colour on the
+# projector and in the README. Aliased rather than re-declared.
+WORKER = WORKER_COLOUR
+FRONTIER = FRONTIER_COLOUR
 
 # matplotlib's bundled font. Named explicitly so a font installed on one machine
 # and not another cannot change the rendering.
@@ -203,18 +223,44 @@ def load_curve() -> dict:
     return json.loads((REFERENCE_DIR / "abstention_curve.json").read_text(encoding="utf-8"))
 
 
-def _ordered_cells(payload: dict) -> list[dict]:
-    """Sorted explicitly. File order is not a contract and a reordered input must
-    not silently produce a different image."""
-    return sorted(
-        payload["cells"],
-        key=lambda c: (c["role"], c["level"], c["mode"], c["replicate"]),
+def rows_for(payload: dict, *, metric: str) -> list[dict]:
+    """The shared cell-to-row transform. Same rows the SVG backend draws.
+
+    Ordering, role colour, the reference badge and the note text are all decided in
+    `loopeng.sweep.chart_model`, so this file cannot disagree with the live chart about
+    any of them.
+    """
+    return bar_rows(payload["cells"], metric=metric)
+
+
+def _barh(ax, rows, values):
+    """The bar call both figures make. Hatched, never solid: a stored measurement must
+    not look like one this session produced. Same rule the live chart follows."""
+    return ax.barh(
+        list(range(len(rows))), values,
+        color="none",
+        edgecolor=[role_colour(row["role"]) for row in rows],
+        linewidth=1.8, hatch="///", height=0.62,
     )
+
+
+def _y_labels(ax, rows) -> list[int]:
+    positions = list(range(len(rows)))
+    ax.set_yticks(positions)
+    # The bare cell label, not chart_model's `REFERENCE · ` prefix: every bar in this
+    # figure is a reference bar and the band above already says so once, in words. The
+    # live chart needs the per-row prefix because it mixes the two.
+    ax.set_yticklabels([row["label"].removeprefix("REFERENCE · ") for row in rows],
+                       fontsize=9.5, color=BODY)
+    ax.invert_yaxis()
+    ax.grid(axis="x", color=HAIRLINE, linewidth=0.6, alpha=0.7)
+    ax.set_axisbelow(True)
+    return positions
 
 
 def render_dial(payload: dict, path: Path) -> Path:
     """Silent-error rate per cell, with the Wilson interval and the n on each bar."""
-    cells = _ordered_cells(payload)
+    rows = rows_for(payload, metric="rate")
     fig, ax = _frame(
         "Silent-error rate by cell — over answers that ran and returned",
         payload["measured_on"],
@@ -222,46 +268,27 @@ def render_dial(payload: dict, path: Path) -> Path:
         right=BAR_PLOT_RIGHT,
     )
 
-    labels = [c["label"] for c in cells]
-    values = [c["rate_value"] * 100 for c in cells]
-    lows = [(c["rate_value"] - c["rate_ci_low"]) * 100 for c in cells]
-    highs = [(c["rate_ci_high"] - c["rate_value"]) * 100 for c in cells]
-    positions = list(range(len(cells)))
+    values = [row["value"] * PERCENT for row in rows]
+    lows = [(row["value"] - row["lo"]) * PERCENT for row in rows]
+    highs = [(row["hi"] - row["value"]) * PERCENT for row in rows]
 
-    ax.barh(
-        positions, values,
-        color="none",
-        edgecolor=[WORKER if c["role"] == "worker" else FRONTIER for c in cells],
-        linewidth=1.8,
-        # Hatched, never solid: a stored measurement must not look like one this
-        # session produced. Same rule the live chart follows.
-        hatch="///",
-        height=0.62,
-    )
+    _barh(ax, rows, values)
+    positions = _y_labels(ax, rows)
     ax.errorbar(
         values, positions, xerr=[lows, highs],
         fmt="none", ecolor=INK, elinewidth=1.4, capsize=4,
     )
+    _value_gutter(ax, positions, [f"{value:.1f}%" for value in values],
+                  [row["n"] for row in rows])
 
-    _value_gutter(
-        ax, positions,
-        [f"{value:.1f}%" for value in values],
-        [cell["rate_n"] for cell in cells],
-    )
-
-    ax.set_yticks(positions)
-    ax.set_yticklabels(labels, fontsize=9.5, color=BODY)
-    ax.invert_yaxis()
-    ax.set_xlim(0, 100)
+    ax.set_xlim(0, PERCENT)
     ax.set_xlabel("silent-error rate (%) — lower is better", fontsize=9, color=MUTED)
-    ax.grid(axis="x", color=HAIRLINE, linewidth=0.6, alpha=0.7)
-    ax.set_axisbelow(True)
     return _save(fig, path)
 
 
 def render_cost(payload: dict, path: Path) -> Path:
     """Estimated spend per cell. Estimated, never measured — see loopeng.pricing."""
-    cells = _ordered_cells(payload)
+    rows = rows_for(payload, metric="cost")
     fig, ax = _frame(
         "Estimated spend by cell — tokens measured, dollars estimated",
         payload["measured_on"],
@@ -269,30 +296,14 @@ def render_cost(payload: dict, path: Path) -> Path:
         right=BAR_PLOT_RIGHT,
     )
 
-    labels = [c["label"] for c in cells]
-    values = [c["cost_usd"]["value"] for c in cells]
-    positions = list(range(len(cells)))
-    ceiling = max(values)
+    values = [row["value"] for row in rows]
+    _barh(ax, rows, values)
+    positions = _y_labels(ax, rows)
+    _value_gutter(ax, positions, [money(value) for value in values],
+                  [row["n"] for row in rows])
 
-    ax.barh(
-        positions, values,
-        color="none",
-        edgecolor=[WORKER if c["role"] == "worker" else FRONTIER for c in cells],
-        linewidth=1.8, hatch="///", height=0.62,
-    )
-    _value_gutter(
-        ax, positions,
-        [f"est. ${value:.4f}" for value in values],
-        [cell["rate_n"] for cell in cells],
-    )
-
-    ax.set_yticks(positions)
-    ax.set_yticklabels(labels, fontsize=9.5, color=BODY)
-    ax.invert_yaxis()
-    ax.set_xlim(0, ceiling * 1.06)
+    ax.set_xlim(0, max(values) * COST_HEADROOM)
     ax.set_xlabel("estimated USD per cell — includes calls that failed", fontsize=9, color=MUTED)
-    ax.grid(axis="x", color=HAIRLINE, linewidth=0.6, alpha=0.7)
-    ax.set_axisbelow(True)
     return _save(fig, path)
 
 
@@ -309,19 +320,17 @@ def render_abstention(payload: dict, path: Path) -> Path:
     fig, ax = _frame(
         f"Coverage vs precision as the threshold moves — {payload['label']}",
         payload["measured_on"],
-        "Each point is one abstention threshold. Moving right answers more questions; "
-        "moving up gets more of the answered ones right. The trade is the point — a "
-        "single accuracy number hides it completely. Error bars are Wilson 95% on "
-        "precision. Items are clustered parameterisations rather than independent "
-        "trials, so every interval is narrower than the evidence supports. "
-        + REFERENCE_CAPTION,
+        # The same caption the live ABSTENTION chart carries. It used to be typed out
+        # here, which meant the Wilson and cluster caveats existed in two places on this
+        # figure alone — see the module docstring.
+        f"{ABSTENTION_CAPTION} {REFERENCE_CAPTION}",
         right=0.97,
     )
 
-    xs = [p["coverage_value"] * 100 for p in points]
-    ys = [p["precision_value"] * 100 for p in points]
-    lows = [(p["precision_value"] - p["precision_ci_low"]) * 100 for p in points]
-    highs = [(p["precision_ci_high"] - p["precision_value"]) * 100 for p in points]
+    xs = [p["coverage_value"] * PERCENT for p in points]
+    ys = [p["precision_value"] * PERCENT for p in points]
+    lows = [(p["precision_value"] - p["precision_ci_low"]) * PERCENT for p in points]
+    highs = [(p["precision_ci_high"] - p["precision_value"]) * PERCENT for p in points]
 
     ax.plot(xs, ys, color=WORKER, linewidth=1.8, zorder=2)
     ax.errorbar(xs, ys, yerr=[lows, highs], fmt="none",
@@ -349,7 +358,7 @@ def render_abstention(payload: dict, path: Path) -> Path:
         anchor = (
             max(p["precision_ci_high"] for p in sharing) if above
             else min(p["precision_ci_low"] for p in sharing)
-        ) * 100
+        ) * PERCENT
         align = "right" if x > 90 else ("left" if x < 10 else "center")
         ax.annotate(
             label, (x, anchor), textcoords="offset points",
