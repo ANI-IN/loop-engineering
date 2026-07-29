@@ -1,7 +1,15 @@
+[REDACTED 2026-07-30] The URL on the line below carried a LangSmith ORGANISATION UUID,
+a DATASET UUID and a SESSION UUID, in a public repository. They were not needed for the
+finding — the finding is what the target invocations show, not where the run is hosted —
+so the identifiers are removed and the line is kept in place. The file stays at this path
+because results/gate0.json cites it by name as the evidence behind the resume-from-disk
+decision, and a citation that stops resolving is the defect tools/lint_no_numbers.py and
+sweep/orchestrator.py were both fixed for.
+
 [first] starting experiment 'resume-probe-a'
   using 5 examples from loop-eng-gold-v1
 View the evaluation results for experiment: 'resume-probe-a-231d5907' at:
-https://smith.langchain.com/o/REDACTED-IDENTIFIER/datasets/REDACTED-IDENTIFIER/compare?selectedSessions=REDACTED-IDENTIFIER
+https://smith.langchain.com/o/<org-uuid-redacted>/datasets/<dataset-uuid-redacted>/compare?selectedSessions=<session-uuid-redacted>
 
 
   [target] invoked: What share of customers placed more than one order in March 2025?

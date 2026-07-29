@@ -52,6 +52,23 @@ jobs:
         # missing path passes while enforcing nothing.
         run: uv run python tools/lint_no_numbers.py
 
+      - name: A checkout with only ANTHROPIC_API_KEY can start
+        # THE check whose absence let a required LANGSMITH_API_KEY ship green. README §10
+        # promised LangSmith was optional; settings.py declared it required; every passing
+        # test in tests/test_settings.py set BOTH keys, so nothing exercised the journey a
+        # first-time cloner actually takes.
+        #
+        # A dummy value, and no network. This must never need a real key — it runs in the
+        # offline job on purpose, because that is where the property belongs.
+        env:
+          ANTHROPIC_API_KEY: ci-dummy-not-a-real-key
+        run: |
+          uv run python -c "
+          from loopeng.settings import load_settings
+          s = load_settings()
+          assert s.langsmith_api_key is None, 'LANGSMITH_API_KEY leaked in from somewhere'
+          print('settings load with ANTHROPIC_API_KEY alone')"
+
       - name: Offline test suite
         # No ANTHROPIC_API_KEY is set anywhere in this job, on purpose. If a test ever
         # starts needing one, this fails and that is the correct outcome.

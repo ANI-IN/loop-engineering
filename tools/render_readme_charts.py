@@ -87,6 +87,7 @@ from loopeng.sweep.chart_model import (  # noqa: E402
     WORKER_COLOUR,
     bar_rows,
     money,
+    ordered_cells,
     role_colour,
 )
 
@@ -379,6 +380,90 @@ def render_abstention(payload: dict, path: Path) -> Path:
 
 SOURCES = ("measurements.json", "abstention_curve.json")
 MANIFEST_NAME = "manifest.json"
+
+
+# ---------------------------------------------------------------------------
+# The README captions, generated from the same JSON the images are drawn from.
+#
+# §12 argues that a figure's `n` and its date belong INSIDE the image, because a README
+# image outlives every sentence next to it. The same argument applies one level out: a
+# vague caption lets the figure be quoted without its values, and typing the values into
+# the README by hand would make the caption the next number that drifts.
+#
+# So the numeric caption is a generated markdown TABLE. A table rather than prose for a
+# specific reason: `tests/test_docs.py::test_the_readme_prose_names_no_measurement` strips
+# table rows before checking that the prose states no measurement, and that rule is right —
+# prose is where a number gets separated from its provenance. A table row carries its cell
+# label with it.
+#
+# `tests/test_readme_charts.py` asserts the README contains exactly what this produces.
+# ---------------------------------------------------------------------------
+CAPTION_MARKER = "<!-- generated: tools/render_readme_charts.py -->"
+
+REPRODUCE_COMMANDS = {
+    "dial.png": "uv run python demos/04_hill_climbing_loop/charts.py --reference=compare",
+    "cost.png": "uv run python demos/04_hill_climbing_loop/charts.py --reference=compare",
+    "abstention.png": "uv run python demos/04_hill_climbing_loop/charts.py --reference=compare",
+}
+
+
+def _provenance(measured_on: str, model_id: str, reproduce: str) -> list[str]:
+    """The sentence every generated caption ends with. One wording, not three."""
+    return [
+        "",
+        f"These are the author's development-run measurements from **{measured_on}** on "
+        f"`{model_id}`. They are **REFERENCE — not computed on your machine.** To render "
+        f"the equivalent chart from your own key:",
+        "",
+        "```bash",
+        reproduce,
+        "```",
+    ]
+
+
+def caption_for(name: str, measurements: dict, curve: dict) -> str:
+    """The generated markdown block that sits under one image in README §12."""
+    measured_on = measurements["measured_on"]
+    lines = [CAPTION_MARKER, ""]
+
+    if name == "dial.png":
+        lines += ["| cell | silent-error rate | est. cost |", "|---|---|---|"]
+        # The cell's OWN rendered string, not a recomputation. Wilson is asymmetric about
+        # p, and `Metric.render` deliberately reports the WIDER arm because the mean of
+        # the two understates the error — which is exactly what a second implementation
+        # here computed on the first attempt. One definition of ±, and it lives in Metric.
+        for cell in ordered_cells(measurements["cells"]):
+            lines.append(
+                f"| `{cell['key']}` | {cell['silent_error_rate']} "
+                f"| {money(cell['cost_usd']['value'])} |"
+            )
+        lines += _provenance(measured_on, "claude-sonnet-5", REPRODUCE_COMMANDS[name])
+    elif name == "cost.png":
+        lines += ["| cell | est. cost | n |", "|---|---|---|"]
+        for row in rows_for(measurements, metric="cost"):
+            lines.append(f"| `{row['key']}` | {money(row['value'])} | {row['n']} |")
+        lines += _provenance(measured_on, "claude-sonnet-5", REPRODUCE_COMMANDS[name])
+    elif name == "abstention.png":
+        lines += ["| threshold | answered | coverage | precision |", "|---|---|---|---|"]
+        for point in curve["points"]:
+            lines.append(
+                f"| {point['threshold']:.2f} | {point['n_answered']} | "
+                f"{point['coverage']} | {point['precision']} |"
+            )
+        lines += _provenance(curve["measured_on"], "claude-haiku-4-5",
+                             REPRODUCE_COMMANDS[name])
+    else:
+        raise ValueError(f"no caption defined for {name!r}")
+    return "\n".join(lines)
+
+
+def captions() -> dict[str, str]:
+    """Every generated caption, keyed by the image it belongs under."""
+    measurements, curve = load_reference(), load_curve()
+    return {name: caption_for(name, measurements, curve) for name in sorted(SOURCE_IMAGES)}
+
+
+SOURCE_IMAGES = ("dial.png", "cost.png", "abstention.png")
 
 
 def _sha256(path: Path) -> str:

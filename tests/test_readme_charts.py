@@ -335,3 +335,73 @@ def test_every_readme_image_is_captioned_with_its_date():
 def _png_size(path: Path) -> tuple[int, int]:
     header = path.read_bytes()[:24]
     return struct.unpack(">II", header[16:24])
+
+
+# ---- the numeric captions are generated, not typed --------------------------
+#
+# §12 argues that a figure's n and its date belong INSIDE the image, because a README
+# image outlives every sentence next to it. The same argument applies one level out: a
+# vague caption lets the figure be quoted without its values. Typing the values into the
+# README by hand would make the caption the next number that drifts, so they are generated
+# from the same JSON the images are drawn from and this asserts the README matches.
+
+
+def test_every_image_carries_its_numbers_underneath():
+    body = README.read_text(encoding="utf-8")
+    for name, block in charts.captions().items():
+        assert block in body, (
+            f"README §12 does not match the generated caption for {name}. Regenerate it:\n"
+            f"  uv run python -c \"from tools.render_readme_charts import captions; "
+            f"print(captions()['{name}'])\""
+        )
+
+
+def test_the_caption_follows_its_image():
+    """A caption before the image, or after the next one, is a caption for the wrong
+    figure."""
+    body = README.read_text(encoding="utf-8")
+    for name, block in charts.captions().items():
+        image_at = body.index(f"](assets/{name})")
+        assert body.index(block) > image_at, f"the {name} caption precedes its image"
+
+
+def test_every_caption_says_it_is_reference_and_names_the_date():
+    for block in charts.captions().values():
+        assert "REFERENCE — not computed on your machine" in block
+        assert charts.load_reference()["measured_on"] in block
+
+
+def test_every_caption_gives_the_command_that_reproduces_it():
+    for block in charts.captions().values():
+        assert "demos/04_hill_climbing_loop/charts.py" in block
+        assert "--reference=compare" in block
+
+
+def test_the_interval_comes_from_metric_not_a_second_definition():
+    """Wilson is asymmetric about p, and Metric.render deliberately reports the WIDER arm
+    because the mean of the two understates the error. The first version of this caption
+    recomputed `(hi - lo) / 2`, which is exactly that understatement — 11.7 where Metric
+    says 14.9. One definition of ±, and it lives in Metric."""
+    block = charts.captions()["dial.png"]
+    for cell in charts.load_reference()["cells"]:
+        assert cell["silent_error_rate"] in block, (
+            f"{cell['key']} is not rendered through its own Metric string"
+        )
+
+
+def test_the_cost_caption_no_longer_claims_it_was_computed_live():
+    """README:657 captioned cost.png "computed live during the session" while it renders
+    stored reference cells. abstention.png said the same. dial.png got it right."""
+    body = README.read_text(encoding="utf-8")
+    for name in ("cost.png", "abstention.png", "dial.png"):
+        position = body.index(f"](assets/{name})")
+        following = body[position:position + 600]
+        assert "computed live during the session" not in following, (
+            f"the {name} caption still claims a live computation"
+        )
+
+
+def test_the_generated_captions_are_marked_as_generated():
+    """So nobody hand-edits one and expects it to survive."""
+    for block in charts.captions().values():
+        assert block.startswith(charts.CAPTION_MARKER)

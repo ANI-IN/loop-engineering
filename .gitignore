@@ -88,8 +88,16 @@ results/_resume_marker*.txt
 # was the fix; a test now asserts every repo path named in sweep/ resolves on disk.
 !results/noise_floor_*.json
 
-# Raw kill-and-restart output, cited verbatim as the evidence that LangSmith
-# does not resume. Not a stray log.
+# Kill-and-restart output, cited BY NAME in results/gate0.json as the evidence that
+# LangSmith does not resume. Kept committed and kept un-ignored, deliberately.
+#
+# The exception is NOT removed, and that is the decision rather than an oversight. The
+# log published a LangSmith organisation UUID and two more UUIDs in a public repo, so
+# the identifiers are REDACTED IN PLACE — the finding, the date and the method survive
+# and the identifiers do not. Deleting the file instead would have left gate0.json, which
+# must not change, citing a path that no longer resolves: the same defect the lint rule
+# and the pre-registration were both just fixed for. And a file that is tracked while
+# ignored is a file whose future output silently never shows in git status.
 !results/_resume_first.log
 !results/_resume_marker.txt
 

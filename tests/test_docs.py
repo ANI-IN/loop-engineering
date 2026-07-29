@@ -346,3 +346,90 @@ def test_a_single_replicate_reports_no_floor_rather_than_zero(tmp_path):
     shutil.copy(source / "worker_L0_loop_r0.json", tmp_path / "worker_L0_loop_r0.json")
 
     assert noise_floors(tmp_path) == {}
+
+
+# ---- committed probe output carries no credentials or identifiers ------------
+
+
+def test_the_resume_probe_log_publishes_no_uuids():
+    """It published a LangSmith organisation UUID, a dataset UUID and a session UUID in
+    a public repository. Redacted in place rather than deleted, because results/gate0.json
+    cites this path by name and must not change — a citation that stops resolving is the
+    defect the lint rule and the pre-registration were both just fixed for."""
+    uuid_shaped = re.compile(
+        r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b"
+    )
+    for name in ("_resume_first.log", "_resume_marker.txt"):
+        body = (REPO_ROOT / "results" / name).read_text(encoding="utf-8")
+        assert not uuid_shaped.findall(body), f"results/{name} still carries a UUID"
+
+
+def test_the_redaction_says_what_was_removed_and_why():
+    """A redacted artifact with no note is indistinguishable from a truncated one."""
+    body = (REPO_ROOT / "results" / "_resume_first.log").read_text(encoding="utf-8")
+    assert "REDACTED" in body
+    assert "gate0.json" in body, "the note must say why the file stays at this path"
+
+
+def test_the_finding_survives_the_redaction():
+    """The evidence is what the target invocations show, not where the run was hosted."""
+    body = (REPO_ROOT / "results" / "_resume_first.log").read_text(encoding="utf-8")
+    assert "[target] invoked" in body
+    assert "resume-probe-a" in body
+
+
+def test_gate0_still_cites_files_that_exist():
+    """It names the two probe artifacts, and it is committed evidence that must not be
+    edited — so they have to keep resolving."""
+    import json
+
+    gate0 = json.loads((REPO_ROOT / "results" / "gate0.json").read_text(encoding="utf-8"))
+    cited = re.findall(r"results/[\w./-]+", json.dumps(gate0))
+    for path in sorted(set(cited)):
+        assert (REPO_ROOT / path).exists(), f"results/gate0.json cites {path}, which is gone"
+
+
+def test_no_committed_file_carries_an_api_key_shape():
+    """A key in a public repo is unbounded spend by strangers."""
+    import subprocess
+
+    tracked = subprocess.run(
+        ["git", "ls-files"], capture_output=True, text=True, cwd=REPO_ROOT,
+    ).stdout.split()
+    key_shaped = re.compile(r"\b(?:sk-ant-|lsv2_)[A-Za-z0-9_-]{12,}")
+    for name in tracked:
+        path = REPO_ROOT / name
+        if not path.is_file() or path.suffix in {".png", ".duckdb", ".lock"}:
+            continue
+        try:
+            body = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        assert not key_shaped.findall(body), f"{name} looks like it carries a credential"
+
+
+def test_ci_asserts_the_single_key_journey():
+    """F4: the check whose absence let a required LANGSMITH_API_KEY ship green. It has to
+    live in the OFFLINE job — the property is that no network and no real key are needed."""
+    ci = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "only ANTHROPIC_API_KEY can start" in ci
+    assert "langsmith_api_key is None" in ci
+    # And it must not have introduced a secret into a job that had none.
+    assert "secrets." not in ci, "the offline job must need no secret"
+
+
+def test_the_readme_documents_the_cloners_journey():
+    """§11 was written for the author delivering a workshop. §11.0 is for someone who
+    just cloned."""
+    body = README.read_text(encoding="utf-8")
+    assert "Run it on your own key" in body
+    assert "--profile smoke" in body
+    assert "--reference=compare" in body
+    assert "LangSmith is optional" in body
+
+
+def test_the_readme_states_that_no_chart_appears_without_live_calls():
+    """The property is true and enforced and was never said to the reader."""
+    body = README.read_text(encoding="utf-8")
+    assert "without live Claude API calls" in body
+    assert "--view exhibit" in body

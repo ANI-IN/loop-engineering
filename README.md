@@ -489,6 +489,54 @@ every known spelling of the variable to false.
 
 ## 11 · Running each demo
 
+### 11.0 · Run it on your own key
+
+Everything below §11.0 is written for the author delivering a workshop. This part is for
+someone who just cloned.
+
+```bash
+cp .env.example .env          # add ANTHROPIC_API_KEY only; LangSmith is optional
+uv sync && uv run pytest -q   # offline, free, proves the checkout
+
+uv run python demos/00_preflight/check.py                      # a fraction of a cent
+uv run python demos/04_hill_climbing_loop/sweep.py --profile smoke --foreground
+uv run python demos/04_hill_climbing_loop/charts.py --reference=compare
+```
+
+The preflight is the cheap one to run first. Two calls, one per model, **with the request
+kwargs the registry declares** — which is the point, because `temperature=0` is legal on
+Haiku and a `400` on Sonnet 5, so a simplified probe could pass on an account where the
+sweep fails. It also builds the warehouse and the gold set and runs the rule-surface
+probes, and those three are offline, so a bad key still tells you the rest of the checkout
+is sound.
+
+What each profile projects, from the repo's own `project_remaining`:
+
+| profile | cells | items | projected |
+|---|---|---|---|
+| `smoke` | 2 | 8 | est. $0.03 |
+| `delivery` | 4 | 50 | est. $0.43 |
+| `development` | 12 | 50 | est. $5.59 |
+
+`smoke` measures nothing worth quoting — eight items cannot separate anything, and it does
+not pretend to. It proves the whole pipeline on your key: real calls, cells on disk, four
+charts rendered, and the difference against the committed baseline computed with exact
+McNemar. `--reference=compare` is what puts your run and the stored one on the same chart;
+`--reference=fill` shows a stored cell only where you have no live one, and `hide` drops
+them entirely.
+
+**No chart in this repo can be produced without live Claude API calls**, except the ones
+explicitly badged REFERENCE and the ones served by `--view exhibit`. That has always been
+true and enforced — there is a test asserting a fresh clone renders "not yet measured" —
+and it is worth saying to your face: if a figure appears without you having spent anything,
+it is a stored measurement and it is labelled as one, in the row and inside the image.
+
+If your key is wrong you will find out in **one** call, not three. The loops stop on a
+`401`, `403` or `400` rather than retrying, and the message names the variable and the fix.
+Nothing anywhere will tell you the database said it.
+
+---
+
 **This is the section to actually use.** Each stage below is self-contained: it
 cold-starts, it needs no earlier stage, and it says what to look at rather than only what
 to type. Full detail — including what to say when the expected shape does not appear —
@@ -656,17 +704,71 @@ their provenance.
 computed live and stamped with the time; here it renders stored reference cells, drawn
 hatched and dated so a stored figure cannot pass for a fresh one.*
 
+<!-- generated: tools/render_readme_charts.py -->
+
+| cell | silent-error rate | est. cost |
+|---|---|---|
+| `frontier_L0_loop_r0` | 42.6% (n=47, ±14.2, measured 2026-07-29) | est. $0.7240 |
+| `frontier_L0_loop_r1` | 45.5% (n=44, ±14.5, measured 2026-07-29) | est. $0.6978 |
+| `frontier_L0_loop_r2` | 32.6% (n=46, ±14.4, measured 2026-07-29) | est. $0.7563 |
+| `frontier_L0_one_shot_r0` | 83.8% (n=37, ±14.9, measured 2026-07-29) | est. $0.3921 |
+| `frontier_L3_loop_r0` | 4.7% (n=43, ±10.8, measured 2026-07-29) | est. $0.3830 |
+| `frontier_L3_one_shot_r0` | 0.0% (n=43, ±8.2, measured 2026-07-29) | est. $0.3646 |
+
+These are the author's development-run measurements from **2026-07-29** on `claude-sonnet-5`. They are **REFERENCE — not computed on your machine.** To render the equivalent chart from your own key:
+
+```bash
+uv run python demos/04_hill_climbing_loop/charts.py --reference=compare
+```
+
 ![Estimated spend per cell, with the n behind each bar, from the frozen reference measurements](assets/cost.png)
 
-*Example output from the development run of 2026-07-29, computed live during the session.
-Tokens are measured; dollars are those tokens times a hand-entered price table, so every
-figure keeps its `est.` prefix — and calls that failed are included, because they billed.*
+*Example output from the development run of 2026-07-29. Like the chart above it renders
+stored reference cells, not a live computation — the session recomputes it and stamps it
+with the time. Tokens are measured; dollars are those tokens times a hand-entered price
+table, so every figure keeps its `est.` prefix — and calls that failed are included,
+because they billed.*
+
+<!-- generated: tools/render_readme_charts.py -->
+
+| cell | est. cost | n |
+|---|---|---|
+| `frontier_L0_loop_r0` | est. $0.7240 | 47 |
+| `frontier_L0_loop_r1` | est. $0.6978 | 44 |
+| `frontier_L0_loop_r2` | est. $0.7563 | 46 |
+| `frontier_L0_one_shot_r0` | est. $0.3921 | 37 |
+| `frontier_L3_loop_r0` | est. $0.3830 | 43 |
+| `frontier_L3_one_shot_r0` | est. $0.3646 | 43 |
+
+These are the author's development-run measurements from **2026-07-29** on `claude-sonnet-5`. They are **REFERENCE — not computed on your machine.** To render the equivalent chart from your own key:
+
+```bash
+uv run python demos/04_hill_climbing_loop/charts.py --reference=compare
+```
 
 ![Coverage against precision as the abstention threshold moves, with Wilson 95% intervals on precision and the number answered at each operating point](assets/abstention.png)
 
-*Example output from the development run of 2026-07-29, computed live during the session.
-Raising the threshold answers fewer questions and gets more of the answered ones right.
-The trade is the point — a single accuracy number hides it completely.*
+*Example output from the development run of 2026-07-29, rendered from a stored curve
+rather than computed here. Raising the threshold answers fewer questions and gets more of
+the answered ones right. The trade is the point — a single accuracy number hides it
+completely.*
+
+<!-- generated: tools/render_readme_charts.py -->
+
+| threshold | answered | coverage | precision |
+|---|---|---|---|
+| 0.00 | 50 | 100.0% (n=50, ±7.1, measured 2026-07-29) | 26.0% (n=50, ±13.6, measured 2026-07-29) |
+| 0.15 | 41 | 82.0% (n=50, ±12.8, measured 2026-07-29) | 31.7% (n=41, ±15.3, measured 2026-07-29) |
+| 0.20 | 41 | 82.0% (n=50, ±12.8, measured 2026-07-29) | 31.7% (n=41, ±15.3, measured 2026-07-29) |
+| 0.30 | 41 | 82.0% (n=50, ±12.8, measured 2026-07-29) | 31.7% (n=41, ±15.3, measured 2026-07-29) |
+| 0.70 | 41 | 82.0% (n=50, ±12.8, measured 2026-07-29) | 31.7% (n=41, ±15.3, measured 2026-07-29) |
+| 1.00 | 10 | 20.0% (n=50, ±13.0, measured 2026-07-29) | 50.0% (n=10, ±26.3, measured 2026-07-29) |
+
+These are the author's development-run measurements from **2026-07-29** on `claude-haiku-4-5`. They are **REFERENCE — not computed on your machine.** To render the equivalent chart from your own key:
+
+```bash
+uv run python demos/04_hill_climbing_loop/charts.py --reference=compare
+```
 
 To regenerate them after a new reference measurement:
 
