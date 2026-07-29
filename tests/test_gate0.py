@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 
+from loopeng.api_probes import CACHE_MINIMUM_TOKENS, cacheability_findings
 from loopeng.gate0 import REFUNDS_NET_CAVEAT, TEMPLATING_DISCLOSURE, rule_coverage
 from loopeng.gold.build import build_gold
-from loopeng.probes import CACHE_MINIMUM_TOKENS, cacheability_findings
 from loopeng.warehouse.connect import ensure_warehouse
 
 REPORT = Path("results/gate0.json")
@@ -133,3 +133,27 @@ def test_byte_identity_is_recorded_as_false_not_omitted():
     entry = report["warehouse"]["byte_identical_across_runs"]
     assert entry["value"] is False
     assert "content-identity" in entry["note"]
+
+
+def test_the_two_probe_modules_have_distinct_names():
+    """`loopeng.probes` and `loopeng.verify.probes` did genuinely different things —
+    one calls the API and costs money, the other is a pure function over SQL text and
+    costs nothing — and shared a name, which made every import site ambiguous in the
+    direction that spends. Renamed, not merged."""
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parent.parent / "src" / "loopeng"
+    assert not (src / "probes.py").exists(), "the ambiguous top-level name is back"
+    assert (src / "api_probes.py").is_file()
+    assert (src / "verify" / "probes.py").is_file()
+
+
+def test_the_two_probe_modules_are_not_merged():
+    """They measure different things and neither belongs inside the other."""
+    from loopeng import api_probes
+    from loopeng.verify import probes as rule_probes
+
+    assert hasattr(api_probes, "probe_rate_limits")
+    assert hasattr(rule_probes, "run_probes")
+    assert not hasattr(api_probes, "run_probes")
+    assert not hasattr(rule_probes, "probe_rate_limits")

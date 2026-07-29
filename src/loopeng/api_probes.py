@@ -8,6 +8,13 @@ does not run the model at all.
 
 Rate limits are **per-model pools**: Haiku 4.5 and Sonnet 5 do not share a bucket,
 so one probe is not enough and both ceilings are recorded.
+
+**Named `api_probes`, not `probes`.** There is a second, unrelated `probes` module —
+`loopeng.verify.probes`, the OFFLINE rule-surface probes — and the two do genuinely
+different things: this one calls the API and costs money, that one is a pure function
+over SQL text and costs nothing. Sharing the name made every import site ambiguous and
+README §11's `from loopeng.verify.probes import run_probes` easy to get wrong in the
+direction that spends. Deliberately NOT merged: they are not two halves of one idea.
 """
 
 import anthropic

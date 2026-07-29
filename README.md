@@ -403,14 +403,18 @@ src/loopeng/
   paired.py          McNemar for paired comparisons
   prompts.py         the L0 and L3 prompts, rules rendered from config
   contracts.py       the verifier's view of an attempt — no field for the answer
-  probes.py          rate-limit and prompt-cacheability probes
+  api_probes.py      LIVE probes of the API: rate-limit ceilings and
+                     prompt cacheability. Renamed from probes.py, which
+                     collided by name with verify/probes.py — a different
+                     thing entirely (offline rule-surface probes)
   gate0.py           assembles the foundation evidence report
   langsmith_ds.py    gold to LangSmith dataset, advisory and failure-tolerant
   env_guard.py       refuses to run from a cloud-synced path that breaks imports
   warehouse/         seeded generator, semantic model, read-only connection factory
   gold/              patterns, build, comparison
   agent/             level 1 loop, classification, the trap
-  verify/            level 2 loop, verifiers, governance, probes, the swap
+  verify/            level 2 loop, verifiers, governance, the OFFLINE
+                     rule-surface probes, the swap
   queue/             level 3 queue and worker
   sweep/             level 4 runner, profiles, charts, reference cells
   triage/            abstention, escalation, failure triage

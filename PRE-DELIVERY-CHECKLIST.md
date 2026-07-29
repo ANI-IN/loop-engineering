@@ -80,7 +80,7 @@ for one account on one tier**, and neither is guaranteed to be what you are usin
 ```bash
 uv run pytest tests/live/test_registry_live.py -m live -q
 uv run python -c "
-from loopeng.probes import probe_rate_limits
+from loopeng.api_probes import probe_rate_limits
 import json; print(json.dumps(probe_rate_limits(), indent=2))"
 ```
 

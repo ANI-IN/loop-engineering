@@ -6,7 +6,7 @@ it stays free. This is the one that actually knows.
 
 import pytest
 
-from loopeng.probes import CACHE_MINIMUM_TOKENS, probe_prompt_tokens
+from loopeng.api_probes import CACHE_MINIMUM_TOKENS, probe_prompt_tokens
 
 
 @pytest.mark.live
