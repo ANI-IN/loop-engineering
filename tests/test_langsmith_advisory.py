@@ -101,3 +101,59 @@ def test_advisory_records_the_error_text_for_the_report():
     result = advisory("noop", lambda: (_ for _ in ()).throw(Unreachable("no route to host")))
     assert "no route to host" in result.error
     assert "Unreachable" in result.error
+
+
+# ---- an absent key is a degradation, not a startup error --------------------
+#
+# §15 says LangSmith is advisory and never the system of record. The setting used to
+# be declared required, which made that sentence false and forced the public exhibit
+# to inject a fake value. These assert the promise now holds.
+
+
+@pytest.fixture
+def no_langsmith_key(tmp_path, monkeypatch):
+    """No key, and no `.env` in reach that could supply one."""
+    import loopeng.langsmith_ds as ds
+
+    monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(ds, "_warned_absent", False)
+    return ds
+
+
+def test_an_absent_key_degrades_to_a_no_op(no_langsmith_key):
+    result = upload_gold([])
+    assert result.ok is False
+    assert result.value is None
+    assert "LANGSMITH_API_KEY" in result.error, "the failure must name the variable"
+
+
+def test_the_absent_key_warning_names_the_variable_once(no_langsmith_key, monkeypatch):
+    """One warning per process. A sweep uploads repeatedly and a per-call warning
+    would bury the cell progress it sits beside."""
+    warnings = []
+    monkeypatch.setattr(
+        no_langsmith_key.log, "warning", lambda event, **kw: warnings.append((event, kw))
+    )
+
+    upload_gold([])
+    upload_gold([])
+    upload_gold([])
+
+    configured = [kw for event, kw in warnings if event == "langsmith_not_configured"]
+    assert len(configured) == 1, f"warned {len(configured)} times, expected once"
+    assert configured[0]["variable"] == "LANGSMITH_API_KEY"
+    assert "results/*.json" in configured[0]["unaffected"]
+
+
+def test_the_absent_key_never_reaches_a_client(no_langsmith_key, monkeypatch):
+    """No key means no `Client(...)` is constructed at all — not one built with None."""
+    built = []
+    monkeypatch.setattr(no_langsmith_key, "credential", lambda: None)
+    monkeypatch.setattr(no_langsmith_key, "warn_not_configured", lambda op: built.append(op))
+
+    with pytest.raises(no_langsmith_key.LangSmithNotConfigured):
+        no_langsmith_key._client()
+
+    assert built == ["client"]

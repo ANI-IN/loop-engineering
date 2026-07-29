@@ -11,6 +11,13 @@ transport failure returns a null result instead of propagating. It is deliberate
 *not* a bare `except Exception` around business logic — the failures being swallowed
 are network failures around a reporting side-effect, and the reason each one is safe
 to swallow is that nothing downstream reads from LangSmith.
+
+**An absent LANGSMITH_API_KEY is one of those failures, not a startup error.** It used
+to be a required setting, which made the advisory promise above false — a checkout with
+a working ANTHROPIC_API_KEY and no LangSmith key could not start, and the public exhibit
+had to inject a fake value to get past its own settings validation. Now the key is
+optional and its absence degrades to a no-op with a single warning naming the variable.
+The measurements are unaffected, which is the whole claim.
 """
 
 from collections.abc import Callable
@@ -24,6 +31,22 @@ from loopeng.settings import load_settings
 log = structlog.get_logger(__name__)
 
 DATASET_NAME = "loop-eng-gold-v1"
+
+LANGSMITH_KEY_VAR = "LANGSMITH_API_KEY"
+
+# Warned once per process, not once per call. An advisory subsystem that is switched off
+# should say so on the way past and then be quiet: a sweep uploads and traces repeatedly,
+# and a per-call warning would bury the cell progress it is meant to sit beside.
+_warned_absent = False
+
+
+class LangSmithNotConfigured(RuntimeError):
+    """LANGSMITH_API_KEY is absent, so there is nothing to talk to.
+
+    Raised from `_client()` rather than checked in `advisory()` on purpose: a test that
+    substitutes the client must still exercise the real failure path, and a check above
+    the substitution point would short-circuit it.
+    """
 
 
 @dataclass(frozen=True)
@@ -39,11 +62,39 @@ class TraceResult:
     error: str | None = None
 
 
+def credential() -> str | None:
+    """The LangSmith key, or None when it is not configured. Never the secret in a log."""
+    key = load_settings().langsmith_api_key
+    return key.get_secret_value() if key is not None else None
+
+
+def warn_not_configured(operation: str) -> None:
+    """One structured warning per process, naming the variable and what degrades."""
+    global _warned_absent
+    if _warned_absent:
+        return
+    _warned_absent = True
+    log.warning(
+        "langsmith_not_configured",
+        variable=LANGSMITH_KEY_VAR,
+        operation=operation,
+        degrades="trace links, dataset upload, the resumability probe",
+        unaffected="results/*.json, which is the system of record",
+        fix=f"Add {LANGSMITH_KEY_VAR}=<your key> to .env to turn tracing back on.",
+    )
+
+
 def _client():
     from langsmith import Client
 
-    settings = load_settings()
-    return Client(api_key=settings.langsmith_api_key.get_secret_value())
+    api_key = credential()
+    if api_key is None:
+        warn_not_configured("client")
+        raise LangSmithNotConfigured(
+            f"{LANGSMITH_KEY_VAR} is not set. Tracing is advisory, so this degrades to "
+            f"a no-op; nothing measured depends on it."
+        )
+    return Client(api_key=api_key)
 
 
 def advisory(operation: str, fn: Callable[[], Any]) -> TraceResult:
@@ -55,6 +106,10 @@ def advisory(operation: str, fn: Callable[[], Any]) -> TraceResult:
     """
     try:
         return TraceResult(ok=True, value=fn())
+    except LangSmithNotConfigured as exc:
+        # Already warned once, by name, at the point of detection. Not re-logged per
+        # operation: "not configured" is a standing condition, not an incident.
+        return TraceResult(ok=False, error=f"{type(exc).__name__}: {exc}")
     except Exception as exc:  # noqa: BLE001 - see docstring
         log.warning("langsmith_unavailable", operation=operation, error=str(exc))
         return TraceResult(ok=False, error=f"{type(exc).__name__}: {exc}")

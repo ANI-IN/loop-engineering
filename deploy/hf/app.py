@@ -29,8 +29,13 @@ sys.path.insert(0, str(ROOT / "src"))
 
 # The exhibit touches no live path, but settings still validate on import, so give them
 # something syntactically valid rather than leaving a half-configured process.
+#
+# There is deliberately no LANGSMITH_API_KEY line here any more. There used to be one,
+# and it was a workaround for this repo's own config contradicting this repo's own
+# documented rule: §15 says LangSmith is advisory, the setting was declared required,
+# and the fake value was how the exhibit got past that. The setting is optional now, so
+# the workaround has nothing left to work around.
 os.environ.setdefault("ANTHROPIC_API_KEY", "exhibit-no-live-calls")
-os.environ.setdefault("LANGSMITH_API_KEY", "exhibit-no-live-calls")
 os.environ.setdefault("LANGSMITH_TRACING", "false")
 os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
 

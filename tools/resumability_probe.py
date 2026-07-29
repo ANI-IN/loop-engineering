@@ -27,16 +27,35 @@ from pathlib import Path
 
 from langsmith import Client, evaluate
 
-from loopeng.langsmith_ds import DATASET_NAME
-from loopeng.settings import load_settings
+from loopeng.langsmith_ds import (
+    DATASET_NAME,
+    LANGSMITH_KEY_VAR,
+    credential,
+    warn_not_configured,
+)
 
 MARKER = Path("results/_resume_marker.txt")
 SLEEP_SECONDS = 6.0
 
 
 def _client() -> Client:
-    settings = load_settings()
-    return Client(api_key=settings.langsmith_api_key.get_secret_value())
+    """The LangSmith client, or a refusal that names the variable.
+
+    This probe is the one place in the repo that genuinely cannot degrade: it measures
+    LangSmith's own resume behaviour, so there is nothing to fall back to. It says that
+    rather than failing on an attribute of None.
+    """
+    api_key = credential()
+    if api_key is None:
+        warn_not_configured("resumability_probe")
+        raise SystemExit(
+            f"{LANGSMITH_KEY_VAR} is not set, and this probe measures LangSmith itself, "
+            f"so there is nothing for it to degrade to.\n"
+            f"Add {LANGSMITH_KEY_VAR}=<your key> to .env (see .env.example), or skip "
+            f"this probe — nothing else in the repo needs it, and the finding it "
+            f"produced is committed at results/_resume_first.log."
+        )
+    return Client(api_key=api_key)
 
 
 def target(inputs: dict) -> dict:

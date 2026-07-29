@@ -34,7 +34,16 @@ class Settings(BaseSettings):
     )
 
     anthropic_api_key: SecretStr
-    langsmith_api_key: SecretStr
+
+    # Optional, and it has to be, because §15 promises LangSmith is advisory and never
+    # the system of record. Declaring it required made that promise false: a checkout
+    # with a valid ANTHROPIC_API_KEY and no LangSmith key could not start at all, and
+    # the exhibit had to inject a fake value to get past this line. A rule the config
+    # contradicts is the defect this project is about, so the config moved.
+    #
+    # Absent means tracing degrades to a no-op with one warning naming the variable.
+    # See loopeng.langsmith_ds.
+    langsmith_api_key: SecretStr | None = None
     langsmith_project: str = "loop-eng-workshop"
 
     # Tracing is opt-in, and defaults off. The LangSmith SDK enables itself from
@@ -50,14 +59,13 @@ class Settings(BaseSettings):
     results_dir: Path = Path("results")
 
 
+# One entry per credential that can actually be missing. LANGSMITH_API_KEY is
+# deliberately absent: it is optional, so it can never raise here, and an entry for it
+# would be a fix message for a failure that cannot happen.
 _FIXES = {
     "anthropic_api_key": (
         "ANTHROPIC_API_KEY",
         "Add ANTHROPIC_API_KEY=<your key> to .env (see .env.example).",
-    ),
-    "langsmith_api_key": (
-        "LANGSMITH_API_KEY",
-        "Add LANGSMITH_API_KEY=<your key> to .env (see .env.example).",
     ),
 }
 
