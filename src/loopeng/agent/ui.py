@@ -52,10 +52,23 @@ def render_cost(ledger) -> str:
 
 
 def render_attempts(run) -> str:
+    """The attempt timeline.
+
+    **A failed model call is never labelled `database said`.** It used to be: a typo'd
+    API key rendered three attempts reading `database said: AuthenticationError`, which
+    blames the warehouse for a credential problem and sends the reader to the wrong
+    file. The two failures are told apart by `Attempt.model_call_failed`, which reads
+    the recorded call outcome rather than guessing from an empty SQL string.
+    """
     if run is None:
         return "_no run yet_"
     lines = [f"**termination:** `{run.termination}` · **model:** `{run.model_id}`", ""]
     for attempt in run.attempts:
+        if attempt.model_call_failed:
+            lines.append(f"### Attempt {attempt.n} — the model call failed")
+            lines.append(f"**the API said:** `{attempt.error}`")
+            lines.append("")
+            continue
         status = "ran" if attempt.executed else "failed to execute"
         lines.append(f"### Attempt {attempt.n} — {status}")
         lines.append(f"```sql\n{attempt.sql or '(no SQL returned)'}\n```")

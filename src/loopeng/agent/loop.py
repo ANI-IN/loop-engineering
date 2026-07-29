@@ -13,6 +13,17 @@ Level 2 exists.
 The loop never touches gold. Classification against gold happens afterwards, in
 `loopeng.agent.classify`, on the finished run — the same isolation the VerifyContext
 contract enforces for Phase 2.
+
+**Not every failed call is worth retrying, and the loop used to retry all of them.** A
+bare `except Exception` around `client.messages.create` treated a revoked API key
+exactly like a transient 529: three round-trips, then `max_attempts`, and a screen that
+said `database said: AuthenticationError` — blaming the warehouse for a credential
+problem. At sweep scale that is ~200 doomed calls before a uniformly failed grid.
+
+A retry is only a retry when the next attempt could plausibly differ. `FATAL_CALL_ERRORS`
+is the set where it cannot, and the loop stops on the first one with a message naming the
+variable and the fix. Retrying those is not a budget guard; it is spend with a guaranteed
+zero return.
 """
 
 import re
@@ -53,6 +64,73 @@ class TerminationReason(StrEnum):
     BUDGET = "budget"
     NO_PROGRESS = "no_progress"
 
+    # The two non-retryable branches. Separate names rather than one, because they are
+    # different problems with different fixes and a run labelled `credential` when the
+    # request was merely malformed would send an operator to the wrong file.
+    CREDENTIAL = "credential"    # 401/403 — the key or the account, not the request
+    BAD_REQUEST = "bad_request"  # 400 — the request itself; retrying sends it again
+
+
+# Failures a retry cannot fix. Named against the client's own exception classes rather
+# than against status codes: the SDK already models that mapping, and a second copy of it
+# here is a second thing to drift.
+CREDENTIAL_ERRORS = (
+    anthropic.AuthenticationError,    # 401 — key wrong, revoked, or account unfunded
+    anthropic.PermissionDeniedError,  # 403 — the account may not call this model
+)
+
+# 400. This is the class Sonnet 5 returns for a pinned temperature, and retrying a
+# malformed request is exactly the same waste as retrying a bad key.
+BAD_REQUEST_ERRORS = (anthropic.BadRequestError,)
+
+FATAL_CALL_ERRORS = CREDENTIAL_ERRORS + BAD_REQUEST_ERRORS
+
+# Everything else the client can raise is retryable and stays retryable: 429s, 5xx,
+# timeouts, connection resets. Listed for the reader rather than matched on — the code
+# below reaches them through the `except Exception` fallback, which is deliberately the
+# broad arm so a transport failure class we have not met still gets its retry.
+RETRYABLE_CALL_ERRORS = (
+    anthropic.RateLimitError,        # 429
+    anthropic.APITimeoutError,       # no response in time
+    anthropic.APIConnectionError,    # transport
+    anthropic.APIStatusError,        # 5xx, after the fatal subclasses above are taken
+)
+
+
+def triage_call_failure(
+    exc: Exception, *, role: str, model_id: str
+) -> tuple[TerminationReason | None, str]:
+    """How to stop after a failed model call, and what to say about it.
+
+    Returns `(termination, message)`. A `None` termination means retryable: the tokens
+    billed, the attempt is recorded, and the loop goes round again. Anything else stops
+    the loop now, and the message names the variable and the fix in the same shape as
+    `MissingCredential`, because the person reading it is in the same position.
+    """
+    if isinstance(exc, CREDENTIAL_ERRORS):
+        return TerminationReason.CREDENTIAL, (
+            f"{type(exc).__name__}: the Anthropic API rejected the credential for "
+            f"{model_id}. ANTHROPIC_API_KEY is set but not usable — it is wrong, "
+            f"revoked, or the account cannot call this model.\n"
+            f"Fix: check ANTHROPIC_API_KEY in .env (see .env.example), then run "
+            f"`uv run python demos/00_preflight/check.py` to confirm both models are "
+            f"reachable before spending anything.\n"
+            f"This stopped after one call. Retrying a rejected credential bills three "
+            f"times for the same refusal.\n"
+            f"The API said: {exc}"
+        )
+    if isinstance(exc, BAD_REQUEST_ERRORS):
+        return TerminationReason.BAD_REQUEST, (
+            f"{type(exc).__name__}: {model_id} rejected the request itself, so sending "
+            f"it again sends the same rejection.\n"
+            f"Fix: check the request kwargs for role '{role}' in "
+            f"src/loopeng/registry.py. Sonnet 5 returns this for any non-default "
+            f"sampling parameter, which is why temperature=0 is pinned on the worker "
+            f"role and not on the frontier one.\n"
+            f"The API said: {exc}"
+        )
+    return None, f"{type(exc).__name__}: {exc}"
+
 
 @dataclass(frozen=True)
 class Attempt:
@@ -65,6 +143,18 @@ class Attempt:
     @property
     def executed(self) -> bool:
         return self.error is None
+
+    @property
+    def model_call_failed(self) -> bool:
+        """True when the API call failed, so no query ever reached the database.
+
+        Read off the recorded outcome rather than inferred from `sql == ""`. An empty
+        string is also what a model that answered with nothing produces, and *that*
+        failure genuinely is a database failure — the executor rejects the empty query
+        and the error text comes from DuckDB. Renderers must not say `database said`
+        about a call that never got as far as the database.
+        """
+        return self.usage.outcome != "ok"
 
 
 @dataclass(frozen=True)
@@ -186,12 +276,17 @@ def run_question(
             sql = extract_sql(raw)
         except Exception as exc:  # noqa: BLE001 - a failed call still billed
             # Recorded, not swallowed: the tokens are gone either way, and dropping
-            # them would make the loop look cheaper than it is.
+            # them would make the loop look cheaper than it is. That holds for the
+            # fatal branch too — a refused call still made a round trip.
+            fatal, message = triage_call_failure(exc, role=role, model_id=spec.model_id)
             usage = CallUsage(spec.model_id, "error")
             ledger.record(usage)
-            attempts.append(
-                Attempt(n=n, sql="", rows=None, error=f"{type(exc).__name__}: {exc}", usage=usage)
-            )
+            attempts.append(Attempt(n=n, sql="", rows=None, error=message, usage=usage))
+            if fatal is not None:
+                log.error("model_call_refused", question=question[:60], attempt=n,
+                          termination=str(fatal), error=str(exc))
+                termination = fatal
+                break
             log.warning("model_call_failed", question=question[:60], attempt=n, error=str(exc))
             continue
 

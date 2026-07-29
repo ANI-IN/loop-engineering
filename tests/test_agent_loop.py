@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+import anthropic
 import pytest
 
 from loopeng.agent.loop import (
@@ -8,6 +9,7 @@ from loopeng.agent.loop import (
     extract_sql,
     run_question,
 )
+from loopeng.agent.ui import render_attempts
 from loopeng.usage import CallUsage
 from loopeng.warehouse.connect import ensure_warehouse
 
@@ -125,9 +127,21 @@ def test_budget_is_checked_before_spending_not_after(warehouse):
 
 
 def test_every_termination_reason_is_reachable():
-    """A policy branch nothing can reach is decoration."""
+    """A policy branch nothing can reach is decoration.
+
+    Pinned, so a new reason has to arrive with the test that fires it rather than
+    joining the enum and never being observed. Each is reached above or below:
+
+      success      test_success_terminates_immediately
+      max_attempts test_max_attempts_fires_and_is_named
+      budget       test_budget_fires_and_is_named
+      no_progress  test_no_progress_fires_on_identical_sql
+      credential   test_a_rejected_credential_stops_after_one_call
+      bad_request  test_a_malformed_request_is_not_a_credential_problem
+    """
     assert {r.value for r in TerminationReason} == {
-        "success", "max_attempts", "budget", "no_progress"
+        "success", "max_attempts", "budget", "no_progress",
+        "credential", "bad_request",
     }
 
 
@@ -233,3 +247,119 @@ def test_attempt_reports_whether_it_executed():
     usage = CallUsage("claude-haiku-4-5", "ok")
     assert Attempt(1, "SELECT 1", [[1]], None, usage).executed
     assert not Attempt(1, "SELECT 1", None, "boom", usage).executed
+
+
+# ---- non-retryable failures: stop once, and say what actually broke ----------
+#
+# A bad key used to buy three doomed round-trips per question and render
+# `database said: AuthenticationError` — a credential problem reported as a warehouse
+# problem. At 4 cells x 50 items that is ~200 calls with a guaranteed zero return.
+
+
+def _http_response(status: int):
+    import httpx
+
+    return httpx.Response(status, request=httpx.Request("POST", "https://api.anthropic.com/v1/messages"))
+
+
+class RefusingClient:
+    """Raises one specific anthropic error on every call. Counts them."""
+
+    def __init__(self, exc):
+        self.calls = 0
+        self._exc = exc
+        self.messages = SimpleNamespace(create=self._create)
+
+    def _create(self, **kwargs):
+        self.calls += 1
+        raise self._exc
+
+
+def _auth_error():
+    return anthropic.AuthenticationError(
+        "Error code: 401 - {'error': {'message': 'invalid x-api-key'}}",
+        response=_http_response(401),
+        body=None,
+    )
+
+
+def test_a_rejected_credential_stops_after_one_call(warehouse):
+    """THE test. One call, not three, and the reason is named."""
+    client = RefusingClient(_auth_error())
+    run = run_question("q", warehouse=warehouse, client=client, max_attempts=3)
+
+    assert client.calls == 1, f"made {client.calls} calls against a dead key"
+    assert run.termination is TerminationReason.CREDENTIAL
+    assert len(run.attempts) == 1
+
+
+def test_the_credential_failure_names_the_variable_and_the_fix(warehouse):
+    client = RefusingClient(_auth_error())
+    run = run_question("q", warehouse=warehouse, client=client)
+
+    assert "ANTHROPIC_API_KEY" in run.error
+    assert ".env" in run.error
+    assert "demos/00_preflight/check.py" in run.error
+
+
+def test_a_model_failure_is_never_reported_as_a_database_failure(warehouse):
+    """The screen used to blame the warehouse for a 401."""
+    client = RefusingClient(_auth_error())
+    run = run_question("q", warehouse=warehouse, client=client)
+
+    rendered = render_attempts(run)
+    assert "database said" not in rendered
+    assert "the API said" in rendered
+    assert "the model call failed" in rendered
+
+
+def test_a_403_is_also_non_retryable(warehouse):
+    """The account cannot call this model. Retrying does not change the account."""
+    client = RefusingClient(
+        anthropic.PermissionDeniedError("Error code: 403", response=_http_response(403), body=None)
+    )
+    run = run_question("q", warehouse=warehouse, client=client, max_attempts=3)
+
+    assert client.calls == 1
+    assert run.termination is TerminationReason.CREDENTIAL
+
+
+def test_a_malformed_request_is_not_a_credential_problem(warehouse):
+    """400 is the class Sonnet 5 returns for a pinned temperature. It stops, but it
+    stops under its own name and points at the registry rather than at .env."""
+    client = RefusingClient(
+        anthropic.BadRequestError(
+            "Error code: 400 - temperature is not supported",
+            response=_http_response(400),
+            body=None,
+        )
+    )
+    run = run_question("q", warehouse=warehouse, client=client, max_attempts=3)
+
+    assert client.calls == 1
+    assert run.termination is TerminationReason.BAD_REQUEST
+    assert "registry.py" in run.error
+    assert "ANTHROPIC_API_KEY" not in run.error
+
+
+def test_a_transient_failure_is_still_retried(warehouse):
+    """The triage must not have turned every failure into a stop. A 529 is exactly
+    the case a retry loop exists for."""
+    client = RefusingClient(
+        anthropic.APIStatusError("Error code: 529 - overloaded",
+                                 response=_http_response(529), body=None)
+    )
+    run = run_question("q", warehouse=warehouse, client=client, max_attempts=3)
+
+    assert client.calls == 3
+    assert run.termination is TerminationReason.MAX_ATTEMPTS
+
+
+def test_a_refused_call_is_still_recorded_in_the_ledger(warehouse):
+    """It made a round trip. Dropping it would make the loop look cheaper than it was,
+    which is the bias usage.py exists to prevent."""
+    client = RefusingClient(_auth_error())
+    run = run_question("q", warehouse=warehouse, client=client)
+
+    assert run.ledger.totals()["n_calls"] == 1
+    assert run.ledger.by_outcome() == {"error": 1}

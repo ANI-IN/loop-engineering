@@ -27,6 +27,7 @@ from loopeng.agent.loop import (
     TerminationReason,
     _build_messages,
     extract_sql,
+    triage_call_failure,
 )
 from loopeng.contracts import VerifyContext
 from loopeng.registry import spec_for
@@ -165,12 +166,20 @@ def run_verified(
             )
             sql = extract_sql(raw)
         except Exception as exc:  # noqa: BLE001 - a failed call still billed
+            # Same triage as Level 1, from the same function. This loop runs the sweep
+            # cells, so it is the one where retrying a rejected credential is most
+            # expensive: 50 items x 3 attempts per cell, all guaranteed to fail.
+            fatal, message = triage_call_failure(exc, role=role, model_id=spec.model_id)
             usage = CallUsage(spec.model_id, "error")
             ledger.record(usage)
-            failed = Attempt(n=n, sql="", rows=None, error=f"{type(exc).__name__}: {exc}",
-                             usage=usage)
+            failed = Attempt(n=n, sql="", rows=None, error=message, usage=usage)
             plain_attempts.append(failed)
             attempts.append(VerifiedAttempt(failed, VerifyResult(())))
+            if fatal is not None:
+                log.error("model_call_refused", attempt=n, termination=str(fatal),
+                          error=str(exc))
+                termination = fatal
+                break
             continue
 
         ledger.record(usage)

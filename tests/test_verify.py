@@ -238,6 +238,36 @@ def test_budget_fires_before_the_attempt_cap(warehouse):
     assert run.termination is TerminationReason.BUDGET
 
 
+def test_a_rejected_credential_stops_the_level_2_loop_too(warehouse):
+    """This is the loop the sweep cells run, so it is where retrying a dead key is
+    most expensive: 50 items x 3 attempts per cell, every one guaranteed to fail."""
+    import anthropic
+    import httpx
+
+    class RefusingClient:
+        def __init__(self):
+            self.calls = 0
+            self.messages = SimpleNamespace(create=self._create)
+
+        def _create(self, **kwargs):
+            self.calls += 1
+            raise anthropic.AuthenticationError(
+                "Error code: 401 - invalid x-api-key",
+                response=httpx.Response(
+                    401, request=httpx.Request("POST", "https://api.anthropic.com/")
+                ),
+                body=None,
+            )
+
+    client = RefusingClient()
+    run = run_verified("q", warehouse=warehouse, rules=("soft_delete",), client=client,
+                       max_attempts=3)
+
+    assert client.calls == 1, f"made {client.calls} calls against a dead key"
+    assert run.termination is TerminationReason.CREDENTIAL
+    assert "ANTHROPIC_API_KEY" in run.error
+
+
 def test_a_clean_query_passes_first_time(warehouse):
     good = (
         "SELECT COUNT(*) FROM orders o JOIN customers c ON c.customer_id = o.customer_id "
