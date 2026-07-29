@@ -16,7 +16,7 @@ import gradio as gr
 
 from loopeng.sweep.charts import COST_CAPTION, DIAL_CAPTION
 from loopeng.sweep.orchestrator import load_all
-from loopeng.sweep.reference import MEASURED_ON, load_reference
+from loopeng.sweep.reference import MEASURED_ON, MODE_FILL, load_reference
 from loopeng.sweep.runner import SWEEP_DIR
 from loopeng.views.chrome import NOT_MEASURED, live_or_reference_badge, stamp
 
@@ -81,11 +81,12 @@ def _comparison(cells: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def build_dial_app(sweep_dir: Path = SWEEP_DIR, *, with_reference: bool = True) -> gr.Blocks:
+def build_dial_app(sweep_dir: Path = SWEEP_DIR, *,
+                   reference_mode: str = MODE_FILL) -> gr.Blocks:
     def _refresh(_state):
         cells = load_all(sweep_dir)
-        if with_reference:
-            cells = cells + load_reference(exclude_keys={c["key"] for c in cells})
+        cells = cells + load_reference(mode=reference_mode,
+                                       live_keys={c["key"] for c in cells})
         done = [c for c in cells if c["complete"]]
         landed = sum(c["rate_n"] for c in done)
         return (

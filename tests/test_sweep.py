@@ -185,16 +185,25 @@ def test_load_all_returns_nothing_when_no_cells_exist(tmp_path):
     assert load_all(tmp_path / "absent") == []
 
 
-# ---- charts: two, not three, and honest when empty --------------------------
+# ---- charts: four, and TIER is still not one of them -------------------------
 
 
-def test_only_two_charts_are_shipped():
+def test_the_shipped_charts_are_pinned_and_tier_is_not_among_them():
     """TIER moved to Phase 4. Shipping it here would plot a finding that measurably
-    did not reproduce."""
+    did not reproduce.
+
+    DELTA and ABSTENTION are the two that arrived, and neither is a new figure so much
+    as a gap closed: DIAL and COST are per-cell absolute values, so nothing here showed
+    a difference at all; and ABSTENTION existed only in the README renderer, which reads
+    frozen data, so a cloner could not reproduce assets/abstention.png from their own run.
+    """
     from loopeng.sweep import charts
 
     builders = [n for n in dir(charts) if n.endswith("_chart")]
-    assert sorted(builders) == ["cost_chart", "dial_chart"]
+    assert sorted(builders) == [
+        "abstention_chart", "cost_chart", "delta_chart", "dial_chart",
+    ]
+    assert "tier_chart" not in builders
 
 
 def test_the_dial_caption_warns_the_bars_are_not_cross_comparable():
@@ -222,13 +231,20 @@ def test_charts_render_from_no_data_without_inventing_a_zero():
 
 
 def test_charts_write_from_a_cold_start(tmp_path):
-    """Gate 3: both charts build live from nothing on disk."""
+    """Gate 3: every chart builds live from nothing on disk.
+
+    DELTA and ABSTENTION are written even with no input. A chart that silently does not
+    exist is indistinguishable from a chart whose finding is absent.
+    """
     from loopeng.sweep.charts import write_charts
 
     written = write_charts([summarise_cell(Cell("worker", "L0", "loop"), [],
                                            complete=False, seconds=0.0)], tmp_path / "c")
-    assert [p.name for p in written] == ["dial.svg", "cost.svg"]
+    assert [p.name for p in written] == [
+        "dial.svg", "cost.svg", "delta.svg", "abstention.svg",
+    ]
     assert all(p.read_text().startswith("<svg") for p in written)
+    assert "not yet measured" in (tmp_path / "c" / "delta.svg").read_text()
 
 
 # ---- profiles: delivery cannot inherit development settings ------------------
@@ -408,12 +424,9 @@ def test_the_ablation_is_not_a_reference_measurement():
     assert "ablation" in reference.__doc__.lower()
 
 
-def test_a_live_cell_suppresses_its_reference_twin(tmp_path):
-    """Plotting the same cell twice — once solid, once hatched — reads as two
-    measurements disagreeing rather than one shown twice. Live always wins."""
+@pytest.fixture
+def two_reference_cells(tmp_path):
     import json
-
-    from loopeng.sweep.reference import load_reference
 
     payload = {"measured_on": "2026-07-29", "noise_floors": {}, "cells": [
         {"key": "frontier_L0_loop_r0", "label": "Sonnet · L0 · loop", "reference": True},
@@ -421,10 +434,116 @@ def test_a_live_cell_suppresses_its_reference_twin(tmp_path):
     ]}
     path = tmp_path / "ref.json"
     path.write_text(json.dumps(payload))
+    return path
 
-    assert len(load_reference(path)) == 2
-    kept = load_reference(path, exclude_keys={"frontier_L0_loop_r0"})
+
+def test_fill_mode_lets_a_live_cell_suppress_its_reference_twin(two_reference_cells):
+    """The behaviour that was correct for a development sweep re-measuring its own
+    frontier cells: plotting the same cell solid and hatched reads as two measurements
+    disagreeing rather than one shown twice."""
+    from loopeng.sweep.reference import MODE_FILL, load_reference
+
+    assert len(load_reference(two_reference_cells, mode=MODE_FILL)) == 2
+    kept = load_reference(two_reference_cells, mode=MODE_FILL,
+                          live_keys={"frontier_L0_loop_r0"})
     assert [c["key"] for c in kept] == ["frontier_L3_loop_r0"]
+
+
+def test_compare_mode_keeps_both_so_a_delta_is_possible(two_reference_cells):
+    """THE fix. `fill` made the cloner's comparison structurally impossible: measuring
+    a cell on your own key deleted its stored counterpart from the chart, so your run
+    could never be shown beside the baseline."""
+    from loopeng.sweep.reference import MODE_COMPARE, load_reference
+
+    kept = load_reference(two_reference_cells, mode=MODE_COMPARE,
+                          live_keys={"frontier_L0_loop_r0"})
+    assert [c["key"] for c in kept] == ["frontier_L0_loop_r0", "frontier_L3_loop_r0"]
+
+
+def test_hide_mode_shows_live_cells_only(two_reference_cells):
+    from loopeng.sweep.reference import MODE_HIDE, load_reference
+
+    assert load_reference(two_reference_cells, mode=MODE_HIDE) == []
+
+
+def test_an_unknown_reference_mode_is_refused(two_reference_cells):
+    """Silently falling back to a default would make a typo'd flag render a different
+    chart than the one asked for."""
+    from loopeng.sweep.reference import load_reference
+
+    with pytest.raises(ValueError, match="unknown reference mode"):
+        load_reference(two_reference_cells, mode="compair")
+
+
+# ---- the worker baseline: what makes `compare` mean anything ------------------
+
+
+def test_the_worker_baseline_covers_every_delivery_and_smoke_cell():
+    """Without it, a cloner running delivery got four solid worker bars beside six
+    hatched frontier bars: ten unrelated bars and no difference computable."""
+    from loopeng.sweep.reference import load_reference
+    from loopeng.sweep.runner import DELIVERY, SMOKE
+
+    stored = {cell["key"] for cell in load_reference()}
+    for profile in (SMOKE, DELIVERY):
+        for cell in build_cells(profile):
+            assert cell.key in stored, (
+                f"{cell.key} has no stored counterpart, so --reference=compare cannot "
+                f"pair it with anything"
+            )
+
+
+def test_the_worker_baseline_keeps_mcnemars_input():
+    """The frontier cells strip `items` entirely, which made a paired comparison
+    against the baseline impossible. The baseline keeps item ids and a boolean —
+    the minimum McNemar needs, and none of the SQL-and-rows bulk."""
+    import json
+
+    from loopeng.sweep.reference import WORKER_BASELINE_PATH, paired_map
+
+    payload = json.loads(WORKER_BASELINE_PATH.read_text())
+    for cell in payload["cells"]:
+        assert "items" not in cell, "the development bulk must not be committed"
+        pairs = paired_map(cell)
+        assert len(pairs) == cell["rate_n"], f"{cell['key']} paired map is not its n"
+        assert all(isinstance(v, bool) for v in pairs.values())
+
+
+def test_the_worker_baseline_is_the_same_run_as_the_frontier_reference():
+    """Provenance, checked rather than asserted."""
+    import json
+
+    from loopeng.sweep.reference import REFERENCE_PATH, WORKER_BASELINE_PATH
+
+    payload = json.loads(WORKER_BASELINE_PATH.read_text())
+    assert payload["provenance"]["same_run_as"] == str(REFERENCE_PATH)
+    assert payload["provenance"]["verified_by_matching"]
+    assert payload["measured_on"] == json.loads(REFERENCE_PATH.read_text())["measured_on"]
+
+
+def test_freezing_from_a_different_run_is_refused():
+    """results/prefix_v1/sweep/ is committed, inviting, and PRE-FIX: up to 19pp apart
+    on the worker L3 cells. Freezing it beside post-fix frontier cells would hand a
+    cloner a baseline whose difference from their run is mostly a bug we fixed."""
+    from pathlib import Path
+
+    from loopeng.sweep.reference import NotTheSameRun, build_worker_baseline
+
+    with pytest.raises(NotTheSameRun) as exc:
+        build_worker_baseline(Path("results/prefix_v1/sweep"))
+    assert "DIFFERENT measurement run" in str(exc.value)
+    assert "prefix_v1" in str(exc.value)
+
+
+def test_the_readme_images_are_rendered_from_measurements_json_alone():
+    """The baseline is a second file for this reason: adding cells to measurements.json
+    would redraw three committed PNGs, and the author's images are keepers."""
+    from tools import render_readme_charts as charts
+
+    keys = {cell["key"] for cell in charts.load_reference()["cells"]}
+    assert all(key.startswith("frontier_") for key in keys), (
+        "a worker cell reached the README renderer; assets/ would change"
+    )
 
 
 # ---- --fresh: a checklist line is not enforcement ---------------------------

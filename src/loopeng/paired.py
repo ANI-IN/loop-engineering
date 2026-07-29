@@ -63,6 +63,19 @@ class PairedComparison:
         tail = sum(math.comb(n, k) for k in range(smaller + 1)) / (2**n)
         return min(1.0, 2 * tail)
 
+    @staticmethod
+    def render_p(p: float, places: int = 3) -> str:
+        """A p-value as text, and never as a zero it is not.
+
+        `f"{p:.3f}"` printed `p=0.000` for a strongly significant result. Exact McNemar
+        cannot return zero — the tail is 2/2**n — so that string was a rounding artefact
+        claiming a precision the test does not have, on the axis this project is least
+        entitled to overstate. Below the smallest representable value it says so with a
+        `<`, which is what a reader can actually rely on.
+        """
+        floor = 10.0**-places
+        return f"<{floor:.{places}f}" if p < floor else f"={p:.{places}f}"
+
     def render(self) -> str:
         """Directional only. Deliberately never renders a gap."""
         if self.n_discordant == 0:
@@ -77,12 +90,12 @@ class PairedComparison:
         if verdict == "not distinguishable":
             return (
                 f"{self.label_a} vs {self.label_b}: {self.n_discordant} discordant of "
-                f"{self.n_pairs} (p={p:.3f}) — not distinguishable at this n"
+                f"{self.n_pairs} (p{self.render_p(p)}) — not distinguishable at this n"
             )
         return (
             f"{worse} is worse than {better}; we cannot put a number on how much "
             f"({self.n_discordant} discordant of {self.n_pairs} pairs, McNemar exact "
-            f"p={p:.3f}, clustered)"
+            f"p{self.render_p(p)}, clustered)"
         )
 
     def as_dict(self) -> dict:
