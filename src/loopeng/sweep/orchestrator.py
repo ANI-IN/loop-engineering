@@ -10,6 +10,7 @@ from pathlib import Path
 
 import structlog
 
+from loopeng.sweep.reference import as_measured
 from loopeng.sweep.runner import (
     DEVELOPMENT,
     HEADROOM,
@@ -27,6 +28,39 @@ from loopeng.sweep.runner import (
 log = structlog.get_logger(__name__)
 
 GRID_CAP_USD = 8.0
+
+# The file this pre-registration cites, by name, before the first cell runs.
+#
+# It used to cite `results/noise_floor_*.json`, and no such file existed in the repo —
+# the artifact was on the author's machine and `.gitignore` dropped it. A citation
+# printed as provenance that resolves to nothing is the same defect class as the lint
+# rule that pointed at a moved path and scanned nothing: it looks like evidence and is
+# not checkable. The file is committed now, and a test asserts every repo-relative path
+# named in this module and in `sweep/reference.py` exists on disk.
+NOISE_FLOOR_PATH = Path("results/noise_floor_haiku_default_temp.json")
+NOISE_FLOOR_CITATION = str(NOISE_FLOOR_PATH)
+
+
+def _noise_floor_reading() -> str:
+    """The floor, read out of the cited file rather than restated beside it.
+
+    A number typed next to its own citation is the failure this whole section is warning
+    the room about. If the file is absent the line says so instead of quoting a figure
+    nothing on disk supports.
+    """
+    if not NOISE_FLOOR_PATH.is_file():
+        return (
+            f"NOT ON DISK — {NOISE_FLOOR_PATH} is missing, so this justification cannot "
+            f"be shown. The claim above stands or falls on that file."
+        )
+    body = json.loads(NOISE_FLOOR_PATH.read_text())
+    # The stored rate carries "computed HH:MM today", which is false on a cited figure in
+    # exactly the way the reference module exists to prevent. Rewritten with the same
+    # helper the frozen cells use, so a citation cannot look like a fresh computation.
+    return (
+        f"{body['what']}: {body['n_disagreed']} of {body['n_items_identical_path']} "
+        f"that took an identical path disagreed — {as_measured(body['disagreement_rate'])}"
+    )
 
 
 def detectable_effect(n: int, baseline: float = 0.5) -> float:
@@ -77,8 +111,8 @@ THE TEMPERATURE ASYMMETRY — applies to every cross-model comparison
   Haiku's error bars carry SAMPLING noise only.
   Sonnet's carry SAMPLING noise PLUS run-to-run variance.
   The bars are therefore NOT comparable across models. Within-model they are.
-  Measured justification: at default temperature, two runs of the same items disagreed
-  on 6 of 37 that took an identical path — a 16.2% floor (results/noise_floor_*.json).
+  Measured justification: {NOISE_FLOOR_CITATION}
+  {_noise_floor_reading()}
 
 REPLICATES
   3 on BOTH L0 loop cells. They measure two different determinism floors, and neither

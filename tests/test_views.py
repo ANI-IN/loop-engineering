@@ -154,11 +154,54 @@ def test_the_comparison_carries_the_badge_on_both_sides():
     assert "Read the badges before reading the numbers" in rendered
 
 
-def test_the_l3_reading_says_cannot_tell_not_equal():
-    """The conclusion changed after the wording fix and the view must not say equal."""
+def test_a_row_with_no_cells_says_awaiting_measurement_not_a_conclusion():
+    """This test replaced one that PINNED the typed conclusions.
+
+    The old version asserted the L3 row said "cannot tell apart" and "not equal" — text
+    that was hardcoded in the view with a typed p-value beside it. Asserting it kept the
+    defect in place: the test and the code agreed, and both were wrong. The row must still
+    render, because a missing "cannot tell apart" row invites the room to fill the gap
+    themselves; it must render an absence, not a stored finding.
+    """
     rendered = dial._comparison([])
-    assert "cannot tell apart" in rendered
-    assert "not equal" in rendered
+
+    assert dial.AWAITING in rendered
+    for level in ("L0", "L3"):
+        assert f"| {level} |" in rendered, "the row must render even with no cells"
+    assert "p=" not in rendered, "no typed p-value may survive here"
+    assert "McNemar exact p" not in rendered
+
+
+def test_the_reading_is_derived_from_the_cells_on_screen():
+    """And the derived answer is not what was typed: this comparison is cross-model, so
+    diff refuses a p-value — the typed readings were asserting exactly the significance
+    claim pre_registration forbids in words."""
+    def cell(key, role, level, mode, correct):
+        return {"key": key, "label": key, "role": role, "level": level, "mode": mode,
+                "replicate": 0, "complete": True, "rate_value": 0.1, "rate_n": 10,
+                "silent_error_rate": "10.0% (n=10)", "cost_usd": {"value": 0.1},
+                "items": [{"item_id": f"i{n}", "correct": correct,
+                           "ran_and_returned": True} for n in range(10)]}
+
+    rendered = dial._comparison([
+        cell("worker_L0_loop_r0", "worker", "L0", "loop", True),
+        cell("frontier_L0_one_shot_r0", "frontier", "L0", "one_shot", False),
+    ])
+
+    assert "No p-value" in rendered
+    assert "cannot be pinned" in rendered
+    assert "p=0.039" not in rendered
+
+
+def test_no_stored_conclusion_is_typed_into_the_dial_view():
+    """The regression, aimed at the source rather than at the render."""
+    from pathlib import Path
+
+    source = (Path(__file__).resolve().parent.parent
+              / "src" / "loopeng" / "views" / "dial.py").read_text(encoding="utf-8")
+    body = source.split('"""', 2)[-1]  # past the module docstring, which tells the story
+    for typed in ("p=0.039", "p=0.250", "McNemar exact p="):
+        assert typed not in body, f"{typed!r} is typed into views/dial.py again"
 
 
 # ---- OVERSIGHT caveats are in the view, not a report -----------------------

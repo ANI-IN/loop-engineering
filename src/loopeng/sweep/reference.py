@@ -65,6 +65,7 @@ import json
 import re
 from pathlib import Path
 
+from loopeng.paired import PAIRED_ARM_COUNT
 from loopeng.sweep.runner import SWEEP_DIR
 
 # Metric.render() bakes "computed HH:MM today" into its string. On a stored
@@ -98,22 +99,71 @@ MODE_FILL = "fill"        # reference only where no live cell exists (the old be
 MODE_COMPARE = "compare"  # both, so the difference between them can be computed
 REFERENCE_MODES = (MODE_HIDE, MODE_FILL, MODE_COMPARE)
 
-NOISE_FLOORS = {
-    "claude-haiku-4-5": {
-        "spread_pp": 3.3,
-        "pinned": True,
-        "note": "temperature=0 pinned; spread across 3 replicates of the L0 loop cell",
-    },
-    "claude-sonnet-5": {
-        "spread_pp": 18.8,
-        "pinned": False,
-        "note": (
-            "cannot be pinned — Sonnet 5 rejects non-default sampling with a 400 — so "
-            "this floor cannot be removed, and its bars never meant the same thing as "
-            "Haiku's"
-        ),
-    },
+# ---------------------------------------------------------------------------
+# The determinism floors: how far a model's L0 loop cell moved across replicates of the
+# same 50 items. DERIVED from the committed replicate files, not typed.
+#
+# They were typed — `spread_pp: 3.3` and `18.8` — and both values are exactly what the
+# committed data yields, so nothing measured changes here. What changes is that the
+# numbers now cannot drift away from their evidence: an edit to the replicate files moves
+# these, and an edit to these is impossible without moving the files.
+#
+# The source is results/prefix_v1/sweep/. That is the PRE-FIX measurement set, and it is
+# the right source for exactly this: the floors are a fact about run-to-run variance in
+# two models, which the p07/p08 wording defect does not touch. It is also where these
+# figures came from originally — the post-fix run yields a different spread (2.5pp and
+# 12.8pp), so deriving them from `results/sweep` would silently replace the author's
+# numbers with new ones. Freezing evidence to the run it came from is the point.
+# ---------------------------------------------------------------------------
+FLOOR_SOURCE = Path("results/prefix_v1/sweep")
+
+# A rate is a proportion; a spread is quoted in percentage points.
+PERCENTAGE_POINTS = 100
+
+_PINNED = {
+    "claude-haiku-4-5": (
+        "worker",
+        True,
+        "temperature=0 pinned; spread across replicates of the L0 loop cell",
+    ),
+    "claude-sonnet-5": (
+        "frontier",
+        False,
+        "cannot be pinned — Sonnet 5 rejects non-default sampling with a 400 — so "
+        "this floor cannot be removed, and its bars never meant the same thing as "
+        "Haiku's",
+    ),
 }
+
+
+def noise_floors(source: Path = FLOOR_SOURCE) -> dict:
+    """Replicate spread per model, computed from the cell files that measured it.
+
+    Returns an empty dict for a model with fewer than two replicates on disk rather than
+    reporting a spread of zero: one replicate cannot measure run-to-run variance, and a
+    zero would read as "this model is deterministic".
+    """
+    source = Path(source)
+    floors = {}
+    for model, (role, pinned, note) in _PINNED.items():
+        rates = [
+            json.loads(path.read_text())["rate_value"]
+            for path in sorted(source.glob(f"{role}_L0_loop_r*.json"))
+            if json.loads(path.read_text()).get("complete")
+        ]
+        if len(rates) < PAIRED_ARM_COUNT:
+            continue
+        floors[model] = {
+            "spread_pp": round((max(rates) - min(rates)) * PERCENTAGE_POINTS, 1),
+            "pinned": pinned,
+            "n_replicates": len(rates),
+            "note": note,
+            "derived_from": f"{source}/{role}_L0_loop_r*.json",
+        }
+    return floors
+
+
+NOISE_FLOORS = noise_floors()
 
 
 class NotTheSameRun(RuntimeError):
@@ -126,13 +176,21 @@ class NotTheSameRun(RuntimeError):
     """
 
 
+def as_measured(text: str, measured_on: str = MEASURED_ON) -> str:
+    """Rewrite a stored `Metric.render()` string so it stops claiming it was just computed.
+
+    Public because more than one thing cites a stored figure. The pre-registration reads
+    the determinism floor out of its own cited file, and that file's rendered rate carries
+    "computed HH:MM today" — false, in exactly the way this module exists to prevent.
+    """
+    return _COMPUTED_TODAY.sub(f"measured {measured_on}", text)
+
+
 def _freeze(cell: dict, *, keep_paired: bool) -> dict:
     cell = dict(cell)
     cell["reference"] = True
     cell["measured_on"] = MEASURED_ON
-    cell["silent_error_rate"] = _COMPUTED_TODAY.sub(
-        f"measured {MEASURED_ON}", cell["silent_error_rate"]
-    )
+    cell["silent_error_rate"] = as_measured(cell["silent_error_rate"])
     items = cell.pop("items", None)  # SQL and rows are development-only bulk
     if keep_paired and items:
         # McNemar's whole input, and nothing else. See the module docstring.

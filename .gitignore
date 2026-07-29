@@ -78,6 +78,12 @@ results/_resume_marker*.txt
 # Kept deliberately: Gate 0 evidence, cited throughout the design record.
 !results/gate0.json
 
+# Kept deliberately: the determinism floor the pre-registration cites BY NAME before
+# the first cell runs. It was ignored, so the citation resolved to nothing on every
+# clone — a provenance line pointing at a file that was not there. Committing the file
+# was the fix; a test now asserts every repo path named in sweep/ resolves on disk.
+!results/noise_floor_*.json
+
 # Raw kill-and-restart output, cited verbatim as the evidence that LangSmith
 # does not resume. Not a stray log.
 !results/_resume_first.log

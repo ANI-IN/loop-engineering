@@ -723,17 +723,45 @@ the offline suite is what runs in CI on every push, and it cannot be broken by a
 secret because it never needed one. CI additionally asserts the live tests were
 *deselected* rather than silently skipped.
 
-**The numeric-literal rule** bans typed numbers in the eight modules that render to a
+**The numeric-literal rule** bans typed numbers in the eleven modules that render to a
 projector, because a typed number is indistinguishable from a measured one once it is on
 screen. Genuine layout geometry — SVG coordinates, string truncation widths, a slider
-step — is exempt via a trailing `# layout` marker on the line, and the rule prints how
-many exemptions exist so the count cannot grow quietly.
+step — is exempt via a trailing `# layout` marker on the line. There is a second, much
+narrower exemption for measurement-shaped text that describes the *method* rather than a
+result, held as an enumerated list of exact phrases. The rule prints **both** counts on
+every run, so neither hatch can widen quietly, and a test fails the build on an allowlist
+entry that exempts nothing.
 
-That rule was itself broken twice, and both failures are now regression-tested. It
-pointed at a path that no longer existed, so it scanned nothing and passed. And the test
-written to prevent that planted its violation by *writing* the file, which created the
-missing target — proving the walker worked while never checking the target was real. A
-declared target that does not resolve is now a build failure.
+That rule was itself broken **three times**, and all three failures are now
+regression-tested.
+
+It pointed at a path that no longer existed, so it scanned nothing and passed. And the
+test written to prevent that planted its violation by *writing* the file, which created
+the missing target — proving the walker worked while never checking the target was real.
+A declared target that does not resolve is now a build failure.
+
+**The third is the sharpest, because the rule was green while enforcing the opposite of
+its own justification.** It inspected numeric literals only. A number inside a *string*
+is a string constant, so it was skipped — and a string is the only form that reaches a
+projector at all. A bare `PASS_RATE = 78` never reaches anyone; a rendered label does.
+The single most quoted screen in the session carried two hardcoded statistical
+conclusions with typed p-values, in a file the rule had always scanned, and the build was
+green. The rule now inspects string constants and f-string literal parts for
+measurement-shaped text, and the readings on that screen are derived from the cells on
+disk. Deriving them changed what they say: the comparison is cross-model, and the
+comparability guardrail that had lived only in prose now refuses to put a significance
+claim across it.
+
+Docstrings and comments are deliberately out of scope. Nothing here renders one — checked
+rather than assumed — and they are where measured numbers get their provenance recorded.
+Banning them would strip the rationale that makes this code reviewable in exchange for
+catching nothing anyone can see.
+
+**A citation printed as provenance must resolve.** The pre-registration named a
+determinism-floor file that `.gitignore` dropped, so on every clone it cited a path that
+did not exist. The file is committed, the figure is read out of it rather than restated
+beside it, and a test asserts every repo path named in `sweep/orchestrator.py` and
+`sweep/reference.py` exists on disk.
 
 ---
 

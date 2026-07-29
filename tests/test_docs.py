@@ -231,3 +231,118 @@ def test_git_tracks_no_file_under_a_removed_directory():
         assert not path.startswith(("docs/", "scripts/", "app/")), (
             f"{path} is still tracked but its directory was removed"
         )
+
+
+# ---- a citation printed as provenance must resolve ---------------------------
+#
+# `sweep/orchestrator.py` printed "a 16.2% floor (results/noise_floor_*.json)" to the
+# room before the first cell ran, and no such file existed in the repo — the artifact
+# was on the author's machine and .gitignore dropped it. A citation that resolves to
+# nothing is the same defect class as the lint rule that pointed at a moved path and
+# scanned nothing: it looks like evidence and cannot be checked.
+#
+# Extends the link-checking pattern above rather than starting a new one.
+
+CITING_MODULES = (
+    "src/loopeng/sweep/orchestrator.py",
+    "src/loopeng/sweep/reference.py",
+)
+
+# Paths these modules WRITE rather than cite. A chart directory that does not exist yet
+# is not a broken citation; it is an output. Enumerated, so adding one is deliberate.
+WRITTEN_NOT_CITED = frozenset({
+    "results/sweep",       # live cell output, gitignored by design — a fresh clone has none
+    "results/charts",      # where the SVGs are written
+})
+
+
+def _repo_paths_in_strings(path: Path) -> set[str]:
+    """Every `results/...`-shaped string constant in a module, docstrings included.
+
+    Docstrings count here, unlike in the numeric-literal rule: a path named in a
+    docstring is still a citation a reader will try to follow.
+    """
+    import ast
+
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    found = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            found.update(re.findall(r"results/[\w./*-]*[\w*]", node.value))
+    return found
+
+
+@pytest.mark.parametrize("module", CITING_MODULES)
+def test_every_repo_path_named_in_the_sweep_modules_resolves(module):
+    import glob
+
+    path = REPO_ROOT / module
+    for cited in sorted(_repo_paths_in_strings(path)):
+        if cited in WRITTEN_NOT_CITED:
+            continue
+        matches = glob.glob(str(REPO_ROOT / cited))
+        assert matches, (
+            f"{module} names {cited!r}, which resolves to nothing. A citation printed "
+            f"as provenance that does not exist looks like evidence and is not."
+        )
+
+
+def test_the_noise_floor_the_pre_registration_cites_is_committed():
+    """It was gitignored, so every clone printed a citation to a missing file."""
+    from loopeng.sweep.orchestrator import NOISE_FLOOR_PATH
+
+    assert (REPO_ROOT / NOISE_FLOOR_PATH).is_file()
+    tracked = subprocess.run(
+        ["git", "ls-files", str(NOISE_FLOOR_PATH)],
+        capture_output=True, text=True, cwd=REPO_ROOT,
+    ).stdout.strip()
+    assert tracked, f"{NOISE_FLOOR_PATH} exists locally but is not tracked"
+
+
+def test_the_pre_registration_reads_the_floor_out_of_the_file_it_cites():
+    """A number typed next to its own citation is the failure the section warns about."""
+    import json
+
+    from loopeng.sweep.orchestrator import NOISE_FLOOR_PATH, pre_registration
+
+    body = json.loads((REPO_ROOT / NOISE_FLOOR_PATH).read_text())
+    printed = pre_registration(50)
+
+    assert str(NOISE_FLOOR_PATH) in printed
+    assert str(body["n_disagreed"]) in printed
+    assert str(body["n_items_identical_path"]) in printed
+    # And the citation must not claim it was computed just now.
+    assert "computed" not in printed.split("Measured justification")[1].split("\n\n")[0]
+
+
+def test_an_absent_citation_says_so_rather_than_quoting_a_figure(monkeypatch):
+    """If the file goes missing the line reports that, instead of a number nothing on
+    disk supports."""
+    from loopeng.sweep import orchestrator
+
+    monkeypatch.setattr(orchestrator, "NOISE_FLOOR_PATH", Path("results/gone.json"))
+    assert "NOT ON DISK" in orchestrator._noise_floor_reading()
+
+
+def test_the_noise_floors_are_derived_from_committed_replicates():
+    """They were typed as 3.3 and 18.8. Both are exactly what the committed data yields,
+    so nothing measured changed — but they can no longer drift from their evidence."""
+    from loopeng.sweep.reference import NOISE_FLOORS, noise_floors
+
+    assert NOISE_FLOORS == noise_floors()
+    for model, floor in NOISE_FLOORS.items():
+        assert (REPO_ROOT / floor["derived_from"]).parent.is_dir()
+        assert floor["n_replicates"] >= 2, f"{model} cannot measure variance from one run"
+
+
+def test_a_single_replicate_reports_no_floor_rather_than_zero(tmp_path):
+    """One replicate cannot measure run-to-run variance, and a zero would read as
+    "this model is deterministic"."""
+    import shutil
+
+    from loopeng.sweep.reference import noise_floors
+
+    source = REPO_ROOT / "results" / "prefix_v1" / "sweep"
+    shutil.copy(source / "worker_L0_loop_r0.json", tmp_path / "worker_L0_loop_r0.json")
+
+    assert noise_floors(tmp_path) == {}

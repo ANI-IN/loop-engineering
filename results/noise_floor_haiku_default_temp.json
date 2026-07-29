@@ -1,0 +1,22 @@
+{
+  "what": "Run-to-run disagreement of claude-haiku-4-5 at DEFAULT temperature",
+  "how": "Two independent runs of the same 50 gold items at L3. Restricted to items where the Level 2 loop made zero rejections, so both runs took an identical path \u2014 one model call, accepted immediately. Any disagreement is therefore the model itself, not the loop.",
+  "n_items_identical_path": 37,
+  "n_disagreed": 6,
+  "disagreement_rate": "16.2% (n=37, \u00b114.9, computed 18:55 today)",
+  "value": 0.16216216216216217,
+  "ci_low": 0.07651207234011151,
+  "ci_high": 0.3113648370093497,
+  "n": 37,
+  "source": "measured",
+  "consequence": "This is the empirical justification for pinning temperature=0 on the worker role for the sweep. A 13% disagreement floor would swamp the pre-registered L0 one-shot vs L0 loop effect. Sonnet 5 rejects non-default sampling parameters, so its floor cannot be removed and its error bars are not comparable to Haiku pinned.",
+  "items_that_disagreed": [
+    "p05_net_revenue__03",
+    "p09_refund_rate__00",
+    "p09_refund_rate__04",
+    "p10_repeat_customer_rate__00",
+    "p10_repeat_customer_rate__03",
+    "p10_repeat_customer_rate__04"
+  ],
+  "denominator_note": "Reported as 6 of 37, not 6 of 45. 45 is the count of items the loop never touched; 37 is how many of those ran and returned in BOTH runs and can therefore be paired. An item only one run answered is not a disagreement, and counting it in the denominator would understate the floor. 6/45 = 13.3% is the looser figure; 6/37 = 16.2% is the one with a valid denominator."
+}
