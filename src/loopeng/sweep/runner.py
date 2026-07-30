@@ -32,6 +32,7 @@ from loopeng.gold.build import json_default, spread_across_clusters
 from loopeng.metric import Metric
 from loopeng.pricing import prices_for
 from loopeng.registry import spec_for
+from loopeng.sweep.fingerprint import FINGERPRINT_FIELD, RunFingerprint
 from loopeng.verify.batch import as_agent_run
 from loopeng.verify.governance import verify_governed
 from loopeng.verify.loop import run_verified
@@ -337,8 +338,14 @@ def load_cell(cell: Cell, directory: Path = SWEEP_DIR) -> dict | None:
 
 def run_cell(cell: Cell, items, warehouse: Path, *, verifier=verify_governed,
              directory: Path = SWEEP_DIR, on_progress=None,
-             concurrency: int = CONCURRENCY_PER_MODEL) -> dict:
-    """Run one cell, writing partial state as items land so progress is observable."""
+             concurrency: int = CONCURRENCY_PER_MODEL,
+             fingerprint: RunFingerprint | None = None) -> dict:
+    """Run one cell, writing partial state as items land so progress is observable.
+
+    `fingerprint` is stamped into the file at write time. It makes run identity a
+    recorded fact rather than something `assert_same_run` has to infer from which
+    directory a file happens to sit in — see `loopeng.sweep.fingerprint`.
+    """
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     path = cell_path(cell, directory)
@@ -377,17 +384,20 @@ def run_cell(cell: Cell, items, warehouse: Path, *, verifier=verify_governed,
         for future in as_completed(futures):
             rows.append(future.result())
             partial = summarise_cell(cell, rows, complete=False,
-                                     seconds=time.perf_counter() - started)
+                                     seconds=time.perf_counter() - started,
+                                     fingerprint=fingerprint)
             path.write_text(json.dumps(partial, indent=2, default=json_default))
             if on_progress:
                 on_progress(partial)
 
-    report = summarise_cell(cell, rows, complete=True, seconds=time.perf_counter() - started)
+    report = summarise_cell(cell, rows, complete=True, seconds=time.perf_counter() - started,
+                            fingerprint=fingerprint)
     path.write_text(json.dumps(report, indent=2, default=json_default))
     return report
 
 
-def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: float) -> dict:
+def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: float,
+                   fingerprint: RunFingerprint | None = None) -> dict:
     ran = [r for r in rows if r["ran_and_returned"]]
     correct = sum(1 for r in ran if r["correct"])
     silent = len(ran) - correct
@@ -423,4 +433,8 @@ def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: flo
             {r["pattern_key"] for r in rows if r["rejections"] > 0}
         ),
         "items": sorted(rows, key=lambda r: r["item_id"]),
+        # Additive, like the two cache token classes: a cell written without one simply
+        # has no key, and every reader treats absence as "unverifiable" rather than as
+        # a match against a default.
+        **({FINGERPRINT_FIELD: fingerprint.as_dict()} if fingerprint else {}),
     }

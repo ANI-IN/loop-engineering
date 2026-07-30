@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from loopeng.pricing import PRICES_TAKEN_ON
 from loopeng.sweep.orchestrator import detectable_effect, load_all, pre_registration, run_sweep
 from loopeng.sweep.runner import (
     DEVELOPMENT,
@@ -534,6 +535,23 @@ def test_the_worker_baseline_is_the_same_run_as_the_frontier_reference():
     assert payload["measured_on"] == json.loads(REFERENCE_PATH.read_text())["measured_on"]
 
 
+def test_the_committed_baseline_says_what_was_NOT_established_about_it():
+    """`verified_by_matching` names six FRONTIER keys. That is accurate and it read as
+    though the six worker cells in this file had been verified — they had not, and
+    these cells predate the fingerprint that would have. The file has to say so."""
+    import json
+
+    from loopeng.sweep.reference import WORKER_BASELINE_PATH
+
+    provenance = json.loads(WORKER_BASELINE_PATH.read_text())["provenance"]
+    assert set(provenance["unverifiable_for"]) == {
+        cell["key"] for cell in
+        json.loads(WORKER_BASELINE_PATH.read_text())["cells"]
+    }, "every cell in this file is unverified, and every one of them must be named"
+    assert provenance["worker_cells_verified_by"].startswith("NOTHING")
+    assert provenance["run_fingerprint"] is None
+
+
 def test_freezing_from_a_different_run_is_refused():
     """results/prefix_v1/sweep/ is committed, inviting, and PRE-FIX: up to 19pp apart
     on the worker L3 cells. Freezing it beside post-fix frontier cells would hand a
@@ -546,6 +564,189 @@ def test_freezing_from_a_different_run_is_refused():
         build_worker_baseline(Path("results/prefix_v1/sweep"))
     assert "DIFFERENT measurement run" in str(exc.value)
     assert "prefix_v1" in str(exc.value)
+
+
+# ---- the guard never checked the cells it was freezing ----------------------
+#
+# `assert_same_run` compared _RUN_IDENTITY_FIELDS for the FRONTIER keys against the
+# committed measurements.json, and `build_worker_baseline` then globbed worker_*.json
+# out of the same directory and froze whatever was there. So the guard established
+# "this directory's frontier cells are the committed frontier reference" and inferred
+# the worker half from shared directory membership. Nothing about the six cells it was
+# freezing was verified, and a worker cell re-run at any later date — different code,
+# different pricing table, different gold set — in that directory passed untouched,
+# because the cells it checked were never involved.
+#
+# The fixture builds its frontier cells FROM the committed reference rather than
+# copying results/sweep/, which a fresh clone does not have. A guard's own test must
+# not depend on the author's untracked working directory.
+
+
+@pytest.fixture
+def matching_sweep_dir(tmp_path):
+    """A directory whose frontier cells ARE the committed reference, field for field."""
+    from loopeng.sweep.reference import REFERENCE_PATH, WORKER_BASELINE_PATH
+
+    directory = tmp_path / "sweep"
+    directory.mkdir()
+    for source in (REFERENCE_PATH, WORKER_BASELINE_PATH):
+        for cell in json.loads(source.read_text())["cells"]:
+            cell = {k: v for k, v in cell.items()
+                    if k not in ("reference", "measured_on", "paired")}
+            (directory / f"{cell['key']}.json").write_text(json.dumps(cell))
+    return directory
+
+
+def _stamp(path, **fields):
+    body = json.loads(path.read_text())
+    body["run_fingerprint"] = {
+        "run_id": "aaaa", "warehouse_seed": 20260729, "gold_sha256": "beef",
+        "prices_taken_on": "2026-07-29", "code_revision": "9738b85", **fields,
+    }
+    path.write_text(json.dumps(body))
+
+
+def test_a_worker_cell_from_a_later_run_is_refused(matching_sweep_dir):
+    """THE gap. The frontier cells match — so the old guard passed — and one worker
+    cell was measured by different code. Worker cells are the cheap ones; re-running
+    one is the single most likely thing to have happened."""
+    from loopeng.sweep.reference import NotTheSameRun, build_worker_baseline
+
+    for path in sorted(matching_sweep_dir.glob("*.json")):
+        _stamp(path)
+    _stamp(matching_sweep_dir / "worker_L3_loop_r0.json", code_revision="deadbee")
+
+    with pytest.raises(NotTheSameRun) as exc:
+        build_worker_baseline(matching_sweep_dir)
+    assert "worker_L3_loop_r0" in str(exc.value)
+    assert "code_revision" in str(exc.value)
+
+
+def test_a_stamped_cell_beside_an_unstamped_one_is_refused(matching_sweep_dir):
+    """Half-stamped is not one run. A directory where the frontier cells carry no
+    fingerprint and a worker cell does was written by two different versions of this
+    code, which is exactly the re-run this guard exists to catch."""
+    from loopeng.sweep.reference import NotTheSameRun, build_worker_baseline
+
+    _stamp(matching_sweep_dir / "worker_L3_loop_r0.json")
+
+    with pytest.raises(NotTheSameRun) as exc:
+        build_worker_baseline(matching_sweep_dir)
+    assert "worker_L3_loop_r0" in str(exc.value)
+
+
+def test_cells_sharing_one_fingerprint_are_frozen_and_say_so(matching_sweep_dir):
+    """The passing case, and what it is allowed to claim: the worker cells are
+    verified by the fingerprint they share with the frontier cells, recorded as the
+    actual basis rather than left to be inferred from `verified_by_matching`."""
+    from loopeng.sweep.reference import build_worker_baseline
+
+    for path in sorted(matching_sweep_dir.glob("*.json")):
+        _stamp(path)
+
+    provenance = build_worker_baseline(matching_sweep_dir)["provenance"]
+    assert provenance["run_fingerprint"]["run_id"] == "aaaa"
+    assert "fingerprint" in provenance["worker_cells_verified_by"]
+    assert provenance["unverifiable_for"] == []
+
+
+def test_unstamped_cells_are_frozen_but_named_as_unverifiable(matching_sweep_dir):
+    """The committed baseline predates the fingerprint and cannot carry one. Refusing
+    would make it unreproducible; claiming it was verified would be the defect this
+    finding is about. So it is frozen and the provenance says which cells nothing
+    checked — an honest `unverifiable_for` beats a check that reads stronger than it
+    is."""
+    from loopeng.sweep.reference import build_worker_baseline
+
+    provenance = build_worker_baseline(matching_sweep_dir)["provenance"]
+    assert provenance["run_fingerprint"] is None
+    assert provenance["unverifiable_for"] == [
+        "worker_L0_loop_r0", "worker_L0_loop_r1", "worker_L0_loop_r2",
+        "worker_L0_one_shot_r0", "worker_L3_loop_r0", "worker_L3_one_shot_r0",
+    ]
+    assert "predate" in provenance["worker_cells_verified_by"]
+
+
+def test_a_run_fingerprint_is_stamped_into_every_cell_file(tmp_path, monkeypatch):
+    """Run identity as a recorded fact rather than an inference from which directory a
+    file happens to sit in. Stamped at write time in `run_cell`, so a cell carries it
+    whether or not anything ever freezes it."""
+    from loopeng.agent.classify import Outcome
+    from loopeng.sweep import runner
+    from loopeng.sweep.fingerprint import RunFingerprint
+
+    class _Ledger:
+        def cost_usd(self):
+            return 0.0
+
+        def totals(self):
+            return {"n_calls": 1, "input_tokens": 1, "output_tokens": 1, "total_tokens": 2}
+
+    class _Run:
+        sql, rows, error, termination, attempts = "SELECT 1", [[1]], None, "success", (1,)
+        ledger = _Ledger()
+
+    class _Judgement:
+        outcome, ran_and_returned = Outcome.CORRECT, True
+
+    monkeypatch.setattr(runner, "run_question", lambda *a, **k: _Run())
+    monkeypatch.setattr(runner, "judge", lambda *a, **k: _Judgement())
+
+    fingerprint = RunFingerprint.for_run(ITEMS, warehouse_seed=20260729)
+    report = runner.run_cell(Cell("worker", "L0", "one_shot"), ITEMS[:2],
+                             tmp_path / "w.duckdb", directory=tmp_path / "cells",
+                             fingerprint=fingerprint)
+
+    stored = json.loads((tmp_path / "cells" / "worker_L0_one_shot_r0.json").read_text())
+    assert stored["run_fingerprint"] == report["run_fingerprint"]
+    assert stored["run_fingerprint"]["warehouse_seed"] == 20260729
+    assert stored["run_fingerprint"]["prices_taken_on"] == PRICES_TAKEN_ON
+    assert len(stored["run_fingerprint"]["gold_sha256"]) == 64
+
+
+def test_a_cell_written_without_a_fingerprint_simply_has_no_key(tmp_path):
+    """Additive, like the two cache token classes before it: a cell recorded before this
+    existed carries no fingerprint, and absence is read as 'unverifiable' rather than as
+    a match against a default."""
+    report = summarise_cell(Cell("worker", "L0", "loop"), [], complete=True, seconds=0.0)
+
+    assert "run_fingerprint" not in report
+
+
+def test_a_resumed_sweep_keeps_the_run_id_it_is_resuming(tmp_path):
+    """Resume is the whole point of the runner: a dropped connection costs the cell in
+    flight, never the cells behind it. A fresh run id per invocation would make the
+    author's own resumed development run impossible to freeze."""
+    from loopeng.sweep.fingerprint import RunFingerprint, resolve_run_id
+
+    directory = tmp_path / "cells"
+    directory.mkdir()
+    first = RunFingerprint.for_run(ITEMS, warehouse_seed=20260729)
+    (directory / "worker_L0_loop_r0.json").write_text(
+        json.dumps({"key": "worker_L0_loop_r0", "complete": True,
+                    "run_fingerprint": first.as_dict()})
+    )
+
+    second = RunFingerprint.for_run(ITEMS, warehouse_seed=20260729)
+    assert second.run_id != first.run_id
+    assert resolve_run_id(second, directory).run_id == first.run_id
+
+
+def test_a_resumed_sweep_will_not_adopt_a_run_it_does_not_match(tmp_path):
+    """Only inherited when the inputs agree. Otherwise this is a different measurement
+    continuing in the same directory, and saying so is the entire job."""
+    from loopeng.sweep.fingerprint import RunFingerprint, resolve_run_id
+
+    directory = tmp_path / "cells"
+    directory.mkdir()
+    stale = RunFingerprint.for_run(ITEMS, warehouse_seed=1).as_dict()
+    (directory / "worker_L0_loop_r0.json").write_text(
+        json.dumps({"key": "worker_L0_loop_r0", "complete": True,
+                    "run_fingerprint": stale})
+    )
+
+    current = RunFingerprint.for_run(ITEMS, warehouse_seed=20260729)
+    assert resolve_run_id(current, directory).run_id == current.run_id
 
 
 def test_the_readme_images_are_rendered_from_measurements_json_alone():

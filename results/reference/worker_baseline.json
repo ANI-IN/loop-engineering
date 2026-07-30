@@ -577,6 +577,16 @@
       "frontier_L3_loop_r0",
       "frontier_L3_one_shot_r0"
     ],
+    "worker_cells_verified_by": "NOTHING. These cells predate the run fingerprint and cannot carry one, so no check was run against the cells actually frozen here. Their provenance rests on the frontier cells matching the committed reference and on both halves having been written to one directory \u2014 which is an inference, not a verification. Cells listed in `unverifiable_for` are the ones nothing checked. Re-measuring under a fingerprinted run is what would close this.",
+    "unverifiable_for": [
+      "worker_L0_loop_r0",
+      "worker_L0_loop_r1",
+      "worker_L0_loop_r2",
+      "worker_L0_one_shot_r0",
+      "worker_L3_loop_r0",
+      "worker_L3_one_shot_r0"
+    ],
+    "run_fingerprint": null,
     "not_from": "results/prefix_v1/sweep/ \u2014 PRE-FIX, up to 19pp apart"
   },
   "how": "The Haiku half of the development run whose frontier cells are in measurements.json. Frozen so a cloner running `delivery` or `smoke` has a stored counterpart for every cell they compute, and so the difference between the two can be tested rather than eyeballed. Each cell keeps `paired` \u2014 {item_id: was_correct} over items that ran \u2014 because that is McNemar's input and stripping it made a paired comparison impossible."

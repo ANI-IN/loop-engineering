@@ -65,7 +65,8 @@ def main(argv: list[str] | None = None) -> int:
         report = run_sweep(build_gold(warehouse), warehouse, cap_usd=args.cap_usd,
                            profile=PROFILES[args.profile], item_limit=args.limit,
                            directory=args.dir, fresh=args.fresh,
-                           concurrency=args.concurrency)
+                           concurrency=args.concurrency,
+                           warehouse_seed=settings.warehouse_seed)
     except (StaleCellsPresent, LimitNotAllowed) as refused:
         print(f"\nREFUSING TO START\n{refused}")
         return 3

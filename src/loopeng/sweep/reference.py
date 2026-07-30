@@ -59,13 +59,31 @@ worker L3 cells — a gap that is entirely the defect `results/prefix_v1/README.
 documents. Freezing those beside post-fix frontier cells would hand every cloner a
 baseline whose difference from their own run is mostly an artefact of a bug we already
 fixed.
+
+AND THAT CHECK USED TO LOOK AT THE WRONG CELLS
+----------------------------------------------
+
+It compared `_RUN_IDENTITY_FIELDS` for the FRONTIER keys and then froze whatever
+`worker_*.json` was in the same directory. So it established "these frontier cells are
+the committed frontier reference" and inferred the worker half from shared directory
+membership — six cells checked, six different cells frozen, nothing connecting them.
+
+Every cell now carries a run fingerprint written at measurement time
+(`loopeng.sweep.fingerprint`), and the check compares it across every cell it will
+freeze. **The committed cells predate it and cannot carry one**, so for them the answer
+is recorded honestly rather than upgraded: `provenance.worker_cells_verified_by` says
+NOTHING was established about them, and `provenance.unverifiable_for` names which cells
+that covers. An honest unverifiable field beats a check that reads stronger than it is,
+and `verified_by_matching` alone read as though the worker cells had been verified too.
 """
 
 import json
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 from loopeng.paired import PAIRED_ARM_COUNT
+from loopeng.sweep import fingerprint
 from loopeng.sweep.runner import SWEEP_DIR
 
 # Metric.render() bakes "computed HH:MM today" into its string. On a stored
@@ -248,16 +266,60 @@ _RUN_IDENTITY_FIELDS = (
 )
 
 
-def assert_same_run(sweep_dir: Path = SWEEP_DIR,
-                    reference_path: Path = REFERENCE_PATH) -> list[str]:
-    """Refuse unless this directory's frontier cells ARE the committed reference.
+@dataclass(frozen=True)
+class RunIdentity:
+    """What a freeze was able to establish, and about which cells.
 
-    Returns the frontier keys it matched, so a caller can report what it checked
-    against rather than claiming a check it cannot show.
+    Returned rather than a bare list of matched keys, because "these six frontier cells
+    match the committed reference" and "these six worker cells came from that same run"
+    are different claims and the old provenance let one read as the other.
+    """
+
+    matched_frontier_keys: list[str]
+    fingerprint: dict | None
+    unverifiable_for: list[str]
+
+    def basis(self) -> str:
+        """The actual basis for freezing the worker cells, in words. Never optimistic."""
+        if self.fingerprint and not self.unverifiable_for:
+            return (
+                f"run fingerprint {self.fingerprint['run_id']} — carried by every cell "
+                f"frozen here and by every frontier cell checked against "
+                f"{REFERENCE_PATH}, so the worker half is verified directly rather "
+                f"than inferred from sharing a directory"
+            )
+        return (
+            "NOTHING. These cells predate the run fingerprint and cannot carry one, so "
+            "no check was run against the cells actually frozen here. Their provenance "
+            "rests on the frontier cells matching the committed reference and on both "
+            "halves having been written to one directory — which is an inference, not a "
+            "verification. Cells listed in `unverifiable_for` are the ones nothing "
+            "checked. Re-measuring under a fingerprinted run is what would close this."
+        )
+
+
+def _fingerprint_of(path: Path, cell: dict) -> tuple[str, dict | None]:
+    return cell.get("key", path.stem), fingerprint.of(cell)
+
+
+def assert_same_run(sweep_dir: Path = SWEEP_DIR,
+                    reference_path: Path = REFERENCE_PATH) -> RunIdentity:
+    """Refuse unless every cell this freeze touches came out of one measurement run.
+
+    Two checks, and the second was missing entirely. The frontier cells must BE the
+    committed reference, field for field. And every cell that will be frozen — the
+    worker half, which had nothing checked about it at all — must carry the same run
+    fingerprint as the frontier cells checked against it.
+
+    Cells with no fingerprint predate it and are returned in `unverifiable_for` rather
+    than refused: refusing would make the already-committed baseline unreproducible, and
+    passing them off as verified is the defect. A directory where SOME cells carry one
+    and others do not was written by two versions of this code, which cannot be one run.
     """
     sweep_dir, reference_path = Path(sweep_dir), Path(reference_path)
     committed = {c["key"]: c for c in json.loads(reference_path.read_text())["cells"]}
     matched = []
+    seen: dict[str, dict | None] = {}
     for key, stored in sorted(committed.items()):
         path = sweep_dir / f"{key}.json"
         if not path.is_file():
@@ -279,7 +341,61 @@ def assert_same_run(sweep_dir: Path = SWEEP_DIR,
                 f"pre-fix measurements, up to 19pp apart on the worker L3 cells."
             )
         matched.append(key)
-    return matched
+        seen[key] = fingerprint.of(live)
+
+    for path in sorted(sweep_dir.glob("worker_*.json")):
+        cell = json.loads(path.read_text())
+        if cell.get("complete"):
+            seen[cell.get("key", path.stem)] = fingerprint.of(cell)
+
+    return RunIdentity(
+        matched_frontier_keys=matched,
+        fingerprint=_one_fingerprint(seen, sweep_dir),
+        # Worker keys only. A frontier cell with no fingerprint is still pinned by the
+        # field-for-field match above; a worker cell with none has nothing at all
+        # establishing which run it came from, and those are the cells being frozen.
+        unverifiable_for=sorted(key for key, fp in seen.items()
+                                if not fp and key not in committed),
+    )
+
+
+def _one_fingerprint(seen: dict[str, dict | None], sweep_dir: Path) -> dict | None:
+    """The single fingerprint every cell agrees on, or a refusal naming what differs.
+
+    None when nothing carries one — the committed cells predate fingerprints, and that
+    is disclosed rather than refused. See `RunIdentity.basis`.
+    """
+    stamped = {key: fp for key, fp in seen.items() if fp}
+    if not stamped:
+        return None
+
+    unstamped = sorted(key for key, fp in seen.items() if not fp)
+    if unstamped:
+        raise NotTheSameRun(
+            f"{sweep_dir} holds {len(stamped)} cell(s) carrying a run fingerprint "
+            f"({', '.join(sorted(stamped))}) and {len(unstamped)} carrying none "
+            f"({', '.join(unstamped)}).\n"
+            f"A fingerprint is stamped at write time, so these were written by two "
+            f"different versions of this code and cannot be one measurement run. The "
+            f"likely history is a cell re-run in a directory of older ones — which is "
+            f"the exact case this check exists for, and which the frontier-cell "
+            f"comparison alone could never see."
+        )
+
+    reference_key, reference_fp = sorted(stamped.items())[0]
+    for key, fp in sorted(stamped.items()):
+        differing = fingerprint.differing_fields(reference_fp, fp)
+        if differing:
+            raise NotTheSameRun(
+                f"{sweep_dir}/{key}.json and {reference_key}.json disagree on "
+                f"{', '.join(differing)}. These are DIFFERENT measurement runs.\n"
+                f"  {reference_key}: {json.dumps(reference_fp, sort_keys=True)}\n"
+                f"  {key}: {json.dumps(fp, sort_keys=True)}\n"
+                f"Freezing them together would produce a baseline whose difference from "
+                f"a cloner's own run is partly an artefact of whatever changed between "
+                f"the two, with nothing on the chart to say so."
+            )
+    return reference_fp
 
 
 def build_worker_baseline(sweep_dir: Path = SWEEP_DIR) -> dict:
@@ -288,7 +404,7 @@ def build_worker_baseline(sweep_dir: Path = SWEEP_DIR) -> dict:
     Provenance is checked, not asserted — see `assert_same_run`.
     """
     sweep_dir = Path(sweep_dir)
-    verified_against = assert_same_run(sweep_dir)
+    identity = assert_same_run(sweep_dir)
 
     cells = []
     for path in sorted(sweep_dir.glob("worker_*.json")):
@@ -301,7 +417,14 @@ def build_worker_baseline(sweep_dir: Path = SWEEP_DIR) -> dict:
         "cells": cells,
         "provenance": {
             "same_run_as": str(REFERENCE_PATH),
-            "verified_by_matching": verified_against,
+            # What the frontier comparison established. Accurate, and it was the ONLY
+            # field here — which read as though the worker cells had been verified too.
+            "verified_by_matching": identity.matched_frontier_keys,
+            # What established the cells actually frozen in this file. Separate, because
+            # they are separate claims and one of them may be "nothing".
+            "worker_cells_verified_by": identity.basis(),
+            "unverifiable_for": identity.unverifiable_for,
+            "run_fingerprint": identity.fingerprint,
             "not_from": "results/prefix_v1/sweep/ — PRE-FIX, up to 19pp apart",
         },
         "how": (

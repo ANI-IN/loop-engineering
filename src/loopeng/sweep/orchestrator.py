@@ -10,6 +10,7 @@ from pathlib import Path
 
 import structlog
 
+from loopeng.sweep.fingerprint import RunFingerprint, resolve_run_id
 from loopeng.sweep.reference import as_measured
 from loopeng.sweep.runner import (
     CONCURRENCY_PER_MODEL,
@@ -126,7 +127,8 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
               cap_usd: float | None = None, directory: Path = SWEEP_DIR,
               verifier=None, on_cell=None, quiet: bool = False,
               fresh: bool = False, item_limit: int | None = None,
-              concurrency: int = CONCURRENCY_PER_MODEL) -> dict:
+              concurrency: int = CONCURRENCY_PER_MODEL,
+              warehouse_seed: int | None = None) -> dict:
     directory = Path(directory)
     if fresh:
         # Checked before anything else, including the pre-registration: refusing after
@@ -144,6 +146,14 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
               f"{len(profile.roles)} model(s), {profile.replicates} replicate(s)")
         print(f"  {profile.note}")
         print(f"  projected est. ${projected:.4f} against a ${cap_usd:.2f} cap\n", flush=True)
+
+    # One fingerprint for the invocation, stamped into every cell it writes. Resolved
+    # against what is already on disk so a RESUMED sweep keeps the id it is resuming —
+    # resume is this runner's whole point, and a fresh id per invocation would make the
+    # development run impossible to freeze. See loopeng.sweep.fingerprint.
+    fingerprint = resolve_run_id(
+        RunFingerprint.for_run(items, warehouse_seed=warehouse_seed), directory
+    )
 
     spent = 0.0
     completed, skipped = [], []
@@ -177,7 +187,7 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
                   f"${projected_total:.4f} of ${cap_usd:.2f})", flush=True)
         kwargs = {"verifier": verifier} if verifier is not None else {}
         report = run_cell(cell, items, warehouse, directory=directory,
-                          concurrency=concurrency, **kwargs)
+                          concurrency=concurrency, fingerprint=fingerprint, **kwargs)
         spent += report["cost_usd"]["value"]
         completed.append(report)
         if on_cell:
@@ -191,7 +201,8 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
         "n_resumed": len(skipped), "resumed": skipped,
         "projected_usd": round(projected, 6),
         "spend_usd": {"value": round(spent, 6), "source": "estimated"},
-        "cap_usd": cap_usd, "concurrency": concurrency, "cells": completed,
+        "cap_usd": cap_usd, "concurrency": concurrency,
+        "run_fingerprint": fingerprint.as_dict(), "cells": completed,
     }
 
 
