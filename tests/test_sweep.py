@@ -387,12 +387,47 @@ def test_the_profile_flag_is_required(tmp_path):
 # ---- reference measurements are visibly not live ----------------------------
 
 
-def test_a_reference_cell_never_claims_it_was_computed_today():
+@pytest.fixture
+def a_live_frontier_cell(tmp_path):
+    """A sweep directory holding one complete cell, exactly as a live run writes it.
+
+    Both tests below used to call `build_reference()` on the DEFAULT sweep directory,
+    which a fresh clone does not have. `build_reference` returned no cells, both loops
+    ran zero times, and both tests passed having asserted nothing — on the machine that
+    matters most, the one a cloner is using. They were green on this machine only
+    because an untracked results/sweep/ happened to be sitting there.
+
+    So the input is built here. It also makes the tests stronger than they could ever
+    have been: this fixture asserts the cell arrives carrying the exact sentence
+    `_freeze` exists to remove, so the rewrite is now something the test watches happen
+    rather than something it hopes already happened.
+    """
+    directory = tmp_path / "sweep"
+    directory.mkdir()
+    cell = Cell("frontier", "L0", "loop")
+    report = summarise_cell(cell, [
+        {"item_id": "a", "pattern_key": "p", "outcome": "silent_error",
+         "ran_and_returned": True, "correct": False, "termination": "success",
+         "n_attempts": 1, "rejections": 0, "cost_usd": 0.1,
+         "tokens": {"n_calls": 1, "input_tokens": 1, "output_tokens": 1, "total_tokens": 2}},
+    ], complete=True, seconds=1.0)
+
+    assert "computed" in report["silent_error_rate"] and "today" in report["silent_error_rate"], (
+        "the fixture must carry what the freeze removes, or the tests below prove nothing"
+    )
+    (directory / f"{cell.key}.json").write_text(json.dumps(report))
+    return directory
+
+
+def test_a_reference_cell_never_claims_it_was_computed_today(a_live_frontier_cell):
     """Metric.render() bakes in 'computed HH:MM today'. On a stored measurement that
     sentence is false in exactly the way that makes a cited number look computed."""
     from loopeng.sweep.reference import build_reference
 
-    for cell in build_reference().get("cells", []):
+    cells = build_reference(a_live_frontier_cell)["cells"]
+
+    assert cells, "no cell was frozen, so the loop below asserts nothing"
+    for cell in cells:
         assert "today" not in cell["silent_error_rate"]
         assert cell["measured_on"] in cell["silent_error_rate"]
 
@@ -432,10 +467,13 @@ def test_no_committed_measurement_under_results_claims_it_was_computed_today():
     )
 
 
-def test_reference_cells_are_flagged_and_dated():
+def test_reference_cells_are_flagged_and_dated(a_live_frontier_cell):
     from loopeng.sweep.reference import build_reference
 
-    for cell in build_reference().get("cells", []):
+    cells = build_reference(a_live_frontier_cell)["cells"]
+
+    assert cells, "no cell was frozen, so the loop below asserts nothing"
+    for cell in cells:
         assert cell["reference"] is True
         assert cell["measured_on"]
 
