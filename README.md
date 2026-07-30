@@ -817,6 +817,22 @@ start if the projection would breach the cap — a cap checked against money alr
 only discovers the breach afterwards. The delivery figure appears on screen in the
 application, stamped with the time it was computed.
 
+**Prompt caching saves nothing on any profile you are likely to run, and that is
+measured.** A prefix has to clear the model's minimum cacheable length before
+`cache_control` buys anything. Measured with `count_tokens` (`results/gate0.json`,
+2026-07-29): Haiku's minimum is 4096 tokens against prefixes of 286 (L0) and 648 (L3);
+Sonnet's is 1024 against 548 (L0) and 1037 (L3). **Exactly one combination clears it —
+the frontier role at L3** — which is two of `development`'s twelve cells and none at all
+of `delivery`, `smoke` or `exhibit`, since those run the worker role only.
+
+So the note on the COST chart is a teaching beat rather than a saving you are getting:
+the apparatus for this was all present — cache pricing, cache-token accounting, a probe
+that measured which prefixes clear which minimum — and `cache_control` was set nowhere.
+The instrument existed, the number was known, and the optimisation was never switched on.
+It is switched on now, and on the profiles above it correctly does nothing. Where a
+prefix cannot cache the request is left byte-identical to what the reference
+measurements were taken with, so turning it on changed no committed number.
+
 **Every dollar figure in this project is an estimate and the label never comes off.**
 Tokens are measured — they come off the response, all four classes separately, including
 calls that errored or timed out. Dollars are those tokens multiplied by a price table

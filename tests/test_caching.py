@@ -80,6 +80,36 @@ def test_no_haiku_prefix_can_cache():
     assert not caching.prefix_is_cacheable("worker", "L3")
 
 
+def test_no_profile_a_cloner_runs_gains_anything_from_caching():
+    """The scope, as a reader meets it: per PROFILE, not per role/level.
+
+    `delivery` and `smoke` are both `roles=("worker",)`, and no Haiku prefix in this
+    project clears Haiku's minimum. So the optimisation reaches nothing a cloner runs —
+    and `chart_model.cache_note` sits above the COST chart saying the instrument existed
+    and the switch was off, which is a good beat and which a reader could easily take as
+    a saving they are getting. README §13 states this scope; this is what stops that
+    statement from being prose nothing checks.
+    """
+    from loopeng.sweep.runner import DELIVERY, SMOKE, build_cells
+
+    for profile in (SMOKE, DELIVERY):
+        cacheable = [cell.key for cell in build_cells(profile)
+                     if caching.prefix_is_cacheable(cell.role, cell.level)]
+        assert cacheable == [], f"{profile.name} would cache {cacheable}"
+
+
+def test_caching_reaches_two_of_developments_twelve_cells():
+    """The other half of the same statement, and the number in §13."""
+    from loopeng.sweep.runner import DEVELOPMENT, build_cells
+
+    cells = build_cells(DEVELOPMENT)
+    cacheable = sorted(cell.key for cell in cells
+                       if caching.prefix_is_cacheable(cell.role, cell.level))
+
+    assert len(cells) == 12
+    assert cacheable == ["frontier_L3_loop_r0", "frontier_L3_one_shot_r0"]
+
+
 def test_with_no_measurement_the_gate_refuses_rather_than_guessing(monkeypatch):
     """A cache_control marker on a prefix too short to cache is not an error, but it
     changes the request for nothing and makes the reported hit rate a fiction."""
