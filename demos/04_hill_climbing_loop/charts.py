@@ -9,6 +9,11 @@ indistinguishable from a measured one once it is on a projector.
 baseline, side by side, with the difference between them computed. `fill` was the only
 behaviour available, and it deleted the stored cell as soon as a live one existed.
 
+**It is not the default, and that is the point.** `compare` was, for every caller — so
+this command on a fresh clone rendered twelve finished bars and the pre-registered
+p-value on a machine that had never made an API call. The default is `auto`: `compare`
+once this run has a cell of its own, `hide` until then. See `sweep.reference.MODE_AUTO`.
+
 Safe to run while the sweep is still going: cells still running render as in-progress.
 """
 
@@ -17,7 +22,7 @@ import argparse
 from loopeng.logging import configure_logging
 from loopeng.sweep.charts import write_charts
 from loopeng.sweep.orchestrator import load_all
-from loopeng.sweep.reference import MODE_COMPARE, REFERENCE_MODES, load_reference
+from loopeng.sweep.reference import MODE_AUTO, SELECTABLE_MODES, load_reference
 from loopeng.sweep.render import abstention_points, comparisons_for, summarise
 from loopeng.sweep.runner import SWEEP_DIR
 
@@ -26,10 +31,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Render the live charts.")
     parser.add_argument("--dir", default=str(SWEEP_DIR), help="Where cell files live.")
     parser.add_argument("--out", default="results/charts", help="Where SVGs are written.")
-    parser.add_argument("--reference", default=MODE_COMPARE, choices=REFERENCE_MODES,
-                        help="hide: live cells only. fill: stored cells only where no "
-                             "live one exists. compare (default): both, paired, with "
-                             "the difference computed between them.")
+    parser.add_argument("--reference", default=MODE_AUTO, choices=SELECTABLE_MODES,
+                        help="auto (default): compare once this run has a cell of its "
+                             "own, hide until then — so a machine with no live cells "
+                             "renders 'not yet measured' rather than stored bars. "
+                             "hide: live cells only. fill: stored cells only where no "
+                             "live one exists. compare: both, paired, with the "
+                             "difference computed between them.")
     args = parser.parse_args(argv)
 
     configure_logging()

@@ -431,10 +431,25 @@ tests/               the offline suite, plus tests/live/ behind the live marker
 
 | path | committed | why |
 |---|---|---|
-| `results/reference/` | **yes** | the frozen measurements the delivery charts cite |
+| `results/reference/` | **yes** | the frozen measurements the delivery charts cite: `measurements.json` (the Sonnet cells, and what `assets/*.png` is drawn from) and `worker_baseline.json` (the Haiku half of the same run, so a cloner's own cells have a stored counterpart to be differenced against) |
 | `results/prefix_v1/` | **yes** | the pre-fix measurements — the triage artifact and what the defect cost |
 | `results/gate0.json` | **yes** | foundation evidence, cited throughout |
-| `results/sweep/`, `results/ablation/` | **no** | live cell output. A committed cell would arrive on every clone and make the *first* live sweep on a fresh machine resume-and-complete instantly, rendering finished numbers to a room told nothing is precomputed. A test asserts a fresh clone renders *not yet measured*. |
+| `results/sweep/`, `results/ablation/` | **no** | live cell output. A committed cell would arrive on every clone and make the *first* live sweep on a fresh machine resume-and-complete instantly, rendering finished numbers to a room told nothing is precomputed. |
+
+**A fresh clone renders *not yet measured*, and what enforces that changed.** The
+protection above is about *resuming*: an uncommitted `results/sweep/` means the first
+live sweep has nothing to resume from. `results/reference/worker_baseline.json` sits
+outside `results/sweep/`, so it does not make the sweep resume — but it is a full set of
+stored cells, and a renderer asked for them will draw them. **The same end state, reached
+a different way**, which is what a protection written against one mechanism cannot see.
+
+So the property is now enforced where it is claimed rather than inferred from a
+`.gitignore`. `--reference` defaults to `auto`: the stored baseline is shown once this
+run has a cell of its own to compare it against, and hidden until then. A test runs the
+chart entry point against an empty directory and asserts the output carries no
+`REFERENCE` row and no p-value — the path a human takes, not a renderer handed empty
+cells. `PRE-DELIVERY-CHECKLIST.md` step 0b is the same check in a session, since a
+checklist line is not enforcement and this needs both.
 
 ---
 
@@ -967,6 +982,18 @@ Within a model they are comparable. Across models they are not.
 cross-model comparison in the session puts a line measured minutes ago next to one
 measured weeks ago. The charts badge both sides on the row itself rather than in a
 caption read once.
+
+**The cloner's baseline is a full set of finished cells, and it ships with the clone.**
+`results/reference/worker_baseline.json` exists because without it the comparison this
+project is built around was structurally impossible for anyone but the author: a cloner
+running `delivery` got four solid bars beside six unrelated hatched ones and no
+difference computable. The cost of fixing that is that twelve finished, dated cells now
+arrive on every clone. They do not make a sweep resume — they sit outside
+`results/sweep/` — but a renderer asked for them will draw them, so *"a fresh clone shows
+nothing finished"* stopped being a property of what is committed and became a property of
+what the renderer is asked for by default. It is enforced there instead (§8), and the
+trade is deliberate: the alternative was leaving every cloner with nothing to test their
+own run against.
 
 **The subset analysis was chosen post-hoc.** Two patterns were found — by triaging
 failures — to be under-specified about whether refunds are netted. The exclusion criterion

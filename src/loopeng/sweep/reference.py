@@ -99,6 +99,23 @@ MODE_FILL = "fill"        # reference only where no live cell exists (the old be
 MODE_COMPARE = "compare"  # both, so the difference between them can be computed
 REFERENCE_MODES = (MODE_HIDE, MODE_FILL, MODE_COMPARE)
 
+# The default for a rendering caller, and it is a mode rather than a hardcoded choice
+# because the right answer depends on who is asking.
+#
+# `compare` was made the default for every caller, which was right for exactly one of
+# them. For a cloner reproducing a baseline it is the whole point. For a machine with no
+# live cells it renders twelve finished bars and the pre-registered p-value — every row
+# correctly badged REFERENCE and dated, so not a lie, but README §8 does not promise
+# honest labelling. It promises that a fresh clone renders `not yet measured`, and that
+# promise was being kept by results/sweep/ being uncommitted rather than by anything
+# here. The mechanism changed and the protection did not follow.
+#
+# So the default follows the run: `compare` once this run has a cell of its own to
+# compare, `hide` until then. Nobody chooses it wrong by omission, and asking for a mode
+# explicitly still gets it.
+MODE_AUTO = "auto"
+SELECTABLE_MODES = (*REFERENCE_MODES, MODE_AUTO)
+
 # ---------------------------------------------------------------------------
 # The determinism floors: how far a model's L0 loop cell moved across replicates of the
 # same 50 items. DERIVED from the committed replicate files, not typed.
@@ -305,14 +322,26 @@ def save_reference(payload: dict, path: Path = REFERENCE_PATH) -> Path:
     return path
 
 
+def resolve_mode(mode: str, live_keys=()) -> str:
+    """`auto` becomes `compare` once this run has a cell of its own, `hide` until then.
+
+    Every other mode passes through. Resolved here rather than at the entry point so no
+    caller can take the default and forget what it means on an empty directory.
+    """
+    if mode != MODE_AUTO:
+        return mode
+    return MODE_COMPARE if live_keys else MODE_HIDE
+
+
 def load_reference(*paths: Path, mode: str = MODE_FILL, live_keys=()) -> list[dict]:
     """Reference cells, each already flagged so charts cannot render them as live.
 
     `mode` decides how they sit beside a live run — see MODE_* above. `live_keys` is
-    the set of cell keys computed in this run; it is only consulted by `fill`.
+    the set of cell keys computed in this run; `fill` and `auto` both consult it.
     """
-    if mode not in REFERENCE_MODES:
-        raise ValueError(f"unknown reference mode {mode!r}; expected one of {REFERENCE_MODES}")
+    if mode not in SELECTABLE_MODES:
+        raise ValueError(f"unknown reference mode {mode!r}; expected one of {SELECTABLE_MODES}")
+    mode = resolve_mode(mode, live_keys)
     if mode == MODE_HIDE:
         return []
 

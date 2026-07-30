@@ -135,6 +135,63 @@ def test_a_fresh_checkout_renders_not_yet_measured(tmp_path):
     assert "No cells yet" in _rows(load_all(empty))
 
 
+# The test above, and its twin in tests/test_sweep.py, hand empty cells to a renderer.
+# Neither runs the entry point, and the entry point is where the property broke: with
+# `--reference` defaulting to `compare`, `charts.py` on a machine that had never made an
+# API call printed twelve finished bars and the pre-registered p=0.008. Every row was
+# badged REFERENCE and dated, so nothing was a lie — but §8 does not promise honest
+# labelling, it promises `not yet measured`, and the promise was kept by a mechanism
+# (results/sweep/ being uncommitted) rather than by the property itself.
+#
+# So this runs the real command, in a subprocess, the way a cloner does.
+CHART_ENTRY_POINT = "demos/04_hill_climbing_loop/charts.py"
+
+
+def _render(tmp_path, *extra):
+    import subprocess
+    import sys
+
+    return subprocess.run(
+        [sys.executable, CHART_ENTRY_POINT,
+         "--dir", str(tmp_path / "sweep"),       # a clone has no results/sweep at all
+         "--out", str(tmp_path / "charts"), *extra],
+        capture_output=True, text=True, timeout=120,
+        cwd=Path(__file__).resolve().parent.parent,
+    )
+
+
+def test_the_chart_entry_point_renders_nothing_finished_on_a_fresh_clone(tmp_path):
+    """REQUIRED, and the acceptance test for the §8 claim.
+
+    Not "no stored cell is committed" — that was already true and was not enough. The
+    claim is that a fresh clone renders *not yet measured*, and the only way to check it
+    is to run what a human runs.
+    """
+    result = _render(tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    assert "cells on disk: 0" in result.stdout
+    assert "not yet measured" in result.stdout
+    assert "REFERENCE" not in result.stdout, (
+        "a stored cell rendered on a machine with no live cells — badged and dated, but "
+        "still a finished bar where §8 promises 'not yet measured'"
+    )
+    assert "McNemar" not in result.stdout, (
+        "the pre-registered p-value rendered without a single API call"
+    )
+
+
+def test_the_cloners_comparison_is_still_one_flag_away(tmp_path):
+    """The other half. `compare` is right for a cloner reproducing a baseline and wrong
+    for a session claiming nothing is precomputed; only the DEFAULT changed, and asking
+    for the baseline explicitly still produces it."""
+    result = _render(tmp_path, "--reference", "compare")
+
+    assert result.returncode == 0, result.stderr
+    assert "REFERENCE" in result.stdout
+    assert "McNemar" in result.stdout
+
+
 def test_no_live_cell_output_is_tracked_by_git():
     """The same property, checked against git rather than the filesystem."""
     import subprocess

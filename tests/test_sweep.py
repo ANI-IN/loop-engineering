@@ -466,6 +466,19 @@ def test_hide_mode_shows_live_cells_only(two_reference_cells):
     assert load_reference(two_reference_cells, mode=MODE_HIDE) == []
 
 
+def test_auto_mode_hides_the_baseline_until_this_run_has_one_of_its_own(two_reference_cells):
+    """The default, and it is a mode rather than a hardcoded choice because the right
+    answer depends on the caller. Sitting next to its three siblings so a reader meets
+    all four in one place; the property it exists for is asserted through the entry
+    point in tests/test_exhibit.py."""
+    from loopeng.sweep.reference import MODE_AUTO, load_reference
+
+    assert load_reference(two_reference_cells, mode=MODE_AUTO) == []
+    kept = load_reference(two_reference_cells, mode=MODE_AUTO,
+                          live_keys={"frontier_L0_loop_r0"})
+    assert [c["key"] for c in kept] == ["frontier_L0_loop_r0", "frontier_L3_loop_r0"]
+
+
 def test_an_unknown_reference_mode_is_refused(two_reference_cells):
     """Silently falling back to a default would make a typo'd flag render a different
     chart than the one asked for."""

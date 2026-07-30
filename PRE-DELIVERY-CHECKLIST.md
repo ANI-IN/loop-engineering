@@ -41,6 +41,38 @@ want them for outage cover; if not, `rm -rf results/sweep` and re-run. Do not re
 
 ---
 
+## 0b) SECOND ACTION: confirm the charts open on nothing
+
+Step 0 clears the *live* cells. It does not clear `results/reference/`, which is
+committed and must stay — and the chart command can render from it alone. So there is a
+second way to open on finished numbers, and clearing cells does not close it.
+
+**Do** — immediately after step 0, before anyone is in the room:
+
+```bash
+uv run python demos/04_hill_climbing_loop/charts.py
+```
+
+**PASS** — three lines, and all three:
+
+- `cells on disk: 0 (0 complete)`
+- `comparisons: 0 testable, 0 not`
+- **no row badged `REFERENCE`, and the word `McNemar` nowhere in the output**
+
+That is what a room just told *nothing is precomputed* has to see on the first render.
+
+**IF IT PRINTS FINISHED BARS** — the `--reference` mode is wrong for this caller.
+The default is `auto`, which shows the stored baseline only once this run has a cell of
+its own. Someone has passed or hardcoded `--reference=compare`, which is the **cloner's**
+mode: correct for reproducing a baseline, wrong in front of a room. Remove it. Do not
+narrate around it — every row is badged and dated, so it is not a lie, but it is a full
+dial where the room was promised an empty one.
+
+**Later in the session, once the sweep has landed, `compare` is exactly right** — that is
+when your cells and the stored baseline belong side by side with the delta computed.
+
+---
+
 ## a) Cold start on the venue machine
 
 **Do**
