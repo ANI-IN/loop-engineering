@@ -983,6 +983,17 @@ cross-model comparison in the session puts a line measured minutes ago next to o
 measured weeks ago. The charts badge both sides on the row itself rather than in a
 caption read once.
 
+**Six of the ten comparisons can never be tested, and the freeze is why.** The stored
+FRONTIER cells strip their per-item outcomes — SQL and rows are development-only bulk —
+so every Sonnet pair has nothing to pair with. That is not a property of the data: the
+items overlapped when they were measured, and `{item_id: was_correct}` was discarded at
+freeze time. The stored WORKER baseline keeps that map, which is why the Haiku
+comparisons work and the Sonnet ones do not. **The chart says so in those words**, having
+previously reported *no shared answered items*, which named a cause that was not the
+cause. Retaining it for the frontier cells is the fix, and it is not done here: the file
+those cells live in is what `assets/*.png` is drawn from, and rewriting it redraws three
+committed images.
+
 **The cloner's baseline is a full set of finished cells, and it ships with the clone.**
 `results/reference/worker_baseline.json` exists because without it the comparison this
 project is built around was structurally impossible for anyone but the author: a cloner

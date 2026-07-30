@@ -63,7 +63,7 @@ from pathlib import Path
 
 from loopeng.paired import CLUSTERING_CAVEAT, PairedComparison, compare
 from loopeng.sweep.orchestrator import load_all
-from loopeng.sweep.reference import paired_map
+from loopeng.sweep.reference import keeps_per_item_outcomes, paired_map
 
 ALPHA = 0.05
 
@@ -107,6 +107,11 @@ class Comparison:
     measured_on_b: str
     paired: PairedComparison
     cross_model: bool
+    # Which sides kept the per-item outcomes a paired test needs. Carried because
+    # "nothing to pair" has two causes and the message used to report only one of them
+    # — see `unpairable_because`.
+    keeps_items_a: bool = True
+    keeps_items_b: bool = True
 
     @property
     def n_pairs(self) -> int:
@@ -166,15 +171,40 @@ class Comparison:
             and p < ALPHA
         )
 
+    @property
+    def unpairable_because(self) -> str:
+        """Why there is nothing to pair. TWO different facts, and one of them is ours.
+
+        The message here used to be "no shared answered items between A and B" in both
+        cases, which reads as a property of the data: these two arms answered disjoint
+        sets. For every Sonnet pair that was false. The items overlapped perfectly well
+        when they were measured; `build_reference` discards them at freeze time, so the
+        stored frontier cells carry no per-item outcomes and can never be paired with
+        anything. A diagnostic that misattributes its own cause sends a reader looking
+        at the measurement for a defect in the freeze.
+        """
+        stripped = [label for label, keeps in
+                    ((self.label_a, self.keeps_items_a), (self.label_b, self.keeps_items_b))
+                    if not keeps]
+        if stripped:
+            return (
+                f"per-item outcomes were not retained when "
+                f"{' and '.join(stripped)} {'was' if len(stripped) == 1 else 'were'} "
+                f"frozen, so this pair cannot be tested — nothing to pair. The items "
+                f"themselves are not the problem: a paired test needs "
+                f"{{item_id: was_correct}} and the freeze drops it"
+            )
+        return (
+            f"{self.label_a} and {self.label_b} share no answered items — nothing to "
+            f"pair, so nothing to compare"
+        )
+
     def reading(self) -> str:
         """What may be said. Directional at most, never a specific gap."""
         if self.cross_model:
             return CROSS_MODEL_REFUSAL
         if not self.n_pairs:
-            return (
-                f"no shared answered items between {self.label_a} and {self.label_b} — "
-                f"nothing to pair, so nothing to compare"
-            )
+            return self.unpairable_because
         if self.n_discordant < MIN_DISCORDANT:
             return (
                 f"not distinguishable at this n: {self.n_discordant} discordant of "
@@ -223,6 +253,8 @@ def _build(kind: str, a: dict, b: dict) -> Comparison:
         paired=compare(paired_map(a), paired_map(b),
                        label_a=a["label"], label_b=b["label"]),
         cross_model=a["role"] != b["role"],
+        keeps_items_a=keeps_per_item_outcomes(a),
+        keeps_items_b=keeps_per_item_outcomes(b),
     )
 
 

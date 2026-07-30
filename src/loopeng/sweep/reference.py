@@ -504,6 +504,18 @@ def load_reference(*paths: Path, mode: str = MODE_FILL, live_keys=()) -> list[di
     return cells
 
 
+def keeps_per_item_outcomes(cell: dict) -> bool:
+    """Whether this cell retained the per-item outcomes a paired test needs.
+
+    The distinction a diagnostic depends on. A cell with no `items` and no `paired` was
+    stripped — `build_reference` drops both from the frontier cells — and can never be
+    paired with anything. A cell that HAS the record and simply overlaps nothing with
+    its partner is a different fact, about the data rather than about the freeze, and
+    only one of the two is fixable.
+    """
+    return "paired" in cell or "items" in cell
+
+
 def paired_map(cell: dict) -> dict[str, bool]:
     """`{item_id: was_correct}` for a cell, live or stored. McNemar's input.
 

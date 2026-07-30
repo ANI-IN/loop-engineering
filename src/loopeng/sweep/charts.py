@@ -296,7 +296,10 @@ def _delta_row(comparison) -> dict:
     if comparison.cross_model:
         note = "no p-value — cross-model, see the caption"
     elif not comparison.n_pairs:
-        note = "nothing to pair — no per-item record on one side"
+        # Derived, not asserted. This row used to read "no per-item record on one side"
+        # unconditionally, which is the right cause for the Sonnet pairs and the wrong
+        # one for two arms that genuinely answered disjoint sets.
+        note = comparison.unpairable_because
     elif comparison.n_discordant < MIN_DISCORDANT:
         note = (f"not distinguishable at this n "
                 f"({comparison.n_discordant} discordant of {comparison.n_pairs})")

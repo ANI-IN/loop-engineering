@@ -109,6 +109,63 @@ def test_no_shared_items_is_reported_rather_than_differenced():
     assert comparison.delta_pp is None
     assert comparison.interval_pp is None
     assert "nothing to pair" in comparison.reading()
+    assert "share no answered items" in comparison.reading()
+
+
+# ---- a diagnostic must not misattribute its own cause ------------------------
+#
+# Six of the ten comparisons a fresh render produces are Sonnet pairs, and every one
+# reported "no shared answered items between … — nothing to pair, so nothing to
+# compare". That reads as a fact about the data: these two arms answered disjoint sets.
+#
+# It is a fact about the freeze. `build_worker_baseline` calls `_freeze(keep_paired=
+# True)`; `build_reference` does not, so the stored FRONTIER cells carry no per-item
+# outcomes at all and can never be paired with anything. The items overlapped fine when
+# they were measured — the outcomes were discarded at freeze time.
+#
+# Two different facts, and only one of them is fixable. The message has to say which.
+
+
+def _frozen_without_items(key, **kw):
+    """A stored frontier cell as `build_reference` freezes it: no `items`, no `paired`."""
+    body = cell(key, role="frontier", reference=True, correct=list("abcde"), **kw)
+    body.pop("paired", None)
+    return body
+
+
+def test_a_pair_stripped_at_freeze_time_says_so_rather_than_blaming_the_items():
+    a = _frozen_without_items("frontier_L0_one_shot_r0", mode="one_shot")
+    b = _frozen_without_items("frontier_L0_loop_r0")
+
+    reading = diff._build("mode", a, b).reading()
+
+    assert "not retained" in reading, reading
+    assert "frozen" in reading
+    assert "share no answered items" not in reading, (
+        "the items overlapped when they were measured; saying they did not is a claim "
+        "about the data that the freeze is responsible for"
+    )
+
+
+def test_only_the_side_that_lost_its_items_is_named():
+    """A live arm against a stripped stored one: the live side kept everything, and a
+    message blaming both would send a reader looking in the wrong file."""
+    live = cell("frontier_L0_loop_r0", role="frontier", correct=list("abcde"))
+    stored = _frozen_without_items("frontier_L0_one_shot_r0", mode="one_shot")
+
+    reading = diff._build("mode", stored, live).reading()
+
+    assert "REFERENCE frontier_L0_one_shot_r0" in reading
+    assert "LIVE frontier_L0_loop_r0" not in reading
+
+
+def test_the_delta_chart_carries_the_real_cause_too():
+    """The row on the chart is what a room reads; the terminal line is not."""
+    svg = delta_chart(diff.all_comparisons([
+        _frozen_without_items("frontier_L0_one_shot_r0", mode="one_shot"),
+        _frozen_without_items("frontier_L0_loop_r0"),
+    ]))
+    assert "not retained" in svg
 
 
 # ---- the delta itself --------------------------------------------------------
