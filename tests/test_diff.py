@@ -13,6 +13,7 @@ import pytest
 
 from loopeng.sweep import diff
 from loopeng.sweep.charts import delta_chart
+from tests.figures import texts
 
 
 def cell(key, *, role="worker", level="L0", mode="loop", replicate=0,
@@ -161,11 +162,11 @@ def test_only_the_side_that_lost_its_items_is_named():
 
 def test_the_delta_chart_carries_the_real_cause_too():
     """The row on the chart is what a room reads; the terminal line is not."""
-    svg = delta_chart(diff.all_comparisons([
+    drawn = texts(delta_chart(diff.all_comparisons([
         _frozen_without_items("frontier_L0_one_shot_r0", mode="one_shot"),
         _frozen_without_items("frontier_L0_loop_r0"),
-    ]))
-    assert "not retained" in svg
+    ])))
+    assert "not retained" in drawn
 
 
 # ---- the delta itself --------------------------------------------------------
@@ -312,40 +313,39 @@ def test_untestable_comparisons_are_partitioned_rather_than_dropped():
 def test_the_delta_chart_draws_zero_as_a_reference_line():
     """Zero is a real delta. Leaving the axis implicit would let a bar of no width read
     as an absent bar."""
-    svg = delta_chart(diff.all_comparisons([
+    drawn = texts(delta_chart(diff.all_comparisons([
         cell("worker_L0_one_shot_r0", mode="one_shot", correct=list("abcdefgh")),
         cell("worker_L0_loop_r0", wrong=list("abcdefgh")),
-    ]))
-    assert "0 pp — no difference" in svg
-    assert svg.startswith("<svg")
+    ])))
+    assert "0 pp — no difference" in drawn
 
 
 def test_the_delta_chart_never_draws_a_bar_it_cannot_test():
-    svg = delta_chart(diff.all_comparisons([
+    drawn = texts(delta_chart(diff.all_comparisons([
         cell("worker_L0_one_shot_r0", mode="one_shot", correct=list("abcdefghij")),
         cell("worker_L0_loop_r0", correct=list("abcdefghij")),
-    ]))
-    assert "not distinguishable at this n" in svg
+    ])))
+    assert "not distinguishable at this n" in drawn
 
 
 def test_the_delta_chart_reports_what_it_could_not_compare():
     """Counted and named. No silent caps."""
-    svg = delta_chart(diff.all_comparisons([
+    drawn = texts(delta_chart(diff.all_comparisons([
         cell("frontier_L0_one_shot_r0", role="frontier", mode="one_shot"),
         cell("frontier_L0_loop_r0", role="frontier"),
-    ]))
-    assert "1 comparison(s) not shown" in svg
-    assert "no per-item record" in svg
+    ])))
+    assert "1 comparison(s) not shown" in drawn
+    assert "no per-item record" in drawn
 
 
 def test_the_delta_chart_refuses_a_cross_model_p_value_on_screen():
-    svg = delta_chart(diff.all_comparisons([
+    drawn = texts(delta_chart(diff.all_comparisons([
         cell("worker_L0_loop_r0", role="worker", correct=list("abcdefghij")),
         cell("frontier_L0_one_shot_r0", role="frontier", mode="one_shot",
              wrong=list("abcdefghij")),
-    ]))
-    assert "no p-value — cross-model" in svg
-    assert "cannot be pinned" in svg
+    ])))
+    assert "no p-value — cross-model" in drawn
+    assert "cannot be pinned" in drawn
 
 
 def test_the_cross_model_refusal_is_reachable_at_all():
@@ -377,9 +377,9 @@ def test_the_named_secondary_follows_the_level_rather_than_being_typed_per_level
 
 
 def test_an_empty_delta_chart_says_not_yet_measured():
-    svg = delta_chart([])
-    assert "not yet measured" in svg
-    assert "--reference=compare" in svg
+    drawn = texts(delta_chart([]))
+    assert "not yet measured" in drawn
+    assert "--reference=compare" in drawn
 
 
 # ---- a p-value is never rendered as a zero it is not -------------------------
@@ -395,10 +395,11 @@ def test_a_strongly_significant_p_renders_with_a_less_than():
 
 
 def test_the_delta_chart_never_prints_p_equals_zero():
-    svg = delta_chart(diff.all_comparisons([
+    drawn = texts(delta_chart(diff.all_comparisons([
         cell("worker_L0_one_shot_r0", mode="one_shot", correct=list("abcdefghijklmnop")),
         cell("worker_L0_loop_r0", wrong=list("abcdefghijklmnop")),
-    ]))
-    assert "p=0.000" not in svg
-    # `<` is XML-escaped in the rendered text, which is why the raw form is not here.
-    assert "p&lt;0.001" in svg
+    ])))
+    assert "p=0.000" not in drawn
+    # No escaping any more: the SVG backend had to write `p&lt;0.001` into markup, and
+    # a figure carries the character itself.
+    assert "p<0.001" in drawn

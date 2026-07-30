@@ -47,7 +47,7 @@ what an audience reads, because a typed number is indistinguishable from a
 measured one once it is on a projector. Every number must come from a `Metric`,
 which carries its own `n`.
 
-Genuine layout geometry — an SVG coordinate, a string truncation width, a slider
+Genuine layout geometry — a figure coordinate, a string truncation width, a slider
 step — is exempt with a trailing `# layout` marker on that line. The rule counts
 and prints how many exemptions exist, so the count cannot grow quietly. Do not
 use the marker to smuggle a measurement past it.

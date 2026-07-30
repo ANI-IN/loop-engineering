@@ -171,13 +171,17 @@ uv run python demos/04_hill_climbing_loop/sweep.py --profile delivery --foregrou
 ```bash
 uv run python demos/04_hill_climbing_loop/charts.py
 
-# include the stored frontier cells, drawn hatched and dated
-uv run python demos/04_hill_climbing_loop/charts.py --with-reference
+# force the stored cells in — drawn hatched and dated — even with nothing of your own
+uv run python demos/04_hill_climbing_loop/charts.py --reference compare
 ```
+
+`--reference` defaults to `auto`: the stored baseline appears once this run has a cell
+of its own to compare it against, and is hidden until then, so a machine that has made
+no calls renders *not yet measured* rather than a full dial.
 
 **Safe to run repeatedly, mid-sweep.** It renders from whatever exists so far.
 
-**What appears:** `results/charts/dial.svg` and `cost.svg`, plus a line per cell showing
+**What appears:** `results/charts/dial.png` and `cost.png`, plus a line per cell showing
 its current rate.
 
 **What to observe:** run it twice, a minute apart. The intervals narrow as more items land.
@@ -263,7 +267,7 @@ and say out loud that it will take longer.
 |---|---|
 | profiles, cells, the projected-spend abort, `--fresh` | `src/loopeng/sweep/runner.py` |
 | the pre-registration and the resume loop | `src/loopeng/sweep/orchestrator.py` |
-| the DIAL and COST SVGs and their permanent captions | `src/loopeng/sweep/charts.py` |
+| the DIAL and COST figures and their permanent captions | `src/loopeng/sweep/charts.py` |
 | the frozen reference cells and the noise floors | `src/loopeng/sweep/reference.py` |
 | the DIAL view and its live/reference badges | `src/loopeng/views/dial.py` |
 | abstention, escalation, triage | `src/loopeng/triage/` |

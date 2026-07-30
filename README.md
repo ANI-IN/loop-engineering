@@ -858,7 +858,7 @@ secret because it never needed one. CI additionally asserts the live tests were
 
 **The numeric-literal rule** bans typed numbers in the eleven modules that render to a
 projector, because a typed number is indistinguishable from a measured one once it is on
-screen. Genuine layout geometry — SVG coordinates, string truncation widths, a slider
+screen. Genuine layout geometry — figure coordinates, string truncation widths, a slider
 step — is exempt via a trailing `# layout` marker on the line. There is a second, much
 narrower exemption for measurement-shaped text that describes the *method* rather than a
 result, held as an enumerated list of exact phrases. The rule prints **both** counts on

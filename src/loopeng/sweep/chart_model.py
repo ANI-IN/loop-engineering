@@ -1,10 +1,16 @@
 """What both chart renderers agree on, defined once.
 
-There are two renderers and both reasons for that are real and documented:
-`loopeng.sweep.charts` builds SVG for the live views, where a figure is redrawn while a
-sweep lands and must degrade to "in progress, n=NN so far", and there is no plotting
-dependency to install at a venue. `tools/render_readme_charts.py` builds static PNGs of a
-frozen measurement, because that is what renders on GitHub.
+There are two renderers, and the reason is lifetime rather than medium.
+`loopeng.sweep.charts` draws whatever is on disk NOW: a figure has to degrade to "in
+progress, n=NN so far" and is redrawn as a sweep lands, so it is not required to be
+byte-identical between runs. `tools/render_readme_charts.py` draws a frozen measurement
+that ships in the README, where byte-identity is the property that makes a change to an
+image always a change to the data. Both are matplotlib.
+
+(That was not the reason on file. The live backend hand-assembled SVG, justified by
+"no plotting dependency to install at a venue" — untrue, matplotlib rendered `assets/`
+and `uv sync` installed it — and by "the live Gradio views", which do not consume these
+figures at all. See `sweep/charts.py`.)
 
 What was NOT a real reason was implementing the shared layer twice. Both independently
 carried cell ordering, worker/frontier colouring, the hatched-outline convention for

@@ -252,7 +252,7 @@ CITING_MODULES = (
 # is not a broken citation; it is an output. Enumerated, so adding one is deliberate.
 WRITTEN_NOT_CITED = frozenset({
     "results/sweep",       # live cell output, gitignored by design — a fresh clone has none
-    "results/charts",      # where the SVGs are written
+    "results/charts",      # where the chart PNGs are written
 })
 
 

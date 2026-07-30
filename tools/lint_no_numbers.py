@@ -82,8 +82,8 @@ narrower than "every string" and it is the whole failure mode.
 THE LAYOUT EXEMPTION
 --------------------
 
-Widening the scope to the real renderers pulls in geometry — SVG viewBox bounds,
-bar heights, string truncation widths, slider steps. None of those can encode a
+Widening the scope to the real renderers pulls in geometry — figure sizes, bar
+heights, string truncation widths, slider steps. None of those can encode a
 finding, and banning them would make the rule irritating enough to be switched
 off, which protects less than a narrow rule people keep.
 
@@ -114,7 +114,7 @@ _VIEWS = REPO_ROOT / "src" / "loopeng" / "views"
 
 # The modules that build what a room reads.
 #
-#   sweep/charts.py    the DIAL, COST, DELTA and ABSTENTION SVGs — the densest
+#   sweep/charts.py    the DIAL, COST, DELTA and ABSTENTION figures — the densest
 #                      numeric surface here
 #   sweep/chart_model.py the captions and the cell-to-row transform BOTH renderers
 #                      consume; a typed number here reaches the projector and the README

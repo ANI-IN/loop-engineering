@@ -225,11 +225,11 @@ def test_the_cost_caption_keeps_the_estimated_label():
 
 def test_charts_render_from_no_data_without_inventing_a_zero():
     from loopeng.sweep.charts import cost_chart, dial_chart
+    from tests.figures import texts
 
     empty = summarise_cell(Cell("worker", "L0", "loop"), [], complete=False, seconds=0.0)
-    for svg in (dial_chart([empty]), cost_chart([empty])):
-        assert "not yet measured" in svg
-        assert svg.startswith("<svg")
+    for figure in (dial_chart([empty]), cost_chart([empty])):
+        assert "not yet measured" in texts(figure)
 
 
 def test_charts_write_from_a_cold_start(tmp_path):
@@ -243,10 +243,22 @@ def test_charts_write_from_a_cold_start(tmp_path):
     written = write_charts([summarise_cell(Cell("worker", "L0", "loop"), [],
                                            complete=False, seconds=0.0)], tmp_path / "c")
     assert [p.name for p in written] == [
-        "dial.svg", "cost.svg", "delta.svg", "abstention.svg",
+        "dial.png", "cost.png", "delta.png", "abstention.png",
     ]
-    assert all(p.read_text().startswith("<svg") for p in written)
-    assert "not yet measured" in (tmp_path / "c" / "delta.svg").read_text()
+    # PNG's magic bytes. A file that exists and is not an image is the same failure as
+    # a chart that silently did not render.
+    assert all(p.read_bytes().startswith(b"\x89PNG\r\n") for p in written)
+
+
+def test_an_empty_chart_says_not_yet_measured_rather_than_drawing_nothing(tmp_path):
+    """The claim README §8 makes about a fresh clone, at the figure rather than at the
+    terminal. `write_charts` is handed nothing at all — no cells, no comparisons, no
+    curve — which is what a clone with no results/sweep produces."""
+    from loopeng.sweep.charts import abstention_chart, delta_chart, dial_chart
+    from tests.figures import texts
+
+    for figure in (dial_chart([]), delta_chart([]), abstention_chart([])):
+        assert "not yet measured" in texts(figure)
 
 
 # ---- profiles: delivery cannot inherit development settings ------------------
@@ -439,11 +451,23 @@ def test_reference_bars_are_drawn_differently_from_live_ones():
     ], complete=True, seconds=1.0)
     ref = dict(live, reference=True, measured_on="2026-07-29", role="frontier")
 
-    svg = dial_chart([live, ref])
-    assert "REFERENCE" in svg
-    assert "2026-07-29" in svg
-    # Hatched outline, never a solid fill.
-    assert "stroke-dasharray" in svg
+    figure = dial_chart([live, ref])
+
+    from tests.figures import texts
+    drawn = texts(figure)
+    assert "REFERENCE" in drawn
+    assert "2026-07-29" in drawn
+
+    # Hatched outline, never a solid fill: the stored bar is the one with a hatch and
+    # no face colour. Asserted on the patches rather than on markup, and the live bar
+    # is checked too — "at least one hatched bar" would pass on a figure that hatched
+    # everything, which loses the distinction entirely.
+    from matplotlib.patches import Rectangle
+    bars = [p for p in figure.axes[0].patches if isinstance(p, Rectangle)]
+    hatched = [p for p in bars if p.get_hatch()]
+    assert len(hatched) == 1, "exactly one of the two bars is a stored measurement"
+    assert hatched[0].get_facecolor()[-1] == 0, "a stored bar must not be filled"
+    assert [p for p in bars if not p.get_hatch()], "the live bar must not be hatched"
 
 
 def test_the_reference_caption_explains_why_they_are_not_recomputed():

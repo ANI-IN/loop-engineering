@@ -22,10 +22,14 @@ refuses, and a README is the easiest place in the world for one to survive.
 WHY IT IS NOT THE APP'S CHART CODE
 ----------------------------------
 
-`loopeng.sweep.charts` builds SVG strings for the live Gradio views, where the
-figure is redrawn every few seconds while a sweep lands and must degrade to "in
-progress, n=NN so far". This renders static PNGs of a frozen measurement for
-GitHub. Different medium, different lifetime, different failure mode.
+`loopeng.sweep.charts` draws whatever is on disk now: it is redrawn as a sweep
+lands, degrades to "in progress, n=NN so far", and is not required to be
+byte-identical between runs. This renders a FROZEN measurement that ships in the
+README, where byte-identity is the property the whole file rests on. Same
+library, same model, different lifetime and different failure mode.
+
+That used to read "builds SVG strings for the live Gradio views". Both halves
+were wrong — it is matplotlib now, and no view ever consumed those figures.
 
 What is NOT forked is `loopeng.sweep.chart_model`: the caption prose, the cell
 ordering, the role colours, and the cell-to-row transform all come from there, so
@@ -225,7 +229,7 @@ def load_curve() -> dict:
 
 
 def rows_for(payload: dict, *, metric: str) -> list[dict]:
-    """The shared cell-to-row transform. Same rows the SVG backend draws.
+    """The shared cell-to-row transform. Same rows the live backend draws.
 
     Ordering, role colour, the reference badge and the note text are all decided in
     `loopeng.sweep.chart_model`, so this file cannot disagree with the live chart about

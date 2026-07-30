@@ -30,7 +30,7 @@ from loopeng.sweep.runner import SWEEP_DIR
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Render the live charts.")
     parser.add_argument("--dir", default=str(SWEEP_DIR), help="Where cell files live.")
-    parser.add_argument("--out", default="results/charts", help="Where SVGs are written.")
+    parser.add_argument("--out", default="results/charts", help="Where the PNGs go.")
     parser.add_argument("--reference", default=MODE_AUTO, choices=SELECTABLE_MODES,
                         help="auto (default): compare once this run has a cell of its "
                              "own, hide until then — so a machine with no live cells "

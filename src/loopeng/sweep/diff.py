@@ -182,6 +182,9 @@ class Comparison:
         stored frontier cells carry no per-item outcomes and can never be paired with
         anything. A diagnostic that misattributes its own cause sends a reader looking
         at the measurement for a defect in the freeze.
+
+        Short, because it is what the DELTA chart prints in a row. `reading` adds the
+        explanation; a row is a label, not a paragraph.
         """
         stripped = [label for label, keeps in
                     ((self.label_a, self.keeps_items_a), (self.label_b, self.keeps_items_b))
@@ -190,13 +193,10 @@ class Comparison:
             return (
                 f"per-item outcomes were not retained when "
                 f"{' and '.join(stripped)} {'was' if len(stripped) == 1 else 'were'} "
-                f"frozen, so this pair cannot be tested — nothing to pair. The items "
-                f"themselves are not the problem: a paired test needs "
-                f"{{item_id: was_correct}} and the freeze drops it"
+                f"frozen — nothing to pair"
             )
         return (
-            f"{self.label_a} and {self.label_b} share no answered items — nothing to "
-            f"pair, so nothing to compare"
+            f"{self.label_a} and {self.label_b} share no answered items — nothing to pair"
         )
 
     def reading(self) -> str:
@@ -204,7 +204,13 @@ class Comparison:
         if self.cross_model:
             return CROSS_MODEL_REFUSAL
         if not self.n_pairs:
-            return self.unpairable_because
+            if self.keeps_items_a and self.keeps_items_b:
+                return f"{self.unpairable_because}, so nothing to compare"
+            return (
+                f"{self.unpairable_because}. The items are not the problem: a paired "
+                f"test needs {{item_id: was_correct}} and the freeze drops it, so this "
+                f"is a property of the freeze rather than of the measurement"
+            )
         if self.n_discordant < MIN_DISCORDANT:
             return (
                 f"not distinguishable at this n: {self.n_discordant} discordant of "
