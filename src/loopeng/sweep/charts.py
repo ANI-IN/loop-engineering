@@ -298,7 +298,9 @@ DELTA_BAR_HEIGHT = 0.34     # layout: bar thickness in row units
 DELTA_MIN_SPAN = 1.0        # layout: smallest half-width in points, so an all-zero
                             #         chart still has an axis rather than no scale
 DELTA_SPAN_PAD = 1.08       # layout: room past the widest interval
-DELTA_LEFT = 0.305          # layout: the label is a pair, so it is twice DIAL's length
+DELTA_LEFT = 0.335          # layout: the label is a pair, so it is twice DIAL's length —
+                            #         and both sides read REFERENCE once the frontier
+                            #         cells can be paired with each other
 DELTA_LABEL_SIZE = 8.5      # layout: smaller than DIAL's, for the same reason
 DELTA_RIGHT = 0.612         # layout: the reading gutter carries a sentence AND both
                             #         measurement dates, which is the longest string here

@@ -354,11 +354,18 @@ def all_comparisons(cells) -> list[Comparison]:
             + named_secondary_deltas(cells))
 
 
+# The footnote counts; the ROW names the cause. It used to do both, asserting "one side
+# keeps no per-item record" over every untestable row — which is right for a cell the
+# freeze stripped and wrong for two arms that answered nothing in common. Naming one
+# cause for two different facts is the defect `Comparison.unpairable_because` exists to
+# fix, so the footnote stops claiming to know which.
 NO_PER_ITEM_DETAIL = (
-    "not shown: one side keeps no per-item record, so there is nothing to pair. The "
-    "stored FRONTIER cells strip their items — SQL and rows are development-only bulk — "
-    "and a paired test needs {item_id: was_correct}. The stored WORKER baseline keeps "
-    "that map, which is why the Haiku comparisons work and the Sonnet ones do not."
+    "not shown: nothing to pair, and each row says which of the two reasons applies — "
+    "per-item outcomes discarded at freeze time, or two arms with no answered item in "
+    "common. A paired test needs {item_id: was_correct}, and `build_reference` drops it "
+    "along with the rest of `items`, because SQL and rows are development-only bulk. "
+    "The COMMITTED reference set keeps that map in a sibling file for every cell it "
+    "carries, so a cell frozen from your own sweep is the one that cannot be paired."
 )
 
 

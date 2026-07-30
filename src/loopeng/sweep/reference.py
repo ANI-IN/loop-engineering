@@ -13,18 +13,22 @@ so that citing cannot be mistaken for computing.
 The ablation deliberately has no entry here: it is a development finding and does not
 appear in the session at all.
 
-TWO FILES, AND WHY
-------------------
+THREE FILES, AND WHY
+--------------------
 
 `measurements.json` holds the frontier cells and is what `assets/*.png` is rendered
 from. `worker_baseline.json` holds the Haiku cells from the SAME development run.
+`frontier_paired.json` holds no cells at all — it is the per-item outcomes belonging to
+the cells in `measurements.json`, keyed by cell key.
 
 They are separate files rather than one, for a reason that is not cosmetic: the README
-images are rendered from `measurements.json` and from nothing else, so adding cells to
-it changes three committed PNGs. The author's images and their numbers are keepers, and
-a baseline should not be able to redraw them.
+images are rendered from `measurements.json` and from nothing else, so adding *anything*
+to it changes three committed PNGs. The author's images and their numbers are keepers,
+and neither a baseline nor a pairing map should be able to redraw them.
 
-Both are loaded together by `load_reference()`, so a chart sees one reference set.
+`load_reference()` returns cells from the first two and reattaches the third to the
+cells it belongs to, so a chart sees one reference set and nothing downstream has to
+know the storage is split.
 
 WHY THE WORKER BASELINE EXISTS AT ALL
 ------------------------------------
@@ -35,14 +39,22 @@ reference got four solid worker bars beside six hatched frontier bars: ten unrel
 bars, nothing paired, and no difference computable. The comparison the repo is built
 around was structurally impossible for anyone but the author.
 
-WHY IT KEEPS PER-ITEM DETAIL, WHEN THE FRONTIER CELLS DO NOT
------------------------------------------------------------
+WHY THE PER-ITEM OUTCOMES ARE KEPT AT ALL
+-----------------------------------------
 
 `build_reference` strips `items` because SQL and rows are development-only bulk. But
 McNemar's input is `{item_id: was_correct}`, and stripping it made a paired comparison
-against the baseline impossible — the sweep could show you two bars and could not tell
-you whether they differed. So the baseline keeps `paired`: item ids and a boolean,
-nothing else. It is the minimum McNemar needs and none of the bulk.
+impossible — the sweep could show you two bars and could not tell you whether they
+differed. So `paired` is kept: item ids and a boolean, nothing else. The minimum McNemar
+needs and none of the bulk.
+
+The worker baseline carries it inline, because that file was written after the problem
+was understood. The frontier cells were frozen before, and for a while ONLY the worker
+half had it — which left six of the ten comparisons permanently dead, every Sonnet pair
+among them, reported as "no shared answered items" when the items had overlapped fine
+and the outcomes had simply been discarded. `frontier_paired.json` is those outcomes,
+re-frozen from the verified same run, in a sibling file because `measurements.json`
+cannot change.
 
 PROVENANCE
 ----------
@@ -98,6 +110,11 @@ WORKER_BASELINE_PATH = Path("results/reference/worker_baseline.json")
 # Every file a chart's reference set is drawn from. Both, always: a chart that loaded
 # one of them would silently be missing half the baseline.
 REFERENCE_PATHS = (REFERENCE_PATH, WORKER_BASELINE_PATH)
+
+# NOT one of those. It carries no cells — it is a per-cell `{item_id: was_correct}`
+# lookup for the frontier cells in `measurements.json`, reattached to them at load.
+# Listing it beside the other two would render every frontier bar twice.
+FRONTIER_PAIRED_PATH = Path("results/reference/frontier_paired.json")
 
 MEASURED_ON = "2026-07-29"
 
@@ -461,6 +478,116 @@ def build_worker_baseline(sweep_dir: Path = SWEEP_DIR) -> dict:
     }
 
 
+class PairedDoesNotReconcile(RuntimeError):
+    """A per-item map does not add up to the committed cell it belongs to.
+
+    Raised rather than warned, and it is a check `assert_same_run` structurally cannot
+    make: `_RUN_IDENTITY_FIELDS` are the cell's SUMMARY counts, so flipping one item's
+    outcome without touching them passes that guard untouched. The resulting map would
+    say a cell got one answer right where the bar beside it says two — a paired test
+    disagreeing with the chart it is printed on, with nothing to say which is wrong.
+    """
+
+
+def build_frontier_paired(sweep_dir: Path = SWEEP_DIR,
+                          reference_path: Path = REFERENCE_PATH) -> dict:
+    """Freeze the per-item outcomes for the cells already in `measurements.json`.
+
+    A sibling file rather than more fields on that one, for the reason its own
+    docstring gives: the README images are rendered from `measurements.json` and from
+    nothing else, so adding to it redraws three committed PNGs, and the author's images
+    are keepers.
+
+    TWO checks, and they answer different questions. `assert_same_run` establishes that
+    this directory IS the run the reference was frozen from. The reconciliation below
+    establishes that each per-item map adds up to the cell it will be attached to — two
+    independent aggregates of the items, `ran_and_returned` and `correct`, against the
+    committed summary. Provenance and arithmetic, and neither implies the other.
+    """
+    sweep_dir, reference_path = Path(sweep_dir), Path(reference_path)
+    identity = assert_same_run(sweep_dir, reference_path)
+    committed = {c["key"]: c for c in json.loads(reference_path.read_text())["cells"]}
+
+    paired = {}
+    for key, stored in sorted(committed.items()):
+        cell = json.loads((sweep_dir / f"{key}.json").read_text())
+        outcomes = {row["item_id"]: bool(row["correct"])
+                    for row in cell.get("items", ()) if row["ran_and_returned"]}
+        disagreements = [
+            f"{name}: map says {found}, committed cell says {stored[name]}"
+            for name, found in (("ran_and_returned", len(outcomes)),
+                                ("correct", sum(outcomes.values())))
+            if found != stored[name]
+        ]
+        if disagreements:
+            raise PairedDoesNotReconcile(
+                f"{sweep_dir / f'{key}.json'} has per-item outcomes that do not add up "
+                f"to the committed {key}: {'; '.join(disagreements)}.\n"
+                f"Attaching them would put a paired test on the chart that disagrees "
+                f"with the bar it is printed beside, with nothing to say which is "
+                f"wrong. This is not something assert_same_run can see: its identity "
+                f"fields are the summary counts, which are exactly what still match."
+            )
+        paired[key] = outcomes
+
+    return {
+        "measured_on": MEASURED_ON,
+        "paired": paired,
+        "provenance": {
+            "belongs_to": str(reference_path),
+            "verified_by_matching": identity.matched_frontier_keys,
+            "reconciled_by": (
+                "each map's item count equals the committed cell's ran_and_returned, "
+                "and the count of True equals its correct — two independent aggregates "
+                "of the items against the summary they were computed from"
+            ),
+            "run_fingerprint": identity.fingerprint,
+        },
+        "how": (
+            "The per-item outcomes `build_reference` drops. It strips `items` because "
+            "SQL and rows are development-only bulk, and {item_id: was_correct} went "
+            "with them — which is McNemar's entire input, so every frontier pair "
+            "reported 'nothing to pair'. Item ids and booleans only, in a sibling file "
+            "because measurements.json is what assets/*.png is rendered from and must "
+            "not change. Reattached by load_reference, so a reader downstream sees a "
+            "cell carrying `paired` exactly as the worker baseline's cells do."
+        ),
+    }
+
+
+def frontier_paired(path: Path = FRONTIER_PAIRED_PATH) -> dict[str, dict[str, bool]]:
+    """The sidecar, or `{}` when it is not on disk.
+
+    Absent is a supported state, not an error: a cloner who runs `build_reference` over
+    their own sweep gets cells with no outcomes and no sidecar, and the chart says so in
+    those words rather than crashing. See `diff.Comparison.unpairable_because`.
+    """
+    path = Path(path)
+    if not path.is_file():
+        return {}
+    try:
+        stored = json.loads(path.read_text())["paired"]
+    except (OSError, json.JSONDecodeError, KeyError):
+        return {}
+    return {key: {str(i): bool(v) for i, v in outcomes.items()}
+            for key, outcomes in stored.items()}
+
+
+def _restore_paired(cells: list[dict], sidecar: dict) -> list[dict]:
+    """Put back what the freeze dropped, and only there.
+
+    Applied to a cell that carries NEITHER `items` nor `paired` — i.e. one the freeze
+    stripped. A cell that kept its own record keeps it; the sidecar never overrides a
+    measurement that is present.
+    """
+    return [
+        dict(cell, paired=sidecar[cell["key"]])
+        if ("paired" not in cell and "items" not in cell and cell["key"] in sidecar)
+        else cell
+        for cell in cells
+    ]
+
+
 def save_reference(payload: dict, path: Path = REFERENCE_PATH) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -497,6 +624,11 @@ def load_reference(*paths: Path, mode: str = MODE_FILL, live_keys=()) -> list[di
         if not path.is_file():
             continue
         cells.extend(json.loads(path.read_text())["cells"])
+
+    # The frontier cells' per-item outcomes, put back on the cells they belong to.
+    # Done HERE rather than in `paired_map`, so exactly one place knows the storage is
+    # split and everything downstream — charts, diff, views — holds an ordinary cell.
+    cells = _restore_paired(cells, frontier_paired())
 
     if mode == MODE_FILL:
         live = set(live_keys)

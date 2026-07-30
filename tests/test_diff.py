@@ -329,13 +329,20 @@ def test_the_delta_chart_never_draws_a_bar_it_cannot_test():
 
 
 def test_the_delta_chart_reports_what_it_could_not_compare():
-    """Counted and named. No silent caps."""
+    """Counted and named. No silent caps.
+
+    These two cells KEPT their per-item records — both are empty — so the row must say
+    they share no answered items, not that something was stripped. The footnote counts
+    and defers; only the row is entitled to name a cause.
+    """
     drawn = texts(delta_chart(diff.all_comparisons([
         cell("frontier_L0_one_shot_r0", role="frontier", mode="one_shot"),
         cell("frontier_L0_loop_r0", role="frontier"),
     ])))
     assert "1 comparison(s) not shown" in drawn
-    assert "no per-item record" in drawn
+    assert "each row says which of the two reasons applies" in drawn
+    assert "share no answered items" in drawn
+    assert "not retained" not in drawn
 
 
 def test_the_delta_chart_refuses_a_cross_model_p_value_on_screen():

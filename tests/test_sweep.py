@@ -847,6 +847,137 @@ def test_a_resumed_sweep_will_not_adopt_a_run_it_does_not_match(tmp_path):
     assert resolve_run_id(current, directory).run_id == current.run_id
 
 
+# ---- the frontier cells get their per-item outcomes back --------------------
+#
+# `build_reference` strips `items` — SQL and rows are development-only bulk — and with
+# them went `{item_id: was_correct}`, which is McNemar's entire input. Six of the ten
+# comparisons were therefore dead: every Sonnet pair reported nothing to pair, not
+# because the arms answered disjoint sets but because the outcomes were discarded.
+#
+# The fix is a SIBLING file, not a wider measurements.json. That file is what
+# assets/*.png is rendered from, so adding anything to it redraws three committed
+# images. The sidecar carries item ids and booleans and nothing else, and it is
+# reattached at load, so every reader downstream sees a cell that carries `paired`
+# exactly as the worker baseline's cells do.
+
+
+@pytest.fixture
+def a_frozen_frontier_run(tmp_path):
+    """A sweep directory and the reference file frozen from it, both synthetic.
+
+    Not a copy of results/sweep: a fresh clone has none, and this is the guard's own
+    test.
+    """
+    from loopeng.sweep.reference import build_reference
+
+    directory = tmp_path / "sweep"
+    directory.mkdir()
+    cell = Cell("frontier", "L0", "loop")
+    report = summarise_cell(cell, [
+        {"item_id": item_id, "pattern_key": "p", "outcome": "o",
+         "ran_and_returned": True, "correct": correct, "termination": "success",
+         "n_attempts": 1, "rejections": 0, "cost_usd": 0.1,
+         "tokens": {"n_calls": 1, "input_tokens": 1, "output_tokens": 1, "total_tokens": 2}}
+        for item_id, correct in (("a", True), ("b", True), ("c", False))
+    ], complete=True, seconds=1.0)
+    (directory / f"{cell.key}.json").write_text(json.dumps(report))
+
+    reference_path = tmp_path / "measurements.json"
+    reference_path.write_text(json.dumps(build_reference(directory)))
+    return directory, reference_path
+
+
+def test_the_frontier_outcomes_are_frozen_beside_the_cells_they_belong_to(
+    a_frozen_frontier_run,
+):
+    from loopeng.sweep.reference import build_frontier_paired
+
+    directory, reference_path = a_frozen_frontier_run
+    payload = build_frontier_paired(directory, reference_path)
+
+    assert payload["paired"] == {"frontier_L0_loop_r0": {"a": True, "b": True, "c": False}}
+
+
+def test_a_paired_map_that_does_not_add_up_to_its_cell_is_refused(a_frozen_frontier_run):
+    """The check `assert_same_run` cannot make. Its identity fields are the cell's
+    SUMMARY counts, so flipping one item's outcome without touching them passes it
+    untouched — and the resulting map would say a cell got 1 right where the bar beside
+    it says 2. Two independent aggregates of the per-item data have to equal the
+    committed ones."""
+    from loopeng.sweep.reference import (
+        PairedDoesNotReconcile,
+        assert_same_run,
+        build_frontier_paired,
+    )
+
+    directory, reference_path = a_frozen_frontier_run
+    path = directory / "frontier_L0_loop_r0.json"
+    body = json.loads(path.read_text())
+    body["items"][0]["correct"] = False           # summary counts untouched
+    path.write_text(json.dumps(body))
+
+    assert assert_same_run(directory, reference_path), "the old guard sees nothing wrong"
+    with pytest.raises(PairedDoesNotReconcile) as exc:
+        build_frontier_paired(directory, reference_path)
+    assert "frontier_L0_loop_r0" in str(exc.value)
+    assert "correct" in str(exc.value)
+
+
+def test_the_committed_sidecar_covers_every_frontier_cell_and_adds_up():
+    """The shipped artifact, reconciled against the shipped measurements it belongs to.
+
+    Runs on a fresh clone: both files are committed, and neither needs results/sweep.
+    """
+    from loopeng.sweep.reference import (
+        FRONTIER_PAIRED_PATH,
+        REFERENCE_PATH,
+        frontier_paired,
+    )
+
+    committed = {c["key"]: c for c in json.loads(REFERENCE_PATH.read_text())["cells"]}
+    sidecar = frontier_paired(FRONTIER_PAIRED_PATH)
+
+    assert set(sidecar) == set(committed), "every frontier cell, or the gap is silent"
+    for key, outcomes in sorted(sidecar.items()):
+        assert len(outcomes) == committed[key]["ran_and_returned"], key
+        assert sum(outcomes.values()) == committed[key]["correct"], key
+        assert all(isinstance(v, bool) for v in outcomes.values())
+
+
+def test_the_sidecar_carries_no_sql_and_no_rows():
+    """Item ids and booleans, which is McNemar's input and none of the bulk."""
+    from loopeng.sweep.reference import FRONTIER_PAIRED_PATH
+
+    body = json.loads(FRONTIER_PAIRED_PATH.read_text())
+    assert "sql" not in body and "rows" not in body
+    assert set(body) == {"measured_on", "paired", "provenance", "how"}
+
+
+def test_loading_the_reference_puts_the_outcomes_back_on_the_cells():
+    """Reattached at load, so nothing downstream has to know the storage is split."""
+    from loopeng.sweep.reference import MODE_COMPARE, load_reference, paired_map
+
+    frontier = [c for c in load_reference(mode=MODE_COMPARE)
+                if c["key"].startswith("frontier_")]
+
+    assert frontier
+    for cell in frontier:
+        assert paired_map(cell), f"{cell['key']} still cannot be paired"
+
+
+def test_the_sonnet_comparisons_are_testable_now():
+    """The finding, closed. Six of ten comparisons reported nothing to pair; the arms
+    had answered overlapping sets all along."""
+    from loopeng.sweep.diff import all_comparisons, partition
+    from loopeng.sweep.reference import MODE_COMPARE, load_reference
+
+    testable, untestable = partition(all_comparisons(load_reference(mode=MODE_COMPARE)))
+    frontier = [c for c in testable if c.key_a.startswith("frontier_")]
+
+    assert frontier, "the frontier pairs are still dead"
+    assert not [c for c in untestable if c.key_a.startswith("frontier_")]
+
+
 def test_the_readme_images_are_rendered_from_measurements_json_alone():
     """The baseline is a second file for this reason: adding cells to measurements.json
     would redraw three committed PNGs, and the author's images are keepers."""

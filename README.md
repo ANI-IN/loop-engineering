@@ -431,7 +431,7 @@ tests/               the offline suite, plus tests/live/ behind the live marker
 
 | path | committed | why |
 |---|---|---|
-| `results/reference/` | **yes** | the frozen measurements the delivery charts cite: `measurements.json` (the Sonnet cells, and what `assets/*.png` is drawn from) and `worker_baseline.json` (the Haiku half of the same run, so a cloner's own cells have a stored counterpart to be differenced against) |
+| `results/reference/` | **yes** | the frozen measurements the delivery charts cite: `measurements.json` (the Sonnet cells, and what `assets/*.png` is drawn from), `worker_baseline.json` (the Haiku half of the same run, so a cloner's own cells have a stored counterpart to be differenced against), and `frontier_paired.json` (the Sonnet cells' per-item outcomes, held apart so that adding them cannot redraw the images) |
 | `results/prefix_v1/` | **yes** | the pre-fix measurements — the triage artifact and what the defect cost |
 | `results/gate0.json` | **yes** | foundation evidence, cited throughout |
 | `results/sweep/`, `results/ablation/` | **no** | live cell output. A committed cell would arrive on every clone and make the *first* live sweep on a fresh machine resume-and-complete instantly, rendering finished numbers to a room told nothing is precomputed. |
@@ -999,16 +999,21 @@ cross-model comparison in the session puts a line measured minutes ago next to o
 measured weeks ago. The charts badge both sides on the row itself rather than in a
 caption read once.
 
-**Six of the ten comparisons can never be tested, and the freeze is why.** The stored
-FRONTIER cells strip their per-item outcomes — SQL and rows are development-only bulk —
-so every Sonnet pair has nothing to pair with. That is not a property of the data: the
-items overlapped when they were measured, and `{item_id: was_correct}` was discarded at
-freeze time. The stored WORKER baseline keeps that map, which is why the Haiku
-comparisons work and the Sonnet ones do not. **The chart says so in those words**, having
-previously reported *no shared answered items*, which named a cause that was not the
-cause. Retaining it for the frontier cells is the fix, and it is not done here: the file
-those cells live in is what `assets/*.png` is drawn from, and rewriting it redraws three
-committed images.
+**Six of the ten comparisons used to be untestable, and the freeze was why.**
+`build_reference` strips `items` — SQL and rows are development-only bulk — and
+`{item_id: was_correct}` went with them, so every Sonnet pair had nothing to pair with.
+The chart reported *no shared answered items*, which named a cause that was not the
+cause: the items overlapped perfectly well when they were measured, and the outcomes
+were discarded afterwards. Those outcomes are now re-frozen into
+`results/reference/frontier_paired.json` and reattached at load, and **all ten
+comparisons are testable**. It is a sibling file rather than more fields on
+`measurements.json` because that file is what `assets/*.png` is drawn from and adding to
+it redraws three committed images.
+
+The residue is that four of those ten are now REFERENCE against REFERENCE — two stored
+arms from one development run, both badged and both dated on the row. They are
+within-model, so the temperature asymmetry does not touch them, but they are not
+something the session computes.
 
 **The cloner's baseline is a full set of finished cells, and it ships with the clone.**
 `results/reference/worker_baseline.json` exists because without it the comparison this
