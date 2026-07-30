@@ -1,6 +1,7 @@
 """The sweep's three load-bearing properties, tested offline."""
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -382,6 +383,41 @@ def test_a_reference_cell_never_claims_it_was_computed_today():
     for cell in build_reference().get("cells", []):
         assert "today" not in cell["silent_error_rate"]
         assert cell["measured_on"] in cell["silent_error_rate"]
+
+
+def test_no_committed_measurement_under_results_claims_it_was_computed_today():
+    """The general form of the test above, and the reason it has to be general.
+
+    `sweep/reference.py` carries the pattern and rewrites it at freeze time, so a cell
+    that goes through `_freeze` is safe. Files that reach `results/` any other way never
+    touch it — and `results/noise_floor_haiku_default_temp.json` shipped saying
+    "computed 18:55 today", which is false every day anybody opens it, in the exact way
+    that module exists to prevent.
+
+    Scoped to what git TRACKS, which is the definition of stored: an untracked cell in
+    results/sweep/ was computed today and is entitled to say so.
+    """
+    import subprocess
+
+    from loopeng.sweep.reference import _COMPUTED_TODAY
+
+    root = Path(__file__).resolve().parent.parent
+    tracked = subprocess.run(["git", "ls-files", "results"], capture_output=True,
+                             text=True, cwd=root).stdout.split()
+
+    offenders = []
+    for name in tracked:
+        if not name.endswith(".json"):
+            continue
+        for found in _COMPUTED_TODAY.findall((root / name).read_text(encoding="utf-8")):
+            offenders.append(f"{name}: {found!r}")
+
+    assert offenders == [], (
+        "a committed measurement claims it was computed today:\n  "
+        + "\n  ".join(sorted(set(offenders)))
+        + "\nRewrite it with loopeng.sweep.reference.as_stored, which is what _freeze "
+          "uses. Editing the literal fixes one file; the writer is what recurs."
+    )
 
 
 def test_reference_cells_are_flagged_and_dated():

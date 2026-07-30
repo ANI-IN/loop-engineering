@@ -12,7 +12,7 @@
   "ran_and_returned": 44,
   "correct": 26,
   "silent_errors": 18,
-  "silent_error_rate": "40.9% (n=44, \u00b114.7, computed 18:46 today)",
+  "silent_error_rate": "40.9% (n=44, \u00b114.7, measured 2026-07-29)",
   "cost_usd": {
     "value": 0.116085,
     "source": "estimated"

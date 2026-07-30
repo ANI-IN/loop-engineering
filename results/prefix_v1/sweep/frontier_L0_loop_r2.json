@@ -11,7 +11,7 @@
   "ran_and_returned": 43,
   "correct": 31,
   "silent_errors": 12,
-  "silent_error_rate": "27.9% (n=43, \u00b114.8, computed 19:08 today)",
+  "silent_error_rate": "27.9% (n=43, \u00b114.8, measured 2026-07-29)",
   "rate_value": 0.27906976744186046,
   "rate_ci_low": 0.16746613786237488,
   "rate_ci_high": 0.42691028681878873,

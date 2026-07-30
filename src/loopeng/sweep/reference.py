@@ -221,12 +221,35 @@ def as_measured(text: str, measured_on: str = MEASURED_ON) -> str:
     return _COMPUTED_TODAY.sub(f"measured {measured_on}", text)
 
 
+def as_stored(payload, measured_on: str = MEASURED_ON):
+    """A whole payload, restamped so nothing in it claims it was just computed.
+
+    `as_measured` handles one string and every caller had to know which strings to hand
+    it. `_freeze` knew about `silent_error_rate` and was silent about any other rendered
+    measurement a cell might carry; `results/noise_floor_haiku_default_temp.json` was
+    written by nothing that knew about either, and shipped saying "computed 18:55
+    today" — false every day anybody opened it.
+
+    So the rewrite is over the structure rather than over a named field. Recursive
+    because a stored measurement is nested: cells inside a payload, readings inside a
+    cell. A test asserts no committed JSON under results/ carries the pattern, which is
+    what makes this the guard rather than a habit.
+    """
+    if isinstance(payload, str):
+        return as_measured(payload, measured_on)
+    if isinstance(payload, dict):
+        return {key: as_stored(value, measured_on) for key, value in payload.items()}
+    if isinstance(payload, list):
+        return [as_stored(value, measured_on) for value in payload]
+    return payload
+
+
 def _freeze(cell: dict, *, keep_paired: bool) -> dict:
     cell = dict(cell)
+    items = cell.pop("items", None)  # SQL and rows are development-only bulk
+    cell = as_stored(cell)
     cell["reference"] = True
     cell["measured_on"] = MEASURED_ON
-    cell["silent_error_rate"] = as_measured(cell["silent_error_rate"])
-    items = cell.pop("items", None)  # SQL and rows are development-only bulk
     if keep_paired and items:
         # McNemar's whole input, and nothing else. See the module docstring.
         cell["paired"] = {

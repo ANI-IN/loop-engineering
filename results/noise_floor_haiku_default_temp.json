@@ -3,7 +3,7 @@
   "how": "Two independent runs of the same 50 gold items at L3. Restricted to items where the Level 2 loop made zero rejections, so both runs took an identical path \u2014 one model call, accepted immediately. Any disagreement is therefore the model itself, not the loop.",
   "n_items_identical_path": 37,
   "n_disagreed": 6,
-  "disagreement_rate": "16.2% (n=37, \u00b114.9, computed 18:55 today)",
+  "disagreement_rate": "16.2% (n=37, \u00b114.9, measured 2026-07-29)",
   "value": 0.16216216216216217,
   "ci_low": 0.07651207234011151,
   "ci_high": 0.3113648370093497,
