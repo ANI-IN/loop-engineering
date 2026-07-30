@@ -57,11 +57,24 @@ WHAT IS AND IS NOT SCANNED AS A STRING
 --------------------------------------
 
 **Docstrings and comments are out of scope, deliberately.** Nothing in this repo renders
-a docstring to a screen — checked, not assumed — and the comments here are where measured
-numbers get their provenance recorded. `registry.py` explains the temperature decision
-with the disagreement floor it was measured at; `gold/compare.py` pins its tolerance
-between two measured values. Banning those would strip exactly the rationale that makes
-this codebase reviewable, in exchange for catching nothing anyone can see.
+a docstring to a screen, and the comments here are where measured numbers get their
+provenance recorded. `registry.py` explains the temperature decision with the
+disagreement floor it was measured at; `gold/compare.py` pins its tolerance between two
+measured values. Banning those would strip exactly the rationale that makes this codebase
+reviewable, in exchange for catching nothing anyone can see.
+
+That first clause used to end "— checked, not assumed", and nothing checked it. In this
+repository that phrase means *a test enforces this*; here it meant somebody had grepped
+once, which is the gap between declared and enforced appearing in the docstring of the
+module written to close it. It now points at its own enforcement:
+
+    tests/test_lint_no_numbers.py::test_nothing_in_this_repo_routes_a_docstring_to_a_rendered_surface
+
+That test walks every module under `src/`, `demos/`, `deploy/` and `tools/` for a runtime
+read of `__doc__` — including `description=__doc__`, the argparse habit that would put a
+module docstring on a terminal — and for the `inspect` helpers that reach one indirectly.
+The day one of them appears, every number in every docstring here is a rendered surface
+and this exemption has to be revisited.
 
 The scope is therefore: string constants that can reach a rendered surface. That is
 narrower than "every string" and it is the whole failure mode.
@@ -197,8 +210,10 @@ def _docstring_nodes(tree: ast.AST) -> set[int]:
     """`id()` of every Constant that is a docstring.
 
     Out of scope by design — nothing here renders a docstring, and the comments and
-    docstrings in this codebase are where measured numbers get their provenance. See the
-    module docstring.
+    docstrings in this codebase are where measured numbers get their provenance. That
+    premise is asserted by
+    `tests/test_lint_no_numbers.py::test_nothing_in_this_repo_routes_a_docstring_to_a_rendered_surface`
+    rather than grepped once; see the module docstring.
     """
     ids = set()
     for node in ast.walk(tree):

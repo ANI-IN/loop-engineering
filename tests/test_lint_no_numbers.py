@@ -327,6 +327,79 @@ def test_a_docstring_exemption_does_not_cover_the_rest_of_the_file(tmp_path):
     assert violations[0][0] == 2
 
 
+# ---- and what the whole exemption RESTS on ----------------------------------
+#
+# The exemption is sound and it stays: docstrings are where measured numbers get their
+# provenance, and banning them would strip the rationale that makes this codebase
+# reviewable in exchange for catching nothing anyone can see.
+#
+# But the justification was "Nothing in this repo renders a docstring to a screen —
+# checked, not assumed", and nothing checked it. "Checked, not assumed" is the phrase
+# this repo uses for a thing a test enforces; here it meant "somebody grepped once".
+# That is the gap between declared and enforced, in the docstring of the module that
+# exists to close it — and the same one-time grep is the whole evidence for the claim
+# that `triage/escalate.py`'s docstring reaches no panel.
+#
+# So the claim is enforced. The day a module renders its own docstring, the numbers in
+# every docstring in this repository become a rendered surface and the exemption has to
+# be revisited — this is what says so.
+
+# Every way a module can get at a docstring at runtime. `__doc__` covers the direct read
+# and `description=__doc__`, which is the argparse habit that would put a module's
+# docstring on a terminal; the `inspect` helpers cover the indirect ones.
+DOCSTRING_READERS = frozenset({"__doc__", "getdoc", "cleandoc", "getcomments", "pydoc"})
+
+# tools/ is scanned as well, though the finding named only the three application trees:
+# it writes assets/ and deploy/hf/, which are rendered surfaces that outlive the session
+# by longer than any view does.
+DOCSTRING_SCANNED_TREES = ("src", "demos", "deploy", "tools")
+
+
+def _docstring_reads(path: Path) -> list[tuple[int, str]]:
+    import ast
+
+    found = []
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"), filename=str(path))):
+        if isinstance(node, ast.Attribute) and node.attr in DOCSTRING_READERS:
+            found.append((node.lineno, f".{node.attr}"))
+        elif isinstance(node, ast.Name) and node.id in DOCSTRING_READERS:
+            found.append((node.lineno, node.id))
+        elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+              and node.func.id == "help"):
+            found.append((node.lineno, "help()"))
+    return found
+
+
+def test_the_docstring_reader_scan_catches_a_module_that_renders_one(tmp_path):
+    """The walker, on a planted violation. Without this the test below is the same
+    one-time grep it replaces — green because it looked at nothing that could fail."""
+    planted = tmp_path / "renders_its_docstring.py"
+    planted.write_text(
+        '"""A 16.2% floor."""\n'
+        "import gradio as gr\n"
+        "def build():\n"
+        "    return gr.Markdown(__doc__)\n",
+        encoding="utf-8",
+    )
+    assert _docstring_reads(planted) == [(4, "__doc__")]
+
+
+def test_nothing_in_this_repo_routes_a_docstring_to_a_rendered_surface():
+    """What the lint rule's docstring exemption rests on, asserted rather than grepped."""
+    offenders = []
+    for tree in DOCSTRING_SCANNED_TREES:
+        for path in sorted((REPO_ROOT / tree).rglob("*.py")):
+            for lineno, what in _docstring_reads(path):
+                offenders.append(f"{path.relative_to(REPO_ROOT)}:{lineno}: {what}")
+
+    assert offenders == [], (
+        "a module reads a docstring at runtime:\n  " + "\n  ".join(offenders)
+        + "\nThe numeric-literal rule exempts docstrings BECAUSE nothing renders one. "
+          "If this is a rendered surface, the exemption in tools/lint_no_numbers.py no "
+          "longer holds and the numbers in every docstring here are now on screen."
+    )
+
+
 # ---- the method allowlist: enumerated, counted, and alive --------------------
 
 
