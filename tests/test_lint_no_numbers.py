@@ -185,54 +185,118 @@ def test_the_rule_has_live_coverage_not_just_targets():
     assert sum(scan(path)[1] for path in TARGETS) > 0
 
 
-def _plant(target: Path, body: str) -> str:
-    original = target.read_text(encoding="utf-8")
-    target.write_text(body, encoding="utf-8")
-    return original
+def _mirror(tmp_path, monkeypatch) -> tuple[Path, ...]:
+    """Copy every declared target into `tmp_path` and point the rule at the copies.
+
+    These tests plant a violation and assert the rule catches it. They used to
+    plant it by overwriting the *tracked source file* and restoring it in a
+    `finally` — eleven of them, one at a time, including all eight
+    `src/loopeng/views/*.py`.
+
+    A `finally` is not a guarantee. `pyproject.toml` sets `timeout_method =
+    "thread"`, and a thread-method timeout kills the process without unwinding;
+    so does SIGKILL, and so does a Ctrl-C at the wrong instant. Any of those left
+    the working tree with production modules replaced by `MEASURED_RATE = 78`,
+    presenting as a suite that suddenly could not import `loopeng.views`.
+
+    It also raced the rest of the suite: `test_views.py` AST-parses every
+    `src/**/*.py` and `test_caching.py` rglobs `src/` for `cache_control`. Under
+    reordering or xdist those read a planted stub and pass for the wrong reason.
+
+    The module docstring above already records this exact lesson — the original
+    test "planted its violation by *writing* the file". The lesson was learned
+    for one test and not for its three neighbours.
+
+    The copies keep their path *relative to the repo root* so a failure message
+    still reads like the file it stands for.
+    """
+    import tools.lint_no_numbers as lint
+
+    mirrored = []
+    for target in TARGETS:
+        destination = tmp_path / target.relative_to(REPO_ROOT)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
+        mirrored.append(destination)
+
+    monkeypatch.setattr(lint, "TARGETS", tuple(mirrored))
+    return tuple(mirrored)
 
 
 def test_main_with_no_arguments_checks_the_real_targets():
     assert main([]) == 0
 
 
+def test_every_declared_target_is_absolute_and_inside_the_repo():
+    """The anchoring property itself, asserted directly rather than inferred.
+
+    A relative target would resolve against the caller's working directory, and
+    a lint rule that reports success because it was run from the wrong directory
+    is worse than no lint rule: a green build that checked nothing.
+    """
+    for target in TARGETS:
+        assert target.is_absolute(), f"{target} is relative and would follow the cwd"
+        assert target.is_relative_to(REPO_ROOT), f"{target} escapes the repo root"
+
+
 def test_default_targets_are_anchored_to_the_repo_not_the_cwd(tmp_path, monkeypatch):
-    """A lint rule that reports success because it was run from the wrong directory
-    is worse than no lint rule: it produces a green build that checked nothing."""
-    planted = TARGETS[-1]
-    original = _plant(planted, "X = 42\n")
-    try:
-        monkeypatch.chdir(tmp_path)
-        assert main([]) == 1
-    finally:
-        planted.write_text(original, encoding="utf-8")
+    """And the consequence of that property: the cwd cannot change the verdict."""
+    mirrored = _mirror(tmp_path, monkeypatch)
+    mirrored[-1].write_text("X = 42\n", encoding="utf-8")
+
+    monkeypatch.chdir(tmp_path)
+    assert main([]) == 1
 
 
-def test_every_default_target_is_actually_checked():
+def test_every_default_target_is_actually_checked(tmp_path, monkeypatch):
     """Each target in turn is given a literal, and main() must fail on it."""
     assert TARGETS, "the rule has no targets and cannot catch anything"
+    mirrored = _mirror(tmp_path, monkeypatch)
 
-    for target in TARGETS:
-        original = _plant(target, "MEASURED_RATE = 78\n")
+    for copy, declared in zip(mirrored, TARGETS, strict=True):
+        clean = copy.read_text(encoding="utf-8")
+        copy.write_text("MEASURED_RATE = 78\n", encoding="utf-8")
         try:
             assert main([]) == 1, (
-                f"{target} is a declared target but planting a literal there passed"
+                f"{declared} is a declared target but planting a literal there passed"
             )
         finally:
-            target.write_text(original, encoding="utf-8")
+            copy.write_text(clean, encoding="utf-8")
 
-    # With the real files restored the same call is clean, which also asserts every
-    # shipped target is free of typed measurements.
+    # With every copy clean the same call is clean, which also asserts every
+    # shipped target is free of typed measurements — the copies are byte-for-byte
+    # what is committed.
     assert main([]) == 0
 
 
-def test_a_planted_literal_is_not_rescued_by_a_layout_marker_elsewhere():
+def test_a_planted_literal_is_not_rescued_by_a_layout_marker_elsewhere(
+    tmp_path, monkeypatch
+):
     """The marker is per line. A `# layout` on line 3 must not exempt line 9."""
-    target = TARGETS[0]
-    original = _plant(target, "PAD = 300  # layout: gutter\nMEASURED_RATE = 78\n")
-    try:
-        assert main([]) == 1
-    finally:
-        target.write_text(original, encoding="utf-8")
+    mirrored = _mirror(tmp_path, monkeypatch)
+    mirrored[0].write_text(
+        "PAD = 300  # layout: gutter\nMEASURED_RATE = 78\n", encoding="utf-8"
+    )
+    assert main([]) == 1
+
+
+def test_planting_a_violation_never_touches_a_tracked_file(tmp_path, monkeypatch):
+    """The guard for the defect the mirror was introduced to fix.
+
+    If a future edit reverts to planting in the real tree, this fails — rather
+    than the damage showing up as an unrelated import error days later.
+    """
+    before = {target: target.read_text(encoding="utf-8") for target in TARGETS}
+
+    mirrored = _mirror(tmp_path, monkeypatch)
+    for copy in mirrored:
+        copy.write_text("MEASURED_RATE = 78\n", encoding="utf-8")
+    assert main([]) == 1
+
+    for target, original in before.items():
+        assert target.read_text(encoding="utf-8") == original, (
+            f"{target.relative_to(REPO_ROOT)} was modified by the test suite"
+        )
 
 
 # ---- failure 3: a number inside a string was never inspected -----------------

@@ -310,11 +310,19 @@ def test_the_offline_suite_command_is_what_ci_runs():
 
 
 def test_git_tracks_no_file_under_a_removed_directory():
+    """`scripts/` and `app/` are removed and must stay that way.
+
+    `docs/` was on this list and has been taken off it deliberately: the
+    directory exists again and holds the audit record, which is tracked on
+    purpose. Leaving it here would have been a rule kept past its reason —
+    and this suite would then be asserting the absence of files that other
+    tests in it require to be present.
+    """
     tracked = subprocess.run(
         ["git", "ls-files"], capture_output=True, text=True, cwd=REPO_ROOT,
     ).stdout.split()
     for path in tracked:
-        assert not path.startswith(("docs/", "scripts/", "app/")), (
+        assert not path.startswith(("scripts/", "app/")), (
             f"{path} is still tracked but its directory was removed"
         )
 
