@@ -54,7 +54,7 @@ flowchart TD
     RUN --> MORE{"More cells?"}
     MORE -->|yes| CELL
     MORE -->|no| OUT[("results/sweep/*.json")]
-    OUT --> CHARTS["charts.py renders DIAL and COST<br/>from whatever is on disk — safe mid-sweep"]
+    OUT --> CHARTS["charts.py renders DIAL, COST, DELTA<br/>and ABSTENTION from whatever is on disk<br/>— safe mid-sweep"]
 
     classDef refuse fill:#fee2e2,stroke:#b91c1c,color:#0b1220,font-weight:bold;
     classDef store fill:#e0f2fe,stroke:#0369a1,color:#0b1220;
@@ -88,11 +88,21 @@ knows whether those files are still needed.
 A cell still running reports *"in progress, n=NN so far"* with the interval over what has
 landed, and draws as a hollow bar. **A zero on a chart reads as a measurement.**
 
-### Two charts ship, not three
+### Four charts ship, and two of them can be empty
 
-**DIAL** (silent-error rate per cell) and **COST** (estimated spend per cell). A third
-chart plotting a finding that did not reproduce would be the same defect as reporting an
-unmeasured number.
+**DIAL** (silent-error rate per cell) and **COST** (estimated spend per cell) are one row
+per cell. **DELTA** is one row per compared pair, and **ABSTENTION** plots coverage
+against precision over a single cell's items.
+
+DELTA and ABSTENTION are written **even when their inputs are empty** — they render *not
+yet measured* and say what would fill them. That is the same rule the other two follow,
+applied to a chart rather than to a number: a chart that silently does not exist is
+indistinguishable from a chart whose finding is absent, so neither is allowed to just not
+appear. See `write_charts` in `src/loopeng/sweep/charts.py`.
+
+What is still true, and is why this section used to say two: a chart plotting a finding
+that did not reproduce would be the same defect as reporting an unmeasured number. DELTA
+draws zero, and gives nothing untestable a bar.
 
 ### One asymmetry must be said out loud every time a cross-model comparison appears
 
@@ -181,8 +191,8 @@ no calls renders *not yet measured* rather than a full dial.
 
 **Safe to run repeatedly, mid-sweep.** It renders from whatever exists so far.
 
-**What appears:** `results/charts/dial.png` and `cost.png`, plus a line per cell showing
-its current rate.
+**What appears:** `results/charts/dial.png`, `cost.png`, `delta.png` and
+`abstention.png`, plus a line per cell showing its current rate.
 
 **What to observe:** run it twice, a minute apart. The intervals narrow as more items land.
 **That narrowing is the session's argument about measurement happening live** rather than
@@ -272,7 +282,7 @@ and say out loud that it will take longer.
 | the DIAL view and its live/reference badges | `src/loopeng/views/dial.py` |
 | abstention, escalation, triage | `src/loopeng/triage/` |
 
-> **For whoever edits the rendering code:** numeric literals are banned in the eight
+> **For whoever edits the rendering code:** numeric literals are banned in the eleven
 > modules that render to a room, enforced by `tools/lint_no_numbers.py`. Every number the
 > room sees comes from a `Metric` carrying its own `n`. Genuine layout geometry is exempt
 > by a trailing `# layout` marker on the line, and the rule prints how many exemptions

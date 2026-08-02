@@ -6,7 +6,7 @@ import pytest
 from loopeng.agent.loop import TerminationReason
 from loopeng.contracts import FORBIDDEN_FIELD_PATTERN
 from loopeng.verify.loop import build_context, run_verified
-from loopeng.verify.probes import PROBES, run_probes
+from loopeng.verify.probes import PROBES, UNPROBED_BY_DESIGN, run_probes
 from loopeng.verify.regex_verifiers import verify_with_regex
 from loopeng.verify.verifiers import verify
 from loopeng.warehouse.connect import ensure_warehouse
@@ -96,7 +96,32 @@ def test_the_v1_probe_surface_covers_every_check_it_claims_to():
 
     probed = {p.rule for p in PROBES}
     assert probed <= set(RULE_CHECKS)
-    assert set(RULE_CHECKS) - probed == {"minor_units"}
+    assert set(RULE_CHECKS) - probed == set(UNPROBED_BY_DESIGN)
+
+
+def test_every_declared_rule_is_probed_or_explicitly_exempt():
+    """The exemption must be *written down*, not merely true.
+
+    This assertion already existed against the bare literal `{"minor_units"}`, so
+    the gap was enforced but unexplained — and a reader of the report could not
+    see it at all, because `run_probes` reported `n_rules` (the probe count) and
+    nothing else. `6/6` is a fraction whose denominator is the thing that drifts.
+
+    A new rule arriving with no probe and no entry in `UNPROBED_BY_DESIGN` fails
+    here, naming itself.
+    """
+    report = run_probes()
+    assert report["unprobed_unexplained"] == [], (
+        f"declared but neither probed nor exempt: {report['unprobed_unexplained']}"
+    )
+    assert report["n_declared_rules"] == report["n_rules"] + len(UNPROBED_BY_DESIGN)
+
+
+def test_the_probe_report_shows_the_declared_total_not_only_the_probed_one():
+    """The defect was invisibility, so the fix is asserted on the report itself."""
+    report = run_probes()
+    assert report["n_declared_rules"] > report["n_rules"]
+    assert report["unprobed_by_design"] == ["minor_units"]
 
 
 def test_refunds_net_is_probed_even_though_the_sweep_cannot_measure_it():

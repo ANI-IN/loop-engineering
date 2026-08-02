@@ -54,6 +54,6 @@ rather than filters, because a filter that misses is silent.
 The four-loop framing is LangChain's [*The Art of Loop
 Engineering*](https://www.langchain.com/blog/the-art-of-loop-engineering), which credits
 swyx's [*Loopcraft: the art of stacking
-loops*](https://www.latent.space/p/ainews-loopcraft-the-art-of-stacking). No assets are
+loops*](https://www.latent.space/p/loopcraft). No assets are
 reproduced from either; every diagram and chart here is generated from this project's own
 control flow and measurements.

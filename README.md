@@ -162,7 +162,7 @@ The framing is not ours. LangChain's [**The Art of Loop
 Engineering**](https://www.langchain.com/blog/the-art-of-loop-engineering) describes four
 loops that stack on one another — the agent loop, a verification loop, an event-driven
 loop, and a hill-climbing loop — and credits swyx's [**Loopcraft: the art of stacking
-loops**](https://www.latent.space/p/ainews-loopcraft-the-art-of-stacking) for the idea
+loops**](https://www.latent.space/p/loopcraft) for the idea
 that loops can be stacked and extended to build more effective agents.
 
 We take the taxonomy and disagree with nothing in it. What this repository adds is the
@@ -360,7 +360,7 @@ flowchart TD
     RUN --> MORE{"More cells?"}
     MORE -->|yes| CELL
     MORE -->|no| OUT[("results/sweep/*.json")]
-    OUT --> CHARTS["charts.py renders DIAL and COST<br/>from whatever is on disk — safe mid-sweep"]
+    OUT --> CHARTS["charts.py renders DIAL, COST, DELTA<br/>and ABSTENTION from whatever is on disk<br/>— safe mid-sweep"]
 
     classDef refuse fill:#fee2e2,stroke:#b91c1c,color:#0b1220,font-weight:bold;
     classDef store fill:#e0f2fe,stroke:#0369a1,color:#0b1220;
@@ -381,7 +381,7 @@ Runbook: [`demos/04_hill_climbing_loop/README.md`](demos/04_hill_climbing_loop/R
 | **DuckDB** | The seeded warehouse, and separately the question queue. Opened **read-only** for the agent, enforced by the database rather than by convention. Chosen over a hosted database so the workshop has no network dependency it does not need. |
 | **Gradio** | The five views. Chosen because a view is a function plus a layout, and the alternative was a frontend build step at a venue. |
 | **sqlglot** | Parses model-written SQL into an AST so rule checks can ask whether a column is actually constrained, rather than whether the query text mentions it. Also detects whether the outer query carries an `ORDER BY`, which decides whether result comparison is order-sensitive. |
-| **matplotlib** | **Dev dependency only.** Renders the deterministic README images in `assets/` from the committed reference measurements. It is never imported by anything the session or the Space runs. |
+| **matplotlib** | **A runtime dependency.** Draws the four live charts in Stage 4 (`src/loopeng/sweep/charts.py`), and renders the deterministic README images in `assets/` from the committed reference measurements (`tools/render_readme_charts.py`). The hosted Space does *not* import it — the exhibit reads pre-rendered images — which is why it is absent from `deploy/hf/requirements.txt`. |
 | **LangSmith** | Traces and the gold dataset upload. **Advisory only** — `results/*.json` is the system of record, and a test runs a cell with the client stubbed to raise and asserts the results file is still complete and correct. |
 | **pydantic-settings** | Loads settings once, frozen, with `SecretStr` so a key cannot be printed by accident. A missing credential raises an error naming the exact variable and the exact fix. |
 | **structlog** | Console-rendered logs, not JSON: these are read live, on a projector, by a room of people, not shipped to an aggregator. |
@@ -573,8 +573,16 @@ from loopeng.verify.probes import run_probes
 import json; print(json.dumps(run_probes(), indent=2))"
 ```
 
-**On screen:** the seven rules as configuration, then per rule whether the verifier
-caught a violating query *and* accepted a correct-but-unusual one.
+**On screen:** the seven rules as configuration, then — for six of them — whether the
+verifier caught a violating query *and* accepted a correct-but-unusual one.
+
+**Six, not seven, and the report says so.** `minor_units` and `multi_currency` are one
+SQL change (the declared `usd_factor` against a naive `/100`) and share a single check,
+so one probe pair covers both; a second pair would measure the same code twice and report
+it as two. The exemption is named in `probes.py` as `UNPROBED_BY_DESIGN`, the report
+carries `n_declared_rules` alongside `n_rules`, and a rule that arrives unprobed *and*
+unlisted fails the suite. This is worth reading twice: the output used to say `6/6`, a
+fraction whose denominator was itself the thing that had drifted.
 
 **What to observe:** both columns. A verifier that rejects everything scores perfectly on
 the first alone.
@@ -665,8 +673,8 @@ good enough to write back. Would you have shipped what they accepted?*
 # start the sweep — detaches and hands the terminal straight back
 uv run python demos/04_hill_climbing_loop/sweep.py --profile delivery --fresh
 
-# render both charts from whatever exists so far; safe to run repeatedly mid-sweep
-uv run python demos/04_hill_climbing_loop/charts.py --with-reference
+# render all four charts from whatever exists so far; safe to run repeatedly mid-sweep
+uv run python demos/04_hill_climbing_loop/charts.py
 ```
 
 **On screen:** the pre-registration, printed **before the first cell** — the headline
@@ -1198,7 +1206,7 @@ about.
 **The four-loop framing** is LangChain's, from [*The Art of Loop
 Engineering*](https://www.langchain.com/blog/the-art-of-loop-engineering), which credits
 swyx's [*Loopcraft: the art of stacking
-loops*](https://www.latent.space/p/ainews-loopcraft-the-art-of-stacking) for the idea that
+loops*](https://www.latent.space/p/loopcraft) for the idea that
 loops stack and extend. This repository takes the taxonomy and builds a system where each
 level's claim is checked.
 

@@ -29,12 +29,21 @@ Run everything CI runs:
 uv run ruff check .
 uv run python tools/lint_no_numbers.py
 uv run pytest -q
-uv run python tools/render_readme_charts.py && git diff --exit-code -- assets/
+uv run python tools/render_readme_charts.py "$(mktemp -d)"
 uv run python tools/sync_hf.py --dry-run
 ```
 
 The offline suite needs no key, makes no network call, and costs nothing. If a
 change makes it need any of those, that is the change to reconsider.
+
+**The chart step renders to a scratch directory and does not diff the pixels.**
+It used to read `render_readme_charts.py && git diff --exit-code -- assets/`,
+which cannot work and was removed from CI for that reason: matplotlib rasterises
+text through FreeType, so a Linux runner does not reproduce the bytes a macOS
+machine committed, and the step failed for a reason unrelated to the images being
+wrong. What this command checks is that rendering still *runs*. Whether the
+committed images are *current* is checked by `tests/test_readme_charts.py`, which
+compares manifest hashes rather than pixels and is therefore platform-independent.
 
 ## The rules this codebase actually enforces
 
@@ -42,7 +51,7 @@ These are not style preferences. Each one is a test that will fail your build,
 and each exists because the corresponding mistake was made here at least once.
 
 **No typed numbers in the modules that render to a room.**
-`tools/lint_no_numbers.py` bans numeric literals in the eight modules that build
+`tools/lint_no_numbers.py` bans numeric literals in the eleven modules that build
 what an audience reads, because a typed number is indistinguishable from a
 measured one once it is on a projector. Every number must come from a `Metric`,
 which carries its own `n`.

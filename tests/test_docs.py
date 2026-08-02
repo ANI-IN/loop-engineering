@@ -7,6 +7,7 @@ Three failure modes this guards against, all of which have already happened here
   - a diagram copied into two places and then edited in one of them
 """
 
+import ast
 import re
 import subprocess
 import sys
@@ -133,6 +134,131 @@ def test_every_relative_link_resolves(path):
         assert resolved.exists(), (
             f"{path.relative_to(REPO_ROOT)} links to {target}, which does not exist"
         )
+
+
+# ---- documented commands must be runnable ------------------------------------
+#
+# `README.md` told the room to run `charts.py --with-reference` for the whole life
+# of the Stage 4 runbook. There is no such flag — the real one is `--reference` —
+# so the single most-repeated command of the most expensive stage exited 2 every
+# time, while a paid sweep was in flight.
+#
+# Every other check in this module reads prose. This one reads the commands, which
+# is the part of a document a reader actually executes.
+
+# `[^\S\n]` is horizontal whitespace only. `\s+` here matched newlines, so one
+# command's flag list ran on into every line below it and the checker blamed
+# `enqueue.py` for `worker.py --drain`. A checker that reports the wrong file is
+# worse than none: it teaches the reader to distrust it and then be right to.
+_COMMAND = re.compile(r"^[^\S\n]*uv run python[^\S\n]+(\S+\.py)([^\n]*)", re.MULTILINE)
+
+
+def _documented_commands(body: str) -> list[tuple[str, list[str]]]:
+    """(script, long flags) for every `uv run python …` in a fenced block.
+
+    Line continuations are joined first, so a command split over several lines is
+    read as one. Only `--flags` are collected: values, paths and quoted questions
+    vary legitimately between documents and prove nothing.
+    """
+    joined = re.sub(r"\\\n\s*", " ", body)
+    commands = []
+    for script, tail in _COMMAND.findall(joined):
+        flags = [
+            token.split("=")[0]
+            for token in tail.split()
+            if token.startswith("--")
+        ]
+        commands.append((script, flags))
+    return commands
+
+
+def _declared_flags(script: Path) -> set[str]:
+    """Every option string the script's argparse declares, read from the AST.
+
+    Static rather than `--help`, deliberately: importing thirteen entry points in
+    a subprocess apiece is slow, and a script whose parser cannot be built without
+    a credential would make this test need one.
+    """
+    tree = ast.parse(script.read_text(encoding="utf-8"))
+    flags = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if getattr(node.func, "attr", None) != "add_argument":
+            continue
+        for arg in node.args:
+            if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                if arg.value.startswith("-"):
+                    flags.add(arg.value)
+    return flags
+
+
+# The audit record quotes broken commands on purpose — that is what a finding IS.
+# `docs/audit/agent-d-docs-links.md` contains `charts.py --with-reference` as the
+# evidence for the defect this checker was written to catch, so running the checker
+# over it would forbid the repository from describing its own bugs.
+#
+# Scoped to `docs/audit/` rather than all of `docs/`, so ordinary documentation
+# added there later is still checked.
+INSTRUCTIONAL = [p for p in MARKDOWN if "docs/audit/" not in p.as_posix()]
+
+
+@pytest.mark.parametrize(
+    "path", INSTRUCTIONAL, ids=lambda p: str(p.relative_to(REPO_ROOT))
+)
+def test_every_documented_command_names_a_script_that_exists(path):
+    for script, _ in _documented_commands(path.read_text(encoding="utf-8")):
+        assert (REPO_ROOT / script).is_file(), (
+            f"{path.relative_to(REPO_ROOT)} runs {script}, which does not exist"
+        )
+
+
+@pytest.mark.parametrize(
+    "path", INSTRUCTIONAL, ids=lambda p: str(p.relative_to(REPO_ROOT))
+)
+def test_every_documented_flag_is_accepted_by_the_script(path):
+    for script, flags in _documented_commands(path.read_text(encoding="utf-8")):
+        target = REPO_ROOT / script
+        if not target.is_file():
+            continue  # the test above owns that failure
+        declared = _declared_flags(target)
+        if not declared:
+            continue  # no argparse: nothing to contradict
+        for flag in flags:
+            assert flag in declared, (
+                f"{path.relative_to(REPO_ROOT)} runs `{script} {flag}`, but "
+                f"{script} declares no such option. It accepts: {sorted(declared)}"
+            )
+
+
+def test_the_command_reader_would_have_caught_the_flag_that_shipped():
+    """The regression guard, against the exact text that was wrong.
+
+    A parser that silently found no commands would make both tests above vacuous
+    and green, which is the failure mode this whole module exists to prevent.
+    """
+    found = _documented_commands(
+        "```bash\nuv run python demos/04_hill_climbing_loop/charts.py --with-reference\n```\n"
+    )
+    assert found == [("demos/04_hill_climbing_loop/charts.py", ["--with-reference"])]
+    assert "--with-reference" not in _declared_flags(
+        REPO_ROOT / "demos" / "04_hill_climbing_loop" / "charts.py"
+    )
+    assert "--reference" in _declared_flags(
+        REPO_ROOT / "demos" / "04_hill_climbing_loop" / "charts.py"
+    )
+
+
+def test_the_command_reader_joins_a_continued_line():
+    body = (
+        "```bash\n"
+        "uv run python demos/03_event_driven_loop/enqueue.py \\\n"
+        '  --question "what share of beauty orders ended up with a refund?"\n'
+        "```\n"
+    )
+    assert _documented_commands(body) == [
+        ("demos/03_event_driven_loop/enqueue.py", ["--question"])
+    ]
 
 
 def test_no_markdown_points_at_a_file_in_a_deleted_directory():
