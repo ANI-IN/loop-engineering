@@ -690,3 +690,52 @@ def test_the_readme_quotes_the_real_deselected_count():
     assert int(quoted.group(2)) == live, (
         f"README says {quoted.group(2)} deselected; there are {live} live tests"
     )
+def test_no_identifier_shaped_uuid_survives_anywhere_in_history():
+    """The check that was missing, and whose absence is the point.
+
+    `.gitignore` states the identifiers in `results/_resume_first.log` were
+    "REDACTED IN PLACE". They were — at HEAD. The redaction landed as an ordinary
+    content edit, not a history rewrite, so three UUIDs stayed live in ten commits
+    reachable from `main`, and the only test guarding the policy looked at the
+    working tree. A rule enforced against HEAD alone is a rule that cannot see the
+    thing it was written to prevent.
+
+    This walks every blob in every reachable commit. It is the whole history, not
+    a sample, and it costs about a second.
+
+    If this fails after a rewrite, the rewrite did not take. If it fails on a new
+    commit, something published an identifier — find it before pushing anywhere.
+    """
+    uuid_shaped = re.compile(
+        rb"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+    )
+
+    blobs = subprocess.run(
+        ["git", "rev-list", "--objects", "--all"],
+        capture_output=True, text=True, cwd=REPO_ROOT,
+    ).stdout.splitlines()
+    names = {}
+    for entry in blobs:
+        sha, _, path = entry.partition(" ")
+        names[sha] = path
+
+    kinds = subprocess.run(
+        ["git", "cat-file", "--batch-check=%(objectname) %(objecttype)"],
+        input="\n".join(names), capture_output=True, text=True, cwd=REPO_ROOT,
+    ).stdout.split()
+
+    offenders = []
+    for sha, kind in zip(kinds[::2], kinds[1::2], strict=True):
+        if kind != "blob":
+            continue
+        content = subprocess.run(
+            ["git", "cat-file", "blob", sha],
+            capture_output=True, cwd=REPO_ROOT,
+        ).stdout
+        if uuid_shaped.search(content):
+            offenders.append(f"{names.get(sha, '?')} ({sha[:8]})")
+
+    assert not offenders, (
+        f"identifier-shaped UUIDs survive in history: {sorted(set(offenders))[:10]}"
+    )
+
