@@ -379,3 +379,34 @@ def test_the_surviving_outcome_labels_are_not_emoji():
 
 def test_the_withheld_line_states_the_property_not_the_button():
     assert "withheld, not deferred" in render.WITHHELD
+
+
+# ---- the QR branch, which only ever ran in front of a room -------------------
+
+
+def test_the_agent_view_builds_with_a_share_url_and_a_qr_on_disk(warehouse, tmp_path,
+                                                                 monkeypatch):
+    """The one branch reached exclusively in the live configuration.
+
+    `gr.Image(..., show_download_button=False)` raised TypeError on Gradio 6,
+    which removed that argument — so passing `--share-url` with a rendered
+    results/share_qr.png took the whole AGENT view down. It needs BOTH the flag
+    and the file, which is the live session and nothing else, so no test and no
+    local run ever reached it.
+    """
+    monkeypatch.chdir(tmp_path)
+    qr = tmp_path / "results" / "share_qr.png"
+    qr.parent.mkdir(parents=True, exist_ok=True)
+    qr.write_bytes(b"\x89PNG\r\n\x1a\n")  # not decoded; only the path is read
+
+    app = agent.build_agent_app(warehouse, tmp_path / "q.duckdb",
+                                share_url="https://example.gradio.live")
+    assert app is not None
+
+
+def test_the_agent_view_builds_when_the_qr_is_absent(warehouse, tmp_path, monkeypatch):
+    """The other half: a share URL with no rendered QR must not crash either."""
+    monkeypatch.chdir(tmp_path)
+    app = agent.build_agent_app(warehouse, tmp_path / "q.duckdb",
+                                share_url="https://example.gradio.live")
+    assert app is not None

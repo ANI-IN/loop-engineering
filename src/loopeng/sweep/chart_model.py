@@ -201,6 +201,20 @@ def cache_note(cells) -> str:
         )
     rate = hit_rate({"cache_read_input_tokens": read,
                      "cache_creation_input_tokens": written})
+    # `rate` cannot be None here, and this is the only place that is true.
+    #
+    # A type checker flags `rate * PERCENT` because `hit_rate` returns
+    # `float | None`. The invariant that rules it out is established by the loop
+    # above rather than by anything local: `applied` is appended to only when a
+    # cell reported read or written tokens, so reaching this line at all means
+    # `read + written > 0`, which is exactly the condition under which `hit_rate`
+    # returns a float.
+    #
+    # Left as a narrowing note instead of a guard. A branch for a state this
+    # function cannot produce would be dead code that asserts a false
+    # possibility, and `or 0.0` would be worse still — it would turn "no cache to
+    # hit" into a measured zero, which is the one thing the whole caching caption
+    # exists to avoid.
     return (
         f"PROMPT CACHING applied to {len(applied)} of {len(cells)} cell(s): "
         f"{rate * PERCENT:.0f}% of prefix tokens served from cache "

@@ -87,8 +87,17 @@ def build_agent_app(warehouse: Path, queue_path: Path = store.DEFAULT_QUEUE_PATH
             gr.Markdown(f"**{share_url}**")
             qr = Path("results/share_qr.png")
             if qr.is_file():
+                # `buttons=[]` is Gradio 6's way to render an image with no
+                # overlay controls. It was `show_download_button=False`, which
+                # Gradio 6 removed — so this line raised TypeError and took the
+                # whole AGENT view down with it.
+                #
+                # It never fired in testing because it needs BOTH `--share-url`
+                # and an existing results/share_qr.png, which is the live-session
+                # configuration and only that. The one branch reached exclusively
+                # in front of a room was the one nothing exercised.
                 gr.Image(str(qr), height=240,  # layout: scannable from the back row
-                         show_label=False, show_download_button=False)
+                         show_label=False, buttons=[])
         note = gr.Markdown("")
         table = gr.Markdown("")
 
