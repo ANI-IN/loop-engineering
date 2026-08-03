@@ -349,3 +349,49 @@ def test_an_order_sensitive_item_may_return_many_rows(items, warehouse):
     client = ScriptedClient(lambda q: item.gold_sql)
     run = run_question(item.question, warehouse=warehouse, client=client, max_attempts=1)
     assert judge(run, item).outcome is Outcome.CORRECT
+
+
+# ---- a failed call is not a failed query -------------------------------------
+
+
+def _run_ending_in(sql, error, outcome):
+    from loopeng.agent.loop import AgentRun, Attempt, TerminationReason
+    from loopeng.usage import CallUsage
+
+    return AgentRun(
+        question="q", level="L3", role="worker", model_id="m",
+        attempts=(Attempt(n=1, sql=sql, rows=None, error=error,
+                          usage=CallUsage(model_id="m", outcome=outcome)),),
+        termination=TerminationReason.MAX_ATTEMPTS,
+    )
+
+
+def test_a_failed_model_call_is_not_reported_as_an_execution_error(items):
+    """A sweep run on a bad key used to report that every item hit an execution
+    error, sending the operator to the SQL and the warehouse. The database was
+    never involved: no query was ever sent."""
+    verdict = judge(_run_ending_in("", "AuthenticationError: invalid x-api-key", "auth"),
+                    items[0])
+    assert verdict.outcome is Outcome.VISIBLE_FAILURE
+    assert verdict.visible_kind is VisibleKind.MODEL_CALL_FAILED
+
+
+def test_a_real_database_error_is_still_an_execution_error(items):
+    verdict = judge(_run_ending_in("SELECT nope FROM orders", 'Binder Error: no "nope"',
+                                   "ok"), items[0])
+    assert verdict.outcome is Outcome.VISIBLE_FAILURE
+    assert verdict.visible_kind is VisibleKind.EXECUTION_ERROR
+
+
+def test_a_query_timeout_is_still_a_timeout(items):
+    verdict = judge(_run_ending_in("SELECT 1", "QueryTimeout: 30s", "ok"), items[0])
+    assert verdict.visible_kind is VisibleKind.TIMEOUT
+
+
+def test_splitting_the_bucket_moves_no_rate(items):
+    """`ran_and_returned` is False either way, so the silent-error numerator and
+    denominator are untouched — this only stops one bucket from lying about cause."""
+    failed_call = judge(_run_ending_in("", "RateLimitError: 429", "rate_limit"), items[0])
+    db_error = judge(_run_ending_in("SELECT x", "Binder Error", "ok"), items[0])
+    assert failed_call.ran_and_returned is False
+    assert db_error.ran_and_returned is False
