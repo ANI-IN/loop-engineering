@@ -19,6 +19,7 @@ from dataclasses import dataclass
 
 from loopeng.contracts import VerifyContext
 from loopeng.verify.verifiers import RULE_CHECKS, verify
+from loopeng.warehouse.schema import usd_factor_sql
 
 # Declared rules with no probe pair of their own, and the reason for each.
 #
@@ -43,7 +44,8 @@ _CLEAN_JOIN = (
     "WHERE o.deleted_at IS NULL AND c.deleted_at IS NULL "
     "AND o.status <> 'cancelled' AND NOT c.is_internal"
 )
-_FX = "CASE o.currency WHEN 'USD' THEN 0.01 WHEN 'EUR' THEN 0.0108 WHEN 'JPY' THEN 0.0067 END"
+# Derived from semantic_model.yaml. Was typed here, and in two other modules.
+_FX = usd_factor_sql()
 
 
 @dataclass(frozen=True)

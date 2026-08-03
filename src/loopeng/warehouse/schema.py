@@ -73,3 +73,35 @@ CREATE TABLE refunds (
 
 def load_semantic_model() -> dict:
     return yaml.safe_load(_SEMANTIC_MODEL_PATH.read_text(encoding="utf-8"))
+
+
+def usd_factors() -> dict[str, float]:
+    """The declared currency conversion factors, from the config and nowhere else."""
+    return load_semantic_model()["usd_factor"]
+
+
+def usd_factor_sql(alias: str = "o.") -> str:
+    """The declared `usd_factor` table as a SQL CASE expression.
+
+    Derived from `semantic_model.yaml` rather than typed, because it was typed —
+    three times. `gold/patterns.py`, `verify/governance.py` and `verify/probes.py`
+    each carried their own
+
+        CASE o.currency WHEN 'USD' THEN 0.01 WHEN 'EUR' THEN 0.0108 ...
+
+    identical to the config and to each other, and coupled to none of them.
+
+    The first of those builds the GOLD ANSWERS. So editing a rate in the config —
+    the file this whole project describes as the one place the rules are declared —
+    would have changed the prompt and the rule text while leaving every gold answer
+    computed at the old rate, and nothing would have failed. The verifier would then
+    have been checking model queries against a conversion the answer key did not use.
+
+    Rates are rendered with `repr` so a factor like 0.0108 reaches SQL as written
+    rather than through a format specifier that might round it.
+    """
+    cases = " ".join(
+        f"WHEN '{currency}' THEN {factor!r}"
+        for currency, factor in usd_factors().items()
+    )
+    return f"CASE {alias}currency {cases} END"

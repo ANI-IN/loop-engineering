@@ -24,7 +24,7 @@ from dataclasses import dataclass
 
 from loopeng.contracts import VerifyContext
 from loopeng.verify.verifiers import RULE_CHECKS, VerifyResult, Violation, _parse
-from loopeng.warehouse.schema import load_semantic_model
+from loopeng.warehouse.schema import load_semantic_model, usd_factor_sql
 
 
 class UnenforcedRule(RuntimeError):
@@ -53,7 +53,8 @@ _CLEAN = (
     "WHERE o.deleted_at IS NULL AND c.deleted_at IS NULL "
     "AND o.status <> 'cancelled' AND NOT c.is_internal"
 )
-_FX = "CASE o.currency WHEN 'USD' THEN 0.01 WHEN 'EUR' THEN 0.0108 WHEN 'JPY' THEN 0.0067 END"
+# Derived from semantic_model.yaml. Was typed here, and in two other modules.
+_FX = usd_factor_sql()
 
 PROBES: dict[str, RuleProbes] = {
     "soft_delete": RuleProbes(
