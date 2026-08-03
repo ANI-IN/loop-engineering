@@ -49,6 +49,7 @@ flowchart TB
 | [3 · The problem](#3--the-problem) | a clean, plausible, wrong number |
 | [4 · Why this is needed](#4--why-this-is-needed) | declared versus enforced |
 | [5 · What loop engineering is](#5--what-loop-engineering-is) | the four-loop framing and where it comes from |
+| [Glossary](#glossary) | every domain term and acronym, defined |
 | [6 · Architecture](#6--architecture) | the nesting, and each loop's control flow |
 | [7 · Technologies](#7--technologies) | what each dependency does here |
 | [8 · Repository structure](#8--repository-structure) | |
@@ -178,6 +179,103 @@ window. **Loop engineering** asks what happens after the model answers: what che
 what feeds back, what stops, and how you know any of it is working. The interesting part
 of a loop is never the repetition — it is always the termination condition, and whether
 anything counts how often each one fires.
+
+---
+
+## Glossary
+
+Every domain term and acronym this repository uses, in one place. Terms are defined as
+this project uses them, which is occasionally narrower than the general meaning.
+
+### The two categories the whole project turns on
+
+| Term | Meaning here |
+|---|---|
+| **Visible failure** | The answer is detectably wrong **without knowing the right answer**: invalid SQL, a timeout, an empty result, three columns where one was asked for, a row of NULLs. A retry loop can see these. |
+| **Silent error** | It ran, returned one plausible number, and is wrong. **You cannot tell by looking.** Detecting it requires the answer, which in production you do not have. This is the category the workshop exists for. |
+| **Declared vs enforced** | A rule written in a config that nothing checks. The project's subject, and the pattern behind most of its own defects. |
+
+### The data and the rules
+
+| Term | Meaning here |
+|---|---|
+| **Semantic model** | `src/loopeng/warehouse/semantic_model.yaml` — the one file where business rules, the schema vocabulary and the currency factors are declared. Rendered into prompts and read by the governance verifier, so a rule cannot exist in one and not the other. |
+| **Gold set / gold item** | The answer key: 50 items built from 10 SQL patterns, each executed against the seeded warehouse to freeze its correct answer. A gold item carries the question, the rules that apply to it, the gold SQL and the gold rows. |
+| **Pattern** | One of the 10 parameterised SQL templates in `gold/patterns.py`. Each contributes ~5 items, which is why items are *clustered* rather than independent. |
+| **Warehouse** | A DuckDB database generated deterministically from a seed (`warehouse_seed`, default `20260729`). Read-only to the agent. Rebuilt on first use, never committed. |
+| **Rule** | One declared business constraint. Seven of them: `soft_delete`, `cancelled_orders`, `internal_accounts`, `multi_currency`, `minor_units`, `fan_out`, `refunds_net`. |
+| **Soft delete** | Rows with `deleted_at IS NOT NULL` are deleted and must be excluded — for customers and orders **independently**. |
+| **Minor units** | Money is stored in the currency's smallest unit. USD and EUR have two decimal places; **JPY has zero**, so a flat divide by 100 is wrong. |
+| **`usd_factor`** | The declared per-currency conversion table. Folds the decimal scale and the FX rate together. |
+| **Fan-out** | `orders` → `order_items` is one-to-many, so aggregating `orders.amount_minor` after joining `order_items` double-counts. The trap that produces the most plausible wrong number. |
+| **Refunds-net** | Revenue must be net of refunds. Carried by a single pattern, so the sweep can make no claim about it — only the probes can. |
+
+### The loops
+
+| Term | Meaning here |
+|---|---|
+| **Level 1 / agent loop** | Ask, run the SQL, retry when it **fails to execute**. Sees crashes only. |
+| **Level 2 / verification loop** | Level 1 plus verifiers that read a query which **ran**, and reject it for breaking a declared rule. |
+| **Level 3 / event-driven loop** | A queue and a worker: claim a question, run Level 2, write the answer back, with nobody watching. |
+| **Level 4 / hill-climbing loop** | The loop around the loop — a sweep across configurations, measuring which is better. |
+| **Attempt** | One pass through a loop: the SQL the model wrote, whether it executed, and what came back. |
+| **Termination** | Why a run stopped: `success`, `max_attempts`, `budget`, `no_progress`, `credential`, `bad_request`. |
+
+### The verifiers
+
+| Term | Meaning here |
+|---|---|
+| **AST verifier** | Checks rules against the parsed **syntax tree** (via `sqlglot`). The one held up as correct. |
+| **Regex verifier** | The same checks done with regular expressions over the query **text**. Deliberately worse, and the point of the swap demo: the score goes **up** while the quality goes **down**. |
+| **Governance verifier (V2)** | Reads its rule set **from the config** and fails the build when a declared rule has no check. The strongest enforcement mechanism here. |
+| **Probe / rule surface** | A pair of queries per rule: one that **breaks** it and must be rejected, one that is **correct but unusual** and must be accepted. The second is what stops a verifier scoring perfectly by rejecting everything. |
+| **The swap** | Replacing the AST verifier with the regex one mid-demo, to show a rising score and falling quality. |
+
+### The measurement
+
+| Term | Meaning here |
+|---|---|
+| **Cell** | One measured configuration: role × level × mode × replicate. Keyed `worker_L0_loop_r0`. **Note:** `Cell` also names an unrelated chart-row type in `sweep/chart_model.py`. |
+| **Sweep** | A run over all the cells a profile defines. Resumable, self-aborting on **projected** spend. |
+| **Profile** | What a sweep run is *for*: `delivery` (runs in front of a room), `development` (run once to establish findings), `smoke` (a few cents, proves your key works), `exhibit` (runs nothing). |
+| **Role** | `worker` (the cheap model) or `frontier` (the expensive one). |
+| **Level, as a prompt spec** | `L0` = rules withheld; `L3` = rules given. The difference between them is the experiment. |
+| **Mode** | `one_shot` (no retry) or `loop` (the full loop). |
+| **Replicate** | A repeat run of the same cell, to see run-to-run variance. |
+| **Metric** | The only way a measured number enters this project. Carries its own `n` and interval, so no figure can appear without them. |
+| **Reference cell** | A committed, frozen measurement (`results/reference/`). Rendered visibly differently from a live one. |
+| **Abstention** | The loop declining to answer rather than guessing — coverage becomes a *choice* instead of a synonym for "did not crash". |
+| **Escalation** | Handing a declined question to the more expensive model. **Implemented and not run in this build** — see §16. |
+| **Triage** | Classifying failures by **cause** rather than counting them. |
+| **Pre-registration** | The headline comparison, what the design is underpowered for, and what it cannot detect — printed **before the first cell runs**, so it cannot be chosen after the numbers are in. |
+| **Noise floor** | The determinism baseline: how much a cell moves when nothing changed. Cited before any effect is claimed. |
+| **Fingerprint** | What makes two cell files the same measurement run — recorded, not inferred. |
+
+### Statistics
+
+| Term | Meaning here |
+|---|---|
+| **McNemar's test** | The paired significance test used here. Correct for "same questions, two configurations". |
+| **Discordant pairs** | Items where the two arms disagreed. The only ones McNemar uses — which is why `n` can be 50 and the test still be underpowered. |
+| **Wilson interval** | The confidence interval used for a proportion. Behaves sensibly near 0% and 100%, where the textbook normal interval does not. |
+| **Clustering** | Items come in 10 groups of ~5, so a flaw in one pattern fails ~5 items together. **Every interval shown is narrower than the evidence strictly supports**, and every caption says so. |
+| **p-value** | Reported only within a model. Refused across models — see §16. |
+
+### Acronyms
+
+| | |
+|---|---|
+| **AST** | Abstract Syntax Tree — the parsed structure of a query, as opposed to its text |
+| **CTE** | Common Table Expression — a `WITH … AS (…)` clause |
+| **FX** | Foreign exchange, i.e. currency conversion |
+| **CI** | Continuous Integration — here, the GitHub Actions workflow |
+| **SQL** | Structured Query Language |
+| **LLM** | Large Language Model |
+| **API** | Application Programming Interface — here, almost always the Anthropic API |
+| **UUID** | Universally Unique Identifier |
+| **WAL** | Write-Ahead Logging — a journal mode enabling multi-writer access, which DuckDB does not offer |
+| **PEP** | Python Enhancement Proposal — e.g. PEP 561, which `py.typed` relates to |
+| **DIAL / COST / DELTA / ABSTENTION** | The four rendered charts: silent-error rate per cell, spend per cell, the paired difference between cells, and the coverage-versus-precision curve |
 
 ---
 
@@ -455,8 +553,44 @@ checklist line is not enforcement and this needs both.
 
 ## 9 · Installation
 
-**Prerequisites:** Python 3.12 and [uv](https://docs.astral.sh/uv/). Nothing else — no
-Docker, no database server, no cloud account.
+**Prerequisites.** Two, and nothing else — no Docker, no database server, no cloud
+account, no API key to get a green test suite.
+
+| Need | Version | Check you have it | Expected |
+|---|---|---|---|
+| [uv](https://docs.astral.sh/uv/) | any recent; `0.11.20` is what this was built and locked with | `uv --version` | `uv 0.11.20` or later |
+| Python | **3.12** (`requires-python = ">=3.12"`, pinned by `.python-version`) | `uv run python -V` | `Python 3.12.x` |
+| git | any | `git --version` | any |
+
+You do **not** need to install Python yourself. `uv sync` reads `.python-version` and
+fetches 3.12 if your machine does not have it, which is why the table checks Python
+*through* uv rather than directly — a system `python3` of a different version is
+irrelevant here and checking it only causes confusion.
+
+### Install uv, per platform
+
+**macOS and Linux**
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**macOS, with Homebrew instead**
+
+```bash
+brew install uv
+```
+
+**Windows, in PowerShell**
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+If `uv --version` is not found afterwards, close and reopen the terminal so the updated
+`PATH` is picked up.
+
+### Clone, install, and prove it worked
 
 ```bash
 git clone https://github.com/ANI-IN/loop-engineering-workshop.git
@@ -464,6 +598,33 @@ cd loop-engineering-workshop
 uv sync
 uv run pytest -q
 ```
+
+**Expected output** from the last command:
+
+```
+952 passed, 5 deselected
+```
+
+The exact count moves as tests are added; what matters is `passed` with **no failures**,
+and `deselected` rather than `skipped` for the live tests.
+
+- **`5 deselected` is correct, not a problem.** `pyproject.toml` sets
+  `addopts = "-m 'not live'"`, which excludes the five tests that hit the network and
+  cost money. Opting in is an explicit act: `uv run pytest -m live`.
+- **On Linux you will also see `2 skipped`.** Two tests are platform-conditional: one
+  needs a BSD-only file-flag function, and one only asserts image byte-identity on the
+  machine that generated the images. See `tests/test_env_guard.py` and
+  `tests/test_readme_charts.py`.
+
+If that passes, your checkout is sound and you have spent nothing.
+
+**Platform verification status, stated honestly:** every command in this section has
+been executed on **macOS (Darwin, arm64)**. The Linux notes come from CI, which runs the
+full offline suite on `ubuntu-latest` on every push. **The Windows instructions have not
+been executed** — they are reproduced from the uv documentation and reviewed against the
+code, and `demos/04_hill_climbing_loop/sweep.py --detach` is known not to detach on
+Windows (`subprocess`'s `start_new_session` is a no-op there). Treat Windows as
+unverified. See §16.
 
 The test suite is **offline by default**. It needs no API key, makes no network call, and
 costs nothing, so a green suite on a fresh clone tells you the checkout is sound before
@@ -1267,6 +1428,20 @@ sweep, the views and the tooling — is original to this project.
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to set up, what CI enforces, and the rules that will fail your build — including how to add a business rule end to end. |
 | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | Contributor Covenant v2.1. |
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability privately, and the two controls that actually matter here: the exhibit constructing no model client, and the Space sync refusing rather than filtering. |
+| [`CHANGELOG.md`](CHANGELOG.md) | What changed, and why. |
+
+### Contact
+
+| Reason | Where |
+|---|---|
+| A bug, or something in the docs that is wrong | [Open an issue](https://github.com/ANI-IN/loop-engineering-workshop/issues) — there is a bug-report template |
+| A security or credential concern | **Do not open a public issue.** Follow [`SECURITY.md`](SECURITY.md) |
+| A change you want to make | Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first; it lists the four checks CI runs and the rules that will fail your build |
+| Anything else | ANI-IN (Animesh Kumar) — via the issue tracker above |
+
+This is a single-maintainer workshop repository, not a supported product. Issues are
+read; response time is whatever it is. The most useful bug report is one that names the
+command you ran and pastes what it printed.
 
 Before delivering, work through [`PRE-DELIVERY-CHECKLIST.md`](PRE-DELIVERY-CHECKLIST.md)
 on the venue machine. It is ordered by when each step has to happen, and every item says
