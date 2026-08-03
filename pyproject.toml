@@ -5,7 +5,7 @@ description = "Four nested agent loops over a text-to-SQL agent, built to show t
 readme = "README.md"
 license = "MIT"
 authors = [
-    { name = "ANI-IN", email = "44803072+ANI-IN@users.noreply.github.com" }
+    { name = "Animesh Kumar", email = "44803072+ANI-IN@users.noreply.github.com" }
 ]
 requires-python = ">=3.12"
 dependencies = [

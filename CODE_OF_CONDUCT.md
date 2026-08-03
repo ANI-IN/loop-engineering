@@ -60,8 +60,14 @@ a workshop based on this material.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behaviour may be
-reported to the community leaders responsible for enforcement at
-**b2c-courses-new-programs@interviewkickstart.com**.
+reported to the maintainer, [**@ANI-IN**](https://github.com/ANI-IN), through
+GitHub — either by opening a private security advisory on this repository, which
+is not publicly visible, or by direct contact through the profile above.
+
+This repository has a single maintainer. There is no enforcement team, no
+escalation path beyond that person, and no guaranteed response time. That is
+stated plainly because a code of conduct promising a process nobody operates is
+worth less than one that describes what actually exists.
 
 All complaints will be reviewed and investigated promptly and fairly.
 

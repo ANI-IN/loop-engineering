@@ -299,7 +299,7 @@ def push(staged: Path, remote: str) -> None:
 
     git("init", "-q", "-b", "main")
     git("add", "-A")
-    git("-c", "user.name=ANI-IN",
+    git("-c", "user.name=Animesh Kumar",
         "-c", "user.email=44803072+ANI-IN@users.noreply.github.com",
         "commit", "-q", "-m", "Loop Engineering exhibit")
     git("push", "-f", remote, "HEAD:main")
