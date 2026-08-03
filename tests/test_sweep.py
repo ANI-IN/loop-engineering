@@ -3,8 +3,6 @@
 import json
 from pathlib import Path
 
-import pathlib
-
 import pytest
 
 from loopeng.pricing import PRICES_TAKEN_ON
@@ -388,7 +386,7 @@ def test_the_profile_flag_is_required():
     import subprocess
     import sys
 
-    repo_root = pathlib.Path(__file__).resolve().parent.parent
+    repo_root = Path(__file__).resolve().parent.parent
     result = subprocess.run(
         [sys.executable, "demos/04_hill_climbing_loop/sweep.py"],
         capture_output=True, text=True, cwd=repo_root, timeout=120,
