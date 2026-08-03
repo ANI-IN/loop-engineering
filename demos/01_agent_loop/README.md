@@ -32,7 +32,7 @@ before it is named.
 
 **Which commands here are free.** Exactly two, and they make no network call of any kind:
 `run.py --help` and `trap.py --help`. Both are captured verbatim in
-[`docs/assets/01-agent-loop-help.txt`](../../docs/assets/01-agent-loop-help.txt), and both
+[`captures/01-agent-loop-help.txt`](captures/01-agent-loop-help.txt), and both
 are what `tests/test_demo_structure.py` runs to prove this stage cold-starts.
 
 Everything else on this page spends. Run
@@ -204,7 +204,7 @@ spotted without the answer key?*
 
 Read from the argparse declarations in `run.py` and `trap.py`. The full `--help` output is
 captured verbatim in
-[`docs/assets/01-agent-loop-help.txt`](../../docs/assets/01-agent-loop-help.txt).
+[`captures/01-agent-loop-help.txt`](captures/01-agent-loop-help.txt).
 
 **`run.py`**
 
@@ -250,7 +250,7 @@ billed** — the credential is validated before the loop is built, which is the 
 of failing at the door.
 
 **Captured: `--help`**, on the same day, for both entry points —
-[`docs/assets/01-agent-loop-help.txt`](../../docs/assets/01-agent-loop-help.txt). That
+[`captures/01-agent-loop-help.txt`](captures/01-agent-loop-help.txt). That
 file is what `tests/test_demo_structure.py` proves cold-starts from an empty directory.
 
 ---

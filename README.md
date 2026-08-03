@@ -1462,7 +1462,6 @@ sweep, the views and the tooling — is original to this project.
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to set up, what CI enforces, and the rules that will fail your build — including how to add a business rule end to end. |
 | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | Contributor Covenant v2.1. |
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability privately, and the two controls that actually matter here: the exhibit constructing no model client, and the Space sync refusing rather than filtering. |
-| [`CHANGELOG.md`](CHANGELOG.md) | What changed, and why. |
 
 ### Contact
 

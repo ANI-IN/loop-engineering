@@ -35,7 +35,7 @@ check, and it is the failure people recognise from their own systems.
 
 **Which commands here are free.** `--help` on any of the four entry points — captured
 verbatim in
-[`docs/assets/02-verification-loop-help.txt`](../../docs/assets/02-verification-loop-help.txt)
+[`captures/02-verification-loop-help.txt`](captures/02-verification-loop-help.txt)
 — and this one, which is free *and* does real work, because abstention is recomputed from
 telemetry that was already measured:
 
@@ -283,7 +283,7 @@ completely. Where on that curve would you actually want to sit?*
 
 Read from the argparse declarations. The full `--help` output for all four entry points is
 captured verbatim in
-[`docs/assets/02-verification-loop-help.txt`](../../docs/assets/02-verification-loop-help.txt).
+[`captures/02-verification-loop-help.txt`](captures/02-verification-loop-help.txt).
 
 **`run.py`**
 
@@ -356,7 +356,7 @@ Exit code `1`. The path in the real output is whatever you passed to `--dir`; it
 elided here only because the capture ran from a scratch directory.
 
 **Captured: `--help` for all four entry points** —
-[`docs/assets/02-verification-loop-help.txt`](../../docs/assets/02-verification-loop-help.txt).
+[`captures/02-verification-loop-help.txt`](captures/02-verification-loop-help.txt).
 
 ---
 

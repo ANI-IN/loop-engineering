@@ -36,7 +36,6 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/ANI-IN/loop-engineering"
 Repository = "https://github.com/ANI-IN/loop-engineering"
-Changelog = "https://github.com/ANI-IN/loop-engineering/blob/main/CHANGELOG.md"
 Issues = "https://github.com/ANI-IN/loop-engineering/issues"
 
 [build-system]

@@ -62,8 +62,8 @@ def _prose_only(body: str) -> str:
 
     This is not hypothetical tidying. The audit's own report was the first
     document in this repository to quote a Python dict dispatch, and it turned
-    the suite red: `docs/audit/agent-b-build-runtime.md links to name, which does
-    not exist`. The test was reading source code as documentation.
+    the suite red: a report `links to name, which does not exist`. The test
+    was reading source code as documentation.
 
     Fences are replaced by blank lines rather than deleted so that anything
     reported by line number still lines up with the file.
@@ -106,7 +106,7 @@ def test_a_link_in_prose_is_still_found_when_code_is_skipped():
     every document unchecked and every test still green.
     """
     body = (
-        "See [the inventory](docs/audit/00-inventory.md).\n"
+        "See [the runbook](demos/README.md).\n"
         "\n"
         "```python\n"
         'app = {"agent": lambda: build_agent_app(warehouse)}[args.view]()\n'
@@ -114,7 +114,7 @@ def test_a_link_in_prose_is_still_found_when_code_is_skipped():
         "\n"
         "Inline `{\"trap\": lambda: build_trap_app(items)}[key]` too.\n"
     )
-    assert _links_in(body) == ["docs/audit/00-inventory.md"]
+    assert _links_in(body) == ["demos/README.md"]
 
 
 def test_an_image_in_prose_is_still_found():
@@ -193,19 +193,7 @@ def _declared_flags(script: Path) -> set[str]:
     return flags
 
 
-# The audit record quotes broken commands on purpose — that is what a finding IS.
-# `docs/audit/agent-d-docs-links.md` contains `charts.py --with-reference` as the
-# evidence for the defect this checker was written to catch, so running the checker
-# over it would forbid the repository from describing its own bugs.
-#
-# Scoped to `docs/audit/` rather than all of `docs/`, so ordinary documentation
-# added there later is still checked.
-INSTRUCTIONAL = [p for p in MARKDOWN if "docs/audit/" not in p.as_posix()]
-
-
-@pytest.mark.parametrize(
-    "path", INSTRUCTIONAL, ids=lambda p: str(p.relative_to(REPO_ROOT))
-)
+@pytest.mark.parametrize("path", MARKDOWN, ids=lambda p: str(p.relative_to(REPO_ROOT)))
 def test_every_documented_command_names_a_script_that_exists(path):
     for script, _ in _documented_commands(path.read_text(encoding="utf-8")):
         assert (REPO_ROOT / script).is_file(), (
@@ -213,9 +201,7 @@ def test_every_documented_command_names_a_script_that_exists(path):
         )
 
 
-@pytest.mark.parametrize(
-    "path", INSTRUCTIONAL, ids=lambda p: str(p.relative_to(REPO_ROOT))
-)
+@pytest.mark.parametrize("path", MARKDOWN, ids=lambda p: str(p.relative_to(REPO_ROOT)))
 def test_every_documented_flag_is_accepted_by_the_script(path):
     for script, flags in _documented_commands(path.read_text(encoding="utf-8")):
         target = REPO_ROOT / script
@@ -262,39 +248,18 @@ def test_the_command_reader_joins_a_continued_line():
 
 
 def test_no_markdown_points_at_a_file_in_a_deleted_directory():
-    """`scripts/` and `app/` are gone.
+    """`docs/`, `scripts/` and `app/` are gone.
 
-    Aimed at *paths*, not at the words: `demos/README.md` says there is no such
+    Aimed at *paths*, not at the words: `demos/README.md` says there is no `docs/`
     directory, and that sentence is true and should stay. What must not survive is
     a reference to a file inside one of them.
-
-    `docs/` used to be listed here and no longer is, because it exists again — it
-    holds the audit record. A blanket ban would now be a rule that outlived its
-    reason, which is the failure this repository is about. The check that replaced
-    it is stricter, not weaker: see the test below, which requires every `docs/`
-    path in prose to resolve rather than requiring it to be absent.
     """
-    stale = re.compile(r"`(?:scripts|app)/[\w./-]+\.\w+`")
+    stale = re.compile(r"`(?:docs|scripts|app)/[\w./-]+\.\w+`")
     for path in MARKDOWN:
         found = stale.findall(path.read_text(encoding="utf-8"))
         assert not found, (
             f"{path.relative_to(REPO_ROOT)} points at {found}, in a removed directory"
         )
-
-
-def test_every_docs_path_named_in_prose_resolves():
-    """A backticked `docs/…` path is a citation, and a citation must resolve.
-
-    The audit record is cited by path from several documents. A link would be
-    caught by `test_every_relative_link_resolves`; a bare backticked path would
-    not have been caught by anything, which is how a stale citation survives.
-    """
-    cited = re.compile(r"`(docs/[\w./-]+\.\w+)`")
-    for path in MARKDOWN:
-        for target in cited.findall(path.read_text(encoding="utf-8")):
-            assert (REPO_ROOT / target).exists(), (
-                f"{path.relative_to(REPO_ROOT)} cites {target}, which does not exist"
-            )
 
 
 def test_the_clone_instructions_are_real():
@@ -436,19 +401,12 @@ def test_the_offline_suite_command_is_what_ci_runs():
 
 
 def test_git_tracks_no_file_under_a_removed_directory():
-    """`scripts/` and `app/` are removed and must stay that way.
-
-    `docs/` was on this list and has been taken off it deliberately: the
-    directory exists again and holds the audit record, which is tracked on
-    purpose. Leaving it here would have been a rule kept past its reason —
-    and this suite would then be asserting the absence of files that other
-    tests in it require to be present.
-    """
+    """`docs/`, `scripts/` and `app/` are removed and must stay that way."""
     tracked = subprocess.run(
         ["git", "ls-files"], capture_output=True, text=True, cwd=REPO_ROOT,
     ).stdout.split()
     for path in tracked:
-        assert not path.startswith(("scripts/", "app/")), (
+        assert not path.startswith(("docs/", "scripts/", "app/")), (
             f"{path} is still tracked but its directory was removed"
         )
 

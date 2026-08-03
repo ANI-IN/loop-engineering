@@ -1,0 +1,30 @@
+CAPTURED 2026-08-03 on macOS 15 (darwin 25.5.0), Python 3.12, from a clean working
+directory with no .env and ANTHROPIC_API_KEY unset. Verbatim. --help needs no key,
+makes no network call, and is what tests/test_demo_structure.py runs to prove each
+entry point cold-starts.
+
+$ uv run python demos/01_agent_loop/run.py --help
+usage: run.py [-h] [--question QUESTION] [--role {worker,frontier}]
+              [--level {L0,L3}] [--max-attempts MAX_ATTEMPTS] [--share]
+
+Level 1 agent loop — one question.
+
+options:
+  -h, --help            show this help message and exit
+  --question QUESTION   Run headless in the terminal instead of the browser.
+  --role {worker,frontier}
+  --level {L0,L3}
+  --max-attempts MAX_ATTEMPTS
+  --share               Expose the Gradio app publicly.
+
+$ uv run python demos/01_agent_loop/trap.py --help
+usage: trap.py [-h] [--headless] [--limit LIMIT] [--cap-usd CAP_USD] [--share]
+
+Level 1 trap — all gold questions.
+
+options:
+  -h, --help         show this help message and exit
+  --headless         Run in the terminal.
+  --limit LIMIT      Run only the first N items (development).
+  --cap-usd CAP_USD  Abort if projected over.
+  --share

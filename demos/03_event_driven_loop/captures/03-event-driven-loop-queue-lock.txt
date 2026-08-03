@@ -1,0 +1,22 @@
+CAPTURED 2026-08-03. Verbatim, except that the capture ran from a scratch directory,
+so the queue path below is that directory rather than a checkout.
+
+This is what the OLD 'two terminals' runbook produced. One process is holding the
+queue open (a polling worker does this for its whole life, sleeping between polls);
+a second process then tries to open the same file.
+
+$ uv run python demos/03_event_driven_loop/enqueue.py --list
+Traceback (most recent call last):
+  File "/Users/animesh/Projects/Loop Eng/demos/03_event_driven_loop/enqueue.py", line 49, in <module>
+    raise SystemExit(run(main))
+                     ^^^^^^^^^
+  File "/Users/animesh/Projects/Loop Eng/src/loopeng/entrypoint.py", line 32, in run
+    return main()
+           ^^^^^^
+  File "/Users/animesh/Projects/Loop Eng/demos/03_event_driven_loop/enqueue.py", line 27, in main
+    con = store.connect(args.queue)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/animesh/Projects/Loop Eng/src/loopeng/queue/store.py", line 54, in connect
+    con = duckdb.connect(str(path))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+_duckdb.IOException: IO Error: Could not set lock on file "/tmp/scratch": Conflicting lock is held in /Users/animesh/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/bin/python3.12 (PID 28579) by user animesh. See also https://duckdb.org/docs/stable/connect/concurrency

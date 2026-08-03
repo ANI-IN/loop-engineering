@@ -1,0 +1,51 @@
+CAPTURED 2026-08-03 on macOS 15 (darwin 25.5.0), Python 3.12, from a clean working
+directory with no .env and ANTHROPIC_API_KEY unset. Verbatim. --help needs no key and
+makes no network call. Note --reference, and note that there is no --with-reference.
+
+$ uv run python demos/04_hill_climbing_loop/sweep.py --help
+usage: sweep.py [-h] --profile {delivery,development,exhibit,smoke}
+                [--cap-usd CAP_USD] [--limit LIMIT] [--dir DIR] [--foreground]
+                [--concurrency CONCURRENCY] [--log LOG] [--fresh]
+
+The hill-climbing sweep.
+
+options:
+  -h, --help            show this help message and exit
+  --profile {delivery,development,exhibit,smoke}
+                        smoke: 2 cells, 8 items, a few cents — proves your key
+                        and the whole pipeline. delivery: Haiku only, 4 cells,
+                        under $1. development: both models, replicates,
+                        ablation.
+  --cap-usd CAP_USD     Override the profile's cap.
+  --limit LIMIT         Fewer items. Accepted by the smoke and development
+                        profiles only; refused elsewhere, because a delivery
+                        run over 5 items is not a delivery measurement.
+  --dir DIR             Where cell files live.
+  --foreground          Block the terminal instead of detaching.
+  --concurrency CONCURRENCY
+                        Requests in flight per model. Lower it BEFORE the
+                        sweep on a lower-tier account; the default was chosen
+                        against ceilings measured on one account.
+  --log LOG
+  --fresh               Refuse to start if completed cells are already on
+                        disk. Use this for the LIVE session: without it the
+                        sweep resumes and finishes instantly.
+
+$ uv run python demos/04_hill_climbing_loop/charts.py --help
+usage: charts.py [-h] [--dir DIR] [--out OUT]
+                 [--reference {hide,fill,compare,auto}]
+
+Render the live charts.
+
+options:
+  -h, --help            show this help message and exit
+  --dir DIR             Where cell files live.
+  --out OUT             Where the PNGs go.
+  --reference {hide,fill,compare,auto}
+                        auto (default): compare once this run has a cell of
+                        its own, hide until then — so a machine with no live
+                        cells renders 'not yet measured' rather than stored
+                        bars. hide: live cells only. fill: stored cells only
+                        where no live one exists. compare: both, paired, with
+                        the difference computed between them.
+

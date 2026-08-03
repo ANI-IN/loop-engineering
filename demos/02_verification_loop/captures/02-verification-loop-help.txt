@@ -1,0 +1,54 @@
+CAPTURED 2026-08-03 on macOS 15 (darwin 25.5.0), Python 3.12, from a clean working
+directory with no .env and ANTHROPIC_API_KEY unset. Verbatim. --help needs no key and
+makes no network call.
+
+$ uv run python demos/02_verification_loop/run.py --help
+usage: run.py [-h] [--item ITEM] [--role {worker,frontier}] [--level {L0,L3}]
+              [--max-attempts MAX_ATTEMPTS]
+
+Level 2 verification loop — one question.
+
+options:
+  -h, --help            show this help message and exit
+  --item ITEM           Gold item id; defaults to a rule-heavy one.
+  --role {worker,frontier}
+  --level {L0,L3}
+  --max-attempts MAX_ATTEMPTS
+
+$ uv run python demos/02_verification_loop/regex_swap.py --help
+usage: regex_swap.py [-h] [--limit LIMIT] [--rule RULE] [--level {L0,L3}]
+                     [--max-attempts MAX_ATTEMPTS]
+
+AST verifier vs regex verifier.
+
+options:
+  -h, --help            show this help message and exit
+  --limit LIMIT         Items per arm.
+  --rule RULE           Only items requiring this rule; fan_out is where the
+                        two verifiers actually differ.
+  --level {L0,L3}
+  --max-attempts MAX_ATTEMPTS
+
+$ uv run python demos/02_verification_loop/failure_paths.py --help
+usage: failure_paths.py [-h] [--item ITEM]
+
+Level 2 termination branches.
+
+options:
+  -h, --help   show this help message and exit
+  --item ITEM  Gold item id; defaults to a rule-heavy one.
+
+$ uv run python demos/02_verification_loop/abstain.py --help
+usage: abstain.py [-h] [--cell CELL] [--dir DIR] [--threshold THRESHOLD]
+                  [--headless] [--share]
+
+Abstention and the intervention view.
+
+options:
+  -h, --help            show this help message and exit
+  --cell CELL           Which measured cell.
+  --dir DIR
+  --threshold THRESHOLD
+  --headless            Print instead of serving.
+  --share
+

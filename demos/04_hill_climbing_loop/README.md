@@ -257,7 +257,7 @@ detect. Is the gap you are looking at bigger than that?*
 
 Read from the argparse declarations. The full `--help` output for both entry points is
 captured verbatim in
-[`docs/assets/04-hill-climbing-loop-help.txt`](../../docs/assets/04-hill-climbing-loop-help.txt).
+[`captures/04-hill-climbing-loop-help.txt`](captures/04-hill-climbing-loop-help.txt).
 
 **`sweep.py`** — needs a key; spends
 

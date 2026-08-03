@@ -264,7 +264,7 @@ so shout it and someone here will type it — watch the worker pick it up."*
 
 Read from the argparse declarations. The full `--help` output for both entry points is
 captured verbatim in
-[`docs/assets/03-event-driven-loop-help.txt`](../../docs/assets/03-event-driven-loop-help.txt).
+[`captures/03-event-driven-loop-help.txt`](captures/03-event-driven-loop-help.txt).
 
 **`enqueue.py`** — makes no model call, needs no key
 
@@ -309,7 +309,7 @@ Exit `1`, stderr, and **the queue was never opened** — the credential is check
 the connection, so a keyless worker cannot leave a lock behind.
 
 **Captured: the DuckDB lock**, in full, in
-[`docs/assets/03-event-driven-loop-queue-lock.txt`](../../docs/assets/03-event-driven-loop-queue-lock.txt).
+[`captures/03-event-driven-loop-queue-lock.txt`](captures/03-event-driven-loop-queue-lock.txt).
 That is the error the two-terminal runbook produced, reproduced deliberately.
 
 ---
@@ -355,7 +355,7 @@ no lock taken. `enqueue.py` never prints this: it needs no credential.
 **`_duckdb.IOException: IO Error: Could not set lock on file "…question_queue.duckdb":
 Conflicting lock is held in … by user …`** — **the defining failure of this stage.**
 Something else already has the queue open. The full traceback is captured in
-[`docs/assets/03-event-driven-loop-queue-lock.txt`](../../docs/assets/03-event-driven-loop-queue-lock.txt).
+[`captures/03-event-driven-loop-queue-lock.txt`](captures/03-event-driven-loop-queue-lock.txt).
 
 Almost always one of:
 
