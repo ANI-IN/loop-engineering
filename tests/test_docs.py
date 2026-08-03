@@ -604,7 +604,14 @@ def test_gate0_still_cites_files_that_exist():
     import json
 
     gate0 = json.loads((REPO_ROOT / "results" / "gate0.json").read_text(encoding="utf-8"))
-    cited = re.findall(r"results/[\w./-]+", json.dumps(gate0))
+    # Trailing punctuation is prose, not path. `[\w./-]+` swallowed the full stop
+    # on a sentence ending in `results/_resume_first.log.` and reported a missing
+    # file that was right there — a checker failing on grammar rather than on the
+    # thing it checks.
+    cited = [
+        path.rstrip(".,;:")
+        for path in re.findall(r"results/[\w./-]+", json.dumps(gate0))
+    ]
     for path in sorted(set(cited)):
         assert (REPO_ROOT / path).exists(), f"results/gate0.json cites {path}, which is gone"
 
