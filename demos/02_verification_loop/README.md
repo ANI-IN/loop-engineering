@@ -297,4 +297,4 @@ the single best live demonstration available in this stage, if you have the nerv
 | the rule-surface probes | `src/loopeng/verify/probes.py` |
 | the three termination scenarios | `src/loopeng/verify/failure_paths.py` |
 | the contract type with no field for the answer | `src/loopeng/contracts.py` |
-| abstention scoring and the intervention view | `src/loopeng/triage/abstain.py`, `src/loopeng/triage/ui.py` |
+| abstention scoring and the intervention view | `src/loopeng/triage/abstain.py`, `src/loopeng/views/intervention.py` |

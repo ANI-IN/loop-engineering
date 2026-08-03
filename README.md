@@ -39,6 +39,38 @@ flowchart TB
     class SM,WH ground;
 ```
 
+**How to read this.** The boxes are **nested, not sequential** — that is the single most
+important thing about the picture. Level 1 sits *inside* Level 2, which sits inside
+Level 3, which sits inside Level 4. Each level does not replace the one below it; it
+wraps it and adds a question the inner loop cannot ask.
+
+Read from the inside out:
+
+- **Level 1** asks *did it execute?* A model writes SQL, the query runs read-only against
+  the warehouse, and a failure triggers a retry. This loop only ever learns that
+  something **crashed**.
+- **Level 2** asks *did it break a declared rule?* It takes a query that **ran** — no
+  crash, a clean plausible number — and checks it against the rules, handing back the
+  name of the rule that was broken. This is the level that can see a wrong answer, which
+  is why the whole project exists at this layer.
+- **Level 3** asks *what happens when nobody is watching?* The question arrives on a
+  queue and a worker claims it, runs Level 2, and writes the answer back with no human in
+  the loop. Nothing new is verified here; what changes is that no one is looking.
+- **Level 4** asks *which configuration is better?* It runs the whole thing repeatedly
+  across models and prompt completeness, under a pre-registered hypothesis and a
+  projected-spend cap, and measures the difference.
+
+**The two grey boxes are not loops — they are the ground truth everything else stands
+on.** `semantic_model.yaml` is the one file where the business rules are declared, and
+the dotted arrows show it feeding **both** the prompt the model sees *and* the verifier
+that judges it. That is deliberate: a rule cannot exist in one and not the other. The
+seeded DuckDB warehouse is read-only to the agent and rebuilt deterministically from a
+seed, so the answer key is reproducible rather than remembered.
+
+**If you take one thing from the diagram:** the arrows from `semantic_model.yaml` are
+what make a rule *enforced* rather than merely *declared*. Everything this project has to
+say is about how easily that second arrow goes missing without anything failing.
+
 ---
 
 ## 1. Contents
@@ -303,7 +335,7 @@ A model writes SQL, the query runs against a read-only connection, and a failure
 back as the database's own error. It retries on execution failure and nothing else.
 
 **It catches syntactic failure. It cannot catch a query that parses, runs, returns a
-clean number and is wrong.** Four termination conditions are recorded by name so their
+clean number and is wrong.** Six termination conditions are recorded by name so their
 distribution across a run can be reported — a policy branch nobody counts is a branch
 nobody knows fires.
 
@@ -400,7 +432,7 @@ flowchart TD
     E -->|"INSERT status='queued'"| T[("<b>question_queue</b><br/>id · question · status · result · claimed_at")]
 
     subgraph WORKER["Worker — one process, polling, unattended"]
-        POLL["poll"] --> CLAIM["<b>UPDATE ... SET status='claimed'</b><br/>WHERE id = (SELECT MIN(id) WHERE status='queued')<br/><b>RETURNING *</b><br/><i>one statement — two workers cannot claim the same row</i>"]
+        POLL["poll"] --> CLAIM["<b>UPDATE ... SET status='claimed'</b><br/>WHERE id = (SELECT MIN(id) WHERE status='queued')<br/><b>RETURNING *</b><br/><i>one statement — the row leaves 'queued' as it is read</i>"]
         CLAIM --> GOT{"Row returned?"}
         GOT -->|no| SLEEP["sleep, poll again"]
         SLEEP --> POLL
@@ -440,7 +472,7 @@ running as in progress with their current interval — never as blank or zero.
 flowchart TD
     START["sweep.py --profile ..."] --> REQ{"--profile given?"}
     REQ -->|no| NODEF(["argparse refuses.<br/><b>There is no default.</b><br/>A delivery run cannot inherit<br/>development settings by omission."])
-    REQ -->|yes| PROF["<b>Profile</b> selects:<br/>roles · replicates · spend cap ·<br/>ablation on/off · escalation allowance"]
+    REQ -->|yes| PROF["<b>Profile</b> selects:<br/>roles · replicates · spend cap ·<br/>ablation on/off · prompt levels · item cap"]
 
     PROF --> FRESH{"--fresh?"}
     FRESH -->|yes| STALE{"Completed cells<br/>already on disk?"}

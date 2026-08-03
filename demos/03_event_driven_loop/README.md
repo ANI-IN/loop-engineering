@@ -34,7 +34,7 @@ flowchart TD
     E -->|"INSERT status='queued'"| T[("<b>question_queue</b><br/>id · question · status · result · claimed_at")]
 
     subgraph WORKER["Worker — one process, polling, unattended"]
-        POLL["poll"] --> CLAIM["<b>UPDATE ... SET status='claimed'</b><br/>WHERE id = (SELECT MIN(id) WHERE status='queued')<br/><b>RETURNING *</b><br/><i>one statement — two workers cannot claim the same row</i>"]
+        POLL["poll"] --> CLAIM["<b>UPDATE ... SET status='claimed'</b><br/>WHERE id = (SELECT MIN(id) WHERE status='queued')<br/><b>RETURNING *</b><br/><i>one statement — the row leaves 'queued' as it is read</i>"]
         CLAIM --> GOT{"Row returned?"}
         GOT -->|no| SLEEP["sleep, poll again"]
         SLEEP --> POLL
@@ -61,10 +61,16 @@ flowchart TD
     class T store;
 ```
 
-**The atomic claim is the one part of a queue worth getting right even in a demo.** The
-`UPDATE ... RETURNING` is a single statement, so two workers cannot claim the same row:
-whichever commits first moves it out of `queued` and the other's subquery finds nothing.
-That is the whole of the concurrency story.
+**The claim is atomic within the process, and there is only ever one process.** The
+`UPDATE ... RETURNING` is a single statement, so the row leaves `queued` in the same
+breath as it is read — no window exists in which two readers could both see it queued.
+
+**That guarantee is real and it is not the interesting one.** DuckDB takes an exclusive
+write lock per database file, so a second process cannot open this queue at all: it fails
+at connect with `IOException: Could not set lock on file`. "Two workers cannot claim the
+same row" was the original wording here, and it described a race that the storage engine
+makes unreachable. Concurrency across workers would need SQLite in WAL mode or Postgres,
+and is a non-goal — see the root README §16.
 
 **The omissions in red are the point, not an apology.** No backoff — a worker that cannot
 reach the model spins and you see it. No dead-lettering — a failed row stays `failed`
@@ -189,8 +195,9 @@ so shout it and someone here will type it — watch the worker pick it up."*
 ## Expected SHAPE — and what to say if it does not appear
 
 A row moving through its states — `queued`, `claimed`, then `done` or `failed` — with the
-worker log showing a claim and a result. The satisfying part is submitting in one terminal
-and watching the other pick it up unprompted.
+worker log showing a claim and a result. The satisfying part is that nobody typed the
+question into the worker: it read it out of a table a different process wrote, and decided
+on its own whether the answer was good enough to write back.
 
 ### If the shape does not appear
 

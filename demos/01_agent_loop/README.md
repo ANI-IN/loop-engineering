@@ -57,8 +57,9 @@ flowchart TD
     class BLIND blind;
 ```
 
-**The four termination conditions are recorded by name on every run**: `success`,
-`max_attempts`, `budget`, `no_progress`. Their distribution across a full run is
+**The six termination conditions are recorded by name on every run**: `success`,
+`max_attempts`, `budget`, `no_progress`, `credential`, `bad_request`. Their distribution
+across a full run is
 reported, because a policy branch nobody counts is a branch nobody knows fires. At this
 stage's default of one attempt per question, `budget` and `no_progress` are structurally
 unable to fire — Stage 02 raises the cap and is where they first become reachable.
@@ -207,7 +208,7 @@ naming the exact variable and the exact fix.
 
 | you are looking for | it is in |
 |---|---|
-| the loop and its four termination conditions | `src/loopeng/agent/loop.py` |
+| the loop and its six termination conditions | `src/loopeng/agent/loop.py` |
 | visible vs silent classification, the error taxonomy | `src/loopeng/agent/classify.py` |
 | the trap runner, arms, cost projection | `src/loopeng/agent/trap.py` |
 | the grid and the reveal | `src/loopeng/views/trap.py` |

@@ -162,7 +162,7 @@ flowchart TB
         LFOUR["sweep cells and stored reference"]
     end
 
-    GUARD["live_mode<br/>off unless three things are true"]
+    GUARD["live_mode<br/>NOT WIRED — nothing calls it"]
     LINT(["lint_no_numbers<br/>no typed number in a rendering file"])
 
     CLI --> AG & TR & VE & DI & OV & EX
@@ -187,11 +187,37 @@ flowchart TB
     EX --> LFOUR
     LINT -.-> screens
     LINT -.-> pure
-    GUARD -.-> screens
 
     classDef gate fill:#fef3c7,stroke:#b45309,color:#0b1220;
-    class LINT,GUARD gate;
+    classDef dead fill:#f3f4f6,stroke:#9ca3af,color:#6b7280,stroke-dasharray:4 3;
+    class LINT gate;
+    class GUARD dead;
 ```
+
+**How to read this diagram.** Solid arrows are calls: the CLI builds a view, a view calls
+a renderer, a renderer reads upstream data. Dotted arrows are *enforcement* — a checker
+that constrains the boxes it points at without being called by them. Boxes are grouped by
+what they own: the entry point, the six screens, the pure renderers, the shared chrome,
+and the four levels the numbers actually come from.
+
+**Two nodes are not part of any call path, and they are the two worth pausing on.**
+
+`lint_no_numbers` (amber, dotted) is a **live rule**: it runs in CI over every rendering
+file and fails the build if a measurement is typed rather than derived. It points at the
+screens and the pure renderers because those are what it scans.
+
+`live_mode` (grey, dashed) is **not wired to anything**, and is drawn that way on purpose.
+It implements a spend ceiling for a hosted instance and it is tested, but no view calls
+`read_config()` and `LiveBudget` is never constructed, so it has no edge to `screens` —
+because it does not gate them. The three `LOOPENG_LIVE*` variables are inert. The
+enforced guarantee is the exhibit's: it builds no model client at all, asserted by a test
+that spies on the constructor.
+
+**The difference between those two nodes is the whole subject of this repository.** One
+is a rule something enforces. The other is a rule that was declared, documented in four
+places as though it were active, and enforced by nothing. Drawing them identically —
+which this diagram used to do, both amber, both with an arrow into `screens` — is how a
+reader comes away believing there is a spend guard.
 
 ### The one boundary: `views/` owns all Gradio composition
 

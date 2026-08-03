@@ -36,7 +36,7 @@ clustering makes the true figure worse.
 flowchart TD
     START["sweep.py --profile ..."] --> REQ{"--profile given?"}
     REQ -->|no| NODEF(["argparse refuses.<br/><b>There is no default.</b><br/>A delivery run cannot inherit<br/>development settings by omission."])
-    REQ -->|yes| PROF["<b>Profile</b> selects:<br/>roles · replicates · spend cap ·<br/>ablation on/off · escalation allowance"]
+    REQ -->|yes| PROF["<b>Profile</b> selects:<br/>roles · replicates · spend cap ·<br/>ablation on/off · prompt levels · item cap"]
 
     PROF --> FRESH{"--fresh?"}
     FRESH -->|yes| STALE{"Completed cells<br/>already on disk?"}
