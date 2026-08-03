@@ -10,6 +10,7 @@ reason it exists. `--foreground` is available for tests and for watching it run.
 import argparse
 from pathlib import Path
 
+from loopeng.entrypoint import run
 from loopeng.gold.build import build_gold
 from loopeng.logging import configure_logging
 from loopeng.settings import load_settings
@@ -54,11 +55,24 @@ def main(argv: list[str] | None = None) -> int:
                              "resumes and finishes instantly.")
     args = parser.parse_args(argv)
 
+    # Validate the credential BEFORE detaching, in the process the operator is
+    # still watching.
+    #
+    # Detaching first meant a keyless sweep printed `sweep detached: pid 41293`,
+    # exited 0, and died in a log file the operator had no reason to open — at the
+    # top of the most expensive stage, in front of a room, with the terminal handed
+    # back looking like success. The one failure the fail-fast design exists to
+    # prevent was the one failure detaching hid.
+    #
+    # This raises MissingCredential, which `loopeng.entrypoint.run` renders as the
+    # sentence naming the variable and the fix. The settings object is reused below
+    # rather than loaded twice.
+    configure_logging()
+    settings = load_settings()
+
     if not args.foreground:
         return detach(Path(__file__), argv, args.log)
 
-    configure_logging()
-    settings = load_settings()
     warehouse = ensure_warehouse(settings.warehouse_path, seed=settings.warehouse_seed)
 
     try:
@@ -83,4 +97,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run(main))

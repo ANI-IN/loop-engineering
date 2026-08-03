@@ -174,10 +174,16 @@ WHERE id = (SELECT MIN(id) FROM question_queue WHERE status = 'queued')
 RETURNING id, question, status, result, claimed_at
 ```
 
-Because it is **one statement**, two workers cannot claim the same row: whichever commits
-first moves it out of `queued`, and the other's subquery finds nothing. That is the whole
-of the concurrency story, and it is the one part of a queue worth getting right even in a
-demo.
+Because it is **one statement**, the row leaves `queued` in the same breath as it is
+read — there is no window in which two readers could both see it available.
+
+**That is atomicity within one process, and one process is all there can be.** DuckDB
+holds an exclusive write lock per database file, so a second process cannot open this
+queue at all; it fails at connect with `IOException: Could not set lock on file`. This
+paragraph used to end "two workers cannot claim the same row… the one part of a queue
+worth getting right even in a demo", which is a guarantee about a race the storage engine
+makes unreachable. Real multi-worker claiming needs SQLite in WAL mode or Postgres, and
+is a stated non-goal — see the root README §16.
 
 **`store.fail()` owns doing nothing further.** Its docstring is one line and it is the
 level's thesis in miniature: *a failed row stays failed. Nothing sweeps it up, and that is

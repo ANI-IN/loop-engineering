@@ -13,7 +13,17 @@ dependencies = [
     "duckdb>=1.5.5",
     "gradio>=6.20.0",
     "langsmith>=0.10.11",
-    "matplotlib>=3.10",
+    # Floor pinned to the version assets/manifest.json records the committed PNGs
+    # were rendered with. It was >=3.10, and 3.11.0 replaced matplotlib's entire text
+    # rendering stack — so the declared contract permitted a renderer the frozen
+    # images cannot survive, while `tests/test_readme_charts.py` SKIPS byte-identity
+    # rather than failing when the renderer differs. Green suite, unreproducible images.
+    "matplotlib>=3.11.1",
+    # Imported directly by src/loopeng/settings.py (SecretStr, ValidationError).
+    # It resolved anyway as a transitive of pydantic-settings, which is why nothing
+    # failed; deploy/hf/requirements.txt has always declared it correctly, so the
+    # deploy manifest was more accurate than the primary one.
+    "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
     "pyyaml>=6.0.3",
     "qrcode>=8.2",
@@ -22,11 +32,19 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["uv_build>=0.11.20,<0.12.0"]
+# <0.13 rather than <0.12.0. The uv 0.12 release notes address this cap by name:
+# "There are no breaking changes to the configuration of the uv build backend. If
+# your [build-system] table includes an upper bound on uv_build, update it to allow
+# uv_build 0.12."
+requires = ["uv_build>=0.11.20,<0.13"]
 build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    # Imported by seven tests (anthropic's transport, for scripted error responses)
+    # and declared in no group — it resolved as a transitive of anthropic, so the
+    # suite depended on another package's dependency choice staying still.
+    "httpx>=0.28.1",
     "pytest>=9.1.1",
     "pytest-timeout>=2.4.0",
     "ruff>=0.16.0",

@@ -86,7 +86,7 @@ specific to this area.
 | **Chrome** | The shared furniture: the stamps, the badges, the projector styling, the queue settings, and the launcher. |
 | **Pure renderer** | A function in `views/render.py` that turns data into a markdown string and composes no Gradio. Used by the terminal paths too. |
 | **Exhibit** | The frozen public build. Its guarantee is **structural**: no Anthropic client is ever constructed. |
-| **Live mode** | The quantitative guard for a hosted instance that *may* spend: off unless three things are true, and capped even then. At `views/live_mode.py`. |
+| **Live mode** | **NOT WIRED.** `views/live_mode.py` implements a spend ceiling for a hosted instance and is tested, but no view calls it — `LiveBudget` is never constructed and `read_config()` is never invoked outside its own tests. Read it as a design, not a control. The enforced guarantee is the exhibit's, which builds no client at all. |
 | **Named secondary** | The pre-registered comparison DIAL renders: the cheap model with a loop against the expensive model one-shot. |
 
 ---
@@ -162,7 +162,7 @@ flowchart TB
         LFOUR["sweep cells and stored reference"]
     end
 
-    GUARD["live_mode<br/>off unless three things are true"]
+    GUARD["live_mode<br/>NOT WIRED — nothing calls it"]
     LINT(["lint_no_numbers<br/>no typed number in a rendering file"])
 
     CLI --> AG & TR & VE & DI & OV & EX
@@ -187,11 +187,37 @@ flowchart TB
     EX --> LFOUR
     LINT -.-> screens
     LINT -.-> pure
-    GUARD -.-> screens
 
     classDef gate fill:#fef3c7,stroke:#b45309,color:#0b1220;
-    class LINT,GUARD gate;
+    classDef dead fill:#f3f4f6,stroke:#9ca3af,color:#6b7280,stroke-dasharray:4 3;
+    class LINT gate;
+    class GUARD dead;
 ```
+
+**How to read this diagram.** Solid arrows are calls: the CLI builds a view, a view calls
+a renderer, a renderer reads upstream data. Dotted arrows are *enforcement* — a checker
+that constrains the boxes it points at without being called by them. Boxes are grouped by
+what they own: the entry point, the six screens, the pure renderers, the shared chrome,
+and the four levels the numbers actually come from.
+
+**Two nodes are not part of any call path, and they are the two worth pausing on.**
+
+`lint_no_numbers` (amber, dotted) is a **live rule**: it runs in CI over every rendering
+file and fails the build if a measurement is typed rather than derived. It points at the
+screens and the pure renderers because those are what it scans.
+
+`live_mode` (grey, dashed) is **not wired to anything**, and is drawn that way on purpose.
+It implements a spend ceiling for a hosted instance and it is tested, but no view calls
+`read_config()` and `LiveBudget` is never constructed, so it has no edge to `screens` —
+because it does not gate them. The three `LOOPENG_LIVE*` variables are inert. The
+enforced guarantee is the exhibit's: it builds no model client at all, asserted by a test
+that spies on the constructor.
+
+**The difference between those two nodes is the whole subject of this repository.** One
+is a rule something enforces. The other is a rule that was declared, documented in four
+places as though it were active, and enforced by nothing. Drawing them identically —
+which this diagram used to do, both amber, both with an arrow into `screens` — is how a
+reader comes away believing there is a spend guard.
 
 ### The one boundary: `views/` owns all Gradio composition
 
@@ -291,10 +317,26 @@ the best part — V1 and V2 are pure functions over SQL text, so the rule checks
 surface, and the swap all work at zero cost on stored queries. AGENT is **disabled, not
 hidden by CSS**: a button that is merely invisible is still a button.
 
-**`live_mode.py` owns the weaker, quantitative version of the same idea.** Where the exhibit
-guarantees no client is ever constructed, live mode allows one and stops it after a fixed
-amount. It is off unless **three** things are all true, because the failure mode is somebody
-else's money and it is silent until the bill arrives:
+**`live_mode.py` owns the weaker, quantitative version of the same idea — and it is
+not wired to anything.**
+
+> **Read this before the three conditions below.** `LiveBudget` is never constructed
+> outside its own tests, and `read_config()` is never called by any view, demo or
+> entry point. `LOOPENG_LIVE`, `LOOPENG_LIVE_CEILING_USD` and `LOOPENG_LIVE_MAX_CALLS`
+> are inert: setting them changes nothing at runtime.
+>
+> The conditions below describe a design that is implemented and tested, not a
+> control that is in force. The guarantee this project actually enforces is the
+> exhibit's — no `anthropic.Anthropic` is ever constructed, asserted by a test that
+> spies on the constructor. That one is structural; this one is aspirational.
+>
+> A guard documented as active and wired to nothing is the precise defect this
+> repository exists to demonstrate, so it is labelled rather than quietly left.
+
+Where the exhibit guarantees no client is ever constructed, live mode *would* allow one
+and stop it after a fixed amount. It *would* be off unless **three** things are all
+true, because the failure mode is somebody else's money and it is silent until the bill
+arrives:
 
 1. `LOOPENG_LIVE` is set **explicitly** — not inferred from a key being present, since a key
    can arrive for a dozen reasons that are not "please spend it".

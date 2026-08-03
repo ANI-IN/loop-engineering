@@ -6,6 +6,7 @@ Thin by rule. The comparison lives in src/loopeng/verify/swap.py.
 import argparse
 import json
 
+from loopeng.entrypoint import run
 from loopeng.gold.build import build_gold
 from loopeng.logging import configure_logging
 from loopeng.settings import load_settings
@@ -51,4 +52,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run(main))

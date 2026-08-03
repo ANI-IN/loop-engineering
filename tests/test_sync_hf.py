@@ -142,17 +142,46 @@ def test_a_readme_without_frontmatter_is_refused(staged):
         sync_hf.assert_frontmatter(staged)
 
 
-def test_the_space_sets_placeholder_credentials_not_real_ones(staged):
-    """Settings validate at import. Without placeholders the Space dies on startup;
-    with a REAL key it becomes a public page that can spend."""
+def test_the_space_asks_for_no_credential_at_all(staged):
+    """The exhibit makes no model call, so it must set no key — fake or real.
+
+    This test used to REQUIRE the placeholder `exhibit-no-live-calls`, because a
+    mandatory credential meant the Space died at import without one. The exhibit
+    now loads settings with `require_credential=False`, so the placeholder has
+    nothing left to work around and the rule inverts: any ANTHROPIC_API_KEY line
+    in the Space entry point is refused.
+    """
     sync_hf.assert_no_secrets_referenced(staged)
 
     app = staged / "app.py"
-    app.write_text(app.read_text(encoding="utf-8").replace("exhibit-no-live-calls", "sk-ant"),
+    original = app.read_text(encoding="utf-8")
+
+    # Assembled at runtime. Written as a literal, this file would itself carry the
+    # credential shape that test_docs.py::test_no_committed_file_carries_an_api_key_shape
+    # bans — a test for a secrets rule must not break the secrets rule.
+    real_looking = "sk-" + "ant-" + "a" * 24
+
+    for planted in (
+        f'os.environ.setdefault("ANTHROPIC_API_KEY", "{real_looking}")',
+        'os.environ.setdefault("ANTHROPIC_API_KEY", "exhibit-no-live-calls")',
+    ):
+        app.write_text(original + "\n" + planted + "\n", encoding="utf-8")
+        with pytest.raises(sync_hf.SyncRefused) as refusal:
+            sync_hf.assert_no_secrets_referenced(staged)
+        assert "must ask for no credential" in str(refusal.value)
+
+    app.write_text(original, encoding="utf-8")
+
+
+def test_a_commented_mention_of_the_variable_is_allowed(staged):
+    """The entry point explains at length why it sets no key. Banning the words
+    would ban the explanation, and the explanation is the point."""
+    app = staged / "app.py"
+    original = app.read_text(encoding="utf-8")
+    app.write_text(original + "\n# ANTHROPIC_API_KEY is deliberately not set here.\n",
                    encoding="utf-8")
-    with pytest.raises(sync_hf.SyncRefused) as refusal:
-        sync_hf.assert_no_secrets_referenced(staged)
-    assert "public page that can spend" in str(refusal.value)
+    sync_hf.assert_no_secrets_referenced(staged)
+    app.write_text(original, encoding="utf-8")
 
 
 # ---- requirements are generated, not hand-written ---------------------------
@@ -213,3 +242,31 @@ def test_the_dry_run_reports_what_it_is_sending(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "staged" in out and "file(s)" in out
     assert "sdk gradio" in out
+
+
+# ---- the Space runs the gradio the suite was tested against ------------------
+
+
+def test_the_space_sdk_version_comes_from_the_lock():
+    """`sdk_version` was the typed string "6.20.0", making three uncoupled sources
+    of truth for the gradio version — pyproject.toml, this tool, and
+    deploy/hf/requirements.txt — and this is the one that decides what the hosted
+    Space actually runs. Bumping gradio anywhere else left the public page pinned
+    to a version the tests never exercised, with nothing failing."""
+    assert sync_hf.required_frontmatter()["sdk_version"] == sync_hf.locked_versions()["gradio"]
+
+
+def test_the_committed_space_readme_declares_the_locked_gradio():
+    readme = (REPO_ROOT / "deploy" / "hf" / "README.md").read_text(encoding="utf-8")
+    assert f"sdk_version: {sync_hf.locked_versions()['gradio']}" in readme
+
+
+def test_a_stale_frontmatter_version_is_refused(staged, monkeypatch):
+    """The coupling must be able to fail, or it is decoration."""
+    original = sync_hf.locked_versions()  # captured BEFORE patching
+    monkeypatch.setattr(
+        sync_hf, "locked_versions", lambda: {**original, "gradio": "99.0.0"}
+    )
+    with pytest.raises(sync_hf.SyncRefused) as refusal:
+        sync_hf.assert_frontmatter(staged)
+    assert "sdk_version" in str(refusal.value)

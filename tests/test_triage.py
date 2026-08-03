@@ -164,3 +164,59 @@ def test_gold_defects_are_called_out_when_present():
     report = summarise([TriagedFailure("i", "a", "gold", "n", "m", "g")])
     assert report["gold_defects_found"] == 1
     assert "poisons every comparison" in report["gold_verdict"]
+
+
+# ---- escalation is implemented but not run, and the panel must say so --------
+
+
+def test_nothing_in_the_repository_runs_escalation():
+    """The guard on the claim the OVERSIGHT panel now makes.
+
+    `run_escalation` was the function this module exists for, and it had no
+    callers — no demo, no view, no test — so the artifact the escalation panels
+    read could not be produced by any shipped entry point. The panels said "not
+    yet measured", which claims a measurement is PENDING rather than absent.
+
+    If escalation is ever wired up, this test fails and the panel text must be
+    revisited in the same change. That is the point: the claim and the capability
+    are now coupled.
+    """
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parent.parent
+    hits = []
+    for directory in ("src", "demos", "tools", "deploy"):
+        for path in (root / directory).rglob("*.py"):
+            for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if line.lstrip().startswith("#"):
+                    continue
+                if "run_escalation" in line:
+                    hits.append(f"{path.relative_to(root)}:{n}")
+    assert not hits, (
+        f"escalation is now invoked at {hits} — update "
+        f"views/oversight.py::NOT_SHIPPED_ESCALATION, which currently tells the "
+        f"room escalation is not measured in this build"
+    )
+
+
+def test_the_escalation_panel_says_not_shipped_rather_than_not_yet_measured(tmp_path):
+    from loopeng.views.oversight import _escalation_panel
+
+    panel = _escalation_panel(tmp_path / "absent.json")
+    assert "not measured in this build" in panel
+    assert "not yet measured" not in panel
+
+
+def test_the_escalation_policy_itself_is_still_implemented_and_tested():
+    """Deleting the runner must not read as deleting the idea. Selection, the rate
+    and the cap are all still here and still covered."""
+    from loopeng.triage.escalate import (
+        MAX_ESCALATIONS,
+        Handoff,
+        escalation_rate,
+        select_for_escalation,
+    )
+
+    assert MAX_ESCALATIONS > 0
+    assert callable(select_for_escalation) and callable(escalation_rate)
+    assert Handoff is not None

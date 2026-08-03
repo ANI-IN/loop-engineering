@@ -31,7 +31,7 @@ import structlog
 
 from loopeng.gold.build import build_gold, clustering_summary
 from loopeng.registry import REGISTRY
-from loopeng.settings import MissingCredential, Settings, load_settings
+from loopeng.settings import MissingCredential, Settings, load_settings, require_api_key
 from loopeng.usage import CallUsage, UsageLedger
 from loopeng.verify.probes import run_probes
 from loopeng.warehouse.connect import ensure_warehouse
@@ -214,7 +214,7 @@ def run(*, client=None) -> Preflight:
             import anthropic
 
             client = anthropic.Anthropic(
-                api_key=settings.anthropic_api_key.get_secret_value()
+                api_key=require_api_key(settings).get_secret_value()
             )
         for role in sorted(REGISTRY):
             result.add(check_model(role, client=client, ledger=result.ledger))

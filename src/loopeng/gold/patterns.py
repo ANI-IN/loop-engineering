@@ -31,14 +31,14 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
 
-from loopeng.warehouse.schema import CATEGORIES, MONTHS, REGIONS
+from loopeng.warehouse.schema import CATEGORIES, MONTHS, REGIONS, usd_factor_sql
 
 # Folds the FX rate and the minor-unit scale into one factor. Declared in
 # semantic_model.yaml, so at L0 the model does not know it is needed.
-USD_FACTOR_SQL = (
-    "CASE {alias}currency WHEN 'USD' THEN 0.01 WHEN 'EUR' THEN 0.0108 "
-    "WHEN 'JPY' THEN 0.0067 END"
-)
+# Derived from semantic_model.yaml, never typed. This module builds the GOLD
+# ANSWERS, so a rate typed here and edited in the config would have left every
+# gold answer computed at the old rate with nothing failing — the answer key
+# silently disagreeing with the rule the prompt states.
 
 # The naive form of both currency rules: treat everything as two-decimal, skip
 # conversion entirely. This is the single wrong answer the taxonomy recognises.
@@ -106,7 +106,7 @@ def _customer_filters(ignored: frozenset[str]) -> list[str]:
 def _factor(ignored: frozenset[str], alias: str = "o.") -> str:
     if ignored & CURRENCY_RULES:
         return NAIVE_FACTOR_SQL
-    return USD_FACTOR_SQL.format(alias=alias)
+    return usd_factor_sql(alias)
 
 
 def _where(*clauses: Iterable[str] | str) -> str:

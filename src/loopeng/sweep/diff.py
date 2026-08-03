@@ -146,14 +146,21 @@ class Comparison:
         n = self.n_pairs
         if not n:
             return None
+        # Narrowed explicitly. `delta_pp` is `float | None` and is None on exactly
+        # the same `n_pairs` guard above, so this is safe today — but only because
+        # two properties happen to share a condition, which is the kind of coupling
+        # that survives until someone changes one of them.
+        delta = self.delta_pp
+        if delta is None:
+            return None
         b, c = self.paired.only_a_correct, self.paired.only_b_correct
         variance = ((b + c) - (b - c) ** 2 / n) / n**2
         if variance <= 0:
-            return (self.delta_pp, self.delta_pp)
+            return (delta, delta)
         # 1.96: the two-sided normal quantile at ALPHA. Named where it is used rather
         # than hidden in a constant, because it is the only place ALPHA becomes a number.
         half = 100.0 * 1.959963984540054 * variance**0.5
-        return (self.delta_pp - half, self.delta_pp + half)
+        return (delta - half, delta + half)
 
     @property
     def p_value(self) -> float | None:

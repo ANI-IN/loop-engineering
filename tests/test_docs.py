@@ -7,6 +7,7 @@ Three failure modes this guards against, all of which have already happened here
   - a diagram copied into two places and then edited in one of them
 """
 
+import ast
 import re
 import subprocess
 import sys
@@ -51,14 +52,79 @@ def mermaid_blocks(path: Path) -> list[str]:
 # ---- links ------------------------------------------------------------------
 
 
-def _relative_links(path: Path) -> list[str]:
-    body = path.read_text(encoding="utf-8")
-    targets = re.findall(r"(?<!\!)\[[^\]]*\]\(([^)]+)\)", body)
-    targets += re.findall(r"!\[[^\]]*\]\(([^)]+)\)", body)
+def _prose_only(body: str) -> str:
+    """Everything outside a fenced block or an inline code span.
+
+    A link is a claim about a file. Code is a quotation, and a quotation of code
+    that happens to contain brackets-then-parentheses is not a claim about
+    anything — `{"agent": lambda: build_agent_app(...)}` is Python, not a link to
+    a file called `name`.
+
+    This is not hypothetical tidying. The audit's own report was the first
+    document in this repository to quote a Python dict dispatch, and it turned
+    the suite red: `docs/audit/agent-b-build-runtime.md links to name, which does
+    not exist`. The test was reading source code as documentation.
+
+    Fences are replaced by blank lines rather than deleted so that anything
+    reported by line number still lines up with the file.
+    """
+    without_fences = re.sub(
+        r"^(```|~~~).*?^\1",
+        lambda m: "\n" * m.group(0).count("\n"),
+        body,
+        flags=re.DOTALL | re.MULTILINE,
+    )
+    return re.sub(r"`[^`\n]*`", "", without_fences)
+
+
+def _links_in(body: str) -> list[str]:
+    """Relative link and image targets in one document's prose.
+
+    Split out from `_relative_links` so the extraction can be tested against a
+    string. Reading a file to test a regex made the regex untestable, which is
+    why the fenced-code defect survived until a document happened to trip it.
+    """
+    prose = _prose_only(body)
+    targets = re.findall(r"(?<!\!)\[[^\]]*\]\(([^)]+)\)", prose)
+    targets += re.findall(r"!\[[^\]]*\]\(([^)]+)\)", prose)
     return [
         target for target in targets
         if not target.startswith(("http://", "https://", "mailto:", "#"))
     ]
+
+
+def _relative_links(path: Path) -> list[str]:
+    return _links_in(path.read_text(encoding="utf-8"))
+
+
+def test_a_link_in_prose_is_still_found_when_code_is_skipped():
+    """The fence fix must not be a way of turning the link check off.
+
+    Half of this test is the bug that prompted it — a Python dict dispatch, which
+    read as a link to a file called `name` — and half is an ordinary link in
+    prose, which must still be found. A fix that made both disappear would leave
+    every document unchecked and every test still green.
+    """
+    body = (
+        "See [the inventory](docs/audit/00-inventory.md).\n"
+        "\n"
+        "```python\n"
+        'app = {"agent": lambda: build_agent_app(warehouse)}[args.view]()\n'
+        "```\n"
+        "\n"
+        "Inline `{\"trap\": lambda: build_trap_app(items)}[key]` too.\n"
+    )
+    assert _links_in(body) == ["docs/audit/00-inventory.md"]
+
+
+def test_an_image_in_prose_is_still_found():
+    assert _links_in("![dial](assets/dial.png)\n") == ["assets/dial.png"]
+
+
+def test_a_fenced_block_does_not_swallow_the_document_after_it():
+    """An unbalanced count would blank the rest of the file and check nothing."""
+    body = "```\ncode\n```\n\nThen [a link](README.md).\n"
+    assert _links_in(body) == ["README.md"]
 
 
 @pytest.mark.parametrize("path", MARKDOWN, ids=lambda p: str(p.relative_to(REPO_ROOT)))
@@ -70,19 +136,165 @@ def test_every_relative_link_resolves(path):
         )
 
 
-def test_no_markdown_points_at_a_file_in_a_deleted_directory():
-    """`docs/`, `scripts/` and `app/` are gone.
+# ---- documented commands must be runnable ------------------------------------
+#
+# `README.md` told the room to run `charts.py --with-reference` for the whole life
+# of the Stage 4 runbook. There is no such flag — the real one is `--reference` —
+# so the single most-repeated command of the most expensive stage exited 2 every
+# time, while a paid sweep was in flight.
+#
+# Every other check in this module reads prose. This one reads the commands, which
+# is the part of a document a reader actually executes.
 
-    Aimed at *paths*, not at the words: `demos/README.md` says there is no `docs/`
+# `[^\S\n]` is horizontal whitespace only. `\s+` here matched newlines, so one
+# command's flag list ran on into every line below it and the checker blamed
+# `enqueue.py` for `worker.py --drain`. A checker that reports the wrong file is
+# worse than none: it teaches the reader to distrust it and then be right to.
+_COMMAND = re.compile(r"^[^\S\n]*uv run python[^\S\n]+(\S+\.py)([^\n]*)", re.MULTILINE)
+
+
+def _documented_commands(body: str) -> list[tuple[str, list[str]]]:
+    """(script, long flags) for every `uv run python …` in a fenced block.
+
+    Line continuations are joined first, so a command split over several lines is
+    read as one. Only `--flags` are collected: values, paths and quoted questions
+    vary legitimately between documents and prove nothing.
+    """
+    joined = re.sub(r"\\\n\s*", " ", body)
+    commands = []
+    for script, tail in _COMMAND.findall(joined):
+        flags = [
+            token.split("=")[0]
+            for token in tail.split()
+            if token.startswith("--")
+        ]
+        commands.append((script, flags))
+    return commands
+
+
+def _declared_flags(script: Path) -> set[str]:
+    """Every option string the script's argparse declares, read from the AST.
+
+    Static rather than `--help`, deliberately: importing thirteen entry points in
+    a subprocess apiece is slow, and a script whose parser cannot be built without
+    a credential would make this test need one.
+    """
+    tree = ast.parse(script.read_text(encoding="utf-8"))
+    flags = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if getattr(node.func, "attr", None) != "add_argument":
+            continue
+        for arg in node.args:
+            if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                if arg.value.startswith("-"):
+                    flags.add(arg.value)
+    return flags
+
+
+# The audit record quotes broken commands on purpose — that is what a finding IS.
+# `docs/audit/agent-d-docs-links.md` contains `charts.py --with-reference` as the
+# evidence for the defect this checker was written to catch, so running the checker
+# over it would forbid the repository from describing its own bugs.
+#
+# Scoped to `docs/audit/` rather than all of `docs/`, so ordinary documentation
+# added there later is still checked.
+INSTRUCTIONAL = [p for p in MARKDOWN if "docs/audit/" not in p.as_posix()]
+
+
+@pytest.mark.parametrize(
+    "path", INSTRUCTIONAL, ids=lambda p: str(p.relative_to(REPO_ROOT))
+)
+def test_every_documented_command_names_a_script_that_exists(path):
+    for script, _ in _documented_commands(path.read_text(encoding="utf-8")):
+        assert (REPO_ROOT / script).is_file(), (
+            f"{path.relative_to(REPO_ROOT)} runs {script}, which does not exist"
+        )
+
+
+@pytest.mark.parametrize(
+    "path", INSTRUCTIONAL, ids=lambda p: str(p.relative_to(REPO_ROOT))
+)
+def test_every_documented_flag_is_accepted_by_the_script(path):
+    for script, flags in _documented_commands(path.read_text(encoding="utf-8")):
+        target = REPO_ROOT / script
+        if not target.is_file():
+            continue  # the test above owns that failure
+        declared = _declared_flags(target)
+        if not declared:
+            continue  # no argparse: nothing to contradict
+        for flag in flags:
+            assert flag in declared, (
+                f"{path.relative_to(REPO_ROOT)} runs `{script} {flag}`, but "
+                f"{script} declares no such option. It accepts: {sorted(declared)}"
+            )
+
+
+def test_the_command_reader_would_have_caught_the_flag_that_shipped():
+    """The regression guard, against the exact text that was wrong.
+
+    A parser that silently found no commands would make both tests above vacuous
+    and green, which is the failure mode this whole module exists to prevent.
+    """
+    found = _documented_commands(
+        "```bash\nuv run python demos/04_hill_climbing_loop/charts.py --with-reference\n```\n"
+    )
+    assert found == [("demos/04_hill_climbing_loop/charts.py", ["--with-reference"])]
+    assert "--with-reference" not in _declared_flags(
+        REPO_ROOT / "demos" / "04_hill_climbing_loop" / "charts.py"
+    )
+    assert "--reference" in _declared_flags(
+        REPO_ROOT / "demos" / "04_hill_climbing_loop" / "charts.py"
+    )
+
+
+def test_the_command_reader_joins_a_continued_line():
+    body = (
+        "```bash\n"
+        "uv run python demos/03_event_driven_loop/enqueue.py \\\n"
+        '  --question "what share of beauty orders ended up with a refund?"\n'
+        "```\n"
+    )
+    assert _documented_commands(body) == [
+        ("demos/03_event_driven_loop/enqueue.py", ["--question"])
+    ]
+
+
+def test_no_markdown_points_at_a_file_in_a_deleted_directory():
+    """`scripts/` and `app/` are gone.
+
+    Aimed at *paths*, not at the words: `demos/README.md` says there is no such
     directory, and that sentence is true and should stay. What must not survive is
     a reference to a file inside one of them.
+
+    `docs/` used to be listed here and no longer is, because it exists again — it
+    holds the audit record. A blanket ban would now be a rule that outlived its
+    reason, which is the failure this repository is about. The check that replaced
+    it is stricter, not weaker: see the test below, which requires every `docs/`
+    path in prose to resolve rather than requiring it to be absent.
     """
-    stale = re.compile(r"`(?:docs|scripts|app)/[\w./-]+\.\w+`")
+    stale = re.compile(r"`(?:scripts|app)/[\w./-]+\.\w+`")
     for path in MARKDOWN:
         found = stale.findall(path.read_text(encoding="utf-8"))
         assert not found, (
             f"{path.relative_to(REPO_ROOT)} points at {found}, in a removed directory"
         )
+
+
+def test_every_docs_path_named_in_prose_resolves():
+    """A backticked `docs/…` path is a citation, and a citation must resolve.
+
+    The audit record is cited by path from several documents. A link would be
+    caught by `test_every_relative_link_resolves`; a bare backticked path would
+    not have been caught by anything, which is how a stale citation survives.
+    """
+    cited = re.compile(r"`(docs/[\w./-]+\.\w+)`")
+    for path in MARKDOWN:
+        for target in cited.findall(path.read_text(encoding="utf-8")):
+            assert (REPO_ROOT / target).exists(), (
+                f"{path.relative_to(REPO_ROOT)} cites {target}, which does not exist"
+            )
 
 
 def test_the_clone_instructions_are_real():
@@ -224,11 +436,19 @@ def test_the_offline_suite_command_is_what_ci_runs():
 
 
 def test_git_tracks_no_file_under_a_removed_directory():
+    """`scripts/` and `app/` are removed and must stay that way.
+
+    `docs/` was on this list and has been taken off it deliberately: the
+    directory exists again and holds the audit record, which is tracked on
+    purpose. Leaving it here would have been a rule kept past its reason —
+    and this suite would then be asserting the absence of files that other
+    tests in it require to be present.
+    """
     tracked = subprocess.run(
         ["git", "ls-files"], capture_output=True, text=True, cwd=REPO_ROOT,
     ).stdout.split()
     for path in tracked:
-        assert not path.startswith(("docs/", "scripts/", "app/")), (
+        assert not path.startswith(("scripts/", "app/")), (
             f"{path} is still tracked but its directory was removed"
         )
 
@@ -433,3 +653,33 @@ def test_the_readme_states_that_no_chart_appears_without_live_calls():
     body = README.read_text(encoding="utf-8")
     assert "without live Claude API calls" in body
     assert "--view exhibit" in body
+
+
+def test_the_readme_quotes_the_real_deselected_count():
+    """The README shows expected pytest output. Only part of it is worth pinning.
+
+    The `passed` count moves every time a test is added — including when this test
+    was added, which made the first version of it fail against the number it had
+    just changed. Pinning it would force a README edit on every commit that adds a
+    test, and the README already says the count moves.
+
+    `deselected` is different. It is the five live-marked tests, it is stable, and
+    the README makes a CLAIM about it — "5 deselected is correct, not a problem" —
+    which would be wrong if the live suite grew and nobody noticed. That is the
+    part a reader could be misled by, so that is the part asserted.
+    """
+    quoted = re.search(r"^(\d+) passed, (\d+) deselected$",
+                       README.read_text(encoding="utf-8"), re.MULTILINE)
+    assert quoted, "the README no longer shows an expected pytest summary line"
+
+    collected = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", "-m", "live"],
+        capture_output=True, text=True, cwd=REPO_ROOT,
+    ).stdout
+    tally = re.search(r"(\d+)/(\d+) tests collected", collected)
+    assert tally, f"could not read a collection tally from:\n{collected[-400:]}"
+
+    live = int(tally.group(1))
+    assert int(quoted.group(2)) == live, (
+        f"README says {quoted.group(2)} deselected; there are {live} live tests"
+    )

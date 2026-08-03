@@ -18,14 +18,34 @@ evidence than inferring it from sweep outcomes.
 from dataclasses import dataclass
 
 from loopeng.contracts import VerifyContext
-from loopeng.verify.verifiers import verify
+from loopeng.verify.verifiers import RULE_CHECKS, verify
+from loopeng.warehouse.schema import usd_factor_sql
+
+# Declared rules with no probe pair of their own, and the reason for each.
+#
+# `minor_units` shares `check_currency` with `multi_currency` — they are one SQL
+# change, the declared usd_factor against a naive /100, and `verifiers.py` says so
+# where the two are registered. Probing `multi_currency` exercises the same code
+# path, so a second pair would measure the same check twice and report it as two.
+#
+# It is named HERE, rather than simply being absent, because absence is what let it
+# go unnoticed: `run_probes` reported `6/6` — a fraction whose denominator was
+# itself the thing that had drifted — while the README promised a result "per rule"
+# for seven rules. `governance.py` already gates its own rule set this way with
+# `UnprobedRule`; the rule surface did not, and this is that gate.
+#
+# Adding a rule to this set is a deliberate act with a written reason. A new rule
+# that arrives unprobed and unlisted fails
+# `tests/test_verify.py::test_every_declared_rule_is_probed_or_explicitly_exempt`.
+UNPROBED_BY_DESIGN = frozenset({"minor_units"})
 
 _CLEAN_JOIN = (
     "FROM orders o JOIN customers c ON c.customer_id = o.customer_id "
     "WHERE o.deleted_at IS NULL AND c.deleted_at IS NULL "
     "AND o.status <> 'cancelled' AND NOT c.is_internal"
 )
-_FX = "CASE o.currency WHEN 'USD' THEN 0.01 WHEN 'EUR' THEN 0.0108 WHEN 'JPY' THEN 0.0067 END"
+# Derived from semantic_model.yaml. Was typed here, and in two other modules.
+_FX = usd_factor_sql()
 
 
 @dataclass(frozen=True)
@@ -136,9 +156,18 @@ def run_probes(verifier=verify) -> dict:
             "note": probe.note,
         }
     n_sound = sum(1 for r in results.values() if r["sound"])
+    # Reported so the denominator cannot quietly shrink. `n_rules` counts probes, not
+    # declared rules, so on its own it reads as full coverage no matter how many rules
+    # exist — which is exactly how `minor_units` went unprobed while the output said
+    # 6/6 and the README said "per rule".
     return {
         "by_rule": results,
         "n_rules": len(PROBES),
+        "n_declared_rules": len(RULE_CHECKS),
+        "unprobed_by_design": sorted(UNPROBED_BY_DESIGN),
+        "unprobed_unexplained": sorted(
+            set(RULE_CHECKS) - set(results) - UNPROBED_BY_DESIGN
+        ),
         "n_sound": n_sound,
         "n_missed_violations": sum(
             1 for r in results.values() if not r["caught_the_violation"]

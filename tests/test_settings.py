@@ -76,3 +76,150 @@ def test_secrets_do_not_render(monkeypatch):
     assert "sk-secret-value" not in repr(settings)
     assert "sk-secret-value" not in str(settings)
     assert settings.anthropic_api_key.get_secret_value() == "sk-secret-value"
+
+
+# ---- require_credential: the check moves, it does not disappear --------------
+
+
+def test_the_default_still_refuses_a_checkout_with_no_key(monkeypatch, tmp_path):
+    """The whole point of making the field optional was to change nothing here."""
+    from loopeng.settings import MissingCredential, load_settings
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)  # no .env to read
+
+    with pytest.raises(MissingCredential) as exc:
+        load_settings()
+    assert "ANTHROPIC_API_KEY is not set" in str(exc.value)
+    assert ".env.example" in str(exc.value)
+
+
+def test_opting_out_loads_settings_without_a_key(monkeypatch, tmp_path):
+    from loopeng.settings import load_settings
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    settings = load_settings(require_credential=False)
+    assert settings.anthropic_api_key is None
+    assert settings.warehouse_seed  # ordinary configuration is readable
+
+
+def test_opting_out_does_not_buy_the_right_to_spend(monkeypatch, tmp_path):
+    """A path that skipped the door still cannot make a request, and the failure
+    text is identical to the one the door would have produced."""
+    from loopeng.settings import MissingCredential, load_settings, require_api_key
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    settings = load_settings(require_credential=False)
+    with pytest.raises(MissingCredential) as deferred:
+        require_api_key(settings)
+
+    with pytest.raises(MissingCredential) as upfront:
+        load_settings()
+    assert str(deferred.value) == str(upfront.value)
+
+
+def test_require_credential_is_keyword_only():
+    """Positional would let a caller disable the check by accident."""
+    import inspect
+
+    from loopeng.settings import load_settings
+
+    param = inspect.signature(load_settings).parameters["require_credential"]
+    assert param.kind is inspect.Parameter.KEYWORD_ONLY
+    assert param.default is True
+
+
+def test_every_client_construction_goes_through_require_api_key():
+    """The credential check is enforced at the sites that spend, not by convention.
+
+    Reading `settings.anthropic_api_key` directly is how a future client site
+    would quietly accept `None` and fail with an SDK error naming nothing.
+    """
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parent.parent / "src" / "loopeng"
+    offenders = []
+    for path in root.rglob("*.py"):
+        if path.name == "settings.py":
+            continue
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if "anthropic_api_key" in line:
+                offenders.append(f"{path.relative_to(root)}:{n}")
+    assert not offenders, (
+        f"read the credential directly instead of via require_api_key(): {offenders}"
+    )
+
+
+# ---- the setup path the documentation actually tells people to take ----------
+
+
+def test_copying_the_example_env_file_produces_a_loadable_config(tmp_path, monkeypatch):
+    """`cp .env.example .env` must work. It is step 5 of the onboarding.
+
+    This broke the moment the optional variables were documented: writing
+    `WAREHOUSE_SEED=` with no value is not "unset", it is the empty string, and
+    an int field cannot parse it. Every optional entry is therefore commented out
+    with its default shown, and this test is why that stays true.
+    """
+    import pathlib
+    import shutil
+
+    from loopeng.settings import load_settings
+
+    example = pathlib.Path(__file__).resolve().parent.parent / ".env.example"
+    shutil.copy(example, tmp_path / ".env")
+    with (tmp_path / ".env").open("a", encoding="utf-8") as handle:
+        handle.write("ANTHROPIC_API_KEY=sk-test-not-a-real-key\n")
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    settings = load_settings()
+    assert settings.warehouse_seed == 20260729
+    assert settings.langsmith_api_key is None
+
+
+def test_every_uncommented_line_in_the_example_env_is_loadable(tmp_path, monkeypatch):
+    """A stricter form of the above: no uncommented entry may carry a value the
+    Settings model rejects, and no typed field may be left blank."""
+    import pathlib
+
+    example = pathlib.Path(__file__).resolve().parent.parent / ".env.example"
+    blank_typed = []
+    for n, line in enumerate(example.read_text(encoding="utf-8").splitlines(), 1):
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, _, value = line.partition("=")
+        # Only credentials and free-text settings may be blank; anything the model
+        # parses into a non-string type may not.
+        if value == "" and name.strip() in {"WAREHOUSE_SEED", "RESULTS_DIR",
+                                            "WAREHOUSE_PATH"}:
+            blank_typed.append(f"{name.strip()} (line {n})")
+    assert not blank_typed, (
+        f"blank value for a typed field in .env.example: {blank_typed}. "
+        f"Comment it out and show the default instead."
+    )
+
+
+def test_an_invalid_value_says_it_is_invalid_rather_than_missing(tmp_path, monkeypatch):
+    """"Not set" and "set to nonsense" are different problems, and used to produce
+    the same sentence — sending the reader to look for a line already in front
+    of them."""
+    from loopeng.settings import MissingCredential, load_settings
+
+    (tmp_path / ".env").write_text(
+        "ANTHROPIC_API_KEY=sk-test-not-a-real-key\nWAREHOUSE_SEED=banana\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(MissingCredential) as exc:
+        load_settings()
+    assert "is set to 'banana'" in str(exc.value)
+    assert "is not set" not in str(exc.value)

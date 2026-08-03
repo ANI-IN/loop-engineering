@@ -44,6 +44,16 @@ class VisibleKind(StrEnum):
     # Added 2026-07-29 after the first trap run. See _shape_mismatch below.
     SHAPE_MISMATCH = "shape_mismatch"
     NULL_RESULT = "null_result"
+    # The call to the model failed, so no query was ever sent and the database was
+    # never involved. Previously these landed in EXECUTION_ERROR — defined two
+    # dozen lines up as "invalid SQL, execution error" — so a sweep run with a bad
+    # key, an exhausted account or a rate-limited pool produced a cell reporting
+    # that every item hit an execution error, sending the operator to the SQL and
+    # the warehouse when the problem was the credential.
+    #
+    # Additive to `visible_failure_kinds` in stored cell files, the same
+    # convention the cache token fields already established.
+    MODEL_CALL_FAILED = "model_call_failed"
 
 
 def _shape_mismatch(rows, gold_rows) -> bool:
@@ -67,8 +77,20 @@ def _shape_mismatch(rows, gold_rows) -> bool:
     and receiving a hundred and five is as visible as receiving three columns, so it
     belongs in the same bucket. The asymmetry was ours, not the model's.
 
-    An order-sensitive item is exempt from the row check, because a top-N query
-    legitimately returns many rows and a wrong N is a wrong ranking, not a shape.
+    **There is no order-sensitivity exemption, despite what this docstring used to
+    say.** It claimed that "an order-sensitive item is exempt from the row check,
+    because a top-N query legitimately returns many rows and a wrong N is a wrong
+    ranking, not a shape". This function does not receive `order_sensitive` and
+    cannot act on it: the row comparison below is unconditional, so a top-N query
+    returning the wrong number of rows IS classified as a shape mismatch today.
+
+    The claim is removed rather than implemented because implementing it is a
+    decision about what the measurement means — whether a wrong N is a visible
+    failure or a silent error — and that decision changes the headline number.
+    Making it quietly, inside an audit, would be worse than leaving the behaviour
+    alone. It is recorded as an open question rather than resolved here.
+
+    What is NOT in doubt: the docstring described behaviour the code has never had.
     """
     if not rows or not gold_rows:
         return False
@@ -207,6 +229,16 @@ def judge(run: AgentRun, item: GoldItem) -> Judgement:
         )
 
     final = run.final
+    # Asked BEFORE the error text is inspected. `Attempt.model_call_failed` exists
+    # precisely to tell "the database rejected this SQL" from "no SQL was ever
+    # sent", and `views/render.py` consulted it while this function did not — so
+    # the renderer and the classifier disagreed about the same attempt.
+    if final.model_call_failed:
+        return Judgement(
+            **base, outcome=Outcome.VISIBLE_FAILURE,
+            visible_kind=VisibleKind.MODEL_CALL_FAILED,
+        )
+
     if final.error is not None:
         kind = (
             VisibleKind.TIMEOUT

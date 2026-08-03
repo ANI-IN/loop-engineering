@@ -19,6 +19,7 @@ Safe to run while the sweep is still going: cells still running render as in-pro
 
 import argparse
 
+from loopeng.entrypoint import run
 from loopeng.logging import configure_logging
 from loopeng.sweep.charts import write_charts
 from loopeng.sweep.orchestrator import load_all
@@ -53,4 +54,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run(main))

@@ -7,7 +7,7 @@ the exact environment variable and the exact fix.
 
 from pathlib import Path
 
-from pydantic import SecretStr, ValidationError
+from pydantic import SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from loopeng.env_guard import EnvironmentUnsafe, check_environment
@@ -33,7 +33,18 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    anthropic_api_key: SecretStr
+    # Optional on the MODEL, required by DEFAULT at the door. See `load_settings`.
+    #
+    # Declaring it required here made `load_settings()` the only way to read any
+    # setting, so a path that makes no model call still could not start: the
+    # exhibit view advertised itself as the zero-spend way to read the app and
+    # demanded a key, and `enqueue.py` required a credential it never uses. The
+    # Space worked around it by injecting a fake key — the same shape of
+    # workaround this repo already identified and deleted for LangSmith.
+    #
+    # Nothing about fail-fast is given up: `load_settings()` with no argument
+    # still raises `MissingCredential` before anything else happens.
+    anthropic_api_key: SecretStr | None = None
 
     # Optional, and it has to be, because §15 promises LangSmith is advisory and never
     # the system of record. Declaring it required made that promise false: a checkout
@@ -45,6 +56,31 @@ class Settings(BaseSettings):
     # See loopeng.langsmith_ds.
     langsmith_api_key: SecretStr | None = None
     langsmith_project: str = "loop-eng-workshop"
+
+    @field_validator("anthropic_api_key", "langsmith_api_key", mode="before")
+    @classmethod
+    def _blank_is_absent(cls, value):
+        """An empty variable means "not configured", not "configured as empty".
+
+        `.env.example` ships `LANGSMITH_API_KEY=` with no value and the onboarding
+        says, correctly, to leave it that way. pydantic read that as `SecretStr('')`
+        — which is not None — so `langsmith_ds.credential()` returned `''`, the
+        `if api_key is None` guard did not fire, and the code went on to construct
+        `Client(api_key='')`.
+
+        The result: following the documented setup exactly produced an auth failure
+        at the first network call, instead of the "degrades to a no-op with one
+        warning naming the variable" that §15, SECURITY.md and this module's own
+        docstring all promise. A supported configuration that the config layer
+        could not represent.
+
+        Applies to both keys. For ANTHROPIC_API_KEY it means a blank line is
+        treated as missing, so `load_settings()` raises the message naming the
+        variable and the fix rather than sending an empty key to the API.
+        """
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     # Tracing is opt-in, and defaults off. The LangSmith SDK enables itself from
     # environment variables, so a developer machine with LANGSMITH_TRACING exported
@@ -70,13 +106,64 @@ _FIXES = {
 }
 
 
-def load_settings() -> Settings:
+def _not_set(field: str) -> str:
+    """The one place the missing-credential sentence is written.
+
+    Shared by `load_settings` and `require_api_key` so a path that defers the
+    check fails with exactly the text a path that checks up front fails with.
+    """
+    env_var, fix = _FIXES.get(field, (field.upper(), f"Set {field.upper()} in .env."))
+    return f"{env_var} is not set. {fix}"
+
+
+def load_settings(*, require_credential: bool = True) -> Settings:
+    """Configuration, frozen. Raises `MissingCredential` when the key is absent.
+
+    `require_credential=False` is for paths that provably make no model call —
+    the exhibit view and the queue's enqueue side. It is keyword-only and
+    defaults to True so that every existing caller, and every caller written
+    without reading this docstring, keeps the fail-fast behaviour: a workshop
+    that starts and then dies on a missing key forty minutes in is worse than
+    one that refuses to start.
+
+    Opting out buys the right to *read configuration*, not the right to spend.
+    `settings.anthropic_api_key` is then `None`, and every site that builds a
+    client goes through `require_api_key`, which raises the same error with the
+    same text. The check moves; it does not disappear.
+    """
     try:
-        return Settings()
+        settings = Settings()
     except ValidationError as exc:
+        # "not set" and "set to something unparseable" are different problems and
+        # used to produce the same sentence. Copying `.env.example` to `.env` with
+        # an optional line left blank reported `WAREHOUSE_SEED is not set` for a
+        # variable that was very much set — to an empty string — which sends the
+        # reader looking for a missing line that is right in front of them.
         lines = []
         for error in exc.errors():
             field = str(error["loc"][0]) if error["loc"] else "<unknown>"
-            env_var, fix = _FIXES.get(field, (field.upper(), f"Set {field.upper()} in .env."))
-            lines.append(f"{env_var} is not set. {fix}")
+            given = error.get("input")
+            if error.get("type") == "missing" or given in (None, ""):
+                lines.append(_not_set(field))
+            else:
+                lines.append(
+                    f"{field.upper()} is set to {given!r}, which is not valid: "
+                    f"{error.get('msg', 'invalid value')}."
+                )
         raise MissingCredential("\n".join(lines)) from exc
+
+    if require_credential and settings.anthropic_api_key is None:
+        raise MissingCredential(_not_set("anthropic_api_key"))
+    return settings
+
+
+def require_api_key(settings: Settings) -> SecretStr:
+    """The credential, or the same failure `load_settings()` would have raised.
+
+    Every place that constructs an Anthropic client calls this. A caller that
+    opted out of the up-front check still cannot make a request without one, and
+    when it fails it fails with the message that names the variable and the fix.
+    """
+    if settings.anthropic_api_key is None:
+        raise MissingCredential(_not_set("anthropic_api_key"))
+    return settings.anthropic_api_key

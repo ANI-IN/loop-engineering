@@ -333,9 +333,9 @@ are therefore certain.
 
 | Variable | Purpose | Default | Consumed at |
 |---|---|---|---|
-| `LOOPENG_LIVE` | Master switch for a hosted instance that may call models. Must be `1`, `true`, `True`, or `yes`. | unset, meaning off | `src/loopeng/views/live_mode.py :: read_config()` |
-| `LOOPENG_LIVE_CEILING_USD` | Spending ceiling for that hosted instance. Required when `LOOPENG_LIVE` is set. | none | `src/loopeng/views/live_mode.py :: read_config()` |
-| `LOOPENG_LIVE_MAX_CALLS` | Call count ceiling for that hosted instance. | none | `src/loopeng/views/live_mode.py :: read_config()` |
+| `LOOPENG_LIVE` | **INERT — nothing calls the reader.** Master switch for a hosted instance that may call models. Must be `1`, `true`, `True`, or `yes`. | unset, meaning off | `src/loopeng/views/live_mode.py :: read_config()` |
+| `LOOPENG_LIVE_CEILING_USD` | **INERT — nothing calls the reader.** Spending ceiling for that hosted instance. Required when `LOOPENG_LIVE` is set. | none | `src/loopeng/views/live_mode.py :: read_config()` |
+| `LOOPENG_LIVE_MAX_CALLS` | **INERT — nothing calls the reader.** Call count ceiling for that hosted instance. | none | `src/loopeng/views/live_mode.py :: read_config()` |
 | `LOOPENG_WAREHOUSE` | Warehouse path, public exhibit only. | `/tmp/loopeng_warehouse.duckdb` | `deploy/hf/app.py` |
 | `GRADIO_ANALYTICS_ENABLED` | Set to `False` so launching a screen makes no outbound telemetry call. | set by the code | `src/loopeng/views/chrome.py`, `deploy/hf/app.py` |
 | `PYTHONUNBUFFERED` | Set to `1` for the detached sweep so its log is written as it goes. | set by the code | `src/loopeng/sweep/detach.py :: detach()` |

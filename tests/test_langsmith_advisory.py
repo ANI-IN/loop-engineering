@@ -157,3 +157,71 @@ def test_the_absent_key_never_reaches_a_client(no_langsmith_key, monkeypatch):
         no_langsmith_key._client()
 
     assert built == ["client"]
+
+
+# ---- an empty variable is not a configured empty key -------------------------
+
+
+def test_a_blank_langsmith_key_degrades_instead_of_building_a_client(tmp_path,
+                                                                    monkeypatch):
+    """`.env.example` ships `LANGSMITH_API_KEY=` and the onboarding says to leave
+    it that way. pydantic read that as `SecretStr('')`, which is not None — so
+    `credential()` returned `''`, the `if api_key is None` guard did not fire, and
+    the code built `Client(api_key='')`.
+
+    Following the documented setup exactly therefore produced an auth failure at
+    the first network call, instead of the no-op-with-one-warning that §15,
+    SECURITY.md and langsmith_ds's own docstring all promise.
+    """
+    from loopeng.langsmith_ds import credential
+    from loopeng.settings import load_settings
+
+    (tmp_path / ".env").write_text(
+        "ANTHROPIC_API_KEY=sk-test-not-a-real-key\nLANGSMITH_API_KEY=\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    assert load_settings().langsmith_api_key is None
+    assert credential() is None
+
+
+def test_a_whitespace_only_key_is_also_absent(tmp_path, monkeypatch):
+    from loopeng.settings import load_settings
+
+    (tmp_path / ".env").write_text(
+        "ANTHROPIC_API_KEY=sk-test-not-a-real-key\nLANGSMITH_API_KEY=   \n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+    assert load_settings().langsmith_api_key is None
+
+
+def test_a_blank_anthropic_key_is_missing_rather_than_empty(tmp_path, monkeypatch):
+    """The same rule on the required key: a blank line must raise the message
+    naming the variable, not send an empty key to the API."""
+    from loopeng.settings import MissingCredential, load_settings
+
+    (tmp_path / ".env").write_text("ANTHROPIC_API_KEY=\n", encoding="utf-8")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(MissingCredential) as exc:
+        load_settings()
+    assert "ANTHROPIC_API_KEY is not set" in str(exc.value)
+
+
+def test_a_real_key_still_arrives_intact(tmp_path, monkeypatch):
+    """The narrowing must not eat a legitimate value."""
+    from loopeng.settings import load_settings
+
+    (tmp_path / ".env").write_text(
+        "ANTHROPIC_API_KEY=sk-test-not-a-real-key\nLANGSMITH_API_KEY=lsv2-not-real\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+    assert load_settings().langsmith_api_key.get_secret_value() == "lsv2-not-real"

@@ -8,6 +8,25 @@ on:
   push:
   pull_request:
 
+# Read-only by default. Without this block GitHub grants the job the default
+# token scope, which on a public repository with a `pull_request` trigger is far
+# more than a test run needs. Nothing here writes to the repository, so nothing
+# here needs permission to.
+#
+# A job that does need more should widen it at the job level, visibly, rather
+# than inheriting it from an absent declaration.
+permissions:
+  contents: read
+
+# A push to a branch with an open PR triggers this workflow twice, and the two
+# runs are identical. Cancelling the superseded one stops a queue of stale runs
+# from being the reason a real failure is noticed late.
+#
+# Keyed on the ref, so runs on different branches never cancel each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   offline:
     runs-on: ubuntu-latest

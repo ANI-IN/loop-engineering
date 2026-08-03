@@ -83,11 +83,25 @@ SPACE_PACKAGES = (
     "anthropic",
 )
 
-REQUIRED_FRONTMATTER = {
-    "sdk": "gradio",
-    "sdk_version": "6.20.0",
-    "app_file": "app.py",
-}
+def required_frontmatter() -> dict[str, str]:
+    """The Space's frontmatter, with the SDK version read from the lock.
+
+    `sdk_version` was the string "6.20.0", typed here. That made THREE uncoupled
+    sources of truth for the gradio version — `pyproject.toml`, this file, and
+    `deploy/hf/requirements.txt` — and this one is the one that decides what the
+    hosted Space actually runs.
+
+    So bumping gradio in pyproject.toml and regenerating requirements.txt left the
+    deployed Space pinned to 6.20.0, with nothing failing and nothing to notice.
+    A version the tests never exercise, running the page the public sees.
+
+    Read from `uv.lock` so the Space runs the gradio the suite was green against.
+    """
+    return {
+        "sdk": "gradio",
+        "sdk_version": locked_versions()["gradio"],
+        "app_file": "app.py",
+    }
 
 
 class SyncRefused(RuntimeError):
@@ -182,7 +196,7 @@ def assert_frontmatter(staged: Path) -> dict[str, str]:
             key, _, value = line.partition(":")
             frontmatter[key.strip()] = value.strip().strip('"').strip("'")
 
-    for key, expected in REQUIRED_FRONTMATTER.items():
+    for key, expected in required_frontmatter().items():
         actual = frontmatter.get(key)
         if actual != expected:
             raise SyncRefused(
@@ -193,14 +207,31 @@ def assert_frontmatter(staged: Path) -> dict[str, str]:
 
 
 def assert_no_secrets_referenced(staged: Path) -> None:
-    """The Space entry point must not require a real key to import."""
+    """The Space entry point must not set a credential at all.
+
+    This check used to REQUIRE the placeholder `exhibit-no-live-calls`, because
+    settings validated a mandatory key at import and the Space would otherwise die
+    on startup. That placeholder was a config contradiction wearing a disguise: the
+    exhibit makes no model call, so it should never have needed a key, fake or real.
+
+    `load_settings(require_credential=False)` removed the reason, so the rule
+    inverts and gets stricter. The Space must set NO ANTHROPIC_API_KEY — not a real
+    one, which would make a public page able to spend, and not a fake one, which
+    would turn a genuine misconfiguration into a confusing model error instead of a
+    named missing variable.
+    """
     app = (staged / "app.py").read_text(encoding="utf-8")
-    if "exhibit-no-live-calls" not in app:
-        raise SyncRefused(
-            "app.py does not set the placeholder credentials. Settings validate at "
-            "import, so without them the Space dies on startup — and with a REAL key "
-            "it would be a public page that can spend."
-        )
+    for line in app.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            continue
+        if "ANTHROPIC_API_KEY" in stripped:
+            raise SyncRefused(
+                f"app.py sets or reads ANTHROPIC_API_KEY: {stripped!r}. The exhibit "
+                f"makes no model call and must ask for no credential — a real key "
+                f"would make a public page able to spend, and a fake one hides a "
+                f"real misconfiguration behind a model error."
+            )
 
 
 # ---------------------------------------------------------------------------

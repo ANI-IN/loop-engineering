@@ -371,17 +371,31 @@ def test_the_limit_spreads_across_clusters_rather_than_taking_a_prefix(tmp_path)
     assert len({item.pattern_key for item in subset}) == 8
 
 
-def test_the_profile_flag_is_required(tmp_path):
+def test_the_profile_flag_is_required():
     """A delivery run must not inherit development settings by omission — that is a
-    tenfold cost difference decided by a flag nobody typed."""
+    tenfold cost difference decided by a flag nobody typed.
+
+    This ran with `cwd=tmp_path.parent`, where `demos/04_hill_climbing_loop/sweep.py`
+    does not exist. Python exited 2 with "can't open file", the assertion on a
+    non-zero return code passed, and argparse was never reached — so the test named
+    after the required flag proved only that a missing file fails to run. It would
+    have passed just as well with `--profile` deleted from the parser.
+
+    Now run from the repository root, and the refusal is asserted on its content.
+    """
     import subprocess
     import sys
 
+    repo_root = Path(__file__).resolve().parent.parent
     result = subprocess.run(
         [sys.executable, "demos/04_hill_climbing_loop/sweep.py"],
-        capture_output=True, text=True, cwd=tmp_path.parent, timeout=120,
+        capture_output=True, text=True, cwd=repo_root, timeout=120,
     )
-    assert result.returncode != 0
+    assert result.returncode == 2, result.stdout + result.stderr
+    combined = result.stdout + result.stderr
+    assert "can't open file" not in combined, "still running from the wrong directory"
+    assert "--profile" in combined, combined
+    assert "required" in combined.lower(), combined
 
 
 # ---- reference measurements are visibly not live ----------------------------
@@ -1081,3 +1095,62 @@ def test_run_sweep_refuses_before_printing_the_pre_registration(tmp_path, capsys
     with pytest.raises(StaleCellsPresent):
         run_sweep(ITEMS, tmp_path / "w.duckdb", directory=directory, fresh=True)
     assert "PRE-REGISTRATION" not in capsys.readouterr().out
+
+
+# ---- one profile must not inherit another's cells ----------------------------
+
+
+def _stored_cell(directory: Path, key: str, *, n_items: int, cost: float):
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / f"{key}.json").write_text(json.dumps({
+        "key": key, "label": key, "role": "worker", "level": "L0",
+        "mode": key.split("_")[2], "replicate": 0,
+        "complete": True, "seconds": 1.0, "n_items": n_items,
+        "n_done": n_items, "ran_and_returned": n_items,
+        "correct": n_items, "silent_errors": 0,
+        "silent_error_rate": "0.0%", "rate_value": 0.0,
+        "rate_ci_low": 0.0, "rate_ci_high": 0.0, "rate_n": n_items,
+        "cost_usd": {"value": cost, "source": "estimated"},
+        "items": {f"i{n}": True for n in range(n_items)},
+    }))
+
+
+def test_a_cell_measured_over_a_different_item_count_is_not_resumed(tmp_path):
+    """`smoke` run after `delivery` used to resume delivery's 50-item cells,
+    report them as the smoke measurement, make ZERO model calls, and print
+    `spend: est. $0.8642 of $0.05` — seventeen times its own cap — then exit 0.
+
+    The cell key is `role_level_mode_rN`: it encodes neither the profile nor the
+    item count, and every profile defaults to the same directory.
+    """
+    from loopeng.sweep.runner import Cell, load_cell
+
+    _stored_cell(tmp_path, "worker_L0_loop_r0", n_items=50, cost=0.4321)
+    cell = Cell(role="worker", level="L0", mode="loop", replicate=0)
+
+    assert load_cell(cell, tmp_path, expect_items=50) is not None, "same size resumes"
+    assert load_cell(cell, tmp_path, expect_items=8) is None, "8-item run resumed a 50-item cell"
+
+
+def test_a_cell_stored_before_n_items_existed_still_resumes(tmp_path):
+    """Absence means unverifiable, not mismatched — the same treatment a missing
+    fingerprint already gets. Refusing these would silently invalidate every
+    measurement committed before the field existed."""
+    from loopeng.sweep.runner import Cell, load_cell
+
+    _stored_cell(tmp_path, "worker_L0_loop_r0", n_items=50, cost=0.4)
+    path = tmp_path / "worker_L0_loop_r0.json"
+    body = json.loads(path.read_text())
+    del body["n_items"]
+    path.write_text(json.dumps(body))
+
+    cell = Cell(role="worker", level="L0", mode="loop", replicate=0)
+    assert load_cell(cell, tmp_path, expect_items=8) is not None
+
+
+def test_a_completed_cell_still_resumes_when_no_expectation_is_given(tmp_path):
+    from loopeng.sweep.runner import Cell, load_cell
+
+    _stored_cell(tmp_path, "worker_L0_loop_r0", n_items=50, cost=0.4)
+    cell = Cell(role="worker", level="L0", mode="loop", replicate=0)
+    assert load_cell(cell, tmp_path) is not None

@@ -5,6 +5,7 @@ Thin by rule. The scenarios live in src/loopeng/verify/failure_paths.py.
 
 import argparse
 
+from loopeng.entrypoint import run
 from loopeng.gold.build import build_gold
 from loopeng.logging import configure_logging
 from loopeng.settings import load_settings
@@ -43,4 +44,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run(main))

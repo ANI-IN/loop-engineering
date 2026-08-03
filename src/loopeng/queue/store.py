@@ -65,12 +65,30 @@ def enqueue(con, question: str) -> int:
     return next_id
 
 def claim(con) -> QueueRow | None:
-    """Take the oldest queued row, atomically. Returns None when there is nothing.
+    """Take the oldest queued row. Returns None when there is nothing.
 
-    The UPDATE ... RETURNING is one statement, so two workers cannot claim the same
-    row: whichever commits first moves it out of `queued` and the other's subquery
-    finds nothing. That is the whole of the concurrency story, and it is the one part
-    of a queue worth getting right even in a demo.
+    The UPDATE ... RETURNING is one statement, so within a single process two
+    callers cannot claim the same row: whichever commits first moves it out of
+    `queued` and the other's subquery finds nothing.
+
+    **That guarantee is real and it is also not the interesting one, because two
+    workers cannot reach this function at the same time in the first place.**
+    DuckDB takes an exclusive write lock per database file, so a second process
+    opening the same queue fails at `connect` with
+
+        IOException: Could not set lock on file "...": Conflicting lock is held
+
+    The docstring here used to claim "two workers cannot claim the same row: that
+    is the whole of the concurrency story, and it is the one part of a queue worth
+    getting right even in a demo" — a concurrency guarantee for a scenario the
+    storage engine forbids. `tests/test_queue.py` exercised it with one connection
+    used sequentially, so the suite was green on a path that cannot execute.
+
+    The demo is honest about being single-writer: enqueue and drain are separate
+    processes that run one after another, each opening and releasing the file.
+    Making the claim *true* rather than *narrower* means an engine with real
+    multi-writer support — SQLite in WAL mode, or Postgres — and that is a
+    deliberate non-goal here, recorded in the Level 3 runbook.
     """
     rows = con.execute(
         """

@@ -39,6 +39,38 @@ flowchart TB
     class SM,WH ground;
 ```
 
+**How to read this.** The boxes are **nested, not sequential** — that is the single most
+important thing about the picture. Level 1 sits *inside* Level 2, which sits inside
+Level 3, which sits inside Level 4. Each level does not replace the one below it; it
+wraps it and adds a question the inner loop cannot ask.
+
+Read from the inside out:
+
+- **Level 1** asks *did it execute?* A model writes SQL, the query runs read-only against
+  the warehouse, and a failure triggers a retry. This loop only ever learns that
+  something **crashed**.
+- **Level 2** asks *did it break a declared rule?* It takes a query that **ran** — no
+  crash, a clean plausible number — and checks it against the rules, handing back the
+  name of the rule that was broken. This is the level that can see a wrong answer, which
+  is why the whole project exists at this layer.
+- **Level 3** asks *what happens when nobody is watching?* The question arrives on a
+  queue and a worker claims it, runs Level 2, and writes the answer back with no human in
+  the loop. Nothing new is verified here; what changes is that no one is looking.
+- **Level 4** asks *which configuration is better?* It runs the whole thing repeatedly
+  across models and prompt completeness, under a pre-registered hypothesis and a
+  projected-spend cap, and measures the difference.
+
+**The two grey boxes are not loops — they are the ground truth everything else stands
+on.** `semantic_model.yaml` is the one file where the business rules are declared, and
+the dotted arrows show it feeding **both** the prompt the model sees *and* the verifier
+that judges it. That is deliberate: a rule cannot exist in one and not the other. The
+seeded DuckDB warehouse is read-only to the agent and rebuilt deterministically from a
+seed, so the answer key is reproducible rather than remembered.
+
+**If you take one thing from the diagram:** the arrows from `semantic_model.yaml` are
+what make a rule *enforced* rather than merely *declared*. Everything this project has to
+say is about how easily that second arrow goes missing without anything failing.
+
 ---
 
 ## 1. Contents
@@ -49,6 +81,7 @@ flowchart TB
 | [3 · The problem](#3--the-problem) | a clean, plausible, wrong number |
 | [4 · Why this is needed](#4--why-this-is-needed) | declared versus enforced |
 | [5 · What loop engineering is](#5--what-loop-engineering-is) | the four-loop framing and where it comes from |
+| [Glossary](#glossary) | every domain term and acronym, defined |
 | [6 · Architecture](#6--architecture) | the nesting, and each loop's control flow |
 | [7 · Technologies](#7--technologies) | what each dependency does here |
 | [8 · Repository structure](#8--repository-structure) | |
@@ -162,7 +195,7 @@ The framing is not ours. LangChain's [**The Art of Loop
 Engineering**](https://www.langchain.com/blog/the-art-of-loop-engineering) describes four
 loops that stack on one another — the agent loop, a verification loop, an event-driven
 loop, and a hill-climbing loop — and credits swyx's [**Loopcraft: the art of stacking
-loops**](https://www.latent.space/p/ainews-loopcraft-the-art-of-stacking) for the idea
+loops**](https://www.latent.space/p/loopcraft) for the idea
 that loops can be stacked and extended to build more effective agents.
 
 We take the taxonomy and disagree with nothing in it. What this repository adds is the
@@ -178,6 +211,103 @@ window. **Loop engineering** asks what happens after the model answers: what che
 what feeds back, what stops, and how you know any of it is working. The interesting part
 of a loop is never the repetition — it is always the termination condition, and whether
 anything counts how often each one fires.
+
+---
+
+## Glossary
+
+Every domain term and acronym this repository uses, in one place. Terms are defined as
+this project uses them, which is occasionally narrower than the general meaning.
+
+### The two categories the whole project turns on
+
+| Term | Meaning here |
+|---|---|
+| **Visible failure** | The answer is detectably wrong **without knowing the right answer**: invalid SQL, a timeout, an empty result, three columns where one was asked for, a row of NULLs. A retry loop can see these. |
+| **Silent error** | It ran, returned one plausible number, and is wrong. **You cannot tell by looking.** Detecting it requires the answer, which in production you do not have. This is the category the workshop exists for. |
+| **Declared vs enforced** | A rule written in a config that nothing checks. The project's subject, and the pattern behind most of its own defects. |
+
+### The data and the rules
+
+| Term | Meaning here |
+|---|---|
+| **Semantic model** | `src/loopeng/warehouse/semantic_model.yaml` — the one file where business rules, the schema vocabulary and the currency factors are declared. Rendered into prompts and read by the governance verifier, so a rule cannot exist in one and not the other. |
+| **Gold set / gold item** | The answer key: 50 items built from 10 SQL patterns, each executed against the seeded warehouse to freeze its correct answer. A gold item carries the question, the rules that apply to it, the gold SQL and the gold rows. |
+| **Pattern** | One of the 10 parameterised SQL templates in `gold/patterns.py`. Each contributes ~5 items, which is why items are *clustered* rather than independent. |
+| **Warehouse** | A DuckDB database generated deterministically from a seed (`warehouse_seed`, default `20260729`). Read-only to the agent. Rebuilt on first use, never committed. |
+| **Rule** | One declared business constraint. Seven of them: `soft_delete`, `cancelled_orders`, `internal_accounts`, `multi_currency`, `minor_units`, `fan_out`, `refunds_net`. |
+| **Soft delete** | Rows with `deleted_at IS NOT NULL` are deleted and must be excluded — for customers and orders **independently**. |
+| **Minor units** | Money is stored in the currency's smallest unit. USD and EUR have two decimal places; **JPY has zero**, so a flat divide by 100 is wrong. |
+| **`usd_factor`** | The declared per-currency conversion table. Folds the decimal scale and the FX rate together. |
+| **Fan-out** | `orders` → `order_items` is one-to-many, so aggregating `orders.amount_minor` after joining `order_items` double-counts. The trap that produces the most plausible wrong number. |
+| **Refunds-net** | Revenue must be net of refunds. Carried by a single pattern, so the sweep can make no claim about it — only the probes can. |
+
+### The loops
+
+| Term | Meaning here |
+|---|---|
+| **Level 1 / agent loop** | Ask, run the SQL, retry when it **fails to execute**. Sees crashes only. |
+| **Level 2 / verification loop** | Level 1 plus verifiers that read a query which **ran**, and reject it for breaking a declared rule. |
+| **Level 3 / event-driven loop** | A queue and a worker: claim a question, run Level 2, write the answer back, with nobody watching. |
+| **Level 4 / hill-climbing loop** | The loop around the loop — a sweep across configurations, measuring which is better. |
+| **Attempt** | One pass through a loop: the SQL the model wrote, whether it executed, and what came back. |
+| **Termination** | Why a run stopped: `success`, `max_attempts`, `budget`, `no_progress`, `credential`, `bad_request`. |
+
+### The verifiers
+
+| Term | Meaning here |
+|---|---|
+| **AST verifier** | Checks rules against the parsed **syntax tree** (via `sqlglot`). The one held up as correct. |
+| **Regex verifier** | The same checks done with regular expressions over the query **text**. Deliberately worse, and the point of the swap demo: the score goes **up** while the quality goes **down**. |
+| **Governance verifier (V2)** | Reads its rule set **from the config** and fails the build when a declared rule has no check. The strongest enforcement mechanism here. |
+| **Probe / rule surface** | A pair of queries per rule: one that **breaks** it and must be rejected, one that is **correct but unusual** and must be accepted. The second is what stops a verifier scoring perfectly by rejecting everything. |
+| **The swap** | Replacing the AST verifier with the regex one mid-demo, to show a rising score and falling quality. |
+
+### The measurement
+
+| Term | Meaning here |
+|---|---|
+| **Cell** | One measured configuration: role × level × mode × replicate. Keyed `worker_L0_loop_r0`. **Note:** `Cell` also names an unrelated chart-row type in `sweep/chart_model.py`. |
+| **Sweep** | A run over all the cells a profile defines. Resumable, self-aborting on **projected** spend. |
+| **Profile** | What a sweep run is *for*: `delivery` (runs in front of a room), `development` (run once to establish findings), `smoke` (a few cents, proves your key works), `exhibit` (runs nothing). |
+| **Role** | `worker` (the cheap model) or `frontier` (the expensive one). |
+| **Level, as a prompt spec** | `L0` = rules withheld; `L3` = rules given. The difference between them is the experiment. |
+| **Mode** | `one_shot` (no retry) or `loop` (the full loop). |
+| **Replicate** | A repeat run of the same cell, to see run-to-run variance. |
+| **Metric** | The only way a measured number enters this project. Carries its own `n` and interval, so no figure can appear without them. |
+| **Reference cell** | A committed, frozen measurement (`results/reference/`). Rendered visibly differently from a live one. |
+| **Abstention** | The loop declining to answer rather than guessing — coverage becomes a *choice* instead of a synonym for "did not crash". |
+| **Escalation** | Handing a declined question to the more expensive model. **Implemented and not run in this build** — see §16. |
+| **Triage** | Classifying failures by **cause** rather than counting them. |
+| **Pre-registration** | The headline comparison, what the design is underpowered for, and what it cannot detect — printed **before the first cell runs**, so it cannot be chosen after the numbers are in. |
+| **Noise floor** | The determinism baseline: how much a cell moves when nothing changed. Cited before any effect is claimed. |
+| **Fingerprint** | What makes two cell files the same measurement run — recorded, not inferred. |
+
+### Statistics
+
+| Term | Meaning here |
+|---|---|
+| **McNemar's test** | The paired significance test used here. Correct for "same questions, two configurations". |
+| **Discordant pairs** | Items where the two arms disagreed. The only ones McNemar uses — which is why `n` can be 50 and the test still be underpowered. |
+| **Wilson interval** | The confidence interval used for a proportion. Behaves sensibly near 0% and 100%, where the textbook normal interval does not. |
+| **Clustering** | Items come in 10 groups of ~5, so a flaw in one pattern fails ~5 items together. **Every interval shown is narrower than the evidence strictly supports**, and every caption says so. |
+| **p-value** | Reported only within a model. Refused across models — see §16. |
+
+### Acronyms
+
+| | |
+|---|---|
+| **AST** | Abstract Syntax Tree — the parsed structure of a query, as opposed to its text |
+| **CTE** | Common Table Expression — a `WITH … AS (…)` clause |
+| **FX** | Foreign exchange, i.e. currency conversion |
+| **CI** | Continuous Integration — here, the GitHub Actions workflow |
+| **SQL** | Structured Query Language |
+| **LLM** | Large Language Model |
+| **API** | Application Programming Interface — here, almost always the Anthropic API |
+| **UUID** | Universally Unique Identifier |
+| **WAL** | Write-Ahead Logging — a journal mode enabling multi-writer access, which DuckDB does not offer |
+| **PEP** | Python Enhancement Proposal — e.g. PEP 561, which `py.typed` relates to |
+| **DIAL / COST / DELTA / ABSTENTION** | The four rendered charts: silent-error rate per cell, spend per cell, the paired difference between cells, and the coverage-versus-precision curve |
 
 ---
 
@@ -205,7 +335,7 @@ A model writes SQL, the query runs against a read-only connection, and a failure
 back as the database's own error. It retries on execution failure and nothing else.
 
 **It catches syntactic failure. It cannot catch a query that parses, runs, returns a
-clean number and is wrong.** Four termination conditions are recorded by name so their
+clean number and is wrong.** Six termination conditions are recorded by name so their
 distribution across a run can be reported — a policy branch nobody counts is a branch
 nobody knows fires.
 
@@ -302,7 +432,7 @@ flowchart TD
     E -->|"INSERT status='queued'"| T[("<b>question_queue</b><br/>id · question · status · result · claimed_at")]
 
     subgraph WORKER["Worker — one process, polling, unattended"]
-        POLL["poll"] --> CLAIM["<b>UPDATE ... SET status='claimed'</b><br/>WHERE id = (SELECT MIN(id) WHERE status='queued')<br/><b>RETURNING *</b><br/><i>one statement — two workers cannot claim the same row</i>"]
+        POLL["poll"] --> CLAIM["<b>UPDATE ... SET status='claimed'</b><br/>WHERE id = (SELECT MIN(id) WHERE status='queued')<br/><b>RETURNING *</b><br/><i>one statement — the row leaves 'queued' as it is read</i>"]
         CLAIM --> GOT{"Row returned?"}
         GOT -->|no| SLEEP["sleep, poll again"]
         SLEEP --> POLL
@@ -342,7 +472,7 @@ running as in progress with their current interval — never as blank or zero.
 flowchart TD
     START["sweep.py --profile ..."] --> REQ{"--profile given?"}
     REQ -->|no| NODEF(["argparse refuses.<br/><b>There is no default.</b><br/>A delivery run cannot inherit<br/>development settings by omission."])
-    REQ -->|yes| PROF["<b>Profile</b> selects:<br/>roles · replicates · spend cap ·<br/>ablation on/off · escalation allowance"]
+    REQ -->|yes| PROF["<b>Profile</b> selects:<br/>roles · replicates · spend cap ·<br/>ablation on/off · prompt levels · item cap"]
 
     PROF --> FRESH{"--fresh?"}
     FRESH -->|yes| STALE{"Completed cells<br/>already on disk?"}
@@ -360,7 +490,7 @@ flowchart TD
     RUN --> MORE{"More cells?"}
     MORE -->|yes| CELL
     MORE -->|no| OUT[("results/sweep/*.json")]
-    OUT --> CHARTS["charts.py renders DIAL and COST<br/>from whatever is on disk — safe mid-sweep"]
+    OUT --> CHARTS["charts.py renders DIAL, COST, DELTA<br/>and ABSTENTION from whatever is on disk<br/>— safe mid-sweep"]
 
     classDef refuse fill:#fee2e2,stroke:#b91c1c,color:#0b1220,font-weight:bold;
     classDef store fill:#e0f2fe,stroke:#0369a1,color:#0b1220;
@@ -381,7 +511,7 @@ Runbook: [`demos/04_hill_climbing_loop/README.md`](demos/04_hill_climbing_loop/R
 | **DuckDB** | The seeded warehouse, and separately the question queue. Opened **read-only** for the agent, enforced by the database rather than by convention. Chosen over a hosted database so the workshop has no network dependency it does not need. |
 | **Gradio** | The five views. Chosen because a view is a function plus a layout, and the alternative was a frontend build step at a venue. |
 | **sqlglot** | Parses model-written SQL into an AST so rule checks can ask whether a column is actually constrained, rather than whether the query text mentions it. Also detects whether the outer query carries an `ORDER BY`, which decides whether result comparison is order-sensitive. |
-| **matplotlib** | **Dev dependency only.** Renders the deterministic README images in `assets/` from the committed reference measurements. It is never imported by anything the session or the Space runs. |
+| **matplotlib** | **A runtime dependency.** Draws the four live charts in Stage 4 (`src/loopeng/sweep/charts.py`), and renders the deterministic README images in `assets/` from the committed reference measurements (`tools/render_readme_charts.py`). The hosted Space does *not* import it — the exhibit reads pre-rendered images — which is why it is absent from `deploy/hf/requirements.txt`. |
 | **LangSmith** | Traces and the gold dataset upload. **Advisory only** — `results/*.json` is the system of record, and a test runs a cell with the client stubbed to raise and asserts the results file is still complete and correct. |
 | **pydantic-settings** | Loads settings once, frozen, with `SecretStr` so a key cannot be printed by accident. A missing credential raises an error naming the exact variable and the exact fix. |
 | **structlog** | Console-rendered logs, not JSON: these are read live, on a projector, by a room of people, not shipped to an aggregator. |
@@ -455,8 +585,44 @@ checklist line is not enforcement and this needs both.
 
 ## 9 · Installation
 
-**Prerequisites:** Python 3.12 and [uv](https://docs.astral.sh/uv/). Nothing else — no
-Docker, no database server, no cloud account.
+**Prerequisites.** Two, and nothing else — no Docker, no database server, no cloud
+account, no API key to get a green test suite.
+
+| Need | Version | Check you have it | Expected |
+|---|---|---|---|
+| [uv](https://docs.astral.sh/uv/) | any recent; `0.11.20` is what this was built and locked with | `uv --version` | `uv 0.11.20` or later |
+| Python | **3.12** (`requires-python = ">=3.12"`, pinned by `.python-version`) | `uv run python -V` | `Python 3.12.x` |
+| git | any | `git --version` | any |
+
+You do **not** need to install Python yourself. `uv sync` reads `.python-version` and
+fetches 3.12 if your machine does not have it, which is why the table checks Python
+*through* uv rather than directly — a system `python3` of a different version is
+irrelevant here and checking it only causes confusion.
+
+### Install uv, per platform
+
+**macOS and Linux**
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**macOS, with Homebrew instead**
+
+```bash
+brew install uv
+```
+
+**Windows, in PowerShell**
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+If `uv --version` is not found afterwards, close and reopen the terminal so the updated
+`PATH` is picked up.
+
+### Clone, install, and prove it worked
 
 ```bash
 git clone https://github.com/ANI-IN/loop-engineering-workshop.git
@@ -464,6 +630,35 @@ cd loop-engineering-workshop
 uv sync
 uv run pytest -q
 ```
+
+**Expected output** from the last command:
+
+```
+970 passed, 5 deselected
+```
+
+The `passed` count moves as tests are added and the number above is illustrative —
+what matters is `passed` with **no failures**, and `deselected` rather than `skipped`
+for the live tests. The `5 deselected` is pinned by a test, because that number is a
+claim: it says the live suite is exactly the five tests that cost money.
+
+- **`5 deselected` is correct, not a problem.** `pyproject.toml` sets
+  `addopts = "-m 'not live'"`, which excludes the five tests that hit the network and
+  cost money. Opting in is an explicit act: `uv run pytest -m live`.
+- **On Linux you will also see `2 skipped`.** Two tests are platform-conditional: one
+  needs a BSD-only file-flag function, and one only asserts image byte-identity on the
+  machine that generated the images. See `tests/test_env_guard.py` and
+  `tests/test_readme_charts.py`.
+
+If that passes, your checkout is sound and you have spent nothing.
+
+**Platform verification status, stated honestly:** every command in this section has
+been executed on **macOS (Darwin, arm64)**. The Linux notes come from CI, which runs the
+full offline suite on `ubuntu-latest` on every push. **The Windows instructions have not
+been executed** — they are reproduced from the uv documentation and reviewed against the
+code, and `demos/04_hill_climbing_loop/sweep.py --detach` is known not to detach on
+Windows (`subprocess`'s `start_new_session` is a no-op there). Treat Windows as
+unverified. See §16.
 
 The test suite is **offline by default**. It needs no API key, makes no network call, and
 costs nothing, so a green suite on a fresh clone tells you the checkout is sound before
@@ -487,9 +682,9 @@ is committed; `.env` holds values and is ignored.
 | `LANGSMITH_API_KEY` | the dataset upload and trace links | Everything works without it; traces degrade, measurements do not. |
 | `LANGSMITH_PROJECT` | the project experiments are filed under | Defaults to the workshop project rather than the SDK's shared `default` bucket. |
 | `LANGSMITH_TRACING` | — | Defaults to **false** and must stay false for the offline suite. See below. |
-| `LOOPENG_LIVE` | a *hosted* instance that may call models | Off unless explicitly set. A key alone does not enable it. |
-| `LOOPENG_LIVE_CEILING_USD` | a hosted live instance | Required when `LOOPENG_LIVE` is set. Live with no ceiling is not a configuration this accepts; it refuses rather than defaulting to a number nobody chose. |
-| `LOOPENG_LIVE_MAX_CALLS` | a hosted live instance | Optional call ceiling alongside the spend ceiling. |
+| `LOOPENG_LIVE` | a *hosted* instance that may call models | **INERT.** Read by `live_mode.read_config()`, which no entry point calls. Setting it changes nothing at runtime. See SECURITY.md. |
+| `LOOPENG_LIVE_CEILING_USD` | a hosted live instance | **INERT.** Read by `live_mode.read_config()`, which no entry point calls. Setting it changes nothing at runtime. See SECURITY.md. |
+| `LOOPENG_LIVE_MAX_CALLS` | a hosted live instance | **INERT.** Read by `live_mode.read_config()`, which no entry point calls. Setting it changes nothing at runtime. See SECURITY.md. |
 
 Settings are loaded once, frozen, and fail fast. A missing key raises an error naming the
 exact variable and the exact fix, rather than failing forty minutes into a session.
@@ -573,8 +768,16 @@ from loopeng.verify.probes import run_probes
 import json; print(json.dumps(run_probes(), indent=2))"
 ```
 
-**On screen:** the seven rules as configuration, then per rule whether the verifier
-caught a violating query *and* accepted a correct-but-unusual one.
+**On screen:** the seven rules as configuration, then — for six of them — whether the
+verifier caught a violating query *and* accepted a correct-but-unusual one.
+
+**Six, not seven, and the report says so.** `minor_units` and `multi_currency` are one
+SQL change (the declared `usd_factor` against a naive `/100`) and share a single check,
+so one probe pair covers both; a second pair would measure the same code twice and report
+it as two. The exemption is named in `probes.py` as `UNPROBED_BY_DESIGN`, the report
+carries `n_declared_rules` alongside `n_rules`, and a rule that arrives unprobed *and*
+unlisted fails the suite. This is worth reading twice: the output used to say `6/6`, a
+fraction whose denominator was itself the thing that had drifted.
 
 **What to observe:** both columns. A verifier that rejects everything scores perfectly on
 the first alone.
@@ -636,21 +839,34 @@ got worse — and would it have been on your dashboard?*
 
 ### Stage 3 — event driven
 
-**Two terminals.** Make both visible before you start.
+**One terminal, two commands, in this order.**
 
 ```bash
-# terminal 1 — the worker polls, claims, runs Level 2, writes back
-uv run python demos/03_event_driven_loop/worker.py
-
-# terminal 2 — submit a question
+# 1 — submit a question. Opens the queue, writes a row, exits.
 uv run python demos/03_event_driven_loop/enqueue.py \
   --question "What share of beauty orders ended up with a refund?"
+
+# 2 — the worker claims it, runs Level 2, writes the answer back, and stops
+#     once the queue is empty
+uv run python demos/03_event_driven_loop/worker.py --drain
 ```
 
-The room can also submit from the enqueue box in the AGENT view.
+> **Why not two terminals.** This runbook used to say "two terminals, make both
+> visible before you start" — a worker polling in one while you submit from the
+> other. It cannot work. **DuckDB takes an exclusive write lock per file**, and the
+> worker holds its connection open for its whole life, sleeping between polls, so
+> the second terminal fails at connect with `IOException: Could not set lock on
+> file … Conflicting lock is held`. The demo is single-writer, and the commands
+> above are the shape that is honest about it. See §16 for why that is a non-goal
+> rather than a bug.
 
-**On screen:** terminal 2 prints the row id. Terminal 1, unprompted, prints `claimed`,
-then the loop running, then `done` or `failed`.
+The room can also submit from the enqueue box in the AGENT view, which opens and
+releases the queue per action rather than holding it — so it works whenever a
+worker is *not* polling, and hits the same lock when one is.
+
+**On screen:** command 1 prints the row id and the queue counts. Command 2, with
+nobody typing into it, prints `claimed`, then the loop running, then `done` or
+`failed`, then exits.
 
 **What to observe:** nobody typed anything into terminal 1.
 
@@ -665,8 +881,8 @@ good enough to write back. Would you have shipped what they accepted?*
 # start the sweep — detaches and hands the terminal straight back
 uv run python demos/04_hill_climbing_loop/sweep.py --profile delivery --fresh
 
-# render both charts from whatever exists so far; safe to run repeatedly mid-sweep
-uv run python demos/04_hill_climbing_loop/charts.py --with-reference
+# render all four charts from whatever exists so far; safe to run repeatedly mid-sweep
+uv run python demos/04_hill_climbing_loop/charts.py
 ```
 
 **On screen:** the pre-registration, printed **before the first cell** — the headline
@@ -973,6 +1189,35 @@ number it qualifies is one that gets separated from it.
 **The questions are templated.** A small set of patterns, parameterised. That caps how far
 any of this generalises to freely-phrased questions.
 
+**Every committed measurement predates a verifier fix, and has NOT been re-run.**
+The AST verifier's rule checks asked only whether a column *appeared* in a `WHERE`
+or `JOIN` — no polarity, no table. So `deleted_at IS NOT NULL` satisfied a rule
+demanding `IS NULL`, a predicate on `orders` alone satisfied a rule whose complaint
+says "for customers and orders independently", `status = 'cancelled'` satisfied the
+rule excluding cancelled orders, and a bare `WHERE c.is_internal` satisfied the rule
+excluding internal accounts. That is fixed, and the four bypasses are pinned as
+tests.
+
+**Everything in `results/reference/`, `results/prefix_v1/`, the tables in §12 and
+the three images in `assets/` was measured with the old checks.** They describe a
+verifier that no longer exists, and re-running them costs real API spend, so they
+are deliberately left alone rather than quietly regenerated. Treat every silent-error
+rate here as measured against a *weaker* verifier than the one in the repository —
+the true rates for the affected rules can only be worse, never better. If you re-run
+the sweep on your own key, expect your numbers to differ from the committed ones for
+exactly this reason, and that difference is the finding rather than a fault.
+
+**The Level 3 queue is single-writer, and that is a non-goal rather than a bug.** DuckDB
+locks the database file exclusively, so exactly one process can hold the queue at a time
+and the stage runs as enqueue-then-drain rather than as a polling worker alongside a live
+submitter. The `UPDATE … RETURNING` claim is still atomic, but atomicity across *workers*
+is a guarantee about a situation that cannot arise here. Making it true means an engine
+with real multi-writer support — SQLite in WAL mode, or Postgres — and the point of this
+level is the handoff to something nobody is watching, not the storage engine underneath
+it. Recorded because the runbook claimed the opposite for the whole life of the stage:
+it said "two terminals", and a room following it would have hit
+`IOException: Could not set lock on file`.
+
 **The items are clustered, not independent.** Each pattern contributes several
 parameterisations, so a systematic flaw in one pattern fails all of its items together.
 **Every interval this project shows is therefore narrower than the evidence strictly
@@ -1198,7 +1443,7 @@ about.
 **The four-loop framing** is LangChain's, from [*The Art of Loop
 Engineering*](https://www.langchain.com/blog/the-art-of-loop-engineering), which credits
 swyx's [*Loopcraft: the art of stacking
-loops*](https://www.latent.space/p/ainews-loopcraft-the-art-of-stacking) for the idea that
+loops*](https://www.latent.space/p/loopcraft) for the idea that
 loops stack and extend. This repository takes the taxonomy and builds a system where each
 level's claim is checked.
 
@@ -1217,6 +1462,20 @@ sweep, the views and the tooling — is original to this project.
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to set up, what CI enforces, and the rules that will fail your build — including how to add a business rule end to end. |
 | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | Contributor Covenant v2.1. |
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability privately, and the two controls that actually matter here: the exhibit constructing no model client, and the Space sync refusing rather than filtering. |
+| [`CHANGELOG.md`](CHANGELOG.md) | What changed, and why. |
+
+### Contact
+
+| Reason | Where |
+|---|---|
+| A bug, or something in the docs that is wrong | [Open an issue](https://github.com/ANI-IN/loop-engineering-workshop/issues) — there is a bug-report template |
+| A security or credential concern | **Do not open a public issue.** Follow [`SECURITY.md`](SECURITY.md) |
+| A change you want to make | Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first; it lists the four checks CI runs and the rules that will fail your build |
+| Anything else | ANI-IN (Animesh Kumar) — via the issue tracker above |
+
+This is a single-maintainer workshop repository, not a supported product. Issues are
+read; response time is whatever it is. The most useful bug report is one that names the
+command you ran and pastes what it printed.
 
 Before delivering, work through [`PRE-DELIVERY-CHECKLIST.md`](PRE-DELIVERY-CHECKLIST.md)
 on the venue machine. It is ordered by when each step has to happen, and every item says

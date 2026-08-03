@@ -158,7 +158,10 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
     spent = 0.0
     completed, skipped = [], []
     for index, cell in enumerate(cells):
-        cached = load_cell(cell, directory)
+        # `expect_items` is what stops one profile resuming another's cells. See
+        # `load_cell`: the key encodes neither profile nor item count, and every
+        # profile defaults to the same directory.
+        cached = load_cell(cell, directory, expect_items=len(items))
         if cached:
             spent += cached["cost_usd"]["value"]
             completed.append(cached)

@@ -22,7 +22,7 @@ import structlog
 
 from loopeng.prompts import LEVELS, render_prompt
 from loopeng.registry import REGISTRY
-from loopeng.settings import load_settings
+from loopeng.settings import load_settings, require_api_key
 from loopeng.usage import CallUsage, UsageLedger
 
 log = structlog.get_logger(__name__)
@@ -37,7 +37,7 @@ CACHE_MINIMUM_TOKENS: dict[str, int] = {
 
 def _anthropic_client() -> anthropic.Anthropic:
     settings = load_settings()
-    return anthropic.Anthropic(api_key=settings.anthropic_api_key.get_secret_value())
+    return anthropic.Anthropic(api_key=require_api_key(settings).get_secret_value())
 
 
 def probe_rate_limits(ledger: UsageLedger | None = None) -> dict[str, dict[str, str]]:

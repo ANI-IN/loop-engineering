@@ -45,7 +45,7 @@ def test_claiming_an_empty_queue_returns_none(con):
 
 
 def test_a_row_can_only_be_claimed_once(con):
-    """The whole of the concurrency story. Two workers must not get the same row."""
+    """Two claims on ONE connection. Not "two workers" — see the test below."""
     store.enqueue(con, "q1")
     first = store.claim(con)
     second = store.claim(con)
@@ -143,3 +143,62 @@ def test_the_queue_lives_in_its_own_file(tmp_path):
     con = store.connect(tmp_path / "q.duckdb")
     assert (tmp_path / "q.duckdb").is_file()
     con.close()
+
+
+# ---- the constraint the runbook has to be honest about -----------------------
+
+
+def test_a_second_process_cannot_open_the_same_queue(tmp_path):
+    """DuckDB's lock is exclusive per file, so there is no two-worker scenario.
+
+    The Level 3 runbook told the room to run a polling worker in one terminal and
+    submit from another. That cannot work: the worker holds its connection for its
+    whole life, sleeping between polls, so the second terminal dies at connect.
+
+    `store.claim`'s docstring asserted "two workers cannot claim the same row —
+    that is the whole of the concurrency story", which is a guarantee about a
+    situation the storage engine forbids, and the test above "covered" it with one
+    connection used sequentially. Both now say what they actually mean.
+
+    This test pins the constraint so the two-terminal runbook cannot come back
+    without something going red.
+    """
+    import subprocess
+    import sys
+    import textwrap
+
+    queue = tmp_path / "q.duckdb"
+    holder = store.connect(queue)
+    store.enqueue(holder, "held open by this process")
+
+    probe = subprocess.run(
+        [sys.executable, "-c", textwrap.dedent(f"""
+            from loopeng.queue import store
+            try:
+                store.connect({str(queue)!r})
+                print("CONNECTED")
+            except Exception as exc:
+                print(type(exc).__name__)
+        """)],
+        capture_output=True, text=True,
+    )
+    assert "CONNECTED" not in probe.stdout, (
+        "a second process opened the queue — if DuckDB has gained multi-writer "
+        "support, the Level 3 runbook and store.claim's docstring can both be "
+        "made stronger, and this test should be replaced rather than deleted"
+    )
+    assert "IOException" in probe.stdout, probe.stdout + probe.stderr
+
+
+def test_sequential_processes_share_the_queue_fine(tmp_path):
+    """Which is why the runbook is enqueue-then-drain: each opens and releases."""
+    queue = tmp_path / "q.duckdb"
+
+    first = store.connect(queue)
+    store.enqueue(first, "written by the first process")
+    first.close()
+
+    second = store.connect(queue)
+    assert store.counts(second) == {"queued": 1}
+    claimed = store.claim(second)
+    assert claimed.question == "written by the first process"

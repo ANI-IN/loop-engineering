@@ -198,3 +198,54 @@ def test_only_pattern_six_is_order_sensitive():
         if is_order_sensitive(pattern.gold_sql.format(**pattern.params[0]))
     }
     assert ordered == {"p06_top_products"}
+
+
+# ---- the conversion factors come from the config, not from three copies -------
+
+
+def test_the_fx_case_is_derived_from_the_declared_factors():
+    from loopeng.warehouse.schema import usd_factor_sql, usd_factors
+
+    sql = usd_factor_sql()
+    for currency, factor in usd_factors().items():
+        assert f"WHEN '{currency}' THEN {factor!r}" in sql
+
+
+def test_editing_a_declared_factor_changes_the_gold_sql(monkeypatch):
+    """The coupling that did not exist, asserted directly.
+
+    `gold/patterns.py`, `verify/governance.py` and `verify/probes.py` each carried
+    their own hand-typed `CASE o.currency WHEN 'USD' THEN 0.01 ...`, identical to
+    semantic_model.yaml and coupled to none of it. The first of those builds the
+    GOLD ANSWERS — so changing a rate in the config, the file this project calls
+    the one place rules are declared, would have left every gold answer computed
+    at the old rate with nothing failing.
+    """
+    from loopeng.warehouse import schema
+
+    monkeypatch.setattr(
+        schema, "usd_factors", lambda: {"USD": 0.01, "EUR": 0.5, "JPY": 0.25}
+    )
+    sql = schema.usd_factor_sql()
+    assert "WHEN 'EUR' THEN 0.5" in sql
+    assert "0.0108" not in sql
+
+
+def test_no_module_retypes_a_conversion_factor():
+    """A fourth copy would be silent, so it is banned rather than trusted."""
+    import pathlib
+
+    from loopeng.warehouse.schema import usd_factors
+
+    root = pathlib.Path(__file__).resolve().parent.parent / "src" / "loopeng"
+    rates = [repr(v) for v in usd_factors().values() if v != 0.01]
+    offenders = []
+    for path in root.rglob("*.py"):
+        if path.name == "schema.py":
+            continue
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if line.lstrip().startswith("#"):
+                continue
+            if any(rate in line for rate in rates):
+                offenders.append(f"{path.relative_to(root)}:{n}")
+    assert not offenders, f"conversion factor typed instead of derived: {offenders}"

@@ -5,6 +5,48 @@
 
 ---
 
+## Purpose
+
+**Measure which configuration is better, under a discipline that makes the measurement
+worth having.**
+
+Levels 1 to 3 answer a question. This level runs the whole gold set across a grid of
+configurations — model role, prompt completeness, one-shot versus loop, replicate — and
+reports each cell's silent-error rate with its interval.
+
+Two entry points:
+
+| entry point | what it does |
+|---|---|
+| `sweep.py` | Runs the grid. Prints the pre-registration **before the first cell**, resumes from disk, and aborts on *projected* rather than actual spend. Detaches by default. |
+| `charts.py` | Renders DIAL, COST, DELTA and ABSTENTION from whatever is on disk. Safe to run repeatedly, mid-sweep. Makes no model call. |
+
+The apparatus is the subject here, not the numbers. A hypothesis stated after the data is
+not a hypothesis; a chart that silently fails to exist is indistinguishable from a chart
+whose finding is absent; a zero on a bar reads as a measurement. All three are enforced in
+code rather than remembered on the day.
+
+---
+
+## Prerequisites specific to this stage
+
+| | |
+|---|---|
+| **API key** | **Required by `sweep.py`**, which validates it *before* detaching — a keyless sweep used to print a pid, exit 0, and die in a log nobody had reason to open. **Not required by `charts.py`**, which only reads files. |
+| **Earlier stages** | None. The sweep builds whatever it needs. `charts.py` needs no sweep either: with nothing on disk it renders *not yet measured*, which is the correct output for a fresh clone. |
+| **Cost** | The most expensive stage, and the only one that runs unattended long enough to matter. `--profile` is **required and has no default**, so a delivery run cannot inherit development settings from a flag nobody typed. Each profile carries its own cap and the runner refuses to start a cell whose projected total would breach it. |
+
+**Which commands here are free and need no key.** `charts.py` in every form, and `--help`
+on both entry points. Everything `sweep.py` does needs a key, and every profile except
+`exhibit` spends — `exhibit` declares no roles and a zero cap, so it has no cell to run,
+but it still validates the credential at the door like every other sweep invocation.
+
+If you have not proved your key today, run
+[`demos/00_preflight/check.py`](../00_preflight/README.md) first. It costs a fraction of a
+cent and tells you in one call what a sweep would tell you in three.
+
+---
+
 ## What this level ADDS
 
 The loop around the loop.
@@ -36,7 +78,7 @@ clustering makes the true figure worse.
 flowchart TD
     START["sweep.py --profile ..."] --> REQ{"--profile given?"}
     REQ -->|no| NODEF(["argparse refuses.<br/><b>There is no default.</b><br/>A delivery run cannot inherit<br/>development settings by omission."])
-    REQ -->|yes| PROF["<b>Profile</b> selects:<br/>roles · replicates · spend cap ·<br/>ablation on/off · escalation allowance"]
+    REQ -->|yes| PROF["<b>Profile</b> selects:<br/>roles · replicates · spend cap ·<br/>ablation on/off · prompt levels · item cap"]
 
     PROF --> FRESH{"--fresh?"}
     FRESH -->|yes| STALE{"Completed cells<br/>already on disk?"}
@@ -54,7 +96,7 @@ flowchart TD
     RUN --> MORE{"More cells?"}
     MORE -->|yes| CELL
     MORE -->|no| OUT[("results/sweep/*.json")]
-    OUT --> CHARTS["charts.py renders DIAL and COST<br/>from whatever is on disk — safe mid-sweep"]
+    OUT --> CHARTS["charts.py renders DIAL, COST, DELTA<br/>and ABSTENTION from whatever is on disk<br/>— safe mid-sweep"]
 
     classDef refuse fill:#fee2e2,stroke:#b91c1c,color:#0b1220,font-weight:bold;
     classDef store fill:#e0f2fe,stroke:#0369a1,color:#0b1220;
@@ -88,11 +130,21 @@ knows whether those files are still needed.
 A cell still running reports *"in progress, n=NN so far"* with the interval over what has
 landed, and draws as a hollow bar. **A zero on a chart reads as a measurement.**
 
-### Two charts ship, not three
+### Four charts ship, and two of them can be empty
 
-**DIAL** (silent-error rate per cell) and **COST** (estimated spend per cell). A third
-chart plotting a finding that did not reproduce would be the same defect as reporting an
-unmeasured number.
+**DIAL** (silent-error rate per cell) and **COST** (estimated spend per cell) are one row
+per cell. **DELTA** is one row per compared pair, and **ABSTENTION** plots coverage
+against precision over a single cell's items.
+
+DELTA and ABSTENTION are written **even when their inputs are empty** — they render *not
+yet measured* and say what would fill them. That is the same rule the other two follow,
+applied to a chart rather than to a number: a chart that silently does not exist is
+indistinguishable from a chart whose finding is absent, so neither is allowed to just not
+appear. See `write_charts` in `src/loopeng/sweep/charts.py`.
+
+What is still true, and is why this section used to say two: a chart plotting a finding
+that did not reproduce would be the same defect as reporting an unmeasured number. DELTA
+draws zero, and gives nothing untestable a bar.
 
 ### One asymmetry must be said out loud every time a cross-model comparison appears
 
@@ -181,8 +233,8 @@ no calls renders *not yet measured* rather than a full dial.
 
 **Safe to run repeatedly, mid-sweep.** It renders from whatever exists so far.
 
-**What appears:** `results/charts/dial.png` and `cost.png`, plus a line per cell showing
-its current rate.
+**What appears:** `results/charts/dial.png`, `cost.png`, `delta.png` and
+`abstention.png`, plus a line per cell showing its current rate.
 
 **What to observe:** run it twice, a minute apart. The intervals narrow as more items land.
 **That narrowing is the session's argument about measurement happening live** rather than
@@ -200,6 +252,99 @@ escalation and the triage panel, each with the caveat that travels with it.
 
 **The question to sit with:** *the pre-registration named an effect size this design can
 detect. Is the gap you are looking at bigger than that?*
+
+### Configuration options
+
+Read from the argparse declarations. The full `--help` output for both entry points is
+captured verbatim in
+[`docs/assets/04-hill-climbing-loop-help.txt`](../../docs/assets/04-hill-climbing-loop-help.txt).
+
+**`sweep.py`** — needs a key; spends
+
+| flag | default | what it does |
+|---|---|---|
+| `--profile` | **none — required** | `smoke`, `delivery`, `development` or `exhibit`. There is deliberately no default: a delivery run must not inherit development settings by omission. |
+| `--cap-usd` | *(the profile's own cap)* | Override the ceiling. The runner aborts on the **projected** total before a cell runs, never on actual spend afterwards. |
+| `--limit` | *(the profile's own item cap)* | Fewer items. **Accepted by `smoke` and `development` only**, and refused elsewhere with `LimitNotAllowed` — a cell run over fewer items than its profile declares is not that profile's measurement. |
+| `--dir` | `results/sweep` | Where cell files live. This is also what it resumes from. |
+| `--foreground` | off (i.e. **detached**) | Block the terminal instead of detaching. Detaching is the default because a sweep that holds the terminal cannot be started while you keep talking. |
+| `--concurrency` | `CONCURRENCY_PER_MODEL`, from `src/loopeng/sweep/runner.py` | Requests in flight per model. **Lower it before the sweep**, not after it starts failing — the default was chosen against ceilings measured on one account, and a lower-tier account has a smaller pool than that. |
+| `--log` | `results/sweep_run.log` | Where the detached run writes. This is the file `tail -f` reads. |
+| `--fresh` | off | **Refuse to start** if completed cells are already on disk. Use it for the live session. It refuses rather than deletes, because those files are the outage insurance and only the operator knows whether they are still needed. |
+
+**`charts.py`** — makes no model call; needs no key
+
+| flag | default | what it does |
+|---|---|---|
+| `--dir` | `results/sweep` | Where cell files live. |
+| `--out` | `results/charts` | Where the four PNGs go. |
+| `--reference` | `auto` | `auto`, `hide`, `fill` or `compare`. **There is no `--with-reference`** — that flag never existed and the command carrying it exited 2 every time it was run. |
+
+What each `--reference` mode does, from `src/loopeng/sweep/reference.py`:
+
+| mode | behaviour |
+|---|---|
+| `auto` | `compare` once this run has a cell of its own; `hide` until then — so a machine that has made no calls renders *not yet measured* rather than a full dial. |
+| `hide` | Live cells only. |
+| `fill` | Stored cells only where no live one exists. |
+| `compare` | Both, paired, with the difference computed between them. **This is the mode a cloner wants** once they have run anything. |
+
+Exit codes on `sweep.py`: **0** complete · **1** missing credential · **2** `SweepAborted`
+(the projected-spend cap) · **3** refused to start (`--fresh` found cells, or `--limit` on
+a profile that does not accept it).
+
+### Expected output — what is captured, and what is not
+
+**Captured, verbatim, 2026-08-03** — `charts.py` from an empty working directory with no
+cells and no key. This is the fresh-clone shape, and it is the one property most worth
+seeing with your own eyes: **no chart in this repository can be produced without live API
+calls**, so a machine that has spent nothing renders *not yet measured* rather than bars.
+
+```text
+$ uv run python demos/04_hill_climbing_loop/charts.py
+No cells in results/sweep yet. Charts render as 'not yet measured'.
+cells on disk: 0 (0 complete)
+  wrote results/charts/dial.png
+  wrote results/charts/cost.png
+  wrote results/charts/delta.png
+  wrote results/charts/abstention.png
+comparisons: 0 testable, 0 not
+abstention curve: not yet measured — needs a completed live loop cell
+```
+
+Exit code `0`. **All four PNGs were written**, and that is the rule this stage cares
+about: DELTA and ABSTENTION are written even when their inputs are empty, because a chart
+that silently does not exist is indistinguishable from a chart whose finding is absent.
+
+**Captured: the keyless failure** of `sweep.py`, same day:
+
+```text
+$ uv run python demos/04_hill_climbing_loop/sweep.py --profile delivery --fresh
+
+ANTHROPIC_API_KEY is not set. Add ANTHROPIC_API_KEY=<your key> to .env (see .env.example).
+
+```
+
+Exit `1`, and **nothing detached** — the credential is validated in the process you are
+still watching, before the fork.
+
+**Captured: argparse refusing a sweep with no profile**, same day:
+
+```text
+$ uv run python demos/04_hill_climbing_loop/sweep.py
+usage: sweep.py [-h] --profile {delivery,development,exhibit,smoke}
+                [--cap-usd CAP_USD] [--limit LIMIT] [--dir DIR] [--foreground]
+                [--concurrency CONCURRENCY] [--log LOG] [--fresh]
+sweep.py: error: the following arguments are required: --profile
+```
+
+Exit `2`. That is the "there is no default" box in the diagram above, doing its job.
+
+**Not captured: a sweep that ran.** It makes live model calls, so nothing on this page
+quotes the pre-registration, a completed cell, or a populated chart. What appears is
+described above under *Run it COLD*, and it is produced by
+`src/loopeng/sweep/orchestrator.py`. **Read your own output**, and read the intervals
+rather than the point estimates.
 
 ---
 
@@ -255,9 +400,123 @@ The pre-registration is what the wait is for.
 *If someone compares a worker bar to a frontier bar by eye*, **stop them.** That is the
 asymmetry in the caption, and it is the easiest mistake in the room to make.
 
-*If a rate limit appears mid-sweep*, lower the per-model concurrency in
-`src/loopeng/sweep/runner.py` **before** re-running rather than after it starts failing,
-and say out loud that it will take longer.
+*If a rate limit appears mid-sweep*, lower the per-model concurrency with
+`--concurrency` **before** re-running rather than after it starts failing, and say out
+loud that it will take longer. The flag exists for this: the advice used to be "edit
+`src/loopeng/sweep/runner.py`", and advice that can only be followed by patching source is
+advice most people will not follow.
+
+---
+
+## Troubleshooting — the real failure text
+
+The section above is what to *say* when the result is not what you hoped. This one is what
+to do when the command itself is wrong.
+
+**`ANTHROPIC_API_KEY is not set. Add ANTHROPIC_API_KEY=<your key> to .env (see
+.env.example).`** — captured above, exit 1, nothing detached and nothing billed.
+
+**`sweep.py: error: the following arguments are required: --profile`** — captured above,
+exit 2. There is no default profile and there will not be one.
+
+**`REFUSING TO START`** followed by a `StaleCellsPresent` message — exit 3. `--fresh`
+found completed cells on disk. It is telling you they are still there, not asking you to
+delete them. Decide whether you still want them for outage cover; if not, remove them
+yourself and re-run. **Do not drop `--fresh` to get past it** — that is how a sweep
+finishes instantly in front of a room told nothing was precomputed.
+
+**`REFUSING TO START`** followed by a `LimitNotAllowed` message — exit 3. `--limit` was
+passed to a profile that does not accept it. The message names the profiles that do. A
+cell run over fewer items than its profile declares is not that profile's measurement, and
+reporting it as one is how an unreproducible number ends up on a chart.
+
+**`SWEEP ABORTED`** — exit 2. The projected total breached the cap **before** the cell
+ran, not after. The message names what was spent, what remained, and the last completed
+cell. **Do not retry into the cap.**
+
+**The sweep detached and you cannot see anything.** That is the default and it is
+deliberate. It printed a pid and a `tail -f` command; the log is `--log`, default
+`results/sweep_run.log`. Use `--foreground` if you want it to block instead.
+
+**Charts say *not yet measured*.** There are no cells in `--dir`. Captured above — that is
+correct on a fresh clone, not a fault. Run the sweep, or serve `--view exhibit`, which
+reads the committed reference measurements instead.
+
+**The charts are full and you have not run anything.** You almost certainly passed
+`--reference compare` or `--reference fill`. Those draw the committed baseline, which is
+hatched and dated inside the image. `auto` exists so this cannot happen by accident.
+
+**`--with-reference` is not a flag.** It never was. The real one is `--reference`, and the
+command carrying the wrong name exited 2 every time it ran, for the whole life of this
+runbook, while a paid sweep was in flight. `tests/test_docs.py` now checks every
+documented flag against the script's own argparse for exactly this reason.
+
+**Port already in use** when serving a view — another view is still running. Kill it or
+pick a different `--port`.
+
+---
+
+## Limitations — what this stage does not show
+
+- **Every committed measurement predates a verifier fix and has NOT been re-run.** The old
+  AST checks asked only whether a column *appeared* in a `WHERE` or `JOIN`. Everything in
+  `results/reference/` and `results/prefix_v1/`, and every figure in the root README,
+  describes a verifier that no longer exists. Re-running costs real spend, so they are
+  left alone rather than quietly regenerated. **If your numbers differ from the committed
+  ones, that difference is the finding rather than a fault.**
+- **The items are clustered, not independent.** Each pattern contributes several
+  parameterisations, so **every interval here is narrower than the evidence strictly
+  supports**. Every caption says so.
+- **Cross-model error bars are not comparable.** The worker model is pinned to a fixed
+  temperature; the frontier model rejects that parameter and cannot be pinned. One model's
+  bars carry sampling noise, the other's carry sampling noise **plus** run-to-run
+  variance. Within a model, comparable. Across models, not.
+- **At delivery the frontier cells are reference measurements, not computed live.** Any
+  cross-model comparison in a session puts a line measured minutes ago beside one measured
+  weeks ago. Both sides are badged on the row.
+- **Four of the ten comparisons are REFERENCE against REFERENCE** — two stored arms from
+  one development run. They are within-model, so the temperature asymmetry does not touch
+  them, but they are not something the session computes.
+- **`smoke` measures nothing worth quoting.** Eight items cannot separate anything. It
+  proves the pipeline on your key; it is not a result.
+- **The subset analysis was chosen post-hoc.** Two patterns were found, by triaging
+  failures, to be under-specified about whether refunds are netted. The exclusion
+  criterion is visible in the question text without seeing any result — which is what
+  makes it defensible rather than fitted — but post-hoc is post-hoc, and both figures are
+  always shown.
+- **Escalation is implemented and no entry point runs it.**
+  `src/loopeng/triage/escalate.py` is tested, and `run_escalation` was the only thing that
+  ever wrote `results/phase4_escalation.json`. The OVERSIGHT view reads that stored
+  artifact. Nothing on this page recomputes it.
+- **The hosted-live spend guard is not wired.** `src/loopeng/views/live_mode.py` implements
+  and tests a three-condition opt-in and a per-process ceiling, but no view constructs a
+  `LiveBudget` and `read_config()` is never called outside its own tests — so the
+  `LOOPENG_LIVE*` variables are **inert**. Read it as a design, not a control. The enforced
+  guarantee is the exhibit's, which builds no client at all.
+- **Prompt caching saves nothing on any profile you are likely to run**, and that is
+  measured rather than assumed. It is switched on, and on these profiles it correctly does
+  nothing. See root README §13.
+- **This is not a benchmark.** One provider, one synthetic warehouse, templated questions,
+  no LLM judge blocking anything.
+
+---
+
+## Where to go next
+
+| | |
+|---|---|
+| the deep-dive on this stage | [`ONBOARDING.md`](ONBOARDING.md) |
+| the views this stage serves | [`demos/ONBOARDING-views.md`](../ONBOARDING-views.md) |
+| the vocabulary this page assumes | [`demos/README.md`](../README.md) |
+| the whole project | [the root README](../../README.md) |
+| this stage in the root README | [§11 Stage 4](../../README.md#11--running-each-demo) |
+| the committed reference figures, with their dates | [root README §12](../../README.md#12--expected-outputs) |
+| profiles, caps and projected cost | [root README §13](../../README.md#13--profiles-and-cost) |
+| everything this project does not claim | [root README §16](../../README.md#16--limitations) |
+| **previous stage** — the loop this sweeps | [`03_event_driven_loop/`](../03_event_driven_loop/README.md) |
+| **the first stage** — prove your key for a fraction of a cent | [`00_preflight/`](../00_preflight/README.md) |
+
+This is the last stage. There is no next one.
 
 ---
 
@@ -272,7 +531,7 @@ and say out loud that it will take longer.
 | the DIAL view and its live/reference badges | `src/loopeng/views/dial.py` |
 | abstention, escalation, triage | `src/loopeng/triage/` |
 
-> **For whoever edits the rendering code:** numeric literals are banned in the eight
+> **For whoever edits the rendering code:** numeric literals are banned in the eleven
 > modules that render to a room, enforced by `tools/lint_no_numbers.py`. Every number the
 > room sees comes from a `Metric` carrying its own `n`. Genuine layout geometry is exempt
 > by a trailing `# layout` marker on the line, and the rule prints how many exemptions

@@ -5,6 +5,7 @@ Thin by rule. The queue lives in src/loopeng/queue/.
 
 import argparse
 
+from loopeng.entrypoint import run
 from loopeng.gold.build import build_gold
 from loopeng.logging import configure_logging
 from loopeng.queue import store
@@ -20,7 +21,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     configure_logging()
-    settings = load_settings()
+    # Putting a question on the queue makes no model call — the worker does that,
+    # in another process, and it checks for itself.
+    settings = load_settings(require_credential=False)
     con = store.connect(args.queue)
 
     if args.list:
@@ -43,4 +46,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run(main))

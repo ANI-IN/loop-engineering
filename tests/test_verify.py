@@ -6,7 +6,7 @@ import pytest
 from loopeng.agent.loop import TerminationReason
 from loopeng.contracts import FORBIDDEN_FIELD_PATTERN
 from loopeng.verify.loop import build_context, run_verified
-from loopeng.verify.probes import PROBES, run_probes
+from loopeng.verify.probes import PROBES, UNPROBED_BY_DESIGN, run_probes
 from loopeng.verify.regex_verifiers import verify_with_regex
 from loopeng.verify.verifiers import verify
 from loopeng.warehouse.connect import ensure_warehouse
@@ -96,7 +96,32 @@ def test_the_v1_probe_surface_covers_every_check_it_claims_to():
 
     probed = {p.rule for p in PROBES}
     assert probed <= set(RULE_CHECKS)
-    assert set(RULE_CHECKS) - probed == {"minor_units"}
+    assert set(RULE_CHECKS) - probed == set(UNPROBED_BY_DESIGN)
+
+
+def test_every_declared_rule_is_probed_or_explicitly_exempt():
+    """The exemption must be *written down*, not merely true.
+
+    This assertion already existed against the bare literal `{"minor_units"}`, so
+    the gap was enforced but unexplained — and a reader of the report could not
+    see it at all, because `run_probes` reported `n_rules` (the probe count) and
+    nothing else. `6/6` is a fraction whose denominator is the thing that drifts.
+
+    A new rule arriving with no probe and no entry in `UNPROBED_BY_DESIGN` fails
+    here, naming itself.
+    """
+    report = run_probes()
+    assert report["unprobed_unexplained"] == [], (
+        f"declared but neither probed nor exempt: {report['unprobed_unexplained']}"
+    )
+    assert report["n_declared_rules"] == report["n_rules"] + len(UNPROBED_BY_DESIGN)
+
+
+def test_the_probe_report_shows_the_declared_total_not_only_the_probed_one():
+    """The defect was invisibility, so the fix is asserted on the report itself."""
+    report = run_probes()
+    assert report["n_declared_rules"] > report["n_rules"]
+    assert report["unprobed_by_design"] == ["minor_units"]
 
 
 def test_refunds_net_is_probed_even_though_the_sweep_cannot_measure_it():
@@ -339,3 +364,132 @@ def test_the_reading_refuses_to_argue_without_probe_evidence(monkeypatch):
     ast = SwapArm("ast", accepted=8, correct=5, ran=10, rejections=6)
     regex = SwapArm("regex", accepted=10, correct=1, ran=10, rejections=0)
     assert "does not show" in _reading({"ast": ast, "regex": regex})
+
+
+# ---- the four queries the AST verifier used to accept -------------------------
+#
+# Each of these breaks the rule named beside it, and each was ACCEPTED before
+# `_has_column_predicate` was replaced. That helper asked only whether the column
+# appeared somewhere inside a WHERE or JOIN — no polarity, no table, no placement —
+# so the verifier this workshop holds up as the correct one, against which the
+# regex version is shown to be inadequate, passed the exact violations its own
+# complaint text describes.
+#
+# They are kept as a set rather than folded into PROBES deliberately: PROBES is one
+# honours/breaks pair per rule and its counts are quoted in the docs, while this is
+# a regression record of a specific defect. Both are needed.
+
+BYPASSES = [
+    ("soft_delete",
+     "the exact inverse of the rule",
+     "SELECT COUNT(*) FROM orders o JOIN customers c ON c.customer_id = o.customer_id "
+     "WHERE o.deleted_at IS NOT NULL"),
+    ("soft_delete",
+     "one table, for a rule that says 'customers and orders independently'",
+     "SELECT COUNT(*) FROM orders o JOIN customers c ON c.customer_id = o.customer_id "
+     "WHERE o.deleted_at IS NULL"),
+    ("cancelled_orders",
+     "selecting only what must be excluded",
+     "SELECT COUNT(*) FROM orders o JOIN customers c ON c.customer_id = o.customer_id "
+     "WHERE o.status = 'cancelled'"),
+    ("internal_accounts",
+     "selecting only the internal test accounts",
+     "SELECT COUNT(*) FROM orders o JOIN customers c ON c.customer_id = o.customer_id "
+     "WHERE c.is_internal"),
+]
+
+
+@pytest.mark.parametrize(
+    "rule,why,sql", BYPASSES, ids=[f"{r}-{w[:28]}" for r, w, _ in BYPASSES]
+)
+def test_the_ast_verifier_rejects_the_bypasses_it_used_to_accept(rule, why, sql):
+    from loopeng.contracts import VerifyContext
+
+    result = verify(VerifyContext(
+        question="(bypass)", sql=sql, schema_ddl="", rules=(rule,),
+        attempt=1, execution_rows=((1,),), execution_error=None,
+    ))
+    assert not result.ok, f"{rule}: {why} — accepted"
+    assert rule in result.rules
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        # Every shape that legitimately satisfies a rule must still be accepted.
+        # A fix for the above that rejected these would score better on the
+        # violation probes while catching less of what matters — the same trade
+        # the regex verifier makes, one layer up.
+        "SELECT COUNT(*) FROM orders o JOIN customers c ON c.customer_id = o.customer_id "
+        "WHERE o.deleted_at IS NULL AND c.deleted_at IS NULL",
+        "SELECT COUNT(*) FROM orders WHERE deleted_at IS NULL",
+        "WITH live_orders AS (SELECT * FROM orders WHERE deleted_at IS NULL), "
+        "live_customers AS (SELECT * FROM customers WHERE deleted_at IS NULL) "
+        "SELECT COUNT(*) FROM live_orders o JOIN live_customers c "
+        "ON c.customer_id = o.customer_id",
+    ],
+    ids=["both-qualified", "single-table-unqualified", "guarded-in-ctes"],
+)
+def test_soft_delete_still_accepts_every_legitimate_shape(sql):
+    from loopeng.contracts import VerifyContext
+
+    assert verify(VerifyContext(
+        question="(legitimate)", sql=sql, schema_ddl="", rules=("soft_delete",),
+        attempt=1, execution_rows=((1,),), execution_error=None,
+    )).ok
+
+
+@pytest.mark.parametrize(
+    "rule,sql",
+    [
+        ("cancelled_orders", "SELECT 1 FROM orders o WHERE o.status <> 'cancelled'"),
+        ("cancelled_orders", "SELECT 1 FROM orders o WHERE o.status = 'completed'"),
+        ("cancelled_orders", "SELECT 1 FROM orders o WHERE o.status NOT IN ('cancelled')"),
+        ("internal_accounts", "SELECT 1 FROM customers c WHERE NOT c.is_internal"),
+        ("internal_accounts", "SELECT 1 FROM customers c WHERE c.is_internal = FALSE"),
+    ],
+)
+def test_the_other_rules_still_accept_their_legitimate_shapes(rule, sql):
+    from loopeng.contracts import VerifyContext
+
+    assert verify(VerifyContext(
+        question="(legitimate)", sql=sql, schema_ddl="", rules=(rule,),
+        attempt=1, execution_rows=((1,),), execution_error=None,
+    )).ok
+
+
+# ---- the regex twin must be given every rule, or the swap demo lies ----------
+
+
+def test_the_regex_verifier_covers_every_declared_rule():
+    """The gate the AST verifier has had since the V2 build, applied to its twin.
+
+    `governance.assert_full_coverage()` refuses to start when a declared rule has
+    no AST check. Nothing made the same demand of the regex verifier, so a rule
+    added to semantic_model.yaml would force an AST check and not a pattern — and
+    the swap demo would report the resulting gap as "the regex verifier is worse"
+    when part of it was a rule it was never handed.
+    """
+    from loopeng.verify.regex_verifiers import uncovered_rules
+
+    assert uncovered_rules() == [], (
+        f"declared rules the regex verifier cannot check: {uncovered_rules()}. "
+        f"Add a pattern, or route it in _ROUTED with the reason."
+    )
+
+
+def test_a_new_declared_rule_is_reported_as_uncovered(monkeypatch):
+    """The gate must be able to fail, or it is decoration."""
+    from loopeng.verify import governance, regex_verifiers
+
+    original = governance.declared_rules()  # captured BEFORE patching, or it recurses
+    monkeypatch.setattr(governance, "declared_rules", lambda: (*original, "new_rule"))
+    assert "new_rule" in regex_verifiers.uncovered_rules()
+
+
+def test_the_two_verifiers_answer_the_same_rule_set():
+    """Whatever the swap demo shows, it must not be a difference in scope."""
+    from loopeng.verify.regex_verifiers import _PATTERNS, _ROUTED
+    from loopeng.verify.verifiers import RULE_CHECKS
+
+    assert set(_PATTERNS) | set(_ROUTED) == set(RULE_CHECKS)

@@ -98,11 +98,6 @@ class Profile:
     cap_usd: float
     runs_ablation: bool
     note: str
-    # Questions the frontier model may answer live, outside the cells. Delivery keeps
-    # a small allowance so "Haiku declines, Sonnet takes it" happens in the room
-    # rather than being cited — an escalation nobody watches run is a slide.
-    escalation_allowance: int = 0
-
     # Which prompt levels this profile measures. Both, except for `smoke`, whose whole
     # job is to prove the pipeline for pennies rather than to measure the L0/L3 gap.
     levels: tuple[str, ...] = ("L0", "L3")
@@ -126,7 +121,6 @@ DELIVERY = Profile(
     replicates=1,
     cap_usd=0.75,
     runs_ablation=False,
-    escalation_allowance=5,
     note=(
         "Haiku only, 4 cells, 1 replicate, plus a 5-question Sonnet allowance so live "
         "escalation runs in the room. Sonnet's CELLS and the noise floors are REFERENCE "
@@ -141,7 +135,6 @@ DEVELOPMENT = Profile(
     replicates=3,
     cap_usd=8.0,
     runs_ablation=True,
-    escalation_allowance=12,
     allows_limit=True,
     note="Both models, replicates on both L0 loop cells, ablation. Run once, not per delivery.",
 )
@@ -171,7 +164,6 @@ EXHIBIT = Profile(
     replicates=0,
     cap_usd=0.0,
     runs_ablation=False,
-    escalation_allowance=0,
     note=(
         "A frozen exhibit. Makes ZERO model calls: every figure is a stored measurement "
         "rendered with its date, and the paths that would spend are disabled rather "
@@ -328,12 +320,42 @@ def cell_path(cell: Cell, directory: Path = SWEEP_DIR) -> Path:
     return Path(directory) / f"{cell.key}.json"
 
 
-def load_cell(cell: Cell, directory: Path = SWEEP_DIR) -> dict | None:
+def load_cell(cell: Cell, directory: Path = SWEEP_DIR,
+              *, expect_items: int | None = None) -> dict | None:
+    """A completed cell file for this cell, or None if it must be re-run.
+
+    `expect_items` is how many gold items THIS run intends the cell to cover. A
+    stored cell measured over a different number is not the same measurement and
+    is refused.
+
+    A cell's key is `role_level_mode_rN` and encodes neither the profile nor the
+    item count, while every profile defaults to the same directory. `smoke`'s two
+    cells are a strict subset of `delivery`'s, so `--profile smoke` run after a
+    delivery run resumed delivery's 50-item cells, reported them as the smoke
+    measurement, and made NO MODEL CALLS AT ALL — while printing
+    `spend: est. $0.8642 of $0.05`, seventeen times its own cap, and exiting 0.
+
+    That is the precise opposite of what `smoke` is for. Its whole documented
+    purpose is to prove the pipeline on YOUR key for a few cents, so a first-time
+    cloner following the preflight's next command got a green "complete" with
+    zero calls and zero evidence their key worked. `--limit 8` against a directory
+    of 50-item cells was the same defect from the other direction.
+
+    A stored cell with no recorded `n_items` predates this field and is allowed to
+    resume — the same treatment `fingerprint.of()` already gives a missing
+    fingerprint, and the reason is the same: refusing them would silently
+    invalidate every measurement committed before the field existed.
+    """
     path = cell_path(cell, directory)
     if not path.is_file():
         return None
     body = json.loads(path.read_text())
-    return body if body.get("complete") else None
+    if not body.get("complete"):
+        return None
+    stored = body.get("n_items")
+    if expect_items is not None and stored is not None and stored != expect_items:
+        return None
+    return body
 
 
 def run_cell(cell: Cell, items, warehouse: Path, *, verifier=verify_governed,
@@ -406,6 +428,10 @@ def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: flo
         "key": cell.key, "label": cell.label, "role": cell.role, "level": cell.level,
         "mode": cell.mode, "replicate": cell.replicate,
         "complete": complete, "seconds": round(seconds, 1),
+        # How many items this cell was RUN OVER, as distinct from how many
+        # produced an answer. `load_cell` refuses to resume a cell measured over a
+        # different number, which is what stops one profile inheriting another's.
+        "n_items": len(rows),
         "n_done": len(rows), "ran_and_returned": len(ran),
         "correct": correct, "silent_errors": silent,
         # Never blank, never zero, never a guess.
