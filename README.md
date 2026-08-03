@@ -644,21 +644,34 @@ got worse — and would it have been on your dashboard?*
 
 ### Stage 3 — event driven
 
-**Two terminals.** Make both visible before you start.
+**One terminal, two commands, in this order.**
 
 ```bash
-# terminal 1 — the worker polls, claims, runs Level 2, writes back
-uv run python demos/03_event_driven_loop/worker.py
-
-# terminal 2 — submit a question
+# 1 — submit a question. Opens the queue, writes a row, exits.
 uv run python demos/03_event_driven_loop/enqueue.py \
   --question "What share of beauty orders ended up with a refund?"
+
+# 2 — the worker claims it, runs Level 2, writes the answer back, and stops
+#     once the queue is empty
+uv run python demos/03_event_driven_loop/worker.py --drain
 ```
 
-The room can also submit from the enqueue box in the AGENT view.
+> **Why not two terminals.** This runbook used to say "two terminals, make both
+> visible before you start" — a worker polling in one while you submit from the
+> other. It cannot work. **DuckDB takes an exclusive write lock per file**, and the
+> worker holds its connection open for its whole life, sleeping between polls, so
+> the second terminal fails at connect with `IOException: Could not set lock on
+> file … Conflicting lock is held`. The demo is single-writer, and the commands
+> above are the shape that is honest about it. See §16 for why that is a non-goal
+> rather than a bug.
 
-**On screen:** terminal 2 prints the row id. Terminal 1, unprompted, prints `claimed`,
-then the loop running, then `done` or `failed`.
+The room can also submit from the enqueue box in the AGENT view, which opens and
+releases the queue per action rather than holding it — so it works whenever a
+worker is *not* polling, and hits the same lock when one is.
+
+**On screen:** command 1 prints the row id and the queue counts. Command 2, with
+nobody typing into it, prints `claimed`, then the loop running, then `done` or
+`failed`, then exits.
 
 **What to observe:** nobody typed anything into terminal 1.
 
@@ -980,6 +993,17 @@ number it qualifies is one that gets separated from it.
 
 **The questions are templated.** A small set of patterns, parameterised. That caps how far
 any of this generalises to freely-phrased questions.
+
+**The Level 3 queue is single-writer, and that is a non-goal rather than a bug.** DuckDB
+locks the database file exclusively, so exactly one process can hold the queue at a time
+and the stage runs as enqueue-then-drain rather than as a polling worker alongside a live
+submitter. The `UPDATE … RETURNING` claim is still atomic, but atomicity across *workers*
+is a guarantee about a situation that cannot arise here. Making it true means an engine
+with real multi-writer support — SQLite in WAL mode, or Postgres — and the point of this
+level is the handoff to something nobody is watching, not the storage engine underneath
+it. Recorded because the runbook claimed the opposite for the whole life of the stage:
+it said "two terminals", and a room following it would have hit
+`IOException: Could not set lock on file`.
 
 **The items are clustered, not independent.** Each pattern contributes several
 parameterisations, so a systematic flaw in one pattern fails all of its items together.

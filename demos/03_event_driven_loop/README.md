@@ -100,23 +100,21 @@ consequence of having no retry logic, and it is worth showing rather than hiding
 
 No prior step required. The queue table is created on first connect.
 
-**This stage needs two terminals.** Make both visible on the projector before you start,
-and set the font size large **before** the session — the event-driven terminal is not a
-"view" so it gets missed in the legibility check.
+**One terminal.** Set the font size large **before** the session — the event-driven
+terminal is not a "view", so it gets missed in the legibility check.
 
-### Terminal 1 — the worker
+> **This stage used to say "two terminals", and it could never have worked.** A worker
+> polling in one terminal while you submit from another is the obvious shape for this
+> demo, and DuckDB forbids it: the lock is exclusive per database file, and the worker
+> holds its connection open for its whole life, sleeping between polls. The second
+> terminal dies at connect with
+> `IOException: Could not set lock on file … Conflicting lock is held`.
+>
+> The order below is the honest one. Each command opens the queue, does its work, and
+> releases it. The handoff the stage is about is still real — it just happens between
+> two processes that take turns rather than two that overlap.
 
-```bash
-uv run python demos/03_event_driven_loop/worker.py
-```
-
-**What appears:** `worker up. polling every 2.0s.` and a reminder that there is no
-backoff, no dead-lettering and no retry. Then nothing, until a row arrives.
-
-**What to observe:** the silence. The worker is running with nothing to do and no one
-watching it.
-
-### Terminal 2 — submit a question
+### 1 — submit a question
 
 ```bash
 uv run python demos/03_event_driven_loop/enqueue.py \
@@ -129,12 +127,27 @@ uv run python demos/03_event_driven_loop/enqueue.py --list
 uv run python demos/03_event_driven_loop/enqueue.py
 ```
 
-**What appears in terminal 2:** `queued id=N` and the status counts.
+**What appears:** `queued id=N` and the status counts. Nothing is running to pick it
+up yet, and the row sits in `queued` — which is the point. A queue whose consumer is
+down has not lost your question.
 
-**What appears in terminal 1, unprompted:** `claimed`, then the Level 2 loop running,
-then `done` or `failed`.
+### 2 — the worker
 
-**What to observe:** the handoff. Nobody typed anything into terminal 1.
+```bash
+uv run python demos/03_event_driven_loop/worker.py --drain
+```
+
+**What appears:** `worker up.`, then `claimed`, then the Level 2 loop running, then
+`done` or `failed` — and it exits once the queue is empty. No backoff, no
+dead-lettering, no retry, and the worker says so on startup.
+
+**What to observe:** the handoff. Nobody typed the question into this command; it read
+it out of a table a different process wrote, and decided on its own whether the answer
+was good enough to write back.
+
+**Polling forever** — `worker.py` with no `--drain` — is the same loop without the exit
+condition. Run it *instead of* step 2, and submit beforehand: while it polls it holds
+the queue file, so nothing else can write to it.
 
 **The question to sit with:** *the verifiers just decided, alone, whether that answer was
 good enough to write back. Would you have shipped what they accepted?*
