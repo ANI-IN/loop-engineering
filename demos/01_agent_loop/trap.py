@@ -6,6 +6,7 @@ Thin by rule. The runner, the scoring and the grid all live in src/loopeng/agent
 import argparse
 
 from loopeng.agent.trap import estimate_trap_cost, print_grid, run_trap, save_state
+from loopeng.entrypoint import run
 from loopeng.gold.build import build_gold
 from loopeng.logging import configure_logging
 from loopeng.settings import load_settings
@@ -45,4 +46,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run(main))

@@ -33,7 +33,18 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    anthropic_api_key: SecretStr
+    # Optional on the MODEL, required by DEFAULT at the door. See `load_settings`.
+    #
+    # Declaring it required here made `load_settings()` the only way to read any
+    # setting, so a path that makes no model call still could not start: the
+    # exhibit view advertised itself as the zero-spend way to read the app and
+    # demanded a key, and `enqueue.py` required a credential it never uses. The
+    # Space worked around it by injecting a fake key — the same shape of
+    # workaround this repo already identified and deleted for LangSmith.
+    #
+    # Nothing about fail-fast is given up: `load_settings()` with no argument
+    # still raises `MissingCredential` before anything else happens.
+    anthropic_api_key: SecretStr | None = None
 
     # Optional, and it has to be, because §15 promises LangSmith is advisory and never
     # the system of record. Declaring it required made that promise false: a checkout
@@ -70,13 +81,52 @@ _FIXES = {
 }
 
 
-def load_settings() -> Settings:
+def _not_set(field: str) -> str:
+    """The one place the missing-credential sentence is written.
+
+    Shared by `load_settings` and `require_api_key` so a path that defers the
+    check fails with exactly the text a path that checks up front fails with.
+    """
+    env_var, fix = _FIXES.get(field, (field.upper(), f"Set {field.upper()} in .env."))
+    return f"{env_var} is not set. {fix}"
+
+
+def load_settings(*, require_credential: bool = True) -> Settings:
+    """Configuration, frozen. Raises `MissingCredential` when the key is absent.
+
+    `require_credential=False` is for paths that provably make no model call —
+    the exhibit view and the queue's enqueue side. It is keyword-only and
+    defaults to True so that every existing caller, and every caller written
+    without reading this docstring, keeps the fail-fast behaviour: a workshop
+    that starts and then dies on a missing key forty minutes in is worse than
+    one that refuses to start.
+
+    Opting out buys the right to *read configuration*, not the right to spend.
+    `settings.anthropic_api_key` is then `None`, and every site that builds a
+    client goes through `require_api_key`, which raises the same error with the
+    same text. The check moves; it does not disappear.
+    """
     try:
-        return Settings()
+        settings = Settings()
     except ValidationError as exc:
-        lines = []
-        for error in exc.errors():
-            field = str(error["loc"][0]) if error["loc"] else "<unknown>"
-            env_var, fix = _FIXES.get(field, (field.upper(), f"Set {field.upper()} in .env."))
-            lines.append(f"{env_var} is not set. {fix}")
+        lines = [
+            _not_set(str(error["loc"][0]) if error["loc"] else "<unknown>")
+            for error in exc.errors()
+        ]
         raise MissingCredential("\n".join(lines)) from exc
+
+    if require_credential and settings.anthropic_api_key is None:
+        raise MissingCredential(_not_set("anthropic_api_key"))
+    return settings
+
+
+def require_api_key(settings: Settings) -> SecretStr:
+    """The credential, or the same failure `load_settings()` would have raised.
+
+    Every place that constructs an Anthropic client calls this. A caller that
+    opted out of the up-front check still cannot make a request without one, and
+    when it fails it fails with the message that names the variable and the fix.
+    """
+    if settings.anthropic_api_key is None:
+        raise MissingCredential(_not_set("anthropic_api_key"))
+    return settings.anthropic_api_key

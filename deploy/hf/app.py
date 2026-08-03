@@ -27,15 +27,19 @@ ROOT = next(
 )
 sys.path.insert(0, str(ROOT / "src"))
 
-# The exhibit touches no live path, but settings still validate on import, so give them
-# something syntactically valid rather than leaving a half-configured process.
+# There is deliberately no ANTHROPIC_API_KEY line here any more, and no
+# LANGSMITH_API_KEY line either. Both were fake values injected to get the exhibit
+# past a setting this repo declared required while its own documentation said the
+# path needed nothing.
 #
-# There is deliberately no LANGSMITH_API_KEY line here any more. There used to be one,
-# and it was a workaround for this repo's own config contradicting this repo's own
-# documented rule: §15 says LangSmith is advisory, the setting was declared required,
-# and the fake value was how the exhibit got past that. The setting is optional now, so
-# the workaround has nothing left to work around.
-os.environ.setdefault("ANTHROPIC_API_KEY", "exhibit-no-live-calls")
+# LangSmith went first: §15 says it is advisory, so the setting became optional and
+# the workaround had nothing left to work around. ANTHROPIC_API_KEY was the same
+# defect one file over — the exhibit makes no model call, so it now loads settings
+# with `require_credential=False` and asks for no credential at all.
+#
+# A fake key is not a harmless placeholder. It is a config contradiction wearing a
+# disguise, and it means a real misconfiguration on the Space would have presented
+# as a model error rather than as a missing variable.
 os.environ.setdefault("LANGSMITH_TRACING", "false")
 os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
 

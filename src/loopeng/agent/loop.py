@@ -39,7 +39,7 @@ import structlog
 from loopeng.caching import user_content
 from loopeng.prompts import render_prompt
 from loopeng.registry import spec_for
-from loopeng.settings import load_settings
+from loopeng.settings import load_settings, require_api_key
 from loopeng.usage import CallUsage, UsageLedger
 from loopeng.warehouse.connect import QueryTimeout, run_sql
 
@@ -262,6 +262,24 @@ def _build_messages(question: str, level: str, history: list[Attempt],
         }
     ]
     for attempt in history:
+        # A call that never reached the model produced no query, so there is no
+        # turn to replay and nothing the database ever complained about.
+        #
+        # This used to append `{"role": "assistant", "content": ""}` followed by
+        # "That query failed with: RateLimitError: 429 — return a corrected
+        # query", which is false twice over: the model wrote nothing to correct,
+        # and the *database* never saw it. `Attempt.model_call_failed` already
+        # states this rule in its own docstring — "Renderers must not say
+        # `database said` about a call that never got as far as the database" —
+        # and this builder was the one place ignoring it.
+        #
+        # The empty assistant turn was the more expensive half. A non-final
+        # assistant message with empty content is rejected by the API, and
+        # `triage_call_failure` maps that 400 to the FATAL `bad_request`, so a
+        # transient 429 that should have been retried ended the run instead and
+        # pointed the operator at registry.py — the wrong file entirely.
+        if attempt.model_call_failed:
+            continue
         messages.append({"role": "assistant", "content": attempt.sql})
         # The only feedback this level has. Not a hint, not a rule reminder — the
         # database's own complaint, which is all a Level 1 loop is entitled to.
@@ -294,7 +312,7 @@ def run_question(
     spec = spec_for(role)
     if client is None:
         settings = load_settings()
-        client = anthropic.Anthropic(api_key=settings.anthropic_api_key.get_secret_value())
+        client = anthropic.Anthropic(api_key=require_api_key(settings).get_secret_value())
 
     ledger = UsageLedger()
     attempts: list[Attempt] = []

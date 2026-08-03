@@ -33,7 +33,7 @@ from loopeng.agent.loop import (
 )
 from loopeng.contracts import VerifyContext
 from loopeng.registry import spec_for
-from loopeng.settings import load_settings
+from loopeng.settings import load_settings, require_api_key
 from loopeng.usage import CallUsage, UsageLedger
 from loopeng.verify.verifiers import VerifyResult, verify
 from loopeng.warehouse.connect import QueryTimeout, run_sql
@@ -143,7 +143,7 @@ def run_verified(
         import anthropic
 
         settings = load_settings()
-        client = anthropic.Anthropic(api_key=settings.anthropic_api_key.get_secret_value())
+        client = anthropic.Anthropic(api_key=require_api_key(settings).get_secret_value())
 
     ledger = UsageLedger()
     attempts: list[VerifiedAttempt] = []

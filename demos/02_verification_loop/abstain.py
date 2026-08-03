@@ -5,6 +5,7 @@ Thin by rule. Abstention scoring and the view both live in src/loopeng/triage/.
 
 import argparse
 
+from loopeng.entrypoint import run
 from loopeng.logging import configure_logging
 from loopeng.sweep.orchestrator import load_all
 from loopeng.triage.abstain import curve
@@ -41,4 +42,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run(main))

@@ -6,6 +6,7 @@ view — see demos/03_event_driven_loop/README.md.
 
 import argparse
 
+from loopeng.entrypoint import run
 from loopeng.gold.build import build_gold
 from loopeng.logging import configure_logging
 from loopeng.queue import store
@@ -33,7 +34,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     configure_logging()
-    settings = load_settings()
+    # The exhibit makes zero model calls, which is the whole reason it is the view
+    # to point a browser at when you want the app readable without spending. It
+    # demanded a key anyway, thirteen lines above the comment saying it did not.
+    settings = load_settings(require_credential=args.view != "exhibit")
     warehouse = ensure_warehouse(settings.warehouse_path, seed=settings.warehouse_seed)
     items = build_gold(warehouse) if args.view in ("trap", "verify", "exhibit") else []
 
@@ -53,4 +57,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run(main))

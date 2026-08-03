@@ -5,6 +5,7 @@ Thin by rule. The worker lives in src/loopeng/queue/worker.py.
 
 import argparse
 
+from loopeng.entrypoint import run
 from loopeng.logging import configure_logging
 from loopeng.queue import store, worker
 from loopeng.settings import load_settings
@@ -38,4 +39,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run(main))

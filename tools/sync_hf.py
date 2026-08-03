@@ -193,14 +193,31 @@ def assert_frontmatter(staged: Path) -> dict[str, str]:
 
 
 def assert_no_secrets_referenced(staged: Path) -> None:
-    """The Space entry point must not require a real key to import."""
+    """The Space entry point must not set a credential at all.
+
+    This check used to REQUIRE the placeholder `exhibit-no-live-calls`, because
+    settings validated a mandatory key at import and the Space would otherwise die
+    on startup. That placeholder was a config contradiction wearing a disguise: the
+    exhibit makes no model call, so it should never have needed a key, fake or real.
+
+    `load_settings(require_credential=False)` removed the reason, so the rule
+    inverts and gets stricter. The Space must set NO ANTHROPIC_API_KEY — not a real
+    one, which would make a public page able to spend, and not a fake one, which
+    would turn a genuine misconfiguration into a confusing model error instead of a
+    named missing variable.
+    """
     app = (staged / "app.py").read_text(encoding="utf-8")
-    if "exhibit-no-live-calls" not in app:
-        raise SyncRefused(
-            "app.py does not set the placeholder credentials. Settings validate at "
-            "import, so without them the Space dies on startup — and with a REAL key "
-            "it would be a public page that can spend."
-        )
+    for line in app.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            continue
+        if "ANTHROPIC_API_KEY" in stripped:
+            raise SyncRefused(
+                f"app.py sets or reads ANTHROPIC_API_KEY: {stripped!r}. The exhibit "
+                f"makes no model call and must ask for no credential — a real key "
+                f"would make a public page able to spend, and a fake one hides a "
+                f"real misconfiguration behind a model error."
+            )
 
 
 # ---------------------------------------------------------------------------

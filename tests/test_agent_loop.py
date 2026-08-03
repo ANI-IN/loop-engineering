@@ -363,3 +363,63 @@ def test_a_refused_call_is_still_recorded_in_the_ledger(warehouse):
 
     assert run.ledger.totals()["n_calls"] == 1
     assert run.ledger.by_outcome() == {"error": 1}
+
+
+# ---- a failed model call is not a failed query -------------------------------
+
+
+def _attempt(n, sql, error, outcome):
+    from loopeng.agent.loop import Attempt
+    from loopeng.usage import CallUsage
+
+    return Attempt(
+        n=n, sql=sql, rows=None, error=error,
+        usage=CallUsage(model_id="m", outcome=outcome),
+    )
+
+
+def test_a_failed_model_call_contributes_no_turns_to_the_retry():
+    """The API failed, so the model wrote nothing and the database saw nothing.
+
+    This used to append an empty assistant turn plus "That query failed with:
+    RateLimitError: 429 — return a corrected query", which is false twice: there
+    is no query to correct, and the complaint is attributed to the wrong system.
+    """
+    from loopeng.agent.loop import _build_messages
+
+    history = [_attempt(1, "", "RateLimitError: 429 rate limited", "rate_limit")]
+    messages = _build_messages("q", "L3", history, role="worker")
+
+    assert len(messages) == 1, "a call that never happened added turns to the prompt"
+    assert not any(m["content"] == "" for m in messages), "empty assistant turn"
+    assert not any("That query failed" in str(m["content"]) for m in messages)
+    assert not any("RateLimitError" in str(m["content"]) for m in messages)
+
+
+def test_a_query_that_really_failed_is_still_fed_back():
+    """The fix must not silence genuine database errors — that is the whole loop."""
+    from loopeng.agent.loop import _build_messages
+
+    history = [_attempt(1, "SELECT nope FROM orders", 'Binder Error: no "nope"', "ok")]
+    messages = _build_messages("q", "L3", history, role="worker")
+
+    assert len(messages) == 3
+    assert messages[1] == {"role": "assistant", "content": "SELECT nope FROM orders"}
+    assert "That query failed with" in messages[2]["content"]
+    assert 'Binder Error: no "nope"' in messages[2]["content"]
+
+
+def test_a_failed_call_between_two_real_attempts_drops_only_itself():
+    from loopeng.agent.loop import _build_messages
+
+    history = [
+        _attempt(1, "SELECT 1", "Binder Error: first", "ok"),
+        _attempt(2, "", "APIStatusError: 529 overloaded", "transient"),
+        _attempt(3, "SELECT 2", "Binder Error: third", "ok"),
+    ]
+    messages = _build_messages("q", "L3", history, role="worker")
+
+    assert len(messages) == 5, "one prompt turn plus two real attempts"
+    assert not any("529" in str(m["content"]) for m in messages)
+    assert "Binder Error: first" in messages[2]["content"]
+    assert "Binder Error: third" in messages[4]["content"]

@@ -7,6 +7,7 @@ renders. The loop itself lives in src/loopeng/agent/loop.py.
 import argparse
 
 from loopeng.agent.loop import run_question
+from loopeng.entrypoint import run
 from loopeng.logging import configure_logging
 from loopeng.settings import load_settings
 from loopeng.views.agent import build_run_app
@@ -45,4 +46,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run(main))
