@@ -33,17 +33,11 @@ frontier calls are spent once, on the measurement run, behind the live marker.
 """
 
 from dataclasses import dataclass
-from pathlib import Path
 
 import structlog
 
-from loopeng.agent.classify import Outcome, judge
-from loopeng.gold.build import GoldItem
 from loopeng.metric import Metric
 from loopeng.triage.abstain import decide
-from loopeng.verify.batch import as_agent_run
-from loopeng.verify.governance import verify_governed
-from loopeng.verify.loop import run_verified
 
 log = structlog.get_logger(__name__)
 
@@ -84,67 +78,15 @@ def escalation_rate(runs: list[dict], threshold: float) -> Metric | None:
     return Metric.from_counts(n_declined, len(runs)) if runs else None
 
 
-def run_escalation(
-    runs: list[dict],
-    items_by_id: dict[str, GoldItem],
-    warehouse: Path,
-    *,
-    threshold: float,
-    role: str = "frontier",
-    level: str = "L0",
-    limit: int = MAX_ESCALATIONS,
-    client=None,
-    verifier=verify_governed,
-) -> dict:
-    """Escalate the declined questions and measure whether it helped."""
-    selected, n_declined = select_for_escalation(runs, threshold, limit)
-    by_id = {r["item_id"]: r for r in runs}
-
-    results = []
-    for run in selected:
-        item = items_by_id[run["item_id"]]
-        decision = decide(run, threshold)
-        handoff = Handoff(item.item_id, item.question, item.rules, decision.reason)
-        escalated = run_verified(
-            handoff.question, warehouse=warehouse, rules=handoff.rules, role=role,
-            level=level, max_attempts=3, item_id=handoff.item_id,
-            client=client, verifier=verifier,
-        )
-        judgement = judge(as_agent_run(escalated), item)
-        was_correct = bool(by_id[run["item_id"]].get("correct"))
-        now_correct = judgement.outcome is Outcome.CORRECT
-        results.append({
-            "item_id": item.item_id,
-            "declined_because": handoff.declined_because,
-            "cheap_model_was_correct": was_correct,
-            "frontier_model_correct": now_correct,
-            "converted": now_correct and not was_correct,
-            "cost_usd": escalated.cost_usd(),
-            "termination": str(escalated.termination),
-        })
-        log.info("escalated", item_id=item.item_id, converted=results[-1]["converted"])
-
-    converted = sum(1 for r in results if r["converted"])
-    conversion = Metric.from_counts(converted, len(results)) if results else None
-    rate = Metric.from_counts(n_declined, len(runs)) if runs else None
-
-    return {
-        "threshold": threshold, "role": role, "level": level,
-        "n_asked": len(runs),
-        "n_declined": n_declined,
-        "n_escalated": len(results),
-        "capped_at": limit,
-        "was_capped": n_declined > limit,
-        "escalation_rate": rate.render() if rate else "not yet measured",
-        "n_converted": converted,
-        "conversion_rate": conversion.render() if conversion else "not yet measured",
-        "cost_usd": {"value": round(sum(r["cost_usd"] for r in results), 6),
-                     "source": "estimated"},
-        "underpowered_note": (
-            f"Conversion is measured over {len(results)} escalated questions, capped at "
-            f"{limit} to make the cost a ceiling rather than something that scales with "
-            "the decline rate. At this n the interval is roughly +/-25 points: this "
-            "shows THAT escalation converts, not how often. Do not quote the rate."
-        ),
-        "results": results,
-    }
+# `run_escalation` lived here and had no callers.
+#
+# It was the function this module exists for: it took the declined questions, asked
+# the frontier model, and produced the artifact the OVERSIGHT and exhibit escalation
+# panels read. Nothing anywhere invoked it — no demo, no test, no view — so the
+# artifact could not be produced by any shipped entry point, and the panels' "not
+# yet measured" was a claim that a measurement was pending rather than absent.
+#
+# Deleted rather than wired, because wiring it is a feature decision about what the
+# session should spend, not a repair. The panels now say the artifact is not shipped.
+# `select_for_escalation`, `escalation_rate`, `Handoff` and `MAX_ESCALATIONS` are all
+# genuinely used and remain.

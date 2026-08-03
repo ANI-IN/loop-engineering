@@ -487,9 +487,9 @@ is committed; `.env` holds values and is ignored.
 | `LANGSMITH_API_KEY` | the dataset upload and trace links | Everything works without it; traces degrade, measurements do not. |
 | `LANGSMITH_PROJECT` | the project experiments are filed under | Defaults to the workshop project rather than the SDK's shared `default` bucket. |
 | `LANGSMITH_TRACING` | — | Defaults to **false** and must stay false for the offline suite. See below. |
-| `LOOPENG_LIVE` | a *hosted* instance that may call models | Off unless explicitly set. A key alone does not enable it. |
-| `LOOPENG_LIVE_CEILING_USD` | a hosted live instance | Required when `LOOPENG_LIVE` is set. Live with no ceiling is not a configuration this accepts; it refuses rather than defaulting to a number nobody chose. |
-| `LOOPENG_LIVE_MAX_CALLS` | a hosted live instance | Optional call ceiling alongside the spend ceiling. |
+| `LOOPENG_LIVE` | a *hosted* instance that may call models | **INERT.** Read by `live_mode.read_config()`, which no entry point calls. Setting it changes nothing at runtime. See SECURITY.md. |
+| `LOOPENG_LIVE_CEILING_USD` | a hosted live instance | **INERT.** Read by `live_mode.read_config()`, which no entry point calls. Setting it changes nothing at runtime. See SECURITY.md. |
+| `LOOPENG_LIVE_MAX_CALLS` | a hosted live instance | **INERT.** Read by `live_mode.read_config()`, which no entry point calls. Setting it changes nothing at runtime. See SECURITY.md. |
 
 Settings are loaded once, frozen, and fail fast. A missing key raises an error naming the
 exact variable and the exact fix, rather than failing forty minutes into a session.

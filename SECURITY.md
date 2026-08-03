@@ -64,24 +64,42 @@ does not reliably remove a secret from a hosting provider's servers.
 
 ## Running a hosted instance that *can* call models
 
-Off unless three things are all true, because the failure mode is somebody else's
-money and it is silent until the bill arrives:
+> ### There is no spend guard in this build. Do not rely on one.
+>
+> `src/loopeng/views/live_mode.py` implements a ceiling, and it is tested. **No
+> view calls it.** `LiveBudget` is never constructed, `read_config()` is never
+> invoked by any entry point, and `LOOPENG_LIVE` / `LOOPENG_LIVE_CEILING_USD` are
+> read by nothing at runtime.
+>
+> So if you host an instance with a working key and a view that spends, **nothing
+> in this repository caps what strangers can spend on it.** Setting those two
+> variables will not change that; they are inert. The protection you get from this
+> project is that the **exhibit makes no model calls at all** — enforced
+> structurally, by a test that spies on the `anthropic.Anthropic` constructor and
+> fails if one is ever built (`tests/test_exhibit.py`). That test is the real
+> boundary, and it is the reason a public Space here cannot spend anyone's money.
+>
+> **Host the exhibit. Do not host a live view publicly.** If you need one, put it
+> behind authentication you control and set a spending limit in the Anthropic
+> console, which is enforcement outside this codebase and therefore actually
+> enforcement.
+>
+> This section previously described the three conditions below as though they
+> gated something, with the caveat at the bottom. That ordering is how a reader
+> ends up trusting a control that does not exist, which is the exact failure this
+> project is about — so the caveat is now the heading.
 
-1. `LOOPENG_LIVE=1` set explicitly. A key alone does not enable it — a key can
+**What `live_mode.py` would do, if it were wired.** Recorded because the design is
+sound and the module is worth finishing, not because any of it is in force:
+
+1. `LOOPENG_LIVE=1` set explicitly. A key alone would not enable it — a key can
    arrive for a dozen reasons that are not "please spend it".
 2. `ANTHROPIC_API_KEY` set to something real.
-3. `LOOPENG_LIVE_CEILING_USD` set. Live with no ceiling is not a configuration
-   this accepts; it refuses rather than defaulting to a number nobody chose.
+3. `LOOPENG_LIVE_CEILING_USD` set. Live with no ceiling is not a configuration it
+   accepts; it refuses rather than defaulting to a number nobody chose.
 
-**A public host with a working key is unbounded spend by strangers.** The ceiling
-turns unbounded into capped, which is not the same as safe: anyone with the link
-can burn the cap, repeatedly, and a restart resets it. Keep it private, or do not
-host it live at all — the exhibit exists precisely so a public link needs none of
-this.
-
-Note the honest caveat recorded in the README: as of now that guard is
-implemented and tested but **not wired into any view**, so it is a declared
-control rather than an enforced one.
+Even wired, the ceiling would turn unbounded into capped, which is not the same as
+safe: anyone with the link can burn the cap, repeatedly, and a restart resets it.
 
 ## Data
 

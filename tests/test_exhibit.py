@@ -65,7 +65,6 @@ def test_the_exhibit_profile_runs_no_cells():
 def test_the_exhibit_cap_is_zero():
     """Any attempt to run a cell under this profile refuses immediately."""
     assert EXHIBIT.cap_usd == 0.0
-    assert EXHIBIT.escalation_allowance == 0
     assert EXHIBIT.runs_ablation is False
 
 

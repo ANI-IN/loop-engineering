@@ -86,7 +86,7 @@ specific to this area.
 | **Chrome** | The shared furniture: the stamps, the badges, the projector styling, the queue settings, and the launcher. |
 | **Pure renderer** | A function in `views/render.py` that turns data into a markdown string and composes no Gradio. Used by the terminal paths too. |
 | **Exhibit** | The frozen public build. Its guarantee is **structural**: no Anthropic client is ever constructed. |
-| **Live mode** | The quantitative guard for a hosted instance that *may* spend: off unless three things are true, and capped even then. At `views/live_mode.py`. |
+| **Live mode** | **NOT WIRED.** `views/live_mode.py` implements a spend ceiling for a hosted instance and is tested, but no view calls it — `LiveBudget` is never constructed and `read_config()` is never invoked outside its own tests. Read it as a design, not a control. The enforced guarantee is the exhibit's, which builds no client at all. |
 | **Named secondary** | The pre-registered comparison DIAL renders: the cheap model with a loop against the expensive model one-shot. |
 
 ---
@@ -291,10 +291,26 @@ the best part — V1 and V2 are pure functions over SQL text, so the rule checks
 surface, and the swap all work at zero cost on stored queries. AGENT is **disabled, not
 hidden by CSS**: a button that is merely invisible is still a button.
 
-**`live_mode.py` owns the weaker, quantitative version of the same idea.** Where the exhibit
-guarantees no client is ever constructed, live mode allows one and stops it after a fixed
-amount. It is off unless **three** things are all true, because the failure mode is somebody
-else's money and it is silent until the bill arrives:
+**`live_mode.py` owns the weaker, quantitative version of the same idea — and it is
+not wired to anything.**
+
+> **Read this before the three conditions below.** `LiveBudget` is never constructed
+> outside its own tests, and `read_config()` is never called by any view, demo or
+> entry point. `LOOPENG_LIVE`, `LOOPENG_LIVE_CEILING_USD` and `LOOPENG_LIVE_MAX_CALLS`
+> are inert: setting them changes nothing at runtime.
+>
+> The conditions below describe a design that is implemented and tested, not a
+> control that is in force. The guarantee this project actually enforces is the
+> exhibit's — no `anthropic.Anthropic` is ever constructed, asserted by a test that
+> spies on the constructor. That one is structural; this one is aspirational.
+>
+> A guard documented as active and wired to nothing is the precise defect this
+> repository exists to demonstrate, so it is labelled rather than quietly left.
+
+Where the exhibit guarantees no client is ever constructed, live mode *would* allow one
+and stop it after a fixed amount. It *would* be off unless **three** things are all
+true, because the failure mode is somebody else's money and it is silent until the bill
+arrives:
 
 1. `LOOPENG_LIVE` is set **explicitly** — not inferred from a key being present, since a key
    can arrive for a dozen reasons that are not "please spend it".

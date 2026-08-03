@@ -61,10 +61,26 @@ def _curve_table(runs: list[dict]) -> str:
     return "\n".join(lines)
 
 
+# Escalation has no producer in this repository.
+#
+# `triage/escalate.py::run_escalation` was the only thing that wrote this artifact,
+# and nothing called it, so it was deleted. Saying "not yet measured" here would
+# claim a measurement is PENDING, when in fact no shipped entry point can produce
+# one — which is the same defect as a rule declared and never enforced, rendered
+# onto a projector.
+NOT_SHIPPED_ESCALATION = (
+    "Escalation is **not measured in this build.** The policy — decline detection, "
+    "selection and the cap — is implemented and tested in `triage/escalate.py`, but "
+    "no entry point runs it against live questions, so there is no artifact to read. "
+    "This says nothing about whether escalation converts; it says this repository "
+    "does not currently find out."
+)
+
+
 def _escalation_panel(path: Path) -> str:
     path = Path(path)
     if not path.is_file():
-        return f"### Escalation\n\n_{NOT_MEASURED}_"
+        return f"### Escalation\n\n_{NOT_SHIPPED_ESCALATION}_"
     body = json.loads(path.read_text())
     return "\n".join([
         "### Escalation — when the cheap model declines, hand it up",

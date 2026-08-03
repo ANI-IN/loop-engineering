@@ -98,11 +98,6 @@ class Profile:
     cap_usd: float
     runs_ablation: bool
     note: str
-    # Questions the frontier model may answer live, outside the cells. Delivery keeps
-    # a small allowance so "Haiku declines, Sonnet takes it" happens in the room
-    # rather than being cited — an escalation nobody watches run is a slide.
-    escalation_allowance: int = 0
-
     # Which prompt levels this profile measures. Both, except for `smoke`, whose whole
     # job is to prove the pipeline for pennies rather than to measure the L0/L3 gap.
     levels: tuple[str, ...] = ("L0", "L3")
@@ -126,7 +121,6 @@ DELIVERY = Profile(
     replicates=1,
     cap_usd=0.75,
     runs_ablation=False,
-    escalation_allowance=5,
     note=(
         "Haiku only, 4 cells, 1 replicate, plus a 5-question Sonnet allowance so live "
         "escalation runs in the room. Sonnet's CELLS and the noise floors are REFERENCE "
@@ -141,7 +135,6 @@ DEVELOPMENT = Profile(
     replicates=3,
     cap_usd=8.0,
     runs_ablation=True,
-    escalation_allowance=12,
     allows_limit=True,
     note="Both models, replicates on both L0 loop cells, ablation. Run once, not per delivery.",
 )
@@ -171,7 +164,6 @@ EXHIBIT = Profile(
     replicates=0,
     cap_usd=0.0,
     runs_ablation=False,
-    escalation_allowance=0,
     note=(
         "A frozen exhibit. Makes ZERO model calls: every figure is a stored measurement "
         "rendered with its date, and the paths that would spend are disabled rather "
