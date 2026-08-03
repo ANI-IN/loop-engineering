@@ -7,7 +7,7 @@ the exact environment variable and the exact fix.
 
 from pathlib import Path
 
-from pydantic import SecretStr, ValidationError
+from pydantic import SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from loopeng.env_guard import EnvironmentUnsafe, check_environment
@@ -56,6 +56,31 @@ class Settings(BaseSettings):
     # See loopeng.langsmith_ds.
     langsmith_api_key: SecretStr | None = None
     langsmith_project: str = "loop-eng-workshop"
+
+    @field_validator("anthropic_api_key", "langsmith_api_key", mode="before")
+    @classmethod
+    def _blank_is_absent(cls, value):
+        """An empty variable means "not configured", not "configured as empty".
+
+        `.env.example` ships `LANGSMITH_API_KEY=` with no value and the onboarding
+        says, correctly, to leave it that way. pydantic read that as `SecretStr('')`
+        — which is not None — so `langsmith_ds.credential()` returned `''`, the
+        `if api_key is None` guard did not fire, and the code went on to construct
+        `Client(api_key='')`.
+
+        The result: following the documented setup exactly produced an auth failure
+        at the first network call, instead of the "degrades to a no-op with one
+        warning naming the variable" that §15, SECURITY.md and this module's own
+        docstring all promise. A supported configuration that the config layer
+        could not represent.
+
+        Applies to both keys. For ANTHROPIC_API_KEY it means a blank line is
+        treated as missing, so `load_settings()` raises the message naming the
+        variable and the fix rather than sending an empty key to the API.
+        """
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     # Tracing is opt-in, and defaults off. The LangSmith SDK enables itself from
     # environment variables, so a developer machine with LANGSMITH_TRACING exported
@@ -109,10 +134,22 @@ def load_settings(*, require_credential: bool = True) -> Settings:
     try:
         settings = Settings()
     except ValidationError as exc:
-        lines = [
-            _not_set(str(error["loc"][0]) if error["loc"] else "<unknown>")
-            for error in exc.errors()
-        ]
+        # "not set" and "set to something unparseable" are different problems and
+        # used to produce the same sentence. Copying `.env.example` to `.env` with
+        # an optional line left blank reported `WAREHOUSE_SEED is not set` for a
+        # variable that was very much set — to an empty string — which sends the
+        # reader looking for a missing line that is right in front of them.
+        lines = []
+        for error in exc.errors():
+            field = str(error["loc"][0]) if error["loc"] else "<unknown>"
+            given = error.get("input")
+            if error.get("type") == "missing" or given in (None, ""):
+                lines.append(_not_set(field))
+            else:
+                lines.append(
+                    f"{field.upper()} is set to {given!r}, which is not valid: "
+                    f"{error.get('msg', 'invalid value')}."
+                )
         raise MissingCredential("\n".join(lines)) from exc
 
     if require_credential and settings.anthropic_api_key is None:
