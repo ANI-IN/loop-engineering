@@ -34,6 +34,42 @@ _PATTERNS = {
     "refunds_net": re.compile(r"refunds", re.IGNORECASE),
 }
 
+# Declared rules the regex verifier answers through ANOTHER rule's pattern.
+#
+# `minor_units` and `multi_currency` are one SQL change, so one pattern covers
+# both — mirroring `RULE_CHECKS`, where both map to `check_currency`.
+#
+# Declared here rather than left as an `or` inside the loop because the mapping is
+# a claim about coverage, and coverage is what this module is for. See
+# `uncovered_rules`.
+_ROUTED = {"minor_units": "multi_currency"}
+
+
+def uncovered_rules() -> list[str]:
+    """Declared rules the regex verifier cannot check at all.
+
+    `governance.assert_full_coverage()` runs at import and refuses to start when a
+    rule in `semantic_model.yaml` has no entry in `RULE_CHECKS`. That gate covers
+    the AST verifier and NOT this one, so `_PATTERNS` was a hand-maintained dict
+    that happened to correspond — carefully, but by authorship rather than by any
+    invariant.
+
+    Add an eighth rule to the config and the build gate forces an AST check.
+    Nothing forced a regex pattern. The swap demo would then report the regex
+    verifier catching fewer violations, and a room would be told that gap is "the
+    score goes up and the quality goes down" when part of it was simply a rule the
+    regex verifier was never given.
+
+    A measuring instrument silently not measuring one of its dimensions is the
+    exact failure this module exists to demonstrate. It should not be demonstrated
+    by accident, in the module itself.
+    """
+    from loopeng.verify.governance import declared_rules
+
+    covered = set(_PATTERNS) | set(_ROUTED)
+    return sorted(set(declared_rules()) - covered)
+
+
 _COMPLAINTS = {
     "soft_delete": "Soft-deleted rows are not excluded.",
     "cancelled_orders": "Cancelled orders are not excluded.",
@@ -57,8 +93,9 @@ def verify_with_regex(context: VerifyContext) -> VerifyResult:
     sql = context.sql
     violations = []
     for rule, pattern in _PATTERNS.items():
-        applicable = rule in context.rules or (
-            rule == "multi_currency" and "minor_units" in context.rules
+        applicable = rule in context.rules or any(
+            routed in context.rules and target == rule
+            for routed, target in _ROUTED.items()
         )
         if not applicable:
             continue

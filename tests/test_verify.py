@@ -456,3 +456,40 @@ def test_the_other_rules_still_accept_their_legitimate_shapes(rule, sql):
         question="(legitimate)", sql=sql, schema_ddl="", rules=(rule,),
         attempt=1, execution_rows=((1,),), execution_error=None,
     )).ok
+
+
+# ---- the regex twin must be given every rule, or the swap demo lies ----------
+
+
+def test_the_regex_verifier_covers_every_declared_rule():
+    """The gate the AST verifier has had since the V2 build, applied to its twin.
+
+    `governance.assert_full_coverage()` refuses to start when a declared rule has
+    no AST check. Nothing made the same demand of the regex verifier, so a rule
+    added to semantic_model.yaml would force an AST check and not a pattern — and
+    the swap demo would report the resulting gap as "the regex verifier is worse"
+    when part of it was a rule it was never handed.
+    """
+    from loopeng.verify.regex_verifiers import uncovered_rules
+
+    assert uncovered_rules() == [], (
+        f"declared rules the regex verifier cannot check: {uncovered_rules()}. "
+        f"Add a pattern, or route it in _ROUTED with the reason."
+    )
+
+
+def test_a_new_declared_rule_is_reported_as_uncovered(monkeypatch):
+    """The gate must be able to fail, or it is decoration."""
+    from loopeng.verify import governance, regex_verifiers
+
+    original = governance.declared_rules()  # captured BEFORE patching, or it recurses
+    monkeypatch.setattr(governance, "declared_rules", lambda: (*original, "new_rule"))
+    assert "new_rule" in regex_verifiers.uncovered_rules()
+
+
+def test_the_two_verifiers_answer_the_same_rule_set():
+    """Whatever the swap demo shows, it must not be a difference in scope."""
+    from loopeng.verify.regex_verifiers import _PATTERNS, _ROUTED
+    from loopeng.verify.verifiers import RULE_CHECKS
+
+    assert set(_PATTERNS) | set(_ROUTED) == set(RULE_CHECKS)
