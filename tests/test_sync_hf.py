@@ -242,3 +242,31 @@ def test_the_dry_run_reports_what_it_is_sending(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "staged" in out and "file(s)" in out
     assert "sdk gradio" in out
+
+
+# ---- the Space runs the gradio the suite was tested against ------------------
+
+
+def test_the_space_sdk_version_comes_from_the_lock():
+    """`sdk_version` was the typed string "6.20.0", making three uncoupled sources
+    of truth for the gradio version — pyproject.toml, this tool, and
+    deploy/hf/requirements.txt — and this is the one that decides what the hosted
+    Space actually runs. Bumping gradio anywhere else left the public page pinned
+    to a version the tests never exercised, with nothing failing."""
+    assert sync_hf.required_frontmatter()["sdk_version"] == sync_hf.locked_versions()["gradio"]
+
+
+def test_the_committed_space_readme_declares_the_locked_gradio():
+    readme = (REPO_ROOT / "deploy" / "hf" / "README.md").read_text(encoding="utf-8")
+    assert f"sdk_version: {sync_hf.locked_versions()['gradio']}" in readme
+
+
+def test_a_stale_frontmatter_version_is_refused(staged, monkeypatch):
+    """The coupling must be able to fail, or it is decoration."""
+    original = sync_hf.locked_versions()  # captured BEFORE patching
+    monkeypatch.setattr(
+        sync_hf, "locked_versions", lambda: {**original, "gradio": "99.0.0"}
+    )
+    with pytest.raises(sync_hf.SyncRefused) as refusal:
+        sync_hf.assert_frontmatter(staged)
+    assert "sdk_version" in str(refusal.value)
