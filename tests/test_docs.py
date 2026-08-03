@@ -653,3 +653,33 @@ def test_the_readme_states_that_no_chart_appears_without_live_calls():
     body = README.read_text(encoding="utf-8")
     assert "without live Claude API calls" in body
     assert "--view exhibit" in body
+
+
+def test_the_readme_quotes_the_real_deselected_count():
+    """The README shows expected pytest output. Only part of it is worth pinning.
+
+    The `passed` count moves every time a test is added — including when this test
+    was added, which made the first version of it fail against the number it had
+    just changed. Pinning it would force a README edit on every commit that adds a
+    test, and the README already says the count moves.
+
+    `deselected` is different. It is the five live-marked tests, it is stable, and
+    the README makes a CLAIM about it — "5 deselected is correct, not a problem" —
+    which would be wrong if the live suite grew and nobody noticed. That is the
+    part a reader could be misled by, so that is the part asserted.
+    """
+    quoted = re.search(r"^(\d+) passed, (\d+) deselected$",
+                       README.read_text(encoding="utf-8"), re.MULTILINE)
+    assert quoted, "the README no longer shows an expected pytest summary line"
+
+    collected = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", "-m", "live"],
+        capture_output=True, text=True, cwd=REPO_ROOT,
+    ).stdout
+    tally = re.search(r"(\d+)/(\d+) tests collected", collected)
+    assert tally, f"could not read a collection tally from:\n{collected[-400:]}"
+
+    live = int(tally.group(1))
+    assert int(quoted.group(2)) == live, (
+        f"README says {quoted.group(2)} deselected; there are {live} live tests"
+    )

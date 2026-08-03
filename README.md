@@ -634,11 +634,13 @@ uv run pytest -q
 **Expected output** from the last command:
 
 ```
-952 passed, 5 deselected
+970 passed, 5 deselected
 ```
 
-The exact count moves as tests are added; what matters is `passed` with **no failures**,
-and `deselected` rather than `skipped` for the live tests.
+The `passed` count moves as tests are added and the number above is illustrative —
+what matters is `passed` with **no failures**, and `deselected` rather than `skipped`
+for the live tests. The `5 deselected` is pinned by a test, because that number is a
+claim: it says the live suite is exactly the five tests that cost money.
 
 - **`5 deselected` is correct, not a problem.** `pyproject.toml` sets
   `addopts = "-m 'not live'"`, which excludes the five tests that hit the network and
