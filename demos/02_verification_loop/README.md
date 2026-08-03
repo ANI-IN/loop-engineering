@@ -5,6 +5,50 @@
 
 ---
 
+## Purpose
+
+**Show a loop that can reject a query which ran perfectly well — and then show how easy
+it is to weaken the thing doing the rejecting without anyone noticing.**
+
+Four entry points, in the order a room should meet them:
+
+| entry point | what it demonstrates |
+|---|---|
+| `run.py` | One question through the verifiers. A query that executes, returns rows, and is sent back anyway with a named rule. |
+| `regex_swap.py` | The same questions with the parse-tree checks swapped for regexes. The score goes **up** while the instrument catches **less**. |
+| `failure_paths.py` | The three ways a run ends without succeeding. A branch nobody has watched fire is a branch nobody has tested. |
+| `abstain.py` | The loop declining to answer, and the coverage/precision trade that decision creates. |
+
+The single most important beat is `regex_swap.py --level L0`: **a fully satisfied verifier
+sitting next to almost nothing correct.** That is the honest ceiling of a structural
+check, and it is the failure people recognise from their own systems.
+
+---
+
+## Prerequisites specific to this stage
+
+| | |
+|---|---|
+| **API key** | **Required** by `run.py`, `regex_swap.py` and `failure_paths.py`. Not required by `abstain.py`, which reads cell files off disk and makes no call. |
+| **Earlier stages** | None for the first three. **`abstain.py` is the exception**: it needs a measured cell on disk, which is stage 04's output. It says so rather than failing obscurely — see the captured message below. |
+| **Cost** | More per question than Level 1: each verification round is another call, and a rejected attempt regenerates. `regex_swap.py` runs the same questions twice, once per verifier, so roughly double a single pass. `failure_paths.py` makes real calls on purpose. |
+
+**Which commands here are free.** `--help` on any of the four entry points — captured
+verbatim in
+[`docs/assets/02-verification-loop-help.txt`](../../docs/assets/02-verification-loop-help.txt)
+— and this one, which is free *and* does real work, because abstention is recomputed from
+telemetry that was already measured:
+
+```bash
+uv run python demos/02_verification_loop/abstain.py --headless
+```
+
+The rule-surface probes are also free and offline, and they are the honest way to check
+the verifier itself. [`demos/00_preflight/check.py`](../00_preflight/README.md) runs them
+as its fifth line.
+
+---
+
 ## What this level ADDS
 
 Verifiers. Level 1 could only see a query that crashed. Level 2 checks a query that
@@ -235,6 +279,85 @@ directory that has one. It says so plainly if there is nothing to read.
 **The question to sit with:** *a single accuracy number would have hidden this trade
 completely. Where on that curve would you actually want to sit?*
 
+### Configuration options
+
+Read from the argparse declarations. The full `--help` output for all four entry points is
+captured verbatim in
+[`docs/assets/02-verification-loop-help.txt`](../../docs/assets/02-verification-loop-help.txt).
+
+**`run.py`**
+
+| flag | default | what it does |
+|---|---|---|
+| `--item` | *(a rule-heavy item)* | Gold item id. Omitted, it picks the first `p05_net_revenue` item, which requires several rules at once. |
+| `--role` | `worker` | `worker` or `frontier`. |
+| `--level` | `L3` | `L0` or `L3`. `L0` is the beat where the verifier is satisfied and the answers are not. |
+| `--max-attempts` | `3` | The retry cap. Unlike Level 1, `budget` and `no_progress` are genuinely reachable here. |
+
+**`regex_swap.py`**
+
+| flag | default | what it does |
+|---|---|---|
+| `--limit` | `10` | Items per arm. Both arms run the same items — the comparison is paired. |
+| `--rule` | `fan_out` | Only items requiring this rule. `fan_out` is the default because it is a *shape* rather than a word, so it is where the two verifiers genuinely differ. If no item requires the named rule, it falls back to the whole rule-bearing pool rather than running nothing. |
+| `--level` | `L3` | `L0` or `L3`. |
+| `--max-attempts` | `3` | The retry cap, applied to both arms. |
+
+**`failure_paths.py`**
+
+| flag | default | what it does |
+|---|---|---|
+| `--item` | *(a rule-heavy item)* | Gold item id. Omitted, it picks the first `p07_aov_by_region` item. |
+
+It takes no other flags on purpose: the three scenarios are the demo, and making them
+configurable would let someone reach a branch by tuning rather than by running the
+controller.
+
+**`abstain.py`**
+
+| flag | default | what it does |
+|---|---|---|
+| `--cell` | `worker_L0_loop_r0` | Which measured cell to read the telemetry from. |
+| `--dir` | `results/sweep` | Where cell files live. Point it at any directory that has one. |
+| `--threshold` | `1.0` | The abstention threshold used for the declined list in headless mode. |
+| `--headless` | off | Print the curve and the declined list instead of serving the intervention view. |
+| `--share` | off | Public tunnel for the served view. |
+
+### Expected output — what is captured, and what is not
+
+**Not captured: any successful run of `run.py`, `regex_swap.py` or `failure_paths.py`.**
+All three make live model calls, so nothing on this page quotes their output. What they
+print is described above under *What appears*, and those descriptions come from the
+rendering code — `_render()` in `run.py` for the attempt blocks, and `run_swap()` in
+`src/loopeng/verify/swap.py` for the two-arm table and the generated reading. **Read your
+own output; do not match it against a page.**
+
+**Captured: the keyless failure**, 2026-08-03, from a clean directory with no
+`ANTHROPIC_API_KEY`. All three key-requiring entry points print exactly this and exit 1,
+having called nothing:
+
+```text
+$ uv run python demos/02_verification_loop/run.py
+
+ANTHROPIC_API_KEY is not set. Add ANTHROPIC_API_KEY=<your key> to .env (see .env.example).
+
+```
+
+**Captured: `abstain.py` with no cell to read**, same day. This is the honest-failure path
+the section above promises, and it is what you get on a fresh clone before stage 04 has
+run:
+
+```text
+$ uv run python demos/02_verification_loop/abstain.py --headless --dir <a directory with no cells>
+No cell 'worker_L0_loop_r0' in <a directory with no cells>. Run the sweep first.
+```
+
+Exit code `1`. The path in the real output is whatever you passed to `--dir`; it is
+elided here only because the capture ran from a scratch directory.
+
+**Captured: `--help` for all four entry points** —
+[`docs/assets/02-verification-loop-help.txt`](../../docs/assets/02-verification-loop-help.txt).
+
 ---
 
 ## Expected SHAPE — and what to say if it does not appear
@@ -282,6 +405,91 @@ That distinction was found by running it, not by reading it.
 *If the build raises `UnenforcedRule`*, someone added a rule to `semantic_model.yaml`
 without a check in `RULE_CHECKS`. That is the governance gate doing its job. It is also
 the single best live demonstration available in this stage, if you have the nerve.
+
+---
+
+## Troubleshooting — the real failure text
+
+The section above is what to *say* when the demo's shape is wrong. This one is what to do
+when the command itself is wrong.
+
+**`ANTHROPIC_API_KEY is not set. Add ANTHROPIC_API_KEY=<your key> to .env (see
+.env.example).`** — captured above. Exit 1, stderr, nothing billed. `run.py`,
+`regex_swap.py` and `failure_paths.py` all print exactly this; `abstain.py` never does,
+because it needs no credential.
+
+**`No cell 'worker_L0_loop_r0' in results/sweep. Run the sweep first.`** — `abstain.py`
+only, captured above, exit 1. Either run stage 04's sweep, or point `--dir` at a
+directory that already has a cell file. It refuses rather than plotting an empty curve,
+because a flat line reads as a measurement.
+
+**`UnenforcedRule` raised at import, before anything runs.** A rule was added to
+`semantic_model.yaml` with no check in `RULE_CHECKS`. This is the governance verifier
+failing the build on purpose — the declared-versus-enforced gap, caught at the only moment
+it is cheap to catch. Add the check, or remove the rule.
+
+**`failure_paths.py` exits non-zero with a `MISMATCH`.** A scenario reached a different
+termination than it claimed. Read *which* branch: `max_attempts` reporting `no_progress`
+means the over-strict verifier repeated its complaint and the no-progress detector fired
+first. That is the detector working; the scenario needs varied feedback to reach the cap.
+This distinction was found by running it, not by reading it.
+
+**`regex_swap.py` runs but the arms are identical.** Check `--rule`. If no gold item
+requires the rule you named, the script silently falls back to the whole rule-bearing pool
+— which will include items where the two verifiers cannot differ. `fan_out` is the default
+for exactly this reason.
+
+**Imports fail after a successful `uv sync`** — iCloud-synced checkout; see
+`src/loopeng/env_guard.py`. **The wrong Python runs** — a conda base environment on
+`PATH`; run everything through `uv run`.
+
+---
+
+## Limitations — what this stage does not show
+
+- **The structural verifier cannot check values, only shapes.** It confirms a `CASE` over
+  `currency` exists; it cannot confirm the rates inside it are right. At `L0` that is why
+  everything passes and almost nothing is correct. This is a ceiling, not a bug.
+- **The correctness comparison in the swap is underpowered, and bounded.** The two arms
+  can only differ on items the strict verifier actually rejected, and the demo prints that
+  bound. Do not read equal correctness as evidence the weaker verifier is fine — read the
+  probe surface.
+- **One rule is exercised by a single pattern**, so the sweep can make no claim about it.
+  Its enforcement is covered by the rule-surface probes instead, which test the verifier
+  directly rather than inferring it from outcomes.
+- **Six rules are probed, not seven.** `minor_units` and `multi_currency` are one SQL
+  change and share a single check, so one probe pair covers both. The exemption is named
+  in `probes.py` as `UNPROBED_BY_DESIGN` and the report carries `n_declared_rules`
+  alongside `n_rules` — a fraction whose denominator had itself drifted is the defect that
+  produced that field.
+- **Abstention is calibrated, not enforced.** `abstain.py` shows the curve and the
+  declined list. Nothing in this stage acts on a threshold automatically.
+- **Escalation exists and no entry point runs it.** `src/loopeng/triage/escalate.py`
+  implements and tests handing a declined question to the frontier model, but nothing on
+  this page invokes it — the OVERSIGHT view reads a stored artifact instead. It is a
+  documented gap rather than a hidden one.
+- **Answer submission is deliberately missing** from the intervention view. It was scoped
+  as polish, and a half-built write path that silently drops an operator's answer is worse
+  than an obvious gap.
+- **Every committed measurement in this repository predates a verifier fix and has not
+  been re-run.** The old AST checks asked only whether a column *appeared* in a `WHERE` or
+  `JOIN` — no polarity, no table — so four bypasses were possible and are now pinned as
+  tests. Anything stored describes a *weaker* verifier than the one you are running. If
+  your numbers differ from the committed ones, that difference is the finding.
+
+---
+
+## Where to go next
+
+| | |
+|---|---|
+| the deep-dive on this stage | [`ONBOARDING.md`](ONBOARDING.md) |
+| the vocabulary this page assumes | [`demos/README.md`](../README.md) |
+| the whole project | [the root README](../../README.md) |
+| this stage in the root README | [§11 Stage 2](../../README.md#11--running-each-demo) |
+| what is and is not claimed | [root README §16 Limitations](../../README.md#16--limitations) |
+| **previous stage** — the loop that cannot see this | [`01_agent_loop/`](../01_agent_loop/README.md) |
+| **next stage** — these verifiers, with nobody watching | [`03_event_driven_loop/`](../03_event_driven_loop/README.md) |
 
 ---
 

@@ -7,6 +7,41 @@
 
 ---
 
+## Purpose
+
+**Show a loop that retries, and then show the class of failure it cannot see.**
+
+A model writes SQL, the query runs, and if it fails the database's error goes back to the
+model. That is the loop most teams already have. This stage runs it (`run.py`), and then
+runs every gold question twice — once with the business rules written into the prompt and
+once with them withheld — and reveals how each answer was actually scored (`trap.py`).
+
+The teaching point is not the retry. It is that **a successful run at this level tells you
+nothing about whether the answer is right**, and the reveal is what makes a room feel that
+before it is named.
+
+---
+
+## Prerequisites specific to this stage
+
+| | |
+|---|---|
+| **API key** | **Required** for both entry points. `run.py` and `trap.py` both call a model on every attempt. |
+| **Earlier stages** | None. The warehouse is generated on first use and the gold set is rebuilt from its patterns. |
+| **Cost** | `run.py`: one call per attempt, on the cheap worker model, capped at `--max-attempts` (default 3). `trap.py`: the whole gold set twice — the largest call count in this stage, though not the largest bill. It refuses to start if its own projection exceeds `--cap-usd` (default 2.0). |
+
+**Which commands here are free.** Exactly two, and they make no network call of any kind:
+`run.py --help` and `trap.py --help`. Both are captured verbatim in
+[`docs/assets/01-agent-loop-help.txt`](../../docs/assets/01-agent-loop-help.txt), and both
+are what `tests/test_demo_structure.py` runs to prove this stage cold-starts.
+
+Everything else on this page spends. Run
+[`demos/00_preflight/check.py`](../00_preflight/README.md) first if you have not proved
+your key today — it is the cheapest way to find out that `trap.py` will fail after the
+first call rather than before it.
+
+---
+
 ## What this level ADDS
 
 A model writes SQL, the query runs against a read-only warehouse, and when it fails the
@@ -165,6 +200,59 @@ splits three ways: correct, **silently wrong**, and visible failure.
 **The question to sit with:** *of the cells that are wrong, how many could you have
 spotted without the answer key?*
 
+### Configuration options
+
+Read from the argparse declarations in `run.py` and `trap.py`. The full `--help` output is
+captured verbatim in
+[`docs/assets/01-agent-loop-help.txt`](../../docs/assets/01-agent-loop-help.txt).
+
+**`run.py`**
+
+| flag | default | what it does |
+|---|---|---|
+| `--question` | *(unset)* | Run headless in the terminal. **Omitting it serves the AGENT view instead** — the flag chooses the mode, not just the text. |
+| `--role` | `worker` | `worker` or `frontier`. The cheap model or the expensive one. |
+| `--level` | `L3` | `L0` (schema only) or `L3` (schema plus every declared rule). |
+| `--max-attempts` | `3` | The retry cap. This is the loop's whole termination policy at Level 1. |
+| `--share` | off | Expose the Gradio app on a public tunnel. |
+
+**`trap.py`**
+
+| flag | default | what it does |
+|---|---|---|
+| `--headless` | off | Terminal instead of browser. The browser is how it is delivered. |
+| `--limit` | *(all items)* | Run only the first N gold items. For development, not for delivery. |
+| `--cap-usd` | `2.0` | Projected-cost ceiling. It projects **before** the first call and refuses to start if the projection breaches this. |
+| `--share` | off | Public tunnel. |
+
+### Expected output — what is captured, and what is not
+
+**Not captured: a successful run.** Both entry points on this page make live model calls,
+so nothing here quotes their success output. What `run.py` prints on a successful run is
+described above under *What appears* — the termination reason and model id, one block per
+attempt, then a cost line — and that description comes from
+`src/loopeng/views/render.py`, which builds it. **Read your own output rather than
+matching it against anything on this page.**
+
+**Captured: the keyless failure**, on 2026-08-03, from a clean directory with no
+`ANTHROPIC_API_KEY` set. Both entry points behave identically, and this is exactly what
+you see if your key is missing:
+
+```text
+$ uv run python demos/01_agent_loop/run.py --question "What was gross revenue in March 2025 from our euro and yen orders, in US dollars?"
+
+ANTHROPIC_API_KEY is not set. Add ANTHROPIC_API_KEY=<your key> to .env (see .env.example).
+
+```
+
+Exit code `1`, and the message goes to stderr. **Nothing was called and nothing was
+billed** — the credential is validated before the loop is built, which is the whole point
+of failing at the door.
+
+**Captured: `--help`**, on the same day, for both entry points —
+[`docs/assets/01-agent-loop-help.txt`](../../docs/assets/01-agent-loop-help.txt). That
+file is what `tests/test_demo_structure.py` proves cold-starts from an empty directory.
+
 ---
 
 ## Expected SHAPE — and what to say if it does not appear
@@ -201,6 +289,77 @@ trap rather than reloading the page.
 *If the grid never fills*, check the API key resolves (`uv run python -c "from
 loopeng.settings import load_settings; load_settings()"`). A missing key raises an error
 naming the exact variable and the exact fix.
+
+---
+
+## Troubleshooting — the real failure text
+
+The section above is what to *say* when the demo's shape is wrong. This one is what to do
+when the command itself is wrong.
+
+**`ANTHROPIC_API_KEY is not set. Add ANTHROPIC_API_KEY=<your key> to .env (see
+.env.example).`** — verbatim, captured above. Exit code 1, nothing billed. A blank
+`ANTHROPIC_API_KEY=` line in `.env` counts as absent on purpose, so "I set it to empty"
+and "I did not set it" produce the same sentence rather than an auth failure at the first
+call.
+
+**`ABORT: projected est. $N exceeds the $M cap.`** — `trap.py` only. It projected the
+whole run before making a call and stopped. Raise `--cap-usd`, or cut the run with
+`--limit`. **It has spent nothing at this point**; the projection happens first.
+
+**A `run.py` browser URL never appears.** Almost always stdout buffering rather than a
+broken server. Use `python -u`, which is why every browser command on this page has it.
+
+**`AuthenticationError` / a `401` or `403` on the first attempt.** The loop stops after
+**one** call rather than retrying — a wrong key is not a transient failure and retrying it
+three times just bills three times. The termination reason is recorded as `credential`.
+
+**`BadRequestError` / a `400`.** The model refused the request itself. That is
+`src/loopeng/registry.py` and not `.env`; the classic case is a sampling parameter the
+frontier model rejects. The termination reason is `bad_request`.
+
+**Imports fail after a successful `uv sync`.** The checkout is on an iCloud-synced path.
+`src/loopeng/env_guard.py` raises a named error at import. Move the checkout.
+
+**The wrong Python runs.** A conda base environment on `PATH` shadows the project
+interpreter. Run everything through `uv run` and confirm with `uv run python -V`.
+
+---
+
+## Limitations — what this stage does not show
+
+- **It cannot see a wrong answer.** That is the whole design and it is stated at the top,
+  but it bears repeating as a limitation: nothing at Level 1 compares the result to
+  anything. Stage 02 is the fix.
+- **Two of the six termination conditions cannot fire in the trap.** `run_trap` is
+  one-shot by default — Level 1's retry is not what it is measuring — and with a single
+  attempt `budget` and `no_progress` are structurally unreachable. `run.py` raises the cap
+  and makes them possible, but Stage 02's `failure_paths.py` is where you can reliably
+  watch every branch fire.
+- **The trap's comparison is directional and stays that way.** The items come in
+  clusters, so McNemar over the discordant pairs overstates its own confidence. The demo
+  says *"worse; we cannot put a number on how much"* rather than quoting a gap, and no
+  number here should be read off a page.
+- **The questions are templated.** A small set of patterns, parameterised. Nothing here
+  is evidence about freely-phrased questions.
+- **One provider.** Both roles are Anthropic models, so `--role frontier` is not a
+  cross-vendor comparison and no LLM judge blocks anything.
+- **The trap writes `results/phase1_trap.json` and nothing reads it back into the
+  session.** It is an artifact for you, not an input to a later stage.
+
+---
+
+## Where to go next
+
+| | |
+|---|---|
+| the deep-dive on this stage | [`ONBOARDING.md`](ONBOARDING.md) |
+| the vocabulary this page assumes | [`demos/README.md`](../README.md) |
+| the whole project | [the root README](../../README.md) |
+| this stage in the root README | [§11 Stage 1](../../README.md#11--running-each-demo) |
+| the architecture of this level | [root README §6](../../README.md#6--architecture) |
+| **previous** — prove your key first | [`00_preflight/`](../00_preflight/README.md) |
+| **next stage** — verifiers that catch what this cannot | [`02_verification_loop/`](../02_verification_loop/README.md) |
 
 ---
 
