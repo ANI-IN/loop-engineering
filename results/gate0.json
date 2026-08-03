@@ -197,8 +197,8 @@
     }
   },
   "langsmith": {
-    "dataset_url": "https://smith.langchain.com/datasets/REDACTED-IDENTIFIER",
-    "dataset_id": "REDACTED-IDENTIFIER",
+    "dataset_url": "REDACTED \u2014 a LangSmith dataset URL identifies an organisation",
+    "dataset_id": "REDACTED \u2014 see .gitignore for the same decision on _resume_first.log",
     "resumability": {
       "verdict": "NO CLEAN RESUME",
       "plain_english": "A 5-item experiment was started, killed after 2 items had been invoked, then restarted against the same experiment name. LangSmith re-invoked all 5 targets, including the 2 that had already completed. The experiment ended with 7 root runs for a 5-item dataset: 2 duplicates, plus 1 run left in \"pending\" forever because it was in flight when the process was killed. Completed work was neither skipped nor replaced - it was repeated and appended.",
@@ -214,7 +214,8 @@
     },
     "role": "ADVISORY ONLY. results/*.json is the system of record. A test runs a cell with the LangSmith client stubbed to raise and asserts the results file is still complete and correct.",
     "project": "loop-eng-workshop",
-    "dataset_scope_note": "LangSmith datasets are account-scoped, not project-scoped. LANGSMITH_PROJECT controls where traces and experiment sessions are filed, not where a dataset lives. Re-uploaded under the corrected project setting so future experiment sessions land alongside it."
+    "dataset_scope_note": "LangSmith datasets are account-scoped, not project-scoped. LANGSMITH_PROJECT controls where traces and experiment sessions are filed, not where a dataset lives. Re-uploaded under the corrected project setting so future experiment sessions land alongside it.",
+    "redaction_note": "The dataset URL and id were published here and shipped to a public Space by tools/sync_hf.py. They are identifiers, not credentials, and nothing in this repository reads them \u2014 results/*.json is the system of record and LangSmith is never consulted for a number. Redacted in place rather than removed so every citation of this file still resolves, which is the same decision recorded in .gitignore for results/_resume_first.log."
   },
   "prompts": {
     "token_counts": {
