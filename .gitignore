@@ -22,6 +22,11 @@ htmlcov/
 build/
 dist/
 
+# The matplotlib font cache. CI points MPLCONFIGDIR here (see ci.yml) so the
+# cache is built once rather than on every cold runner, which means the one
+# artifact this project's own CI creates was the one artifact not ignored.
+.mplcache/
+
 # ---------------------------------------------------------------------------
 # Editor and agent scaffolding
 # ---------------------------------------------------------------------------
@@ -29,6 +34,9 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+.envrc
+*.orig
+*.rej
 
 # ---------------------------------------------------------------------------
 # Gradio. The launch writes a certificate and a flagging directory next to the
