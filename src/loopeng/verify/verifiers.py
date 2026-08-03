@@ -64,24 +64,93 @@ def _tables(tree: exp.Expression) -> set[str]:
     return {t.name.lower() for t in tree.find_all(exp.Table) if t.name}
 
 
-def _has_column_predicate(tree: exp.Expression, column: str) -> bool:
-    """Is this column actually constrained anywhere in the query's logic?
+# The rules below check the DIRECTION of a predicate, not the presence of a column.
+#
+# `_has_column_predicate` used to live here and asked only "does this column appear
+# somewhere inside a WHERE or JOIN?". Every one of these passed it:
+#
+#     WHERE o.deleted_at IS NOT NULL      the exact opposite of the rule
+#     WHERE o.deleted_at IS NULL          one table, for a rule whose own complaint
+#                                         says "for customers and orders independently"
+#     WHERE o.status = 'cancelled'        selecting only what must be excluded
+#     WHERE c.is_internal                 selecting only the test accounts
+#
+# So the verifier held up as the correct one, against which the regex version is
+# shown to be inadequate, accepted four queries that break the rules its own
+# complaint text names. Of the three failure modes the module docstring attributes
+# to regexes, it fixed one, shared one, and was worse than the regex on the third.
+#
+# Each rule gets its own check because the rules genuinely differ: soft-delete is
+# about coverage across tables, cancelled-orders is about a value, and
+# internal-accounts is about a boolean's polarity. One shared helper is what made
+# them look interchangeable.
 
-    Walks the AST for a comparison, IS NULL, or NOT involving the column. A text
-    search would match the column appearing in a SELECT list, in a comment, or in a
-    subquery whose result is never filtered on.
+
+#: Tables carrying `deleted_at`. The rule applies to each one present, separately.
+SOFT_DELETE_TABLES = ("orders", "customers")
+
+
+def _alias_map(tree: exp.Expression) -> dict[str, str]:
+    """Every way a table can be named in this query, mapped to the table."""
+    names: dict[str, str] = {}
+    for table in tree.find_all(exp.Table):
+        if not table.name:
+            continue
+        name = table.name.lower()
+        names[name] = name
+        if table.alias:
+            names[table.alias.lower()] = name
+    return names
+
+
+def _resolve(qualifier: str, aliases: dict[str, str], sole: str | None) -> str | None:
+    """Which table a column qualifier refers to.
+
+    An unqualified column is attributed to `sole` when exactly one candidate table
+    is in play, and to nothing when the query is ambiguous — an unqualified
+    `deleted_at` in a two-table join guards whichever table the engine binds it to,
+    and the verifier must not guess which.
     """
-    column = column.lower()
-    for node in tree.find_all(exp.Is, exp.EQ, exp.NEQ, exp.Not, exp.In, exp.Boolean):
-        for identifier in node.find_all(exp.Column):
-            if identifier.name.lower() == column:
-                return True
-    # `WHERE NOT is_internal` parses the column as a bare condition under Not/Where.
-    for node in tree.find_all(exp.Where, exp.Join):
-        for identifier in node.find_all(exp.Column):
-            if identifier.name.lower() == column:
-                return True
-    return False
+    if not qualifier:
+        return sole
+    return aliases.get(qualifier.lower())
+
+
+def _is_null_guarded(tree: exp.Expression, column: str) -> set[str]:
+    """Tables for which `column IS NULL` is asserted, NOT negated.
+
+    `IS NOT NULL` parses as `Not(Is(...))`, so the parent check is what separates
+    the rule from its inverse.
+
+    Each guard is resolved in the SELECT that contains it, not against the whole
+    query. Excluding deleted rows in a CTE — `WITH live_orders AS (SELECT * FROM
+    orders WHERE deleted_at IS NULL)` — is a correct and unusual way to satisfy
+    this rule, and it is one of the accept-side probes precisely because a
+    verifier is easy to write in a way that rejects it. An unqualified column is
+    attributed to the enclosing scope's single soft-delete table; where that scope
+    has two, it is attributed to neither, because the verifier must not guess
+    which one the engine binds it to.
+    """
+    guarded = set()
+    for node in tree.find_all(exp.Is):
+        if not isinstance(node.expression, exp.Null):
+            continue
+        if isinstance(node.parent, exp.Not):
+            continue
+        target = node.this
+        if not (isinstance(target, exp.Column) and target.name.lower() == column):
+            continue
+
+        scope = node.parent_select or tree
+        in_scope = [t for t in SOFT_DELETE_TABLES if t in _tables(scope)]
+        resolved = _resolve(
+            (target.table or "").lower(),
+            _alias_map(scope),
+            in_scope[0] if len(in_scope) == 1 else None,
+        )
+        if resolved is not None:
+            guarded.add(resolved)
+    return guarded
 
 
 def _selects_currency_conversion(tree: exp.Expression) -> bool:
@@ -119,26 +188,88 @@ def _aggregates_order_amount_with_items_joined(tree: exp.Expression) -> bool:
 def check_soft_delete(context: VerifyContext, tree: exp.Expression) -> str | None:
     if "soft_delete" not in context.rules:
         return None
-    if _has_column_predicate(tree, "deleted_at"):
+
+    aliases = _alias_map(tree)
+    present = [t for t in SOFT_DELETE_TABLES if t in _tables(tree)]
+    if not present:
+        return None
+
+    sole = present[0] if len(present) == 1 else None
+    guarded = {
+        table
+        for qualifier in _is_null_guarded(tree, "deleted_at")
+        if (table := _resolve(qualifier, aliases, sole)) is not None
+    }
+    missing = [table for table in present if table not in guarded]
+    if not missing:
         return None
     return (
         "Soft-deleted rows are not excluded. Rows with deleted_at IS NOT NULL are "
-        "deleted and must be excluded, for customers and orders independently."
+        "deleted and must be excluded, for customers and orders independently. "
+        f"Not excluded for: {', '.join(missing)}."
     )
+
+
+def _literal(node: exp.Expression) -> str | None:
+    return node.this.lower() if isinstance(node, exp.Literal) and node.is_string else None
+
+
+def _excludes_cancelled(tree: exp.Expression) -> bool:
+    """Is a predicate present that removes cancelled orders, rather than selecting them?"""
+    for node in tree.find_all(exp.NEQ):
+        if isinstance(node.this, exp.Column) and node.this.name.lower() == "status":
+            if _literal(node.expression) == "cancelled" and not isinstance(node.parent, exp.Not):
+                return True
+    for node in tree.find_all(exp.EQ):
+        # `status = 'completed'` excludes cancelled as a side effect, and that is
+        # genuinely enough — the rule is that cancelled must not count.
+        if isinstance(node.this, exp.Column) and node.this.name.lower() == "status":
+            value = _literal(node.expression)
+            if value is not None and value != "cancelled":
+                return True
+    for node in tree.find_all(exp.In):
+        if not (isinstance(node.this, exp.Column) and node.this.name.lower() == "status"):
+            continue
+        values = {_literal(e) for e in node.expressions}
+        negated = isinstance(node.parent, exp.Not)
+        if negated and "cancelled" in values:
+            return True
+        if not negated and values and "cancelled" not in values:
+            return True
+    return False
 
 
 def check_cancelled_orders(context: VerifyContext, tree: exp.Expression) -> str | None:
     if "cancelled_orders" not in context.rules:
         return None
-    if _has_column_predicate(tree, "status"):
+    if _excludes_cancelled(tree):
         return None
     return "Cancelled orders are not excluded. status = 'cancelled' must not count."
+
+
+def _excludes_internal(tree: exp.Expression) -> bool:
+    """`NOT is_internal`, `is_internal = FALSE`, or `is_internal IS FALSE`.
+
+    A bare `WHERE c.is_internal` selects exactly the accounts the rule exists to
+    remove, and used to satisfy it.
+    """
+    for node in tree.find_all(exp.Not):
+        target = node.this
+        if isinstance(target, exp.Column) and target.name.lower() == "is_internal":
+            return True
+    for node in tree.find_all(exp.EQ, exp.Is):
+        if not (isinstance(node.this, exp.Column) and node.this.name.lower() == "is_internal"):
+            continue
+        value = node.expression
+        if isinstance(value, exp.Boolean) and value.this is False:
+            return True
+    return False
 
 
 def check_internal_accounts(context: VerifyContext, tree: exp.Expression) -> str | None:
     if "internal_accounts" not in context.rules:
         return None
-    if _has_column_predicate(tree, "is_internal"):
+    if _excludes_internal(tree):
         return None
     return (
         "Internal test accounts are not excluded. Customers with is_internal true "

@@ -994,6 +994,24 @@ number it qualifies is one that gets separated from it.
 **The questions are templated.** A small set of patterns, parameterised. That caps how far
 any of this generalises to freely-phrased questions.
 
+**Every committed measurement predates a verifier fix, and has NOT been re-run.**
+The AST verifier's rule checks asked only whether a column *appeared* in a `WHERE`
+or `JOIN` — no polarity, no table. So `deleted_at IS NOT NULL` satisfied a rule
+demanding `IS NULL`, a predicate on `orders` alone satisfied a rule whose complaint
+says "for customers and orders independently", `status = 'cancelled'` satisfied the
+rule excluding cancelled orders, and a bare `WHERE c.is_internal` satisfied the rule
+excluding internal accounts. That is fixed, and the four bypasses are pinned as
+tests.
+
+**Everything in `results/reference/`, `results/prefix_v1/`, the tables in §12 and
+the three images in `assets/` was measured with the old checks.** They describe a
+verifier that no longer exists, and re-running them costs real API spend, so they
+are deliberately left alone rather than quietly regenerated. Treat every silent-error
+rate here as measured against a *weaker* verifier than the one in the repository —
+the true rates for the affected rules can only be worse, never better. If you re-run
+the sweep on your own key, expect your numbers to differ from the committed ones for
+exactly this reason, and that difference is the finding rather than a fault.
+
 **The Level 3 queue is single-writer, and that is a non-goal rather than a bug.** DuckDB
 locks the database file exclusively, so exactly one process can hold the queue at a time
 and the stage runs as enqueue-then-drain rather than as a polling worker alongside a live

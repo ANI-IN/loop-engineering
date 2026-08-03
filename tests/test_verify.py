@@ -364,3 +364,95 @@ def test_the_reading_refuses_to_argue_without_probe_evidence(monkeypatch):
     ast = SwapArm("ast", accepted=8, correct=5, ran=10, rejections=6)
     regex = SwapArm("regex", accepted=10, correct=1, ran=10, rejections=0)
     assert "does not show" in _reading({"ast": ast, "regex": regex})
+
+
+# ---- the four queries the AST verifier used to accept -------------------------
+#
+# Each of these breaks the rule named beside it, and each was ACCEPTED before
+# `_has_column_predicate` was replaced. That helper asked only whether the column
+# appeared somewhere inside a WHERE or JOIN — no polarity, no table, no placement —
+# so the verifier this workshop holds up as the correct one, against which the
+# regex version is shown to be inadequate, passed the exact violations its own
+# complaint text describes.
+#
+# They are kept as a set rather than folded into PROBES deliberately: PROBES is one
+# honours/breaks pair per rule and its counts are quoted in the docs, while this is
+# a regression record of a specific defect. Both are needed.
+
+BYPASSES = [
+    ("soft_delete",
+     "the exact inverse of the rule",
+     "SELECT COUNT(*) FROM orders o JOIN customers c ON c.customer_id = o.customer_id "
+     "WHERE o.deleted_at IS NOT NULL"),
+    ("soft_delete",
+     "one table, for a rule that says 'customers and orders independently'",
+     "SELECT COUNT(*) FROM orders o JOIN customers c ON c.customer_id = o.customer_id "
+     "WHERE o.deleted_at IS NULL"),
+    ("cancelled_orders",
+     "selecting only what must be excluded",
+     "SELECT COUNT(*) FROM orders o JOIN customers c ON c.customer_id = o.customer_id "
+     "WHERE o.status = 'cancelled'"),
+    ("internal_accounts",
+     "selecting only the internal test accounts",
+     "SELECT COUNT(*) FROM orders o JOIN customers c ON c.customer_id = o.customer_id "
+     "WHERE c.is_internal"),
+]
+
+
+@pytest.mark.parametrize(
+    "rule,why,sql", BYPASSES, ids=[f"{r}-{w[:28]}" for r, w, _ in BYPASSES]
+)
+def test_the_ast_verifier_rejects_the_bypasses_it_used_to_accept(rule, why, sql):
+    from loopeng.contracts import VerifyContext
+
+    result = verify(VerifyContext(
+        question="(bypass)", sql=sql, schema_ddl="", rules=(rule,),
+        attempt=1, execution_rows=((1,),), execution_error=None,
+    ))
+    assert not result.ok, f"{rule}: {why} — accepted"
+    assert rule in result.rules
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        # Every shape that legitimately satisfies a rule must still be accepted.
+        # A fix for the above that rejected these would score better on the
+        # violation probes while catching less of what matters — the same trade
+        # the regex verifier makes, one layer up.
+        "SELECT COUNT(*) FROM orders o JOIN customers c ON c.customer_id = o.customer_id "
+        "WHERE o.deleted_at IS NULL AND c.deleted_at IS NULL",
+        "SELECT COUNT(*) FROM orders WHERE deleted_at IS NULL",
+        "WITH live_orders AS (SELECT * FROM orders WHERE deleted_at IS NULL), "
+        "live_customers AS (SELECT * FROM customers WHERE deleted_at IS NULL) "
+        "SELECT COUNT(*) FROM live_orders o JOIN live_customers c "
+        "ON c.customer_id = o.customer_id",
+    ],
+    ids=["both-qualified", "single-table-unqualified", "guarded-in-ctes"],
+)
+def test_soft_delete_still_accepts_every_legitimate_shape(sql):
+    from loopeng.contracts import VerifyContext
+
+    assert verify(VerifyContext(
+        question="(legitimate)", sql=sql, schema_ddl="", rules=("soft_delete",),
+        attempt=1, execution_rows=((1,),), execution_error=None,
+    )).ok
+
+
+@pytest.mark.parametrize(
+    "rule,sql",
+    [
+        ("cancelled_orders", "SELECT 1 FROM orders o WHERE o.status <> 'cancelled'"),
+        ("cancelled_orders", "SELECT 1 FROM orders o WHERE o.status = 'completed'"),
+        ("cancelled_orders", "SELECT 1 FROM orders o WHERE o.status NOT IN ('cancelled')"),
+        ("internal_accounts", "SELECT 1 FROM customers c WHERE NOT c.is_internal"),
+        ("internal_accounts", "SELECT 1 FROM customers c WHERE c.is_internal = FALSE"),
+    ],
+)
+def test_the_other_rules_still_accept_their_legitimate_shapes(rule, sql):
+    from loopeng.contracts import VerifyContext
+
+    assert verify(VerifyContext(
+        question="(legitimate)", sql=sql, schema_ddl="", rules=(rule,),
+        attempt=1, execution_rows=((1,),), execution_error=None,
+    )).ok
