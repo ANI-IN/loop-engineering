@@ -212,8 +212,8 @@ close and reopen your terminal so the updated path is picked up.
 ### Step 2: clone and install
 
 ```bash
-git clone https://github.com/ANI-IN/loop-engineering-workshop.git
-cd loop-engineering-workshop
+git clone https://github.com/ANI-IN/loop-engineering.git
+cd loop-engineering
 uv sync
 ```
 

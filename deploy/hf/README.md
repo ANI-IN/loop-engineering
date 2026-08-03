@@ -44,7 +44,7 @@ rule, and that a number without its n and its timestamp is not a measurement.
 
 ## Source
 
-**<https://github.com/ANI-IN/loop-engineering-workshop>**
+**<https://github.com/ANI-IN/loop-engineering>**
 
 This Space is generated. It is pushed by `tools/sync_hf.py`, which stages the entry
 point, the `loopeng` package and the committed reference measurements, and then

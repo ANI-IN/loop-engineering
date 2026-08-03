@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Report privately through GitHub's [Report a
-vulnerability](https://github.com/ANI-IN/loop-engineering-workshop/security/advisories/new)
+vulnerability](https://github.com/ANI-IN/loop-engineering/security/advisories/new)
 form rather than by opening a public issue.
 
 Please include what you did, what happened, and what you expected. Expect an

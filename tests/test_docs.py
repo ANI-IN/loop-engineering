@@ -306,8 +306,8 @@ def test_the_clone_instructions_are_real():
             continue
         assert "<repo>" not in body, f"{path.name} still has a placeholder clone URL"
         assert 'cd "Loop Eng"' not in body, f"{path.name} cds to the wrong directory"
-        assert "github.com/ANI-IN/loop-engineering-workshop" in body
-        assert "cd loop-engineering-workshop" in body
+        assert "github.com/ANI-IN/loop-engineering" in body
+        assert "cd loop-engineering" in body
 
 
 def test_the_readme_links_to_the_checklist_and_it_resolves():

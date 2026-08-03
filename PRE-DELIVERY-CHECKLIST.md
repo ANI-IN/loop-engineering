@@ -78,7 +78,7 @@ when your cells and the stored baseline belong side by side with the delta compu
 **Do**
 
 ```bash
-git clone https://github.com/ANI-IN/loop-engineering-workshop.git && cd loop-engineering-workshop
+git clone https://github.com/ANI-IN/loop-engineering.git && cd loop-engineering
 uv sync
 uv run pytest -q          # offline suite: no network, no keys, no cost
 uv run ruff check .

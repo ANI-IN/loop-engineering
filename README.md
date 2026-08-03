@@ -625,8 +625,8 @@ If `uv --version` is not found afterwards, close and reopen the terminal so the 
 ### Clone, install, and prove it worked
 
 ```bash
-git clone https://github.com/ANI-IN/loop-engineering-workshop.git
-cd loop-engineering-workshop
+git clone https://github.com/ANI-IN/loop-engineering.git
+cd loop-engineering
 uv sync
 uv run pytest -q
 ```
@@ -1468,7 +1468,7 @@ sweep, the views and the tooling — is original to this project.
 
 | Reason | Where |
 |---|---|
-| A bug, or something in the docs that is wrong | [Open an issue](https://github.com/ANI-IN/loop-engineering-workshop/issues) — there is a bug-report template |
+| A bug, or something in the docs that is wrong | [Open an issue](https://github.com/ANI-IN/loop-engineering/issues) — there is a bug-report template |
 | A security or credential concern | **Do not open a public issue.** Follow [`SECURITY.md`](SECURITY.md) |
 | A change you want to make | Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first; it lists the four checks CI runs and the rules that will fail your build |
 | Anything else | ANI-IN (Animesh Kumar) — via the issue tracker above |

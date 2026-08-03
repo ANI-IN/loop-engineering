@@ -31,6 +31,14 @@ dependencies = [
     "structlog>=26.1.0",
 ]
 
+# Added at migration. The package carried no repository URL at all, so a wheel or
+# sdist built from it pointed nowhere — an artifact with no way back to its source.
+[project.urls]
+Homepage = "https://github.com/ANI-IN/loop-engineering"
+Repository = "https://github.com/ANI-IN/loop-engineering"
+Changelog = "https://github.com/ANI-IN/loop-engineering/blob/main/CHANGELOG.md"
+Issues = "https://github.com/ANI-IN/loop-engineering/issues"
+
 [build-system]
 # <0.13 rather than <0.12.0. The uv 0.12 release notes address this cap by name:
 # "There are no breaking changes to the configuration of the uv build backend. If

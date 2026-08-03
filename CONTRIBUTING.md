@@ -7,8 +7,8 @@ stronger"* rather than *"does this add a feature"*.
 ## Getting set up
 
 ```bash
-git clone https://github.com/ANI-IN/loop-engineering-workshop.git
-cd loop-engineering-workshop
+git clone https://github.com/ANI-IN/loop-engineering.git
+cd loop-engineering
 uv sync
 uv run pytest -q
 ```
