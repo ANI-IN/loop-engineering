@@ -75,28 +75,28 @@ say is about how easily that second arrow goes missing without anything failing.
 
 ## 1. Contents
 
-| | |
+| Section | What it covers |
 |---|---|
 | [2 · The session](#2--the-session) | duration, audience, format |
 | [3 · The problem](#3--the-problem) | a clean, plausible, wrong number |
 | [4 · Why this is needed](#4--why-this-is-needed) | declared versus enforced |
 | [5 · What loop engineering is](#5--what-loop-engineering-is) | the four-loop framing and where it comes from |
-| [Glossary](#glossary) | every domain term and acronym, defined |
 | [6 · Architecture](#6--architecture) | the nesting, and each loop's control flow |
 | [7 · Technologies](#7--technologies) | what each dependency does here |
-| [8 · Repository structure](#8--repository-structure) | |
-| [9 · Installation](#9--installation) | |
+| [8 · Repository structure](#8--repository-structure) | every module and what it owns, annotated |
+| [9 · Installation](#9--installation) | prerequisites with the command to check each one, and uv per platform |
 | [10 · Environment setup](#10--environment-setup) | every variable, and why tracing defaults off |
 | [11 · Running each demo](#11--running-each-demo) | **step by step — start here** |
 | [12 · Expected outputs](#12--expected-outputs) | the result images |
-| [13 · Profiles and cost](#13--profiles-and-cost) | |
-| [14 · Testing](#14--testing) | |
+| [13 · Profiles and cost](#13--profiles-and-cost) | delivery, development, exhibit — and why prompt caching saves nothing |
+| [14 · Testing](#14--testing) | the offline/live split, and the numeric-literal rule |
 | [15 · Design decisions](#15--design-decisions) | each with what was given up |
-| [16 · Limitations](#16--limitations) | |
-| [17 · Future improvements](#17--future-improvements) | |
-| [18 · Troubleshooting](#18--troubleshooting) | |
-| [19 · FAQ](#19--faq) | |
-| [20 · Attribution and licence](#20--attribution-and-licence) | |
+| [16 · Limitations](#16--limitations) | templated questions, a single-writer queue, and measurements that predate a verifier fix |
+| [17 · Future improvements](#17--future-improvements) | queue backoff and dead-lettering, and a second provider for judging |
+| [18 · Troubleshooting](#18--troubleshooting) | real failures with the symptom each one presents as |
+| [19 · FAQ](#19--faq) | why not LangChain, why no LLM judge, why the frontier model is unpinned |
+| [20 · Attribution and licence](#20--attribution-and-licence) | what is borrowed, what is original, MIT |
+| [Glossary](#glossary) | every domain term and acronym, defined — reference, at the end |
 
 ---
 
@@ -211,103 +211,6 @@ window. **Loop engineering** asks what happens after the model answers: what che
 what feeds back, what stops, and how you know any of it is working. The interesting part
 of a loop is never the repetition — it is always the termination condition, and whether
 anything counts how often each one fires.
-
----
-
-## Glossary
-
-Every domain term and acronym this repository uses, in one place. Terms are defined as
-this project uses them, which is occasionally narrower than the general meaning.
-
-### The two categories the whole project turns on
-
-| Term | Meaning here |
-|---|---|
-| **Visible failure** | The answer is detectably wrong **without knowing the right answer**: invalid SQL, a timeout, an empty result, three columns where one was asked for, a row of NULLs. A retry loop can see these. |
-| **Silent error** | It ran, returned one plausible number, and is wrong. **You cannot tell by looking.** Detecting it requires the answer, which in production you do not have. This is the category the workshop exists for. |
-| **Declared vs enforced** | A rule written in a config that nothing checks. The project's subject, and the pattern behind most of its own defects. |
-
-### The data and the rules
-
-| Term | Meaning here |
-|---|---|
-| **Semantic model** | `src/loopeng/warehouse/semantic_model.yaml` — the one file where business rules, the schema vocabulary and the currency factors are declared. Rendered into prompts and read by the governance verifier, so a rule cannot exist in one and not the other. |
-| **Gold set / gold item** | The answer key: 50 items built from 10 SQL patterns, each executed against the seeded warehouse to freeze its correct answer. A gold item carries the question, the rules that apply to it, the gold SQL and the gold rows. |
-| **Pattern** | One of the 10 parameterised SQL templates in `gold/patterns.py`. Each contributes ~5 items, which is why items are *clustered* rather than independent. |
-| **Warehouse** | A DuckDB database generated deterministically from a seed (`warehouse_seed`, default `20260729`). Read-only to the agent. Rebuilt on first use, never committed. |
-| **Rule** | One declared business constraint. Seven of them: `soft_delete`, `cancelled_orders`, `internal_accounts`, `multi_currency`, `minor_units`, `fan_out`, `refunds_net`. |
-| **Soft delete** | Rows with `deleted_at IS NOT NULL` are deleted and must be excluded — for customers and orders **independently**. |
-| **Minor units** | Money is stored in the currency's smallest unit. USD and EUR have two decimal places; **JPY has zero**, so a flat divide by 100 is wrong. |
-| **`usd_factor`** | The declared per-currency conversion table. Folds the decimal scale and the FX rate together. |
-| **Fan-out** | `orders` → `order_items` is one-to-many, so aggregating `orders.amount_minor` after joining `order_items` double-counts. The trap that produces the most plausible wrong number. |
-| **Refunds-net** | Revenue must be net of refunds. Carried by a single pattern, so the sweep can make no claim about it — only the probes can. |
-
-### The loops
-
-| Term | Meaning here |
-|---|---|
-| **Level 1 / agent loop** | Ask, run the SQL, retry when it **fails to execute**. Sees crashes only. |
-| **Level 2 / verification loop** | Level 1 plus verifiers that read a query which **ran**, and reject it for breaking a declared rule. |
-| **Level 3 / event-driven loop** | A queue and a worker: claim a question, run Level 2, write the answer back, with nobody watching. |
-| **Level 4 / hill-climbing loop** | The loop around the loop — a sweep across configurations, measuring which is better. |
-| **Attempt** | One pass through a loop: the SQL the model wrote, whether it executed, and what came back. |
-| **Termination** | Why a run stopped: `success`, `max_attempts`, `budget`, `no_progress`, `credential`, `bad_request`. |
-
-### The verifiers
-
-| Term | Meaning here |
-|---|---|
-| **AST verifier** | Checks rules against the parsed **syntax tree** (via `sqlglot`). The one held up as correct. |
-| **Regex verifier** | The same checks done with regular expressions over the query **text**. Deliberately worse, and the point of the swap demo: the score goes **up** while the quality goes **down**. |
-| **Governance verifier (V2)** | Reads its rule set **from the config** and fails the build when a declared rule has no check. The strongest enforcement mechanism here. |
-| **Probe / rule surface** | A pair of queries per rule: one that **breaks** it and must be rejected, one that is **correct but unusual** and must be accepted. The second is what stops a verifier scoring perfectly by rejecting everything. |
-| **The swap** | Replacing the AST verifier with the regex one mid-demo, to show a rising score and falling quality. |
-
-### The measurement
-
-| Term | Meaning here |
-|---|---|
-| **Cell** | One measured configuration: role × level × mode × replicate. Keyed `worker_L0_loop_r0`. **Note:** `Cell` also names an unrelated chart-row type in `sweep/chart_model.py`. |
-| **Sweep** | A run over all the cells a profile defines. Resumable, self-aborting on **projected** spend. |
-| **Profile** | What a sweep run is *for*: `delivery` (runs in front of a room), `development` (run once to establish findings), `smoke` (a few cents, proves your key works), `exhibit` (runs nothing). |
-| **Role** | `worker` (the cheap model) or `frontier` (the expensive one). |
-| **Level, as a prompt spec** | `L0` = rules withheld; `L3` = rules given. The difference between them is the experiment. |
-| **Mode** | `one_shot` (no retry) or `loop` (the full loop). |
-| **Replicate** | A repeat run of the same cell, to see run-to-run variance. |
-| **Metric** | The only way a measured number enters this project. Carries its own `n` and interval, so no figure can appear without them. |
-| **Reference cell** | A committed, frozen measurement (`results/reference/`). Rendered visibly differently from a live one. |
-| **Abstention** | The loop declining to answer rather than guessing — coverage becomes a *choice* instead of a synonym for "did not crash". |
-| **Escalation** | Handing a declined question to the more expensive model. **Implemented and not run in this build** — see §16. |
-| **Triage** | Classifying failures by **cause** rather than counting them. |
-| **Pre-registration** | The headline comparison, what the design is underpowered for, and what it cannot detect — printed **before the first cell runs**, so it cannot be chosen after the numbers are in. |
-| **Noise floor** | The determinism baseline: how much a cell moves when nothing changed. Cited before any effect is claimed. |
-| **Fingerprint** | What makes two cell files the same measurement run — recorded, not inferred. |
-
-### Statistics
-
-| Term | Meaning here |
-|---|---|
-| **McNemar's test** | The paired significance test used here. Correct for "same questions, two configurations". |
-| **Discordant pairs** | Items where the two arms disagreed. The only ones McNemar uses — which is why `n` can be 50 and the test still be underpowered. |
-| **Wilson interval** | The confidence interval used for a proportion. Behaves sensibly near 0% and 100%, where the textbook normal interval does not. |
-| **Clustering** | Items come in 10 groups of ~5, so a flaw in one pattern fails ~5 items together. **Every interval shown is narrower than the evidence strictly supports**, and every caption says so. |
-| **p-value** | Reported only within a model. Refused across models — see §16. |
-
-### Acronyms
-
-| | |
-|---|---|
-| **AST** | Abstract Syntax Tree — the parsed structure of a query, as opposed to its text |
-| **CTE** | Common Table Expression — a `WITH … AS (…)` clause |
-| **FX** | Foreign exchange, i.e. currency conversion |
-| **CI** | Continuous Integration — here, the GitHub Actions workflow |
-| **SQL** | Structured Query Language |
-| **LLM** | Large Language Model |
-| **API** | Application Programming Interface — here, almost always the Anthropic API |
-| **UUID** | Universally Unique Identifier |
-| **WAL** | Write-Ahead Logging — a journal mode enabling multi-writer access, which DuckDB does not offer |
-| **PEP** | Python Enhancement Proposal — e.g. PEP 561, which `py.typed` relates to |
-| **DIAL / COST / DELTA / ABSTENTION** | The four rendered charts: silent-error rate per cell, spend per cell, the paired difference between cells, and the coverage-versus-precision curve |
 
 ---
 
@@ -1479,3 +1382,100 @@ command you ran and pastes what it printed.
 Before delivering, work through [`PRE-DELIVERY-CHECKLIST.md`](PRE-DELIVERY-CHECKLIST.md)
 on the venue machine. It is ordered by when each step has to happen, and every item says
 what passing looks like and what to do when it does not.
+
+---
+
+## Glossary
+
+Every domain term and acronym this repository uses, in one place. Terms are defined as
+this project uses them, which is occasionally narrower than the general meaning.
+
+### The two categories the whole project turns on
+
+| Term | Meaning here |
+|---|---|
+| **Visible failure** | The answer is detectably wrong **without knowing the right answer**: invalid SQL, a timeout, an empty result, three columns where one was asked for, a row of NULLs. A retry loop can see these. |
+| **Silent error** | It ran, returned one plausible number, and is wrong. **You cannot tell by looking.** Detecting it requires the answer, which in production you do not have. This is the category the workshop exists for. |
+| **Declared vs enforced** | A rule written in a config that nothing checks. The project's subject, and the pattern behind most of its own defects. |
+
+### The data and the rules
+
+| Term | Meaning here |
+|---|---|
+| **Semantic model** | `src/loopeng/warehouse/semantic_model.yaml` — the one file where business rules, the schema vocabulary and the currency factors are declared. Rendered into prompts and read by the governance verifier, so a rule cannot exist in one and not the other. |
+| **Gold set / gold item** | The answer key: 50 items built from 10 SQL patterns, each executed against the seeded warehouse to freeze its correct answer. A gold item carries the question, the rules that apply to it, the gold SQL and the gold rows. |
+| **Pattern** | One of the 10 parameterised SQL templates in `gold/patterns.py`. Each contributes ~5 items, which is why items are *clustered* rather than independent. |
+| **Warehouse** | A DuckDB database generated deterministically from a seed (`warehouse_seed`, default `20260729`). Read-only to the agent. Rebuilt on first use, never committed. |
+| **Rule** | One declared business constraint. Seven of them: `soft_delete`, `cancelled_orders`, `internal_accounts`, `multi_currency`, `minor_units`, `fan_out`, `refunds_net`. |
+| **Soft delete** | Rows with `deleted_at IS NOT NULL` are deleted and must be excluded — for customers and orders **independently**. |
+| **Minor units** | Money is stored in the currency's smallest unit. USD and EUR have two decimal places; **JPY has zero**, so a flat divide by 100 is wrong. |
+| **`usd_factor`** | The declared per-currency conversion table. Folds the decimal scale and the FX rate together. |
+| **Fan-out** | `orders` → `order_items` is one-to-many, so aggregating `orders.amount_minor` after joining `order_items` double-counts. The trap that produces the most plausible wrong number. |
+| **Refunds-net** | Revenue must be net of refunds. Carried by a single pattern, so the sweep can make no claim about it — only the probes can. |
+
+### The loops
+
+| Term | Meaning here |
+|---|---|
+| **Level 1 / agent loop** | Ask, run the SQL, retry when it **fails to execute**. Sees crashes only. |
+| **Level 2 / verification loop** | Level 1 plus verifiers that read a query which **ran**, and reject it for breaking a declared rule. |
+| **Level 3 / event-driven loop** | A queue and a worker: claim a question, run Level 2, write the answer back, with nobody watching. |
+| **Level 4 / hill-climbing loop** | The loop around the loop — a sweep across configurations, measuring which is better. |
+| **Attempt** | One pass through a loop: the SQL the model wrote, whether it executed, and what came back. |
+| **Termination** | Why a run stopped: `success`, `max_attempts`, `budget`, `no_progress`, `credential`, `bad_request`. |
+
+### The verifiers
+
+| Term | Meaning here |
+|---|---|
+| **AST verifier** | Checks rules against the parsed **syntax tree** (via `sqlglot`). The one held up as correct. |
+| **Regex verifier** | The same checks done with regular expressions over the query **text**. Deliberately worse, and the point of the swap demo: the score goes **up** while the quality goes **down**. |
+| **Governance verifier (V2)** | Reads its rule set **from the config** and fails the build when a declared rule has no check. The strongest enforcement mechanism here. |
+| **Probe / rule surface** | A pair of queries per rule: one that **breaks** it and must be rejected, one that is **correct but unusual** and must be accepted. The second is what stops a verifier scoring perfectly by rejecting everything. |
+| **The swap** | Replacing the AST verifier with the regex one mid-demo, to show a rising score and falling quality. |
+
+### The measurement
+
+| Term | Meaning here |
+|---|---|
+| **Cell** | One measured configuration: role × level × mode × replicate. Keyed `worker_L0_loop_r0`. **Note:** `Cell` also names an unrelated chart-row type in `sweep/chart_model.py`. |
+| **Sweep** | A run over all the cells a profile defines. Resumable, self-aborting on **projected** spend. |
+| **Profile** | What a sweep run is *for*: `delivery` (runs in front of a room), `development` (run once to establish findings), `smoke` (a few cents, proves your key works), `exhibit` (runs nothing). |
+| **Role** | `worker` (the cheap model) or `frontier` (the expensive one). |
+| **Level, as a prompt spec** | `L0` = rules withheld; `L3` = rules given. The difference between them is the experiment. |
+| **Mode** | `one_shot` (no retry) or `loop` (the full loop). |
+| **Replicate** | A repeat run of the same cell, to see run-to-run variance. |
+| **Metric** | The only way a measured number enters this project. Carries its own `n` and interval, so no figure can appear without them. |
+| **Reference cell** | A committed, frozen measurement (`results/reference/`). Rendered visibly differently from a live one. |
+| **Abstention** | The loop declining to answer rather than guessing — coverage becomes a *choice* instead of a synonym for "did not crash". |
+| **Escalation** | Handing a declined question to the more expensive model. **Implemented and not run in this build** — see §16. |
+| **Triage** | Classifying failures by **cause** rather than counting them. |
+| **Pre-registration** | The headline comparison, what the design is underpowered for, and what it cannot detect — printed **before the first cell runs**, so it cannot be chosen after the numbers are in. |
+| **Noise floor** | The determinism baseline: how much a cell moves when nothing changed. Cited before any effect is claimed. |
+| **Fingerprint** | What makes two cell files the same measurement run — recorded, not inferred. |
+
+### Statistics
+
+| Term | Meaning here |
+|---|---|
+| **McNemar's test** | The paired significance test used here. Correct for "same questions, two configurations". |
+| **Discordant pairs** | Items where the two arms disagreed. The only ones McNemar uses — which is why `n` can be 50 and the test still be underpowered. |
+| **Wilson interval** | The confidence interval used for a proportion. Behaves sensibly near 0% and 100%, where the textbook normal interval does not. |
+| **Clustering** | Items come in 10 groups of ~5, so a flaw in one pattern fails ~5 items together. **Every interval shown is narrower than the evidence strictly supports**, and every caption says so. |
+| **p-value** | Reported only within a model. Refused across models — see §16. |
+
+### Acronyms
+
+| | |
+|---|---|
+| **AST** | Abstract Syntax Tree — the parsed structure of a query, as opposed to its text |
+| **CTE** | Common Table Expression — a `WITH … AS (…)` clause |
+| **FX** | Foreign exchange, i.e. currency conversion |
+| **CI** | Continuous Integration — here, the GitHub Actions workflow |
+| **SQL** | Structured Query Language |
+| **LLM** | Large Language Model |
+| **API** | Application Programming Interface — here, almost always the Anthropic API |
+| **UUID** | Universally Unique Identifier |
+| **WAL** | Write-Ahead Logging — a journal mode enabling multi-writer access, which DuckDB does not offer |
+| **PEP** | Python Enhancement Proposal — e.g. PEP 561, which `py.typed` relates to |
+| **DIAL / COST / DELTA / ABSTENTION** | The four rendered charts: silent-error rate per cell, spend per cell, the paired difference between cells, and the coverage-versus-precision curve |
