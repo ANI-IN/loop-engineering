@@ -37,10 +37,21 @@ def constructor_spy(monkeypatch):
 # ---- THE security boundary --------------------------------------------------
 
 
-def test_building_the_exhibit_constructs_no_model_client(constructor_spy, warehouse):
+def test_building_the_exhibit_constructs_no_model_client(constructor_spy, warehouse,
+                                                        tmp_path):
+    """Built against an EMPTY cell directory, which is what a fresh clone has.
+
+    This passed `Path("results/sweep")` — a repo-relative path that is gitignored
+    and therefore absent on any clean checkout, but present on the machine of
+    anyone who has run a sweep. So the assertion was made against whatever cells
+    happened to be lying around locally, and a clone would have exercised a
+    different code path than the author did.
+    """
     from loopeng.views.exhibit import build_exhibit_app
 
-    build_exhibit_app(Path("results/sweep"), build_gold(warehouse), warehouse)
+    empty = tmp_path / "sweep"
+    empty.mkdir()
+    build_exhibit_app(empty, build_gold(warehouse), warehouse)
     assert constructor_spy == [], "the exhibit constructed a model client"
 
 
@@ -62,10 +73,13 @@ def test_the_exhibit_profile_is_selectable_by_name():
     assert PROFILES["exhibit"] is EXHIBIT
 
 
-def test_a_sweep_under_the_exhibit_profile_cannot_spend(warehouse, constructor_spy):
+def test_a_sweep_under_the_exhibit_profile_cannot_spend(warehouse, constructor_spy,
+                                                       tmp_path):
+    # `Path("/tmp/exhibit_none")` was hardcoded here. POSIX-only, shared between
+    # concurrent runs, and outside the fixture that cleans up after itself.
     from loopeng.sweep.orchestrator import run_sweep
 
-    report = run_sweep([], warehouse, profile=EXHIBIT, directory=Path("/tmp/exhibit_none"),
+    report = run_sweep([], warehouse, profile=EXHIBIT, directory=tmp_path / "none",
                        quiet=True)
     assert report["n_cells"] == 0
     assert report["spend_usd"]["value"] == 0.0

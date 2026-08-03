@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+import pathlib
+
 import pytest
 
 from loopeng.pricing import PRICES_TAKEN_ON
@@ -371,17 +373,31 @@ def test_the_limit_spreads_across_clusters_rather_than_taking_a_prefix(tmp_path)
     assert len({item.pattern_key for item in subset}) == 8
 
 
-def test_the_profile_flag_is_required(tmp_path):
+def test_the_profile_flag_is_required():
     """A delivery run must not inherit development settings by omission — that is a
-    tenfold cost difference decided by a flag nobody typed."""
+    tenfold cost difference decided by a flag nobody typed.
+
+    This ran with `cwd=tmp_path.parent`, where `demos/04_hill_climbing_loop/sweep.py`
+    does not exist. Python exited 2 with "can't open file", the assertion on a
+    non-zero return code passed, and argparse was never reached — so the test named
+    after the required flag proved only that a missing file fails to run. It would
+    have passed just as well with `--profile` deleted from the parser.
+
+    Now run from the repository root, and the refusal is asserted on its content.
+    """
     import subprocess
     import sys
 
+    repo_root = pathlib.Path(__file__).resolve().parent.parent
     result = subprocess.run(
         [sys.executable, "demos/04_hill_climbing_loop/sweep.py"],
-        capture_output=True, text=True, cwd=tmp_path.parent, timeout=120,
+        capture_output=True, text=True, cwd=repo_root, timeout=120,
     )
-    assert result.returncode != 0
+    assert result.returncode == 2, result.stdout + result.stderr
+    combined = result.stdout + result.stderr
+    assert "can't open file" not in combined, "still running from the wrong directory"
+    assert "--profile" in combined, combined
+    assert "required" in combined.lower(), combined
 
 
 # ---- reference measurements are visibly not live ----------------------------
