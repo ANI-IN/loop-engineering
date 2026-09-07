@@ -73,6 +73,7 @@ from loopeng.sweep.chart_model import (
     COST_PER_CORRECT_CAPTION,
     COST_PER_CORRECT_NOTE,
     DELTA_CAPTION,
+    DELTA_LOOPS_NOTE,
     DIAL_CAPTION,
     NOT_MEASURED,
     OUTCOME_SHIFT_CAPTION,
@@ -351,7 +352,10 @@ def delta_chart(comparisons):
     """One row per compared pair. Zero is drawn; nothing untestable gets a bar."""
     testable, untestable = partition(comparisons)
     rows = [_delta_row(c) for c in testable + untestable]
-    notes = []
+    # Always present, not conditional on anything being absent. The loop comparisons
+    # were measured and dropped, and a reader who expects them has to learn that from
+    # the figure rather than from their absence.
+    notes = [DELTA_LOOPS_NOTE]
     if untestable:
         # Counted and named, never dropped quietly. A chart showing fewer comparisons
         # than the cells imply is the same failure as a bar that renders zero.
@@ -362,7 +366,7 @@ def delta_chart(comparisons):
         rows = [{
             "label": "no comparable cells yet", "provenance": "",
             "value": None, "lo": None, "hi": None, "testable": False,
-            "note": f"{NOT_MEASURED} — run a sweep, or render with --reference=compare",
+            "note": f"{NOT_MEASURED} — run a sweep",
         }]
 
     fig, ax = _frame("DELTA — paired difference in silent-error rate", DELTA_CAPTION,

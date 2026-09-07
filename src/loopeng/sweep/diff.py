@@ -52,10 +52,10 @@ picked.
 **Every result carries both `measured_on` values**, so a live-vs-stored comparison
 cannot be read as two fresh measurements.
 
-**The clustering caveat travels with the number.** Items are 10 clusters of 5
-parameterisations, so a systematic weakness in one pattern can produce five discordant
-pairs that are really one observation. Every interval here is narrower than the evidence
-supports, and `paired.CLUSTERING_CAVEAT` says so on every result.
+**The clustering caveat travels with the number.** Items are clusters of
+parameterisations, so a systematic weakness in one pattern can produce a whole cluster
+of discordant pairs that are really one observation. Every interval here is narrower
+than the evidence supports, and `paired.CLUSTERING_CAVEAT` says so on every result.
 """
 
 from dataclasses import dataclass
@@ -259,10 +259,6 @@ def _stamp(cell: dict) -> str:
     return LIVE_STAMP
 
 
-def _side(cell: dict) -> str:
-    return "LIVE"
-
-
 def keeps_per_item_outcomes(cell: dict) -> bool:
     """Whether this cell retained the per-item outcomes a paired test needs.
 
@@ -296,7 +292,7 @@ def _build(kind: str, a: dict, b: dict) -> Comparison:
     return Comparison(
         kind=kind,
         key_a=a["key"], key_b=b["key"],
-        label_a=f"{_side(a)} {a['label']}", label_b=f"{_side(b)} {b['label']}",
+        label_a=a["label"], label_b=b["label"],
         measured_on_a=_stamp(a), measured_on_b=_stamp(b),
         paired=compare(paired_map(a), paired_map(b),
                        label_a=a["label"], label_b=b["label"]),
@@ -372,13 +368,35 @@ def named_secondary_deltas(cells) -> list[Comparison]:
 
 
 def all_comparisons(cells) -> list[Comparison]:
-    """Every difference these cells support, in a stable order.
+    """The comparisons the DELTA chart draws: L0 against L3, within each model.
 
-    Includes the ones that cannot be tested. Filtering them out here would let a chart
+    **Two families are deliberately not here, and both were measured before being
+    dropped.** `mode_deltas` and `named_secondary_deltas` are still implemented, still
+    correct, and still tested — a caller who wants them can have them. They are not
+    fed to the chart.
+
+    *Mode deltas* — one-shot against looped, within a model — is the A -> B and A -> C
+    family. Measured on the 60 held-out items: condition A terminated `success` 60/60,
+    so retry had nothing to retry and B fired zero retries; C's verifiers rejected 2.
+    Five runs of the cheap arm scored 46, 51, 52, 52, 52, so the six-item difference
+    is the arm's own spread. Exact McNemar returns p=0.031 over a mechanism that never
+    fired.
+
+    Drawing that would be worse than omitting it. The arithmetic is right and the
+    subject is wrong, so the chart would be honest about its statistics and wrong
+    about what it was showing — and a p-value on a row gives a dead comparison the
+    visual weight of a live one. The finding travels as a caption sentence instead.
+
+    *The named secondary* — cheap-plus-loops against frontier-bare — has no gap left
+    to measure: the frontier model scored 60/60 on two separate runs. It stays
+    implemented because the cross-model p-value refusal lives in that path and is
+    worth keeping reachable.
+
+    What remains is the comparison that is still paired, still large, and still real.
+    Untestable rows are kept rather than filtered: dropping them would let the chart
     quietly show fewer rows than the data implies — see `partition`.
     """
-    return (mode_deltas(cells) + level_deltas(cells)
-            + named_secondary_deltas(cells))
+    return level_deltas(cells)
 
 
 # The footnote counts; the ROW names the cause. It used to do both, asserting "one side

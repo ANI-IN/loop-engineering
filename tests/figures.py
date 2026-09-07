@@ -13,11 +13,24 @@ from matplotlib.text import Text
 
 
 def texts(figure) -> str:
-    """Every string drawn on a figure, newline-joined. Tick labels included.
+    """Every string drawn on a figure, joined, with whitespace collapsed.
 
     Joined rather than returned as a list because the assertions are all "does this
-    figure say X", and a disclosure split across two Text objects is still on the image.
+    figure say X", and a disclosure split across two Text objects is still on the
+    image.
+
+    **Collapsed because the caption wrapper inserts newlines at the column width.**
+    A phrase can be split mid-assertion — `"share no\nanswered items"` is the same
+    content as `"share no answered items"` and a different string — so an assertion
+    written against the sentence fails on a caption that contains it and renders it
+    correctly.
+
+    That happened three times in this build before the helper was fixed rather than
+    the assertions. A test coupled to where the wrap lands passes and fails for
+    reasons unrelated to the property it protects, in both directions, which is the
+    same defect as a checker that matches nothing.
     """
-    return "\n".join(
+    joined = " ".join(
         artist.get_text() for artist in figure.findobj(Text) if artist.get_text()
     )
+    return " ".join(joined.split())

@@ -49,7 +49,8 @@ CROSS_MODEL_CAVEAT = (
 )
 
 CLUSTER_CAVEAT = (
-    "Items are 10 clusters of 5 parameterisations, not 50 independent trials, so every "
+    "Items are clusters of parameterisations over a small number of question "
+    "patterns, not independent trials, so every "
     "interval is narrower than the evidence supports."
 )
 
@@ -383,4 +384,19 @@ COST_PER_CORRECT_NOTE = (
     "The two WITHHELD bars are what make this an argument rather than a price list. "
     "Buying a better model without supplying the rules is the most expensive way to "
     "be wrong on this chart."
+)
+
+
+# Carried on the DELTA chart so the removed comparisons are accounted for on the
+# figure rather than only in a commit message. A reader who expects to see the loop
+# uplift and does not find it should learn why from the chart.
+DELTA_LOOPS_NOTE = (
+    "The loop comparisons are NOT drawn here, and their absence is a finding rather "
+    "than an omission. With the rules supplied, the agent's SQL executed on every "
+    "held-out item — so retry had nothing to retry, verification rejected almost "
+    "nothing, and repeat runs of the same arm moved further than the arms moved from "
+    "each other. Verification exists to catch rule violations; supply the rules and "
+    "there are barely any violations left to catch. That is this chart's own finding "
+    "seen from the other side, and a p-value over a mechanism that never fired would "
+    "have given a dead comparison the visual weight of a live one."
 )

@@ -16,6 +16,18 @@ from loopeng.sweep.charts import delta_chart
 from tests.figures import texts
 
 
+def _chartable(cells):
+    """Every family, for the tests that exercise a family the CHART no longer draws.
+
+    `diff.all_comparisons` is what the delta chart is fed, and it now returns the
+    level deltas alone — the loop family measured as a null and the cross-model family
+    has no gap left. Both are still implemented and still correct, so the tests that
+    cover them ask for them directly rather than through the chart's feed.
+    """
+    return (diff.mode_deltas(cells) + diff.level_deltas(cells)
+            + diff.named_secondary_deltas(cells))
+
+
 def cell(key, *, role="agent", level="L0", mode="loop", replicate=0,
          correct=(), wrong=(), reference=False, complete=True, label=None):
     """A cell file, reduced to what a comparison reads off it."""
@@ -150,7 +162,7 @@ def test_a_pair_stripped_at_freeze_time_says_so_rather_than_blaming_the_items():
 
 def test_the_delta_chart_carries_the_real_cause_too():
     """The row on the chart is what a room reads; the terminal line is not."""
-    drawn = texts(delta_chart(diff.all_comparisons([
+    drawn = texts(delta_chart(_chartable([
         _frozen_without_items("frontier_L0_one_shot_r0", mode="one_shot"),
         _frozen_without_items("frontier_L0_loop_r0"),
     ])))
@@ -274,7 +286,7 @@ def test_untestable_comparisons_are_partitioned_rather_than_dropped():
         cell("frontier_L0_one_shot_r0", role="reference", mode="one_shot"),
         cell("frontier_L0_loop_r0", role="reference"),
     ]
-    testable, untestable = diff.partition(diff.all_comparisons(pairable + unpairable))
+    testable, untestable = diff.partition(_chartable(pairable + unpairable))
 
     assert [c.kind for c in testable] == ["mode"]
     # The frontier mode pair (no per-item record on either side) and the named secondary
@@ -288,7 +300,7 @@ def test_untestable_comparisons_are_partitioned_rather_than_dropped():
 def test_the_delta_chart_draws_zero_as_a_reference_line():
     """Zero is a real delta. Leaving the axis implicit would let a bar of no width read
     as an absent bar."""
-    drawn = texts(delta_chart(diff.all_comparisons([
+    drawn = texts(delta_chart(_chartable([
         cell("worker_L0_one_shot_r0", mode="one_shot", correct=list("abcdefgh")),
         cell("worker_L0_loop_r0", wrong=list("abcdefgh")),
     ])))
@@ -296,7 +308,7 @@ def test_the_delta_chart_draws_zero_as_a_reference_line():
 
 
 def test_the_delta_chart_never_draws_a_bar_it_cannot_test():
-    drawn = texts(delta_chart(diff.all_comparisons([
+    drawn = texts(delta_chart(_chartable([
         cell("worker_L0_one_shot_r0", mode="one_shot", correct=list("abcdefghij")),
         cell("worker_L0_loop_r0", correct=list("abcdefghij")),
     ])))
@@ -310,7 +322,7 @@ def test_the_delta_chart_reports_what_it_could_not_compare():
     they share no answered items, not that something was stripped. The footnote counts
     and defers; only the row is entitled to name a cause.
     """
-    drawn = texts(delta_chart(diff.all_comparisons([
+    drawn = texts(delta_chart(_chartable([
         cell("frontier_L0_one_shot_r0", role="reference", mode="one_shot"),
         cell("frontier_L0_loop_r0", role="reference"),
     ])))
@@ -321,7 +333,7 @@ def test_the_delta_chart_reports_what_it_could_not_compare():
 
 
 def test_the_delta_chart_refuses_a_cross_model_p_value_on_screen():
-    drawn = texts(delta_chart(diff.all_comparisons([
+    drawn = texts(delta_chart(_chartable([
         cell("agent_L0_loop_r0", role="agent", correct=list("abcdefghij")),
         cell("reference_L0_one_shot_r0", role="reference", mode="one_shot",
              wrong=list("abcdefghij")),
@@ -335,7 +347,7 @@ def test_the_cross_model_refusal_is_reachable_at_all():
     so the guard could never fire — a guardrail that exists in code and cannot trigger
     is the same defect as one that exists only in prose. The NAMED SECONDARY family
     exists to make it real."""
-    comparisons = diff.all_comparisons([
+    comparisons = _chartable([
         cell("agent_L0_loop_r0", role="agent", correct=list("abcdefghij")),
         cell("reference_L0_one_shot_r0", role="reference", mode="one_shot",
              wrong=list("abcdefghij")),
@@ -361,7 +373,7 @@ def test_the_named_secondary_follows_the_level_rather_than_being_typed_per_level
 def test_an_empty_delta_chart_says_not_yet_measured():
     drawn = texts(delta_chart([]))
     assert "not yet measured" in drawn
-    assert "--reference=compare" in drawn
+    assert "run a sweep" in drawn
 
 
 # ---- a p-value is never rendered as a zero it is not -------------------------
@@ -377,7 +389,7 @@ def test_a_strongly_significant_p_renders_with_a_less_than():
 
 
 def test_the_delta_chart_never_prints_p_equals_zero():
-    drawn = texts(delta_chart(diff.all_comparisons([
+    drawn = texts(delta_chart(_chartable([
         cell("worker_L0_one_shot_r0", mode="one_shot", correct=list("abcdefghijklmnop")),
         cell("worker_L0_loop_r0", wrong=list("abcdefghijklmnop")),
     ])))

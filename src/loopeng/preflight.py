@@ -285,7 +285,7 @@ def render(result: Preflight) -> str:
             f"    {NEXT_COMMAND}",
             "",
             "Then render the charts with your run beside the committed baseline:",
-            "    uv run python demos/04_hill_climbing_loop/charts.py --reference=compare",
+            "    uv run python demos/04_hill_climbing_loop/charts.py",
         ]
     else:
         lines += ["Fix the FAIL line(s) above and run this again. Nothing has been spent "

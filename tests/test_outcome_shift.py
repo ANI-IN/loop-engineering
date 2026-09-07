@@ -20,27 +20,13 @@ from loopeng.sweep.chart_model import (
     outcome_shift_rows,
 )
 from loopeng.sweep.charts import outcome_shift_chart
+from tests.figures import texts
 
 
 def _arm(name, **bands):
     full = dict.fromkeys(BANDS, 0)
     full.update(bands)
     return {"arm": name, "n_items": sum(full.values()), "bands": full}
-
-
-def texts(figure):
-    """Every string on the figure, with whitespace collapsed.
-
-    Collapsed because the caption wrapper inserts newlines at the column width, so a
-    phrase can be split mid-assertion — "measured no\nvariance" is the same content
-    and a different string. These tests are about what the figure SAYS, and coupling
-    them to where the wrap happens to land makes them fail on a rewording that
-    changed nothing.
-    """
-    raw = " ".join(
-        t.get_text() for t in figure.findobj(match=lambda o: hasattr(o, "get_text"))
-    )
-    return " ".join(raw.split())
 
 
 # ---- every band is drawn, and none is derived -------------------------------

@@ -189,7 +189,7 @@ def test_the_rule_surface_reports_both_columns():
 def test_a_passing_run_prints_the_next_command(keyed):
     rendered = preflight.render(preflight.run(client_for=StubRoster()))
     assert preflight.NEXT_COMMAND in rendered
-    assert "--reference=compare" in rendered
+    assert "charts.py" in rendered
 
 
 def test_a_failing_run_says_nothing_was_spent(tmp_path, monkeypatch):
