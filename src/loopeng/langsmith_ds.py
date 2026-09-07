@@ -209,6 +209,11 @@ def feedback_scores(judgement, cost_usd: float) -> list[dict]:
     answer the question, and an absent score would quietly shrink the denominator
     of the accuracy metric — turning "declined" into "not asked", which flatters
     exactly the arm that declines most.
+
+    An UNEARNED correct also scores 0.0, and carries a comment saying why. The
+    number was right and the model could not have known it; scoring it as accuracy
+    would record a guess that landed as knowledge, which is the one thing no
+    accuracy metric can tell apart on its own.
     """
     from loopeng.agent.classify import Outcome
 
@@ -217,7 +222,11 @@ def feedback_scores(judgement, cost_usd: float) -> list[dict]:
         {
             "key": "execution_accuracy",
             "score": 1.0 if outcome is Outcome.CORRECT else 0.0,
-            "comment": str(outcome),
+            "comment": (
+                "matched gold, but the value it needed was withheld at this prompt "
+                "level — a guess that landed, scored 0 so it cannot pass as knowledge"
+                if judgement.unearned else str(outcome)
+            ),
         },
         {
             # A rule the answer can be attributed to. Not a gate — nothing here

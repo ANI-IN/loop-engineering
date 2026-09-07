@@ -503,6 +503,7 @@ def test_a_run_fingerprint_is_stamped_into_every_cell_file(tmp_path, monkeypatch
 
     class _Judgement:
         outcome, ran_and_returned = Outcome.CORRECT, True
+        unearned = False
 
     monkeypatch.setattr(runner, "run_question", lambda *a, **k: _Run())
     monkeypatch.setattr(runner, "judge", lambda *a, **k: _Judgement())

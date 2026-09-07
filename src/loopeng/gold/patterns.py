@@ -47,6 +47,29 @@ NAIVE_FACTOR_SQL = "0.01"
 # One SQL change, so one naive variant, and the JPY-scoping rule applies to either.
 CURRENCY_RULES = frozenset({"multi_currency", "minor_units"})
 
+# Rules whose satisfaction requires a VALUE that appears nowhere the model can reach
+# unless the rules are supplied — as opposed to a BEHAVIOUR it could infer from the
+# schema.
+#
+# The distinction decides what a correct answer proves, and it is narrow on purpose.
+# A model at L0 that writes `deleted_at IS NULL` has plausibly reasoned it from a
+# column called `deleted_at`; that is inference from the schema and it earns the
+# answer. The conversion factors are arbitrary constants declared in
+# semantic_model.yaml and rendered into the L3 prompt only — there is no rates table,
+# nothing in the DDL, and nothing derivable from the warehouse, which stores an amount
+# and a currency code and no rate.
+#
+# So on an item requiring these rules, with the rules withheld, **a correct answer is
+# a guess that landed**. Measured 2026-09-07: gpt-5.6-luna's invented rates spanned
+# 0.0064 to 0.0068 across eight items, bracketing the declared JPY factor. Some were
+# right. That is worse than being wrong, because a guess that lands is
+# indistinguishable from knowledge to any accuracy metric.
+#
+# `loopeng.agent.classify` uses this to separate the two, which no accuracy metric
+# can do on its own — and it is the argument for Level 2 in one line: verification
+# can ask whether the rate came from anywhere.
+RULES_REQUIRING_UNDISCLOSED_VALUES = CURRENCY_RULES
+
 # Scope for every currency-bearing item. EUR is included so the multi-currency rule
 # is exercised as mixing and not only as JPY's zero decimal places.
 CURRENCY_SCOPE = "o.currency IN ('EUR', 'JPY')"

@@ -58,6 +58,7 @@ from sqlglot import expressions as sqlglot_exp
 from loopeng.agent.loop import AgentRun
 from loopeng.gold.build import GoldItem
 from loopeng.gold.compare import rows_equal
+from loopeng.gold.patterns import RULES_REQUIRING_UNDISCLOSED_VALUES
 
 
 class Outcome(StrEnum):
@@ -67,6 +68,9 @@ class Outcome(StrEnum):
     # The model was asked for something it had not been given the information to
     # compute, and said so in SQL rather than guessing. See `_signals_missing_input`.
     SIGNALLED_MISSING_INFO = "signalled_missing_information"
+    # The answer matches gold, and could not have been derived from what the model
+    # was given. A guess that landed. See `_could_not_have_known`.
+    UNEARNED_CORRECT = "unearned_correct"
 
 
 class VisibleKind(StrEnum):
@@ -118,6 +122,26 @@ def _signals_missing_input(sql: str) -> bool:
     return bool(
         next(tree.find_all(sqlglot_exp.Placeholder, sqlglot_exp.Parameter), None)
     )
+
+
+def _could_not_have_known(item: GoldItem, level: str) -> bool:
+    """Was the value this item needs absent from everything the model was given?
+
+    Structural, not a heuristic, and that is why it is worth having. The conversion
+    factors live in `semantic_model.yaml` and are rendered into the L3 prompt only.
+    There is no rates table in the DDL and nothing in the warehouse from which a rate
+    could be derived — it stores an amount in minor units and a currency code. So on
+    an item requiring the currency rules, at a level that withholds them, a correct
+    USD total REQUIRES a number the model was never shown.
+
+    Deliberately narrow. It does not fire for `soft_delete` or `internal_accounts`,
+    where a model can plausibly infer the filter from a column named `deleted_at` or
+    `is_internal`. Inference from the schema earns the answer; an arbitrary constant
+    conjured from nothing does not.
+    """
+    if level != "L0":
+        return False
+    return bool(set(item.rules) & RULES_REQUIRING_UNDISCLOSED_VALUES)
 
 
 def _shape_mismatch(rows, gold_rows) -> bool:
@@ -247,13 +271,31 @@ class Judgement:
 
     @property
     def ran_and_returned(self) -> bool:
-        """The denominator of silent-error rate."""
-        return self.outcome in (Outcome.CORRECT, Outcome.SILENT_ERROR)
+        """The denominator of silent-error rate.
+
+        An unearned correct belongs here: it ran, it returned, and a reader looking
+        at the number cannot tell it apart from an earned one. That is the whole
+        problem with it.
+        """
+        return self.outcome in (
+            Outcome.CORRECT, Outcome.SILENT_ERROR, Outcome.UNEARNED_CORRECT
+        )
 
     @property
     def unclassified(self) -> bool:
         """A wrong answer matching no naive variant."""
         return self.outcome is Outcome.SILENT_ERROR and not self.attributed_rules
+
+    @property
+    def unearned(self) -> bool:
+        """Right answer, and the model could not have known it.
+
+        Reported apart from both correct and wrong. Counting it as correct inflates
+        the withheld-rules arm and makes the trap gap look SMALLER than it is;
+        counting it as a silent error would be false, because the number is right.
+        It is a third thing and it gets a third name.
+        """
+        return self.outcome is Outcome.UNEARNED_CORRECT
 
     @property
     def abstained(self) -> bool:
@@ -341,10 +383,17 @@ def judge(run: AgentRun, item: GoldItem) -> Judgement:
             **base, outcome=Outcome.VISIBLE_FAILURE, visible_kind=VisibleKind.SHAPE_MISMATCH
         )
 
-    if rows_equal(final.rows, item.gold_rows, order_sensitive=item.order_sensitive):
-        return Judgement(**base, outcome=Outcome.CORRECT)
-
-    if _tie_break_only(final.rows, item.gold_rows, item.order_sensitive):
+    matched = rows_equal(final.rows, item.gold_rows,
+                         order_sensitive=item.order_sensitive) or _tie_break_only(
+        final.rows, item.gold_rows, item.order_sensitive
+    )
+    if matched:
+        # A right answer is not always an earned one. See `_could_not_have_known`:
+        # on an item whose required VALUE was withheld, matching gold means a guess
+        # landed, and scoring it as knowledge is the same ranking inversion this
+        # module already had once.
+        if _could_not_have_known(item, run.level):
+            return Judgement(**base, outcome=Outcome.UNEARNED_CORRECT)
         return Judgement(**base, outcome=Outcome.CORRECT)
 
     rules, ambiguous = _attribute(final.rows, item)
@@ -364,6 +413,7 @@ def summarise(judgements: list[Judgement]) -> dict:
     """
     ran = [j for j in judgements if j.ran_and_returned]
     silent = [j for j in ran if j.outcome is Outcome.SILENT_ERROR]
+    unearned = [j for j in ran if j.unearned]
     visible = [j for j in judgements if j.outcome is Outcome.VISIBLE_FAILURE]
 
     attribution: dict[str, int] = {}
@@ -388,6 +438,9 @@ def summarise(judgements: list[Judgement]) -> dict:
         # Counted separately from both correct and failed, because it is neither.
         "n_signalled_missing_information": sum(1 for j in judgements if j.abstained),
         "n_correct": sum(1 for j in ran if j.outcome is Outcome.CORRECT),
+        # Right answers the model could not have derived. Reported apart from
+        # n_correct rather than folded into it — see `Judgement.unearned`.
+        "n_unearned_correct": len(unearned),
         "n_silent_errors": len(silent),
         "n_visible_failures": len(visible),
         "visible_failure_kinds": dict(sorted(visible_kinds.items())),

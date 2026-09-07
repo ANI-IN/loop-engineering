@@ -1174,13 +1174,29 @@ best live demonstration in the repository if you have the nerve.
 
 ## 19 · FAQ
 
-**Why not LangChain?** The loops here are small enough that the framework would be more
-code than the thing it wraps, and two of its equivalent primitives contradict choices made
-deliberately. See [Design decisions](#15--design-decisions).
+**Why not LangChain — and why is `langchain-core` in `pyproject.toml`?** Both are true and
+they are about different things, so it is worth being precise rather than leaving a reader
+to find the dependency and conclude the answer above was marketing.
 
-**Why is there no LLM judge?** Everything runs against one provider, so a judge would come
-from the same family as the thing being judged, which is not an independent check. Judges
-are useful for triage and for sorting failures. They do not get to block.
+*Not used:* the loop primitives. The loops here are small enough that the framework would
+be more code than the thing it wraps, and two of its equivalents contradict choices made
+deliberately — a rubric middleware that scores with an LLM judge, which this project
+refuses as a blocking check, and a hill-climbing loop in which an agent rewrites the
+harness configuration, where here a human moves one dial and re-measures. See
+[Design decisions](#15--design-decisions).
+
+*Used:* a serialisation format, in exactly one place. LangSmith's `push_prompt` takes a
+langchain-core prompt object, and the L0 and L3 prompts are pushed as two versioned
+prompts so the trap renders in the experiment comparison view natively rather than only
+as a local chart. Nothing in `agent/`, `verify/`, `sweep/` or `queue/` imports it, and two
+tests enforce that rather than asserting it: one pins the single importing module, the
+other walks every loop package.
+
+**Why is there no LLM judge?** No judge blocks anything. The judge is Anthropic while both
+scoring arms are OpenAI, which makes it an independent read rather than a model grading
+its own family — that is the objection this project used to raise against itself when
+everything ran on one provider. It triages and sorts failures by cause. It does not get to
+decide whether a run passed.
 
 **Why is the frontier model not temperature pinned?** It rejects non-default sampling
 parameters. The cheaper model accepts them and is pinned. The consequence is that the two

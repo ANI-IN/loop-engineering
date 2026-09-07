@@ -413,6 +413,10 @@ def run_cell(cell: Cell, items, warehouse: Path, *, verifier=verify_governed,
             "outcome": str(judgement.outcome),
             "ran_and_returned": judgement.ran_and_returned,
             "correct": judgement.outcome is Outcome.CORRECT,
+            # Right, and not derivable from what the model was given. Carried
+            # separately because it is neither correct nor a silent error, and
+            # subtracting it from either would restate a ranking as arithmetic.
+            "unearned_correct": judgement.unearned,
             "termination": str(run.termination), "n_attempts": attempts,
             "rejections": rejections, "cost_usd": run.ledger.cost_usd(),
             "tokens": run.ledger.totals(),
@@ -439,7 +443,13 @@ def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: flo
                    fingerprint: RunFingerprint | None = None) -> dict:
     ran = [r for r in rows if r["ran_and_returned"]]
     correct = sum(1 for r in ran if r["correct"])
-    silent = len(ran) - correct
+    # `.get` because the field is additive: a cell written before it existed simply
+    # has none, and absence means "not separated out" rather than zero.
+    unearned = sum(1 for r in ran if r.get("unearned_correct"))
+    # Explicit rather than `len(ran) - correct`. That subtraction silently swept an
+    # unearned correct into the silent-error band the moment the outcome existed —
+    # a right answer counted as a wrong one, on the headline metric.
+    silent = len(ran) - correct - unearned
     metric = Metric.from_counts(silent, len(ran)) if ran else None
     return {
         "key": cell.key, "label": cell.label, "role": cell.role, "level": cell.level,
@@ -450,7 +460,7 @@ def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: flo
         # different number, which is what stops one profile inheriting another's.
         "n_items": len(rows),
         "n_done": len(rows), "ran_and_returned": len(ran),
-        "correct": correct, "silent_errors": silent,
+        "correct": correct, "unearned_correct": unearned, "silent_errors": silent,
         # Never blank, never zero, never a guess.
         "silent_error_rate": (
             metric.render() if metric and complete

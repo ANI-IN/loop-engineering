@@ -74,6 +74,90 @@ about how one engine phrases a rejection.
 That is the verifiers' own lesson — ask the parse tree whether the column is
 constrained, not whether the text mentions it — applied to the module that judges them.
 
+---
+
+# Second act: the instrument could not tell luck from knowledge
+
+Found the same day, one level deeper, by asking what happens when a guess is *right*.
+
+## The condition, which is structural rather than probabilistic
+
+The conversion factors live in `semantic_model.yaml` and reach the model only through
+the L3 prompt. There is no rates table in the schema, and nothing in the warehouse from
+which a rate could be derived — it stores an amount in minor units and a currency code.
+
+So on an item requiring the currency rules, **at a level that withholds them, a correct
+answer is a guess that landed.** That is not a heuristic and it needs no threshold; it
+follows from what was in the prompt. `Outcome.UNEARNED_CORRECT` is that condition, and
+`_could_not_have_known` decides it from the item's rules and the prompt level.
+
+It is deliberately narrow. It does not fire for `soft_delete` or `internal_accounts`: a
+model that writes `deleted_at IS NULL` at L0 has plausibly reasoned it from a column
+called `deleted_at`, and inference from the schema earns the answer. Only an arbitrary
+constant conjured from nothing does not.
+
+## What the data says, and why it is not reassuring
+
+Re-scoring the measured arms with the outcome live:
+
+| arm | n | correct | of which unearned | currency items |
+|---|---|---|---|---|
+| luna L0 | 20 | 2 | **0** | 8 |
+| astra L0 | 20 | 4 | **0** | 8 |
+
+Zero. Every L0 correct answer was `p01_product_count`, which requires no rules, or
+`p03_customers_in_region`, whose rules are inferable from column names. **The trap
+matrix is unchanged.**
+
+Then the reason why:
+
+| item | rate luna invented | JPY exact? | EUR exact? | scored |
+|---|---|---|---|---|
+| `p04_gross_revenue__00` | 0.0064 | no | no | silent error |
+| `p05_net_revenue__00` | 0.0068 | no | no | silent error |
+| `p07_aov_by_region__00` | **0.0067** | **yes** | no | silent error |
+| `p08_revenue_by_category__00` | **0.0067** | **yes** | no | silent error |
+| `p04_gross_revenue__01` | 0.0066 | no | no | silent error |
+| `p05_net_revenue__01` | 0.0066 | no | no | silent error |
+| `p07_aov_by_region__01` | **0.0067** | **yes** | no | silent error |
+| `p08_revenue_by_category__01` | **0.0067** | **yes** | no | silent error |
+
+**Luna guessed the JPY factor exactly, on four of eight items.** It never guessed the
+EUR one. Every currency item is scoped to `currency IN ('EUR', 'JPY')` and therefore
+needs *both* factors, and the EUR miss is the only thing that kept those four out of the
+correct column.
+
+Had any of those items been JPY-only, a guessed rate would have scored as knowledge,
+four times out of eight.
+
+## Why that is the same defect again
+
+The EUR+JPY scoping was not chosen to prevent this. `gold/patterns.py` says why it was
+chosen: *"EUR is included so the multi-currency rule is exercised as mixing and not only
+as JPY's zero decimal places."* It is about rule coverage. That it also happens to
+require two independent guesses, and so protects the score, is a coincidence.
+
+Which is [the guards argument](guards-are-a-tell.md) from the other direction. A property
+holding by accident looks exactly like a property holding by design, right up until the
+accident stops. One JPY-only pattern in the widened gold set removes it.
+
+So the outcome exists even though it currently fires zero times. The alternative is a
+metric that will silently start scoring confabulation as knowledge the first time the
+item mix changes, with nothing to say it happened.
+
+## What this buys the Level 2 argument
+
+An accuracy metric cannot separate these two cases. It compares the answer to gold, and
+both answers equal gold; there is nothing further to look at.
+
+A verifier can, because it reads the query rather than the result. *Did this rate come
+from anywhere?* is a structural question about the SQL — is the factor joined from a
+source, or is it a literal the model produced — and it is answerable without knowing the
+right answer.
+
+That is the clearest statement of what verification adds that measurement cannot, and it
+was found by measuring rather than by arguing.
+
 ## What it does not fix
 
 The eight L0 currency items remain unanswerable. Scoring an abstention correctly does

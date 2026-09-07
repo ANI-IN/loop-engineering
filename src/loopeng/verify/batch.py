@@ -88,6 +88,7 @@ def run_level2_pass(
                     ),
                     "ran_and_returned": judgement.ran_and_returned,
                     "correct": judgement.outcome is Outcome.CORRECT,
+                    "unearned_correct": judgement.unearned,
                     "attributed_rules": list(judgement.attributed_rules),
                     "cost_usd": verified.cost_usd(),
                 }
@@ -97,7 +98,10 @@ def run_level2_pass(
     elapsed = time.perf_counter() - start
     ran = [r for r in rows if r["ran_and_returned"]]
     correct = sum(1 for r in ran if r["correct"])
-    silent = len(ran) - correct
+    unearned = sum(1 for r in ran if r.get("unearned_correct"))
+    # Explicit, not `len(ran) - correct`. See sweep/runner.summarise_cell: that
+    # subtraction counts a right-but-underivable answer as a silent error.
+    silent = len(ran) - correct - unearned
     # Totals come from the per-item costs rather than holding every ledger in memory.
     total_cost = sum(r["cost_usd"] for r in rows)
 
@@ -111,6 +115,7 @@ def run_level2_pass(
         "termination": dict(Counter(r["termination"] for r in rows)),
         "ran_and_returned": len(ran),
         "correct": correct,
+        "unearned_correct": unearned,
         "silent_errors": silent,
         "silent_error_rate": (
             Metric.from_counts(silent, len(ran)).render() if ran else "not yet measured"

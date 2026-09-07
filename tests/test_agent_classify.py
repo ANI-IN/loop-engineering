@@ -483,3 +483,85 @@ def test_abstentions_are_counted_apart_from_correct_and_failed(items, warehouse)
     assert report["n_ran_and_returned"] == 0
     assert report["n_visible_failures"] == 0
     assert report["n_silent_errors"] == 0
+
+
+# ---- a right answer is not always an earned one -----------------------------
+#
+# Measured 2026-09-07: gpt-5.6-luna's invented conversion rates spanned 0.0064 to
+# 0.0068 across the eight L0 currency items, bracketing the warehouse's declared JPY
+# factor. Some landed. A guess that lands is indistinguishable from knowledge to any
+# accuracy metric, which is the same ranking inversion this module already had once —
+# one level deeper.
+
+
+def test_matching_gold_without_the_withheld_value_is_not_scored_as_correct(
+    items, warehouse
+):
+    """The factor exists only in the rules. At L0 the rules are withheld and there is
+    no rates table, so a correct USD total requires a number the model was never
+    shown."""
+    from loopeng.agent.classify import Outcome
+
+    item = _item(items, "p04_gross_revenue")
+    run = run_question(item.question, warehouse=warehouse, level="L0", max_attempts=1,
+                       client=ScriptedClient(lambda q: item.gold_sql))
+    verdict = judge(run, item)
+
+    assert verdict.outcome is Outcome.UNEARNED_CORRECT
+    assert verdict.unearned
+    assert verdict.ran_and_returned, "it ran and it returned; that is the problem"
+
+
+def test_the_same_answer_at_l3_is_earned(items, warehouse):
+    """The other half. With the rules supplied the factor was given, so matching gold
+    is knowledge and must score as such — otherwise the trap has no treatment arm."""
+    from loopeng.agent.classify import Outcome
+
+    item = _item(items, "p04_gross_revenue")
+    run = run_question(item.question, warehouse=warehouse, level="L3", max_attempts=1,
+                       client=ScriptedClient(lambda q: item.gold_sql))
+    assert judge(run, item).outcome is Outcome.CORRECT
+
+
+def test_a_rule_free_item_is_earned_even_at_l0(items, warehouse):
+    """Deliberately narrow. `p01_product_count` needs no rules at all, so a correct
+    answer at L0 is an answer, not a guess."""
+    from loopeng.agent.classify import Outcome
+
+    item = _item(items, "p01_product_count")
+    run = run_question(item.question, warehouse=warehouse, level="L0", max_attempts=1,
+                       client=ScriptedClient(lambda q: item.gold_sql))
+    assert judge(run, item).outcome is Outcome.CORRECT
+
+
+def test_an_inferable_rule_still_earns_its_answer(items, warehouse):
+    """A model that writes `deleted_at IS NULL` at L0 plausibly reasoned it from a
+    column called `deleted_at`. Inference from the schema earns the answer; only an
+    arbitrary constant conjured from nothing does not."""
+    from loopeng.agent.classify import Outcome
+
+    item = _item(items, "p02_orders_in_month")
+    assert "soft_delete" in item.rules
+    run = run_question(item.question, warehouse=warehouse, level="L0", max_attempts=1,
+                       client=ScriptedClient(lambda q: item.gold_sql))
+    assert judge(run, item).outcome is Outcome.CORRECT
+
+
+def test_an_unearned_correct_is_not_swept_into_the_silent_error_band(items, warehouse):
+    """`silent = ran - correct` counted it as a wrong answer the moment the outcome
+    existed. The number was right; calling it a silent error is false in the other
+    direction."""
+    from loopeng.agent.classify import summarise
+
+    item = _item(items, "p04_gross_revenue")
+    verdict = judge(
+        run_question(item.question, warehouse=warehouse, level="L0", max_attempts=1,
+                     client=ScriptedClient(lambda q: item.gold_sql)),
+        item,
+    )
+    report = summarise([verdict])
+
+    assert report["n_unearned_correct"] == 1
+    assert report["n_correct"] == 0
+    assert report["n_silent_errors"] == 0
+    assert report["n_ran_and_returned"] == 1
