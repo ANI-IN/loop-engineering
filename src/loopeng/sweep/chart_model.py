@@ -39,15 +39,6 @@ nothing is adjacent to anything, so this only shows up in `compare` mode, which 
 # ---------------------------------------------------------------------------
 from loopeng.sweep.diff import ALPHA, MIN_DISCORDANT
 
-REFERENCE_CAPTION = (
-    "Cells marked REFERENCE were NOT computed in this session. They are measurements "
-    "taken on the date shown and are displayed for context only. Recomputing them here "
-    "would cost roughly ten times the delivery budget, so they are cited rather than "
-    "re-run — and they are drawn differently so that is impossible to miss. Presenting "
-    "a stored number as though it had just been computed would break the cost "
-    "constraint quietly, which is worse than not showing it at all."
-)
-
 # The two caveats that travel with every interval in this project. Composed into the
 # captions below rather than restated in each, so a correction lands once.
 CROSS_MODEL_CAVEAT = (

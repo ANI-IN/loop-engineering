@@ -142,12 +142,6 @@ input, textarea, select { font-size: 19px !important; border-radius: 10px !impor
   padding: 3px 10px; border-radius: 999px; white-space: nowrap;
   text-transform: uppercase; letter-spacing: 0.05em;
 }
-.ref-badge {
-  color: var(--ref) !important; background: var(--ref-bg);
-  font-weight: 700 !important; font-size: 14.5px !important;
-  padding: 3px 10px; border-radius: 999px; white-space: nowrap;
-  text-transform: uppercase; letter-spacing: 0.05em;
-}
 
 /* ---- callouts ---------------------------------------------------------- */
 blockquote {
@@ -180,15 +174,6 @@ def stamp(n: int | None = None, *, computed_at: datetime | None = None) -> str:
     when = (computed_at or datetime.now()).strftime("%H:%M")
     tail = f" · n={n}" if n is not None else " · not yet measured"
     return f"<span class='stamp'>computed {when} today{tail}</span>"
-
-
-def reference_stamp(measured_on: str, n: int | None = None) -> str:
-    """Reference measurements never claim to have been computed now."""
-    tail = f" · n={n}" if n is not None else ""
-    return (
-        f"<span class='stamp'><span class='ref-badge'>REFERENCE</span> · "
-        f"measured {measured_on}{tail} · not computed in this session</span>"
-    )
 
 
 

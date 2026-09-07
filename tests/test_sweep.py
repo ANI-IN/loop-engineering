@@ -426,13 +426,6 @@ def a_live_frontier_cell(tmp_path):
     return directory
 
 
-def test_the_reference_caption_explains_why_they_are_not_recomputed():
-    from loopeng.sweep.charts import REFERENCE_CAPTION
-
-    assert "NOT computed in this session" in REFERENCE_CAPTION
-    assert "quietly" in REFERENCE_CAPTION
-
-
 @pytest.fixture
 def two_reference_cells(tmp_path):
     import json

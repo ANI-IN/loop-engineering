@@ -150,7 +150,7 @@ flowchart TB
     end
 
     subgraph furniture["views/chrome.py"]
-        ST["stamp · reference_stamp · badges"]
+        ST["stamp"]
         CSS["projector CSS"]
         LA["launch<br/>queue settings · analytics off · bind all interfaces"]
     end
@@ -510,8 +510,8 @@ so the banner cannot claim a date the measurements do not carry.
 
 ```bash
 uv run python -c "
-from loopeng.views.chrome import stamp, reference_stamp, live_or_reference_badge
-print(stamp(50)); print(stamp(None)); print(reference_stamp('2026-07-29', 50))
+from loopeng.views.chrome import stamp
+print(stamp(50)); print(stamp(None))
 print(live_or_reference_badge(False)); print(live_or_reference_badge(True, '2026-07-29'))
 "
 ```

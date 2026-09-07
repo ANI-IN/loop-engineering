@@ -247,3 +247,90 @@ def test_the_withheld_bars_are_what_make_it_an_argument():
     drawn = texts(cost_per_correct_chart([_arm_cost("cheap", "L3", 0.0003)]))
     assert "rather than a price list" in drawn
     assert "most expensive way to be wrong" in drawn
+
+
+# ---- every chart, drawn with REAL data ---------------------------------------
+#
+# DIAL was broken for any cell that had a value, and it survived because every test
+# of it used empty or in-progress cells — which return before reaching the defect.
+# A suite can be green because it never exercised the state that matters.
+#
+# So this draws every chart the module ships, with populated inputs, and it is
+# derived from `dir(charts)` rather than listed: a chart added without a
+# non-empty-input test fails here rather than joining the set silently.
+
+
+def _populated_cell(key="agent_L3_loop_r0", successes=3, n=10):
+    from loopeng.metric import Metric
+
+    metric = Metric.from_counts(successes, n)
+    return {
+        "key": key, "label": key, "role": "agent", "level": "L3", "mode": "loop",
+        "replicate": 0, "complete": True, "rate_value": metric.value,
+        "rate_ci_low": metric.ci_low, "rate_ci_high": metric.ci_high, "rate_n": n,
+        "silent_error_rate": metric.render(), "n_items": n, "n_done": n,
+        "ran_and_returned": n, "correct": successes, "silent_errors": n - successes,
+        "cost_usd": {"value": 0.0123, "source": "estimated"},
+        "tokens": {"n_calls": n}, "rejections": 0, "termination": {"success": n},
+        "items": [{"item_id": f"i{i}", "correct": i < successes,
+                   "ran_and_returned": True} for i in range(n)],
+    }
+
+
+def _populated_inputs():
+    """One realistic, non-empty argument set per chart builder."""
+    from loopeng.sweep import diff
+
+    cells = [_populated_cell(), _populated_cell("agent_L0_loop_r0", 7, 10)]
+    for cell in cells:
+        cell["level"] = cell["key"].split("_")[1]
+    return {
+        "dial_chart": (cells,),
+        "cost_chart": (cells,),
+        "delta_chart": (diff.all_comparisons(cells),),
+        "abstention_chart": ([{
+            "threshold": 0.5, "n_total": 10, "n_answered": 8,
+            "coverage_value": 0.8, "precision_value": 0.75,
+            "precision_ci_low": 0.4, "precision_ci_high": 0.94,
+        }],),
+        "outcome_shift_chart": ([_arm("agent-L0", correct=7, wrong_and_silent=3)],),
+        "trap_matrix_chart": ([_cell("luna", "L3", 7, n=10)],),
+        "cost_per_correct_chart": ([_arm_cost("cheap", "L3", 0.0004)],),
+    }
+
+
+def test_every_chart_is_drawn_with_populated_input():
+    """The property DIAL failed: a chart tested only on empty inputs is a chart
+    nobody has drawn."""
+    import ast
+    import pathlib
+
+    from loopeng.sweep import charts
+
+    source = pathlib.Path(charts.__file__).read_text(encoding="utf-8")
+    builders = {node.name for node in ast.parse(source).body
+                if isinstance(node, ast.FunctionDef) and node.name.endswith("_chart")}
+    covered = _populated_inputs()
+
+    assert builders == set(covered), (
+        "these chart builders have no populated-input case: "
+        f"{sorted(builders - set(covered))}"
+    )
+    for name, args in covered.items():
+        assert getattr(charts, name)(*args) is not None, name
+
+
+def test_no_chart_still_reads_a_stored_measurement_key():
+    """The stored-measurement path was removed across 98 files. What survived it was
+    a dead branch reading a key nothing sets — which raised for any cell that had
+    data, on the chart this repository has had longest."""
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parent.parent / "src" / "loopeng"
+    offenders = []
+    for path in root.rglob("*.py"):
+        body = path.read_text(encoding="utf-8")
+        for marker in ('["reference"]', '.get("reference"', '["measured_on"]'):
+            if marker in body:
+                offenders.append(f"{path.relative_to(root)}: {marker}")
+    assert not offenders, f"dead reads of a removed key: {offenders}"

@@ -200,13 +200,6 @@ def test_a_stamp_without_an_n_says_not_yet_measured():
     assert "not yet measured" in chrome.stamp(None)
 
 
-def test_a_reference_stamp_never_claims_it_was_computed_now():
-    rendered = chrome.reference_stamp("2026-07-29", 43)
-    assert "measured 2026-07-29" in rendered
-    assert "not computed in this session" in rendered
-    assert "today" not in rendered
-
-
 def test_concurrency_is_explicit_and_the_queue_is_bounded():
     """Gradio defaults default_concurrency_limit to 1, which serialises everything and
     reads as a hang with two browsers open."""

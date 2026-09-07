@@ -46,13 +46,6 @@ def test_an_incomplete_cell_is_not_eligible():
     assert curve_cell([cell("worker_L0_loop_r0", complete=False)]) is None
 
 
-def test_a_reference_cell_is_not_eligible():
-    """Stored cells keep `{item_id: correct}` and nothing else. The curve needs
-    terminations and rejection counts, which a baseline deliberately does not carry —
-    so drawing one from a reference cell would be inventing the data."""
-    assert curve_cell([cell("worker_L0_loop_r0", reference=True)]) is None
-
-
 def test_a_one_shot_cell_is_not_eligible():
     """A one-shot cell can never produce a `no_progress` or `hit_the_attempt_cap`
     band, so a curve from one would be missing exactly the bands it exists to show."""
@@ -92,14 +85,16 @@ def test_an_empty_directory_says_so_rather_than_printing_nothing():
     assert any("not yet measured" in line for line in lines)
 
 
-def test_every_cell_is_listed_with_a_live_or_reference_badge():
+def test_every_cell_is_listed_with_its_rate():
+    """No live/stored badge, because there is no stored case: every cell was computed
+    by the run that is printing it. A column with one value forever is noise, and a
+    renderer that can still SAY "REFERENCE" is one that can still show it."""
     lines = summarise(
-        [cell("a", label="live one"), cell("b", label="stored one", reference=True)],
-        [], Path("d"), [],
+        [cell("a", label="first one"), cell("b", label="second one")], [], Path("d"), [],
     )
     body = "\n".join(lines)
-    assert "LIVE" in body and "REFERENCE" in body
-    assert "live one" in body and "stored one" in body
+    assert "first one" in body and "second one" in body
+    assert "REFERENCE" not in body
 
 
 def test_the_complete_count_is_reported_separately_from_the_total():

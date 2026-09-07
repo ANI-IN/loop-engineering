@@ -137,10 +137,8 @@ DELIVERY = Profile(
     cap_usd=0.75,
     runs_ablation=False,
     note=(
-        "Haiku only, 4 cells, 1 replicate, plus a 5-question Sonnet allowance so live "
-        "escalation runs in the room. Sonnet's CELLS and the noise floors are REFERENCE "
-        "MEASUREMENTS and are never recomputed. The full n=12 escalation measurement and "
-        "the ablation are development findings and do not appear in the session."
+        "The agent role only, 4 cells, 1 replicate. Superseded by the profile set the "
+        "conditions use; kept until that lands so no entry point loses its profile."
     ),
 )
 

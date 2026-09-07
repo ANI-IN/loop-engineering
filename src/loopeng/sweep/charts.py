@@ -76,7 +76,6 @@ from loopeng.sweep.chart_model import (
     DIAL_CAPTION,
     NOT_MEASURED,
     OUTCOME_SHIFT_CAPTION,
-    REFERENCE_CAPTION,
     RULE_FREE_NOTE,
     SHIFT_BAND_LABELS,
     SHIFT_BAND_ORDER,
@@ -223,8 +222,6 @@ def _frame(title: str, caption: str, *, body_h_in: float, notes=(),
 
 def _bar_figure(title: str, caption: str, rows: list[dict], unit: str):
     """DIAL and COST. One row per cell, in the order `chart_model` decides."""
-    if any(row.get("reference") for row in rows):
-        caption = f"{caption} {REFERENCE_CAPTION}"
     fig, ax = _frame(title, f"{unit} {caption}",
                      body_h_in=max(1, len(rows)) * ROW_H_IN)
 

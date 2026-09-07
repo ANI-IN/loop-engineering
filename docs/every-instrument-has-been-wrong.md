@@ -8,7 +8,7 @@ apart, and that you cannot tell by looking. It makes that argument about a text-
 agent. The argument is stronger made about the repository, because here the failures are
 documented, dated, and were all found the same way.
 
-**Eleven instruments have been caught measuring something other than what they
+**Twelve instruments have been caught measuring something other than what they
 claimed, and one plan has.** Not one was found by reading code. All of them were
 green.
 
@@ -178,10 +178,27 @@ cells, which return before reaching it.
 The chart the session has had longest was the one nothing had drawn with real numbers
 in it.
 
+## 12. A test asserting the spelling instead of the property, again
+
+`"measured no variance"` failed a substring check on a caption that contained it and
+rendered it correctly — the wrapper had inserted a newline at the column width, so the
+string was `"measured no\nvariance"`. The assertion was coupled to *where the wrap
+landed* rather than to *what the figure said*.
+
+Second time this shape has appeared. Two tests earlier asserted `"n=1" in render()`
+and broke when a boundary observation started rendering as `"1 of 1 — at least ..."`
+— the metric still carried its n, which is what the tests were named for.
+
+An instrument that checks the spelling passes and fails for reasons unrelated to the
+property it is protecting, in both directions. That is the same defect as a checker
+that matches nothing, wearing better clothes.
+
 ## What they have in common
 
-**None was found by reading code. Seven were found by running the thing and looking at
-what came out; the eighth by running the work in a different order.** Two were found by a
+**None was found by reading code.** They were found four different ways: by running
+the thing and reading the output; by drawing it; by running the work in a different
+order; and — twice — by a library's input validation refusing arithmetic, which then
+produced a test that found a dead branch nothing had ever executed. Two were found by a
 measurement taken for an unrelated reason, and one by a measurement it had itself
 silently ruined.
 
@@ -200,6 +217,7 @@ Each had a plausible reason to look correct:
 | the lint rule, again | it was refusing something that looked exactly like the bug |
 | the Wilson interval | it clamped the direction it had thought about |
 | DIAL | every test of it used cells with no data |
+| two assertions | they checked the exact string, which was almost the property |
 
 The last two are the most uncomfortable, because **both were correct when written.** They
 did not decay through neglect. They decayed because a category was added somewhere else,

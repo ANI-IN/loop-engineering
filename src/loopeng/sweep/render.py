@@ -30,7 +30,7 @@ def curve_cell(cells) -> dict | None:
     """
     candidates = [
         cell for cell in cells
-        if cell.get("complete") and not cell.get("reference")
+        if cell.get("complete")
         and cell.get("mode") == "loop" and cell.get("items")
     ]
     if not candidates:
@@ -66,8 +66,11 @@ def summarise(cells, comparisons, directory, written: list[Path]) -> list[str]:
         lines.append(f"  wrote {path}")
 
     for cell in sorted(cells, key=lambda c: c["label"]):
-        badge = "REFERENCE" if cell.get("reference") else "LIVE     "
-        lines.append(f"  {badge} {cell['label']:34s} {cell['silent_error_rate']}")
+        # No badge. Every cell was computed by the run that is printing it, so a
+        # column distinguishing live from stored would have one value forever — and
+        # a renderer that can still SAY "REFERENCE" is a renderer that can still show
+        # one, which is the capability the removal was for.
+        lines.append(f"  {cell['label']:34s} {cell['silent_error_rate']}")
 
     testable, untestable = partition(comparisons)
     lines.append(f"comparisons: {len(testable)} testable, {len(untestable)} not")
