@@ -401,13 +401,57 @@ def test_every_outcome_has_a_reveal_label():
     )
 
 
-def test_no_dict_keyed_on_outcome_is_partial():
-    """The general form, because two partial maps have now been found by hand.
+def test_no_module_level_map_over_outcome_is_partial():
+    """The general form, checked on the BUILT objects rather than on the source.
 
-    Walks every module under src/ for a dict literal whose keys are all `Outcome.X`
-    attributes, and asserts each one covers the whole enum. A map keyed on an enum is
-    a promise to handle every member; a partial one is a branch nobody wrote, and it
-    surfaces either as a KeyError on stage or as a category quietly dropped.
+    This is the primary check, and it is a runtime one because the AST check below
+    has a blind spot that matters: it sees `{Outcome.X: ...}` and cannot see a dict
+    built by comprehension (`ast.DictComp`) or by `dict(zip(...))` (`ast.Call`).
+    Verified — parsing all three forms yields exactly one `ast.Dict`.
+
+    Importing the module and looking at what it actually holds sees every
+    construction form, because by then the dict is a dict.
+
+    A map keyed on an enum is a promise to handle every member. A partial one is a
+    branch nobody wrote, and it surfaces either as a KeyError on stage or as a
+    category quietly dropped.
+    """
+    import importlib
+    import pkgutil
+
+    import loopeng
+    from loopeng.agent.classify import Outcome
+
+    partial = []
+    for info in pkgutil.walk_packages(loopeng.__path__, prefix="loopeng."):
+        try:
+            module = importlib.import_module(info.name)
+        except Exception:  # noqa: BLE001 - an unimportable module is another test's job
+            continue
+        for attribute, value in vars(module).items():
+            if not isinstance(value, dict) or not value:
+                continue
+            if not all(isinstance(key, Outcome) for key in value):
+                continue
+            if set(value) != set(Outcome):
+                partial.append(
+                    f"{info.name}.{attribute} misses "
+                    f"{sorted(str(o) for o in set(Outcome) - set(value))}"
+                )
+    assert not partial, f"partial maps over Outcome: {partial}"
+
+
+def test_no_dict_literal_keyed_on_outcome_is_partial():
+    """The source-level half, which reaches somewhere the runtime check cannot.
+
+    A dict built INSIDE a function is never a module attribute, so the check above
+    never sees it. This one does, at the cost of only recognising literals.
+
+    **Stated blind spot:** it matches `ast.Dict` only. A function-local map built by
+    comprehension or by `dict(zip(...))` is invisible to both checks. That gap is
+    documented rather than papered over — a checker with a known blind spot is
+    usable, and one with an undocumented blind spot is the vacuous-checker failure
+    this repository has now hit twice.
     """
     import ast
     import pathlib
@@ -439,6 +483,52 @@ def test_no_dict_keyed_on_outcome_is_partial():
                 )
 
     assert not partial, f"partial maps over Outcome: {partial}"
+
+
+def test_the_runtime_detector_fires_on_every_construction_form():
+    """The meta-test, and the reason the runtime check exists at all.
+
+    A checker that silently matches nothing is indistinguishable from a checker that
+    passes — this repository has hit that twice. So each of the three ways a partial
+    map can be built is planted and the detector must see it. The literal is the one
+    the AST check also catches; the other two are exactly what it misses.
+    """
+    import importlib
+    import pkgutil
+
+    import loopeng
+    import loopeng.agent.classify as classify
+    from loopeng.agent.classify import Outcome
+
+    def _partial_maps():
+        found = []
+        for info in pkgutil.walk_packages(loopeng.__path__, prefix="loopeng."):
+            try:
+                module = importlib.import_module(info.name)
+            except Exception:  # noqa: BLE001
+                continue
+            for attribute, value in vars(module).items():
+                if (isinstance(value, dict) and value
+                        and all(isinstance(key, Outcome) for key in value)
+                        and set(value) != set(Outcome)):
+                    found.append(f"{info.name}.{attribute}")
+        return found
+
+    assert not _partial_maps(), "the build must be clean before planting"
+
+    forms = {
+        "literal": {Outcome.CORRECT: "a"},
+        "comprehension": {o: "x" for o in (Outcome.CORRECT, Outcome.SILENT_ERROR)},
+        "dict_zip": dict(zip([Outcome.CORRECT], ["x"], strict=False)),
+    }
+    for label, planted in forms.items():
+        classify._PLANTED_FOR_TEST = planted
+        try:
+            assert _partial_maps(), f"the detector missed a partial map built by {label}"
+        finally:
+            del classify._PLANTED_FOR_TEST
+
+    assert not _partial_maps(), "the plant must not survive the test"
 
 
 def test_the_partial_map_detector_would_have_caught_the_bug():

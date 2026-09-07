@@ -98,6 +98,19 @@ indistinguishable from a checker that passes**, so every checker added here now 
 test that it fires on the bug it was written for. The lint rule failed that way twice
 before anyone noticed the shape.
 
+The convention paid immediately. Asked whether the AST walker also caught a map built by
+comprehension or by `dict(zip(...))`, the answer was no — it matches `ast.Dict` and both
+of those are different nodes. Rather than document the gap and stop, the check moved to
+the built objects: importing each module and inspecting what it actually holds sees every
+construction form, because by then a dict is a dict. Its meta-test plants all three and
+requires the detector to fire on each.
+
+One residual gap is documented rather than papered over: a dict built inside a *function*
+by comprehension is invisible to both halves — the runtime check cannot see it because it
+is not a module attribute, and the AST check cannot see it because it is not a literal. A
+checker with a known blind spot is usable. A checker with an undocumented one is this
+list's recurring entry.
+
 ## The honest reading
 
 This is not a list of things that went wrong on the way to a build that is now correct.
