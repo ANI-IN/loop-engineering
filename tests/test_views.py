@@ -7,6 +7,7 @@ import pytest
 from loopeng.agent.classify import Outcome
 from loopeng.agent.trap import TrapState, run_trap
 from loopeng.gold.build import build_gold
+from loopeng.sweep.runner import Cell
 from loopeng.views import agent, chrome, dial, render, verify
 from loopeng.warehouse.connect import ensure_warehouse
 from tests.fakes import FakeClient
@@ -111,15 +112,21 @@ def test_an_empty_queue_says_so_rather_than_rendering_nothing(tmp_path):
 
 
 def test_a_row_carries_its_cell_and_its_rate():
+    # Built through `Cell`, not typed. The literals here were `worker_L3_loop_r0` and
+    # `Haiku · L3 · loop` — a key with a role that has not existed since the rename and
+    # a label naming a model the sweep does not call. The assertion was still correct
+    # (the row echoes the label it is given), but the fixture taught a shape no run
+    # produces, which is how the same two strings survived in four places.
+    cell = Cell("agent", "L3", "loop")
     cells = [{
-        "key": "worker_L3_loop_r0", "label": "Haiku · L3 · loop",
-        "role": "agent", "level": "L3", "mode": "loop", "replicate": 0,
+        "key": cell.key, "label": cell.label,
+        "role": cell.role, "level": cell.level, "mode": cell.mode, "replicate": 0,
         "complete": True, "rate_value": 0.09, "rate_n": 43,
         "silent_error_rate": "9.3% (n=43, computed 20:11 today)",
         "cost_usd": {"value": 0.1},
     }]
     rendered = dial._rows(cells)
-    assert "Haiku · L3 · loop" in rendered
+    assert cell.label in rendered
     assert "9.3% (n=43" in rendered
     assert "REFERENCE" not in rendered, (
         "there is no stored-cell case any more; a row that can still say REFERENCE "

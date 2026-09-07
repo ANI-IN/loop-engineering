@@ -266,6 +266,48 @@ all is a claim nobody notices went missing. Nothing downstream could report it, 
 there was nothing to report on. It renders as a row with no bar now, naming the cell it
 needed.
 
+## A second rule, from the same fix
+
+`named_secondary_deltas` also settled which of two **true** sentences a row should carry.
+An absent pre-registered pair is cross-model *and* has a missing cell. Both facts are
+correct. `"No p-value: this compares two models"` would have been an honest sentence on
+that row — and a reader would have taken it for a measured pair that merely cannot be
+tested, rather than one that was never computed.
+
+> **When two true explanations compete for the same row, the one that flatters the
+> result loses by default.**
+
+It is a tie-break, not a preference for pessimism. Both branches state something true;
+the question is only which the reader is left holding, and the reassuring reading is the
+one they will not go back and check. So the absence branch runs first in both `reading()`
+and `_delta_row`, and the cross-model refusal — which is still true — is what a formed
+pair gets.
+
+The same rule explains two earlier entries. `unpairable_because` reports "the per-item
+outcomes were not retained when this was frozen" rather than "these arms share no
+answered items", because the second flatters the freeze by blaming the data. And a
+deadline-stopped cell renders "stopped at the deadline, final at n=NN" rather than "in
+progress", because the second flatters the run by implying more is coming.
+
+## A note on how many of these are self-referential
+
+Four now, and it stopped being funny at the second:
+
+- the lint rule that scanned nothing, then the lint rule that read a format spec as a
+  display string — a checker failing at checking
+- a test asserting the spelling instead of the property, in a repository whose thesis is
+  that declared and enforced come apart
+- the citation check, caught by a note about citation checks
+- this document opening "Twelve instruments have been caught…" while carrying fourteen
+  numbered entries — a typed count going stale, in the document about typed things going
+  stale
+
+That is not coincidence and it is not irony. It is what happens when the artifact and its
+subject are the same kind of thing: every instrument here measures a codebase, this
+codebase is instruments, and so each failure mode has a copy of itself available one level
+up. It is also why the fixes generalise — a rule that catches the count in this file is
+the same rule that catches a caption on a chart.
+
 ## What they have in common
 
 **None was found by reading code.** They were found four different ways: by running

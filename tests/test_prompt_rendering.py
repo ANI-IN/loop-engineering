@@ -11,14 +11,28 @@ def test_l0_carries_the_schema():
 
 
 def test_l0_carries_no_rule_text():
-    """If L0 leaked the rules, L0 and L3 would score the same and the dial chart
-    would measure nothing. This is the same failure as a question that leaks."""
+    """If L0 leaked the rules, L0 and L3 would score the same and the trap — the
+    session's headline — would measure nothing.
+
+    **The factor ban is DERIVED, and it was typed.** The last line read
+    `assert "0.0067" not in prompt`, which is the JPY conversion factor copied out of
+    the semantic model. Change that factor in the YAML and the assertion stops
+    referring to anything: it passes for a prompt that leaks the NEW factor, because
+    the string it bans is no longer a factor at all.
+
+    That is a checker silently matching nothing, guarding the one invariant the whole
+    session rests on, and it is the exact mirror image of
+    `test_l3_carries_the_fx_factors` two tests below — which already iterates the real
+    factors. Now both do, from the same source, so they cannot drift apart.
+    """
     prompt = render_prompt("L0")
-    for name, rule in load_semantic_model()["rules"].items():
+    model = load_semantic_model()
+    for name, rule in model["rules"].items():
         first_clause = " ".join(rule["statement"].split())[:40]
         assert first_clause not in prompt, f"L0 leaks rule {name}"
     assert "usd_factor" not in prompt
-    assert "0.0067" not in prompt
+    for currency, factor in model["usd_factor"].items():
+        assert str(factor) not in prompt, f"L0 leaks the {currency} conversion factor"
 
 
 def test_l3_carries_every_rule_in_the_semantic_model():

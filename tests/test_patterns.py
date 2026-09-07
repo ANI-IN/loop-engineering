@@ -277,12 +277,27 @@ def test_editing_a_declared_factor_changes_the_gold_sql(monkeypatch):
     """
     from loopeng.warehouse import schema
 
-    monkeypatch.setattr(
-        schema, "usd_factors", lambda: {"USD": 0.01, "EUR": 0.5, "JPY": 0.25}
-    )
+    real = schema.usd_factors()
+    # The patched table is DERIVED from the real one, so every currency is guaranteed to
+    # move. The literal it replaced — {"USD": 0.01, "EUR": 0.5, "JPY": 0.25} — happened
+    # to leave USD at its real value, so a third of the table was not being tested at
+    # all: SQL that ignored the patch entirely would still have shown the right number
+    # for USD.
+    patched = {currency: round(factor * 7 + 2, 6) for currency, factor in real.items()}
+    monkeypatch.setattr(schema, "usd_factors", lambda: patched)
     sql = schema.usd_factor_sql()
-    assert "WHEN 'EUR' THEN 0.5" in sql
-    assert "0.0108" not in sql
+
+    for currency, factor in patched.items():
+        assert f"WHEN '{currency}' THEN {factor}" in sql
+
+    # This read `assert "0.0108" not in sql`, the real EUR factor typed out — so editing
+    # that factor in the YAML left the assertion banning a number no longer present
+    # anywhere, passing happily for SQL built from a hardcoded table. It bans whatever
+    # the real values are today, read before the patch is applied.
+    for currency, factor in real.items():
+        assert str(factor) not in sql, (
+            f"usd_factor_sql used the real {currency} factor instead of the patched one"
+        )
 
 
 def test_no_module_retypes_a_conversion_factor():
