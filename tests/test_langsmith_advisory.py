@@ -237,3 +237,169 @@ def test_a_real_key_still_arrives_intact(tmp_path, monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
     assert load_settings().langsmith_api_key.get_secret_value() == "lsv2-not-real"
+
+
+# ---- the feedback schema ----------------------------------------------------
+#
+# Four scores were specified before the FX split was measured. The fifth exists
+# because that split is the session's L2 content, and without it the finding lives
+# in the charts and not in the traces — which is backwards, since the trace is where
+# somebody goes to ask why one item scored the way it did.
+
+
+def _judgement(**kwargs):
+    from loopeng.agent.classify import Judgement, Outcome
+
+    base = {
+        "item_id": "p04_gross_revenue__00",
+        "model_id": "gpt-5.6-luna",
+        "outcome": Outcome.CORRECT,
+        "termination": "success",
+    }
+    return Judgement(**{**base, **kwargs})
+
+
+def test_every_declared_feedback_key_is_written_for_every_item():
+    """A key that is declared and sometimes absent is worse than one that is not
+    declared: the UI shows it, so a reader assumes the blank means something."""
+    from loopeng.langsmith_ds import FEEDBACK_KEYS, feedback_scores
+
+    for judgement in (
+        _judgement(),
+        _judgement(outcome=__import__(
+            "loopeng.agent.classify", fromlist=["Outcome"]).Outcome.SILENT_ERROR),
+        _judgement(outcome=__import__(
+            "loopeng.agent.classify",
+            fromlist=["Outcome"]).Outcome.SIGNALLED_MISSING_INFO),
+    ):
+        written = {entry["key"] for entry in feedback_scores(judgement, 0.01)}
+        assert written == set(FEEDBACK_KEYS), judgement.outcome
+
+
+def test_the_abstention_score_fires_only_on_an_abstention():
+    from loopeng.agent.classify import Outcome
+    from loopeng.langsmith_ds import feedback_scores
+
+    def score(judgement):
+        return next(e for e in feedback_scores(judgement, 0.0)
+                    if e["key"] == "signalled_missing_info")["score"]
+
+    assert score(_judgement(outcome=Outcome.SIGNALLED_MISSING_INFO)) == 1.0
+    assert score(_judgement(outcome=Outcome.SILENT_ERROR)) == 0.0
+    assert score(_judgement(outcome=Outcome.CORRECT)) == 0.0
+
+
+def test_an_abstention_scores_zero_accuracy_rather_than_no_score():
+    """An absent score shrinks the accuracy denominator, which turns "declined"
+    into "not asked" — and that flatters exactly the arm that declines most."""
+    from loopeng.agent.classify import Outcome
+    from loopeng.langsmith_ds import feedback_scores
+
+    entry = next(e for e in feedback_scores(
+        _judgement(outcome=Outcome.SIGNALLED_MISSING_INFO), 0.0)
+        if e["key"] == "execution_accuracy")
+    assert entry["score"] == 0.0
+
+
+def test_the_rule_violation_score_names_the_rule():
+    from loopeng.agent.classify import Outcome
+    from loopeng.langsmith_ds import feedback_scores
+
+    entry = next(e for e in feedback_scores(
+        _judgement(outcome=Outcome.SILENT_ERROR,
+                   attributed_rules=("soft_delete", "internal_accounts"),
+                   ambiguous=True), 0.0)
+        if e["key"] == "rule_violation")
+    assert entry["value"] == "soft_delete or internal_accounts"
+    assert "ambiguous" in entry["comment"]
+
+
+def test_dollars_stay_labelled_as_estimated():
+    from loopeng.langsmith_ds import feedback_scores
+
+    entry = next(e for e in feedback_scores(_judgement(), 0.0123)
+                 if e["key"] == "cost_usd")
+    assert entry["score"] == 0.0123
+    assert "estimated" in entry["comment"]
+
+
+# ---- the annotation queue asks the right question ---------------------------
+
+
+def test_the_queue_pairs_the_confabulation_against_the_refusal():
+    """Not A-vs-C, which was the original plan and is a generic question with a
+    predictable answer. This asks the one the session is about."""
+    from loopeng.langsmith_ds import FX_RUBRIC_INSTRUCTIONS, FX_RUBRIC_ITEMS
+
+    assert "WRONG by the automated metric" in FX_RUBRIC_INSTRUCTIONS
+    assert "not being asked which is correct" in FX_RUBRIC_INSTRUCTIONS
+
+    keys = {item["feedback_key"] for item in FX_RUBRIC_ITEMS}
+    assert keys == {"prefer_in_production", "would_have_noticed"}
+    choices = FX_RUBRIC_ITEMS[0]["value_descriptions"]
+    assert set(choices) == {"invented_a_rate", "named_what_was_missing",
+                            "no_preference"}
+
+
+def test_rating_cannot_start_a_model_call():
+    """The queue holds runs that already happened. Anything else would be an
+    unbounded spend surface with a link on a projector."""
+    import inspect
+
+    from loopeng import langsmith_ds
+
+    source = inspect.getsource(langsmith_ds.enqueue_for_rating)
+    assert "add_runs_to_annotation_queue" in source
+    assert "run_question" not in source and "complete(" not in source
+
+
+# ---- the LangChain boundary --------------------------------------------------
+
+
+def test_langchain_is_imported_in_exactly_one_place():
+    """§15 records the decision not to use LangChain, and that decision is about the
+    LOOPS — its rubric middleware scores with an LLM judge, which this project
+    refuses as a blocking check.
+
+    A serialisation format for pushing a prompt to LangSmith is not that. But the
+    boundary has to be enforced rather than intended, so: exactly one module may
+    import it, and none of the loop packages may.
+    """
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parent.parent / "src" / "loopeng"
+    importers = sorted(
+        str(path.relative_to(root))
+        for path in root.rglob("*.py")
+        if "langchain" in path.read_text(encoding="utf-8")
+    )
+    assert importers == ["langsmith_ds.py"], f"langchain reached {importers}"
+
+
+def test_no_loop_module_imports_langchain():
+    """The same property from the other direction, stated where a reader looks."""
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parent.parent / "src" / "loopeng"
+    for package in ("agent", "verify", "sweep", "queue"):
+        for path in (root / package).rglob("*.py"):
+            assert "langchain" not in path.read_text(encoding="utf-8"), path
+
+
+# ---- prompts are versions of one thing, not two code paths ------------------
+
+
+def test_both_prompt_levels_have_a_versioned_name():
+    from loopeng.langsmith_ds import PROMPT_NAMES
+    from loopeng.prompts import LEVELS
+
+    assert set(PROMPT_NAMES) == set(LEVELS)
+    assert len(set(PROMPT_NAMES.values())) == len(LEVELS), "two levels, two names"
+
+
+def test_pushing_prompts_without_a_key_degrades_rather_than_raising(no_langsmith_key):
+    from loopeng.langsmith_ds import push_prompts
+
+    result = push_prompts()
+    assert not result.ok
+    assert "LANGSMITH_API_KEY" in result.error
