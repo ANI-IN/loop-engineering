@@ -117,8 +117,26 @@ did not succeed" collapses to `max_attempts` by default. The termination vocabul
 cannot currently distinguish *ran out of road* from *refused to guess*, which is the
 distinction the session is about.
 
-**Prerequisite:** a termination reason for a run that declined. Then this chart has a
-column worth reading, and until then it would draw the right count under the wrong name.
+**Prerequisite:** a termination reason for a run that declined. Done —
+`TerminationReason.DECLINED`, verified live: 15 declined terminations against 15
+abstained outcomes, agreeing exactly.
+
+**And with that done, the chart is CUT.** Its full contents across 360 runs:
+
+    success 340 · max_attempts 19 · no_progress 1
+
+Five of six arms are a single solid `success` block. The one real column is the
+reference arm's declined count at L0 — which the outcome-shift chart already renders,
+better, as its blue band. Drawing the same fact twice weakens both.
+
+It becomes three lines in the L0 discussion: *15 declined, 41 success, 2 max_attempts
+on the reference arm at L0 — the only place in the session where a termination reason
+other than `success` appears in quantity.*
+
+The honest reading is that the termination distribution is evidence a policy branch
+fired, and at L3 the answer is that none of them did, because nothing went wrong. That
+is the loops-had-nothing-to-do finding again, and the DELTA caption already carries
+it.
 
 ---
 

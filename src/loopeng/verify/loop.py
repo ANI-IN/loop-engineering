@@ -171,7 +171,8 @@ def run_verified(
         except Exception as exc:  # noqa: BLE001 - a failed call still billed
             # Same triage as Level 1, from the same function. This loop runs the sweep
             # cells, so it is the one where retrying a rejected credential is most
-            # expensive: 50 items x 3 attempts per cell, all guaranteed to fail.
+            # expensive: every held-out item x 3 attempts per cell, all guaranteed
+            # to fail.
             fatal, message = triage_call_failure(exc, spec=spec)
             usage = CallUsage(spec.model_id, "error")
             ledger.record(usage)

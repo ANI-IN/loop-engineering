@@ -1,22 +1,20 @@
 """Escalation: when the cheap model declines, hand the question to the expensive one.
 
-**The answer is rarely "use the big model". It is "use the big model HERE."** Measured
-after the p07/p08 wording fix:
+**The answer is rarely "use the big model". It is "use the big model HERE."**
 
-  - **rules withheld (L0):** Haiku-plus-loop beats Sonnet one-shot (9 discordant,
-    McNemar exact p=0.039)
-  - **rules given (L3):** the two are **not distinguishable** (3 discordant, p=0.250).
-    Sonnet is still numerically ahead, so this is CANNOT TELL at this n, not EQUAL.
+**The findings this docstring used to quote are gone rather than restated, and that is
+deliberate.** They were measured on two Anthropic models that are no longer in this
+build, with typed discordant counts and p-values in prose — so they described a system
+that does not exist, in the form this project bans everywhere a reader can see it.
 
-The decision rule that follows: **the cheap model with a loop is never measurably
-worse, and is measurably better when the spec is incomplete.** A blanket "use the
-frontier model" pays frontier prices everywhere to buy an advantage that is only
-visible where the spec is already good; escalating what the cheap model declined pays
-them only on the questions that earned it.
+What the current measurement supports is narrower and stronger. On the held-out set
+with the rules SUPPLIED, the frontier model scored 60/60 on two separate runs: at that
+prompt level the task is solved and escalation buys nothing. With the rules WITHHELD it
+scored 9/60 — no better than the cheap model's 7/60 in any way this n can resolve.
 
-(An earlier version of this docstring claimed Sonnet one-shot beat Haiku-plus-loop at
-L3. That was true of the pre-fix measurement and was an artefact of two under-specified
-questions penalising the arm that had been told about refund netting.)
+So the decision rule is not about which model. **Escalating a question the cheap model
+declined is worth doing; escalating because the spec is incomplete is paying frontier
+prices for a problem no model solves.** Spend on the rules first.
 
 Two numbers matter and are reported separately:
 

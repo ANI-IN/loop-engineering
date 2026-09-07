@@ -397,3 +397,62 @@ def test_the_delta_chart_never_prints_p_equals_zero():
     # No escaping any more: the SVG backend had to write `p&lt;0.001` into markup, and
     # a figure carries the character itself.
     assert "p<0.001" in drawn
+
+
+# ---- a pair standing on fewer items than either arm ran ----------------------
+
+
+def test_a_summarised_arm_carries_what_a_paired_test_needs():
+    """`paired_map` filters on `ran_and_returned`, and an arm built without it
+    produced an EMPTY map — so the comparison reported "the two arms share no
+    answered items", which is a true diagnostic for a real situation and was here a
+    false statement about a bookkeeping gap.
+
+    Derived in `summarise_arm` now, from the band map, so no caller can omit it and
+    the definition of "answered" is not a boolean somebody set by hand.
+    """
+    from loopeng.sweep.conditions import CONDITIONS, summarise_arm
+
+    rows = [
+        {"item_id": "a", "outcome": "correct", "termination": "success",
+         "cost_usd": 0.01, "rejections": 0},
+        {"item_id": "b", "outcome": "signalled_missing_information",
+         "termination": "declined", "cost_usd": 0.01, "rejections": 0},
+        {"item_id": "c", "outcome": "silent_error", "termination": "success",
+         "cost_usd": 0.01, "rejections": 0},
+    ]
+    arm = summarise_arm(CONDITIONS["A"], rows)
+    mapped = diff.paired_map({"items": arm["items"]})
+
+    assert set(mapped) == {"a", "c"}, "an abstention has no answer to pair"
+    assert mapped["a"] is True and mapped["c"] is False
+
+
+def test_a_declining_arm_is_disclosed_rather_than_silently_scored_on_less():
+    """The reference arm declined 19 of 60 at L0, so its silent-error rate stands on
+    36 items — the ones it chose to answer. That is the right denominator for the
+    metric and the wrong thing to leave unexplained: declining removes an item from
+    an arm's own denominator rather than counting against it."""
+    from loopeng.sweep.diff import coverage_is_asymmetric
+
+    declining = cell("d0", role="reference", level="L0",
+                     correct=list("abc"), wrong=list("de"))
+    full = cell("d3", role="reference", level="L3",
+                correct=list("abcdefghij"), wrong=[])
+    comparisons = diff.level_deltas([declining, full])
+
+    assert comparisons, "the two arms should be comparable"
+    assert coverage_is_asymmetric(comparisons)
+    drawn = texts(delta_chart(comparisons))
+    assert "answered materially fewer items" in drawn
+    assert "flatters an arm that declines" in drawn
+
+
+def test_arms_that_answered_the_same_items_raise_no_coverage_note():
+    """A note that fires every time is a note nobody reads. Arms differ by an item or
+    two constantly and that is not the situation this warns about."""
+    from loopeng.sweep.diff import coverage_is_asymmetric
+
+    a = cell("a0", role="agent", level="L0", correct=list("abcde"), wrong=list("fg"))
+    b = cell("a3", role="agent", level="L3", correct=list("abcdefg"), wrong=[])
+    assert not coverage_is_asymmetric(diff.level_deltas([a, b]))

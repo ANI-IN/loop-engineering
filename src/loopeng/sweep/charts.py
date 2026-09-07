@@ -72,6 +72,7 @@ from loopeng.sweep.chart_model import (
     COST_CAPTION,
     COST_PER_CORRECT_CAPTION,
     COST_PER_CORRECT_NOTE,
+    COVERAGE_ASYMMETRY_NOTE,
     DELTA_CAPTION,
     DELTA_LOOPS_NOTE,
     DIAL_CAPTION,
@@ -93,6 +94,7 @@ from loopeng.sweep.diff import (  # noqa: E402
     CROSS_MODEL_REFUSAL,
     MIN_DISCORDANT,
     NO_PER_ITEM_DETAIL,
+    coverage_is_asymmetric,
     partition,
 )
 
@@ -356,6 +358,8 @@ def delta_chart(comparisons):
     # were measured and dropped, and a reader who expects them has to learn that from
     # the figure rather than from their absence.
     notes = [DELTA_LOOPS_NOTE]
+    if coverage_is_asymmetric(comparisons):
+        notes.append(COVERAGE_ASYMMETRY_NOTE)
     if untestable:
         # Counted and named, never dropped quietly. A chart showing fewer comparisons
         # than the cells imply is the same failure as a bar that renders zero.

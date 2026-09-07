@@ -400,3 +400,23 @@ DELTA_LOOPS_NOTE = (
     "seen from the other side, and a p-value over a mechanism that never fired would "
     "have given a dead comparison the visual weight of a live one."
 )
+
+
+# Shown on the DELTA chart when the two arms answered materially different numbers of
+# items — which is what an abstaining arm looks like from a paired test.
+#
+# The silent-error rate is computed over answers that RAN AND RETURNED, which is the
+# right denominator for that metric and the wrong one to leave unexplained. An arm
+# that declined a third of the set is then scored only on the items it chose to
+# answer, and a reader comparing two bars will not guess that one of them stood on
+# fewer items unless the row says so.
+COVERAGE_ASYMMETRY_NOTE = (
+    "One arm answered materially fewer items than the other, so this pair is scored "
+    "on the subset BOTH answered. That is the correct denominator for a silent-error "
+    "rate — an unanswered question has no answer to be silently wrong about — and it "
+    "flatters an arm that declines, because declining removes an item from its own "
+    "denominator rather than counting against it. The pair count on each row is the "
+    "honest n. Coverage against precision is the ABSTENTION chart."
+)
+
+

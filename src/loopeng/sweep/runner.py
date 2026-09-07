@@ -100,11 +100,10 @@ class Profile:
     establish the findings; re-running it per delivery would spend an order of
     magnitude more to re-measure things that are properties of the setup, not results.
 
-    Haiku alone is enough for delivery because the headline reproduces on it: L0
-    one-shot versus L0 loop, p=0.008, with zero items where one-shot was right and the
-    loop wrong. The dial's full shape is there. Sonnet was ~78% of sweep cost and its
-    cells were underpowered and variance-asymmetric regardless — it cannot be pinned to
-    a fixed temperature, so its bars never meant the same thing as Haiku's.
+    The findings this docstring used to quote were measured on two models this build
+    no longer contains, with a p-value typed into prose. They are gone rather than
+    restated: a profile note describing a system that does not exist is worse than a
+    profile note that says less.
     """
 
     name: str

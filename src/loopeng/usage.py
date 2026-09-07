@@ -1,8 +1,8 @@
 """Token accounting for every call, including the ones that failed.
 
 Two things here exist to stop the loop looking cheaper than it is, because that
-bias runs in one direction: it flatters Haiku-plus-a-loop against Sonnet one-shot,
-which is precisely the comparison the workshop is built to make.
+bias runs in one direction: it flatters the cheap looped arm against the frontier
+bare one, which is precisely the comparison the workshop is built to make.
 
 **Every call is counted.** A call that errored, timed out, or was cut off by the
 budget still generated tokens and still bills. Recording only the calls that

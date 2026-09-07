@@ -52,6 +52,7 @@ from loopeng.agent.classify import (
     BAND_UNEARNED,
     BAND_VISIBLE,
     band_counts,
+    band_of,
     judge,
 )
 from loopeng.agent.loop import run_question
@@ -208,5 +209,34 @@ def summarise_arm(condition: Condition, rows: list[dict]) -> dict:
             reason: sum(1 for row in rows if row["termination"] == reason)
             for reason in sorted({row["termination"] for row in rows})
         },
-        "items": sorted(rows, key=lambda row: row["item_id"]),
+        "items": sorted(_pairable(rows), key=lambda row: row["item_id"]),
     }
+
+
+# The bands whose items produced an answer to compare. An abstention and a visible
+# failure are both "no answer", and neither belongs in a paired correctness test.
+_ANSWERED_BANDS = frozenset({BAND_CORRECT, BAND_UNEARNED, BAND_SILENT})
+
+
+def _pairable(rows: list[dict]) -> list[dict]:
+    """Stamp each row with what a paired comparison needs, DERIVED not supplied.
+
+    `paired_map` filters on `ran_and_returned` and `correct`, and a caller that built
+    its rows without them got an empty map — so a comparison over those cells reported
+    "the two arms share no answered items", which is a real diagnostic for a real
+    situation and was here a false statement about a bookkeeping gap.
+
+    That is the failure `Comparison.unpairable_because` exists to prevent, arriving
+    through the one door it does not watch: not a cell that lost its per-item record,
+    but a cell that never carried it. Derived here so no caller can forget, and so the
+    definition of "answered" is the band map rather than a boolean somebody set.
+    """
+    stamped = []
+    for row in rows:
+        band = band_of(row["outcome"])
+        stamped.append({
+            **row,
+            "ran_and_returned": band in _ANSWERED_BANDS,
+            "correct": band == BAND_CORRECT,
+        })
+    return stamped

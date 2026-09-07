@@ -647,3 +647,45 @@ def test_no_identifier_shaped_uuid_survives_anywhere_in_history():
         f"identifier-shaped UUIDs survive in history: {sorted(set(offenders))[:10]}"
     )
 
+
+
+def test_no_rendered_label_names_a_model_from_the_registry_by_hand():
+    """A model name on a rendered surface must come from the registry.
+
+    The trap grid rendered "Haiku · rules given (L3)" for an arm running
+    gpt-5.6-luna — a model name on the session's headline visual, naming a model this
+    build does not contain. No test could see it: the label was a correct string that
+    had stopped being true, which is the shape typed counts have gone stale in eight
+    times.
+
+    **The first version of this test banned retired model names from all source
+    prose, and it was wrong in the way p10's first test was wrong.** It fired on
+    `registry.py` explaining that gpt-4o-mini was rejected for its cache discount, on
+    `pricing.py` recording that a rate had been mis-typed, and on `patterns.py`
+    naming the four models a measurement used. Every one of those is provenance, and
+    a check that fires on correct code gets widened until it fires on nothing.
+
+    So the check is narrow and derived: the labels a reader sees carry the model ids
+    the registry declares, and nothing asserts anything about prose.
+    """
+    from loopeng.agent.trap import arm_label
+    from loopeng.registry import REGISTRY
+
+    for role, spec in REGISTRY.items():
+        if role == "judge":
+            continue  # the judge runs no arm, so it labels none
+        for level in ("L0", "L3"):
+            label = arm_label(role, level)
+            assert spec.model_id in label, (
+                f"{role}@{level} renders {label!r}, which does not name "
+                f"{spec.model_id}"
+            )
+
+
+def test_the_trap_arms_hold_the_model_constant():
+    """Model-versus-model would teach "buy the bigger model", which is the opposite
+    of the finding. The spec level is the variable."""
+    from loopeng.agent.trap import ARMS
+
+    assert len({role for role, _level in ARMS}) == 1
+    assert {level for _role, level in ARMS} == {"L0", "L3"}

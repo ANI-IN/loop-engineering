@@ -7,10 +7,12 @@ Re-running to score would burn the whole wall-clock again and lose the room, so 
 asserts reveal triggers zero model calls.
 
 **The axis is the SPEC, not the model.** The default arms are the same model at two
-prompt levels — Haiku at L3 and Haiku at L0 — so the only thing that differs between
+prompt levels — the agent at L3 and the agent at L0 — so the only thing that differs
+between
 columns is whether the business rules were written down.
 
-Running Haiku against Sonnet instead would teach "buy the bigger model", which is the
+Running the cheap model against the frontier one instead would teach "buy the bigger
+model", which is the
 opposite of this workshop's thesis and would have to be argued against later. Same
 model, two spec levels, makes the spec the variable.
 
@@ -35,6 +37,7 @@ from loopeng.agent.classify import Judgement, Outcome, judge, summarise
 from loopeng.agent.loop import AgentRun, run_question
 from loopeng.gold.build import GoldItem
 from loopeng.metric import Metric
+from loopeng.registry import spec_for
 from loopeng.usage import UsageLedger, merge
 
 log = structlog.get_logger(__name__)
@@ -46,20 +49,24 @@ CONCURRENCY_PER_MODEL = 8
 # (role, level). The spec level is the variable; the model is held constant.
 ARMS: tuple[tuple[str, str], ...] = (("agent", "L3"), ("agent", "L0"))
 
-ARM_LABELS = {
-    ("agent", "L3"): "Haiku · rules given (L3)",
-    ("agent", "L0"): "Haiku · rules withheld (L0)",
-    ("reference", "L3"): "Sonnet · rules given (L3)",
-    ("reference", "L0"): "Sonnet · rules withheld (L0)",
-}
+# What each level means, in words. The MODEL half of the label is read off the
+# registry rather than typed here.
+#
+# It was typed, and it went stale in the worst available place: the grid rendered
+# "Haiku · rules given (L3)" for an arm running gpt-5.6-luna. A model name on the
+# session's headline visual, naming a model this build does not contain — and no test
+# could see it, because the label was a correct string that had simply stopped being
+# true.
+LEVEL_LABELS = {"L3": "rules given (L3)", "L0": "rules withheld (L0)"}
+
+
+def arm_label(role: str, level: str) -> str:
+    """`<model> · <what this level means>`, with the model from the registry."""
+    return f"{spec_for(role).model_id} · {LEVEL_LABELS[level]}"
 
 
 def arm_key(role: str, level: str) -> str:
     return f"{role}@{level}"
-
-
-def arm_label(role: str, level: str) -> str:
-    return ARM_LABELS.get((role, level), arm_key(role, level))
 
 
 @dataclass

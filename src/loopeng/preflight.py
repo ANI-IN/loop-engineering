@@ -10,7 +10,8 @@ So this runs in order, prints pass/fail per line, and stops at the first failure
 makes the next check meaningless. Four properties are load-bearing:
 
 **Each model is called with the request kwargs the registry declares.** Not a
-simplified probe call. `temperature=0` is legal on Haiku and a 400 on Sonnet 5, and a
+simplified probe call. `temperature=0` is legal on the judge and a 400 on both
+scoring roles, and a
 preflight that omitted the kwargs would pass on an account where the sweep fails.
 
 **Only `max_tokens` is trimmed, and only if it can be.** It caps thinking plus output on

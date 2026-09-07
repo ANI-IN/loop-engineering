@@ -111,6 +111,12 @@ class Comparison:
     # — see `unpairable_because`.
     keeps_items_a: bool = True
     keeps_items_b: bool = True
+    # How many items each arm actually ANSWERED. Carried so a reader can see
+    # when a pair stands on fewer items than either arm ran — which is what an
+    # arm that declines looks like from a paired test, and is invisible from
+    # n_pairs alone.
+    n_answered_a: int = 0
+    n_answered_b: int = 0
 
     @property
     def n_pairs(self) -> int:
@@ -299,6 +305,11 @@ def _build(kind: str, a: dict, b: dict) -> Comparison:
         cross_model=a["role"] != b["role"],
         keeps_items_a=keeps_per_item_outcomes(a),
         keeps_items_b=keeps_per_item_outcomes(b),
+        # How many items each arm actually ANSWERED. Carried so a reader can see when
+        # a pair stands on fewer items than either arm ran — which is what an arm that
+        # declines looks like from a paired test, and is invisible from n_pairs alone.
+        n_answered_a=len(paired_map(a)),
+        n_answered_b=len(paired_map(b)),
     )
 
 
@@ -428,3 +439,32 @@ def partition(comparisons) -> tuple[list[Comparison], list[Comparison]]:
 def from_disk(sweep_dir: Path) -> list[Comparison]:
     """Comparisons over the cell files on disk. There is no other source."""
     return all_comparisons(load_all(sweep_dir))
+
+
+# How much of an arm's answered set a pair may lose before the DELTA chart says so.
+#
+# Lives here rather than in `chart_model` because it is a predicate about comparisons,
+# not a caption or a row transform — and `chart_model` is a numeric-literal lint
+# target, where a display-policy threshold is neither geometry nor a measurement and
+# would have had to be exempted as something it is not.
+#
+# Not zero: arms differ by an item or two constantly, and a note that fires every time
+# is a note nobody reads.
+COVERAGE_TOLERANCE = 0.8
+
+
+def coverage_is_asymmetric(comparisons, tolerance: float = COVERAGE_TOLERANCE) -> bool:
+    """Did some pair lose a meaningful share of its items to one arm not answering?
+
+    An arm that declines is scored only on the items it chose to answer, because the
+    silent-error rate is computed over answers that ran and returned. That is the
+    right denominator for the metric and the wrong thing to leave unexplained.
+    """
+    for comparison in comparisons:
+        pairs = comparison.n_pairs
+        if not pairs:
+            continue
+        largest = max(pairs, comparison.n_answered_a, comparison.n_answered_b)
+        if pairs < largest * tolerance:
+            return True
+    return False
