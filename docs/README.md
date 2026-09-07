@@ -8,13 +8,52 @@ thing this cannot afford.
 What lives here is the opposite: decisions that have to be written down **before** the
 data lands, and findings about the build itself that no module is the right home for.
 
+## Reading order
+
+**If you have twenty minutes and want the argument**, read these two, in this order:
+
+1. **[Our own instrument punished a model for being right](instrument-ranked-honesty-backwards.md)**
+   — one model invented a conversion rate it had not been given; the other named the
+   input it was missing. Our classifier scored the honest one as a crash and the
+   confabulation as a near miss. On the single axis this project exists to teach, our
+   instrument ranked the two behaviours backwards, silently, with every test green.
+2. **[Every instrument in this build has been wrong at least once](every-instrument-has-been-wrong.md)**
+   — the same failure nineteen times, dated, none of them found by reading code. Start
+   at "What they have in common" if you want the conclusion before the evidence.
+
+Everything else is reference for a specific decision.
+
+## The notes
+
+**Session material** — the argument a room is shown, or the reasoning behind what it is
+shown:
+
+| note | what it records |
+|---|---|
+| [Our own instrument punished a model for being right](instrument-ranked-honesty-backwards.md) | the classifier ranked an honest refusal below a confabulation. The full write-up behind §2 of the instruments note |
+| [Every instrument in this build has been wrong at least once](every-instrument-has-been-wrong.md) | 17 instruments, one plan and one author, all green at the time, none found by reading code |
+| [Re-specifying the five charts](charts-respec.md) | what the measurement did to the chart plan — including the two charts specified for a session that stopped existing |
+
+**Build history** — why the code is shaped the way it is, for whoever changes it next:
+
 | note | what it records |
 |---|---|
 | [Five guards on one capability is a tell](guards-are-a-tell.md) | why the stored-measurement render path was deleted rather than defended, and what it cost |
-| [Our own instrument punished a model for being right](instrument-ranked-honesty-backwards.md) | the classifier ranked a model's honest refusal below a confabulation, silently, with every test green |
-| [Every instrument in this build has been wrong at least once](every-instrument-has-been-wrong.md) | 17 of them plus one plan, all green at the time, none found by reading code |
 | [The failure taxonomy, regenerated from real failures](the-failure-taxonomy.md) | which of the seven visible-failure kinds real runs have actually produced, and the sweep dropping the field that says |
-| [Re-specifying the five charts](charts-respec.md) | what the measurement did to the chart plan, and what each chart is now for |
+
+**Nothing here is a runbook.** Each stage's runbook lives beside its code in
+[`demos/`](../demos/), the notebooks are in [`notebooks/`](../notebooks/), and the
+loop-to-notebook map is [`notebooks/README.md`](../notebooks/README.md). A runbook kept
+apart from the thing it describes drifts, and a runbook that lies at minute forty of a
+live session is the one thing this cannot afford.
+
+## What is deliberately NOT here
+
+- **Measured numbers in prose.** Every figure belongs in a chart that carries its own
+  `n` and interval, or in a record under `results/` that a test proves is tracked. A
+  number typed into a design note is a number nothing can invalidate.
+- **A "what you should expect" table.** It is owed, and it comes from the dress
+  rehearsal rather than from this build's exercises — see *Still owed* below.
 
 ## Two spec items superseded by findings
 

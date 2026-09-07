@@ -745,7 +745,10 @@ def test_the_instruments_note_counts_its_own_entries():
     numbers = [int(n) for n in re.findall(r"^## (\d+)\. ", body, flags=re.M)]
 
     assert numbers == list(range(1, len(numbers) + 1)), "the entries are misnumbered"
-    assert f"**{len(numbers) - 1} instruments have been caught" in body
+    # Two entries are not instruments: §7 is a PLAN, and §19 is the author. The opening
+    # line names all three categories, so the arithmetic has to as well.
+    assert f"**{len(numbers) - 2} instruments have been caught" in body
+    assert "one plan has, and one of them is the author" in body
     assert f"It is {len(numbers)} data points" in body
 
 

@@ -9,7 +9,7 @@ agent. The argument is stronger made about the repository, because here the fail
 documented, dated, and were all found the same way.
 
 **17 instruments have been caught measuring something other than what they
-claimed, and one plan has.** Not one was found by reading code. All of them were
+claimed, one plan has, and one of them is the author.** Not one was found by reading code. All of them were
 green.
 
 *The count above is checked against the numbered entries below by
@@ -358,6 +358,41 @@ scoped to `docs/` on purpose: a runbook naming `results/sweep/dial.png` describe
 the reader is about to generate, and requiring that to be committed would invert the
 rule this repository is built on.
 
+## 19. The one gap that could not be delegated to a test, and it recurred three times
+
+Every entry above is an instrument that was wrong. This one is the author.
+
+The rule is one sentence and it was learned early, from a commit that shipped with a
+failing test: **do not pipe a command whose exit code is the gate.** A pipeline's status
+is the LAST command's, so `pytest … | tail -2` always succeeds.
+
+It then happened three times.
+
+1. The original commit. Corrected, understood, written down.
+2. A CI step titled `Confirm live tests were deselected` — `pytest --collect-only -m live
+   2>&1 | tail -3` — which could not fail for the life of the file. A gate named for a
+   check it was structurally incapable of performing.
+3. While writing up the fix for (2), a commit was pushed with a failing test, gated on
+   `pytest … | grep … | tail -2`.
+
+The third is the one worth keeping. It happened with complete knowledge of the failure
+mode, in the same hour as documenting it, by someone actively looking for it elsewhere.
+
+**Reading a rule and holding to it under momentum are different things.** That is the
+claim this entire repository makes about declared versus enforced, arriving in the one
+place it cannot be delegated to a test — because the thing being gated is the act of
+running the gate.
+
+The fix is the same fix as everywhere else in this list: make it structural rather than
+remembered. The commit command captures each exit code to a variable and refuses unless
+all three are zero. It is not a better intention; it is a shape in which the intention is
+not required.
+
+That the pattern held even when the failing component was a person is the most honest
+demonstration in this document. Every other entry can be read as "the code was wrong and
+we found it". This one says the knowledge was complete, the attention was on it, and it
+happened anyway.
+
 ## A second rule, from the same fix
 
 `named_secondary_deltas` also settled which of two **true** sentences a row should carry.
@@ -381,9 +416,9 @@ answered items", because the second flatters the freeze by blaming the data. And
 deadline-stopped cell renders "stopped at the deadline, final at n=NN" rather than "in
 progress", because the second flatters the run by implying more is coming.
 
-## A note on how many of these are self-referential
+## When the check fires on its own explanation
 
-Four now, and it stopped being funny at the second:
+Five of these are self-referential, and it stopped being funny at the second:
 
 - the lint rule that scanned nothing, then the lint rule that read a format spec as a
   display string — a checker failing at checking
@@ -393,12 +428,25 @@ Four now, and it stopped being funny at the second:
 - this document opening "Twelve instruments have been caught…" while carrying fourteen
   numbered entries — a typed count going stale, in the document about typed things going
   stale
+- the tracked-evidence guard, firing on entry 18, because that entry's own prose gives
+  `results/sweep/dial.png` as the example of a path that must NOT be required to exist
 
-That is not coincidence and it is not irony. It is what happens when the artifact and its
-subject are the same kind of thing: every instrument here measures a codebase, this
-codebase is instruments, and so each failure mode has a copy of itself available one level
-up. It is also why the fixes generalise — a rule that catches the count in this file is
-the same rule that catches a caption on a chart.
+That is not coincidence and it is not irony. **When the artifact and its subject are the
+same kind of thing, the check will eventually fire on its own explanation.** Every
+instrument here measures a codebase; this codebase is instruments; so each failure mode
+has a copy of itself available one level up, and any rule strong enough to catch the
+thing is strong enough to catch the sentence describing it.
+
+**The fix is always SCOPE, never an exception.** The guard that fired on entry 18 was
+narrowed to files directly under `results/` — which is a truer statement of what it
+means, since that is where evidence records live and everything nested below is generated
+output. An allowlist entry for "this one file, because it is the note" would have bought
+the same green suite and taught the checker nothing. A rule that needs an exception to
+survive contact with its own description is a rule whose boundary was drawn wrong, and
+the description is how you find out.
+
+It is also why the fixes generalise: the scope that lets the guard read entry 18 is the
+scope that stops it firing on every runbook in `demos/`.
 
 ## What they have in common
 
@@ -432,6 +480,7 @@ Each had a plausible reason to look correct:
 | notebook outputs | the capability had been deleted, so the question felt settled |
 | the failure taxonomy | seven categories, and nothing said which had been seen |
 | its own citation | the file was right there, on one machine |
+| the piped exit code | the command ran, and printed what you expected |
 | the interrupt test | it exercised a real path, and passed |
 | `kill -INT` on a background job | the run it produced was clean and complete |
 
@@ -475,7 +524,7 @@ list's recurring entry.
 ## The honest reading
 
 This is not a list of things that went wrong on the way to a build that is now correct.
-It is 18 data points on how instruments fail, in a repository written by someone paying
+It is 19 data points on how instruments fail, in a repository written by someone paying
 attention specifically to that failure mode, with tests for it.
 
 The claim the session should make is not "we measured this carefully". It is: *every
