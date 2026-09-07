@@ -13,25 +13,39 @@ actually tests it.
 
 from pathlib import Path
 
+import pytest
+
 from loopeng.sweep.render import (
     PREFERRED_CURVE_CELL,
+    CurveCellMissing,
+    abstention_panel,
     abstention_points,
     curve_cell,
     summarise,
 )
 
 
-def cell(key, *, complete=True, reference=False, mode="loop", items=None, label=None,
-         rate="12.0%"):
+def cell(key, *, complete=True, mode="loop", items=None, label=None, rate="12.0%"):
+    """A cell dict as the sweep writes them.
+
+    `reference=False` used to be a field here. Nothing has read it since the stored-cell
+    path was removed, so it was a fixture teaching a shape that no longer exists — and
+    the keys in these tests said `worker_*` and `frontier_*`, two role names the sweep
+    stopped producing at the rename. A fixture is a claim about what real data looks
+    like; one that is wrong makes every test written against it a test of nothing.
+    """
     return {
         "key": key,
         "label": label or key.replace("_", " "),
         "complete": complete,
-        "reference": reference,
         "mode": mode,
         "items": items if items is not None else {"i1": True},
         "silent_error_rate": rate,
     }
+
+
+AGENT_L3_LOOP = "agent_L3_loop_r0"
+AGENT_L0_ONE_SHOT = "agent_L0_one_shot_r0"
 
 
 # ---- which cell the curve is drawn from --------------------------------------
@@ -43,37 +57,82 @@ def test_no_cells_means_no_curve_cell():
 
 
 def test_an_incomplete_cell_is_not_eligible():
-    assert curve_cell([cell("worker_L0_loop_r0", complete=False)]) is None
+    assert curve_cell([cell(PREFERRED_CURVE_CELL, complete=False)]) is None
 
 
 def test_a_one_shot_cell_is_not_eligible():
     """A one-shot cell can never produce a `no_progress` or `hit_the_attempt_cap`
     band, so a curve from one would be missing exactly the bands it exists to show."""
-    assert curve_cell([cell("worker_L0_one_shot_r0", mode="one_shot")]) is None
+    assert curve_cell([cell(AGENT_L0_ONE_SHOT, mode="one_shot")]) is None
 
 
 def test_a_cell_with_no_items_is_not_eligible():
-    assert curve_cell([cell("worker_L0_loop_r0", items={})]) is None
+    assert curve_cell([cell(PREFERRED_CURVE_CELL, items={})]) is None
 
 
-def test_the_preferred_cell_wins_even_when_another_has_more_items():
-    """Preference order, not a hardcoded key — but the preference is real: OVERSIGHT
-    draws from this cell, and the two panels must not disagree about their source."""
+def test_the_named_cell_is_used_even_when_another_has_more_items():
+    """The curve's source is a choice, not a popularity contest between cells."""
     chosen = curve_cell([
-        cell("frontier_L3_loop_r0", items={f"i{n}": True for n in range(50)}),
+        cell(AGENT_L3_LOOP, items={f"i{n}": True for n in range(50)}),
         cell(PREFERRED_CURVE_CELL, items={"i1": True}),
     ])
     assert chosen["key"] == PREFERRED_CURVE_CELL
 
 
-def test_without_the_preferred_cell_the_largest_eligible_one_is_used():
-    """The fallback exists so a smoke or frontier-only run still gets a curve rather
-    than an empty panel."""
-    chosen = curve_cell([
-        cell("frontier_L3_loop_r0", items={f"i{n}": True for n in range(50)}),
-        cell("frontier_L0_loop_r0", items={"i1": True}),
-    ])
-    assert chosen["key"] == "frontier_L3_loop_r0"
+def test_without_the_named_cell_it_raises_rather_than_substituting():
+    """This test used to assert the opposite, and asserting the defect is how the
+    defect survived. It read: "the fallback exists so a smoke or frontier-only run
+    still gets a curve rather than an empty panel."
+
+    Both halves were wrong. Smoke DOES produce the named cell, and no profile in
+    `runner.PROFILES` is frontier-only — the reference role never appears without the
+    agent role — so the fallback insured against a case no profile can create. What it
+    actually did was fire when the key went stale at the rename, drawing the curve from
+    a cell nobody chose, with nothing in the output to say so.
+    """
+    with pytest.raises(CurveCellMissing) as refused:
+        curve_cell([
+            cell(AGENT_L3_LOOP, items={f"i{n}": True for n in range(50)}),
+            cell("reference_L0_loop_r0", items={"i1": True}),
+        ])
+    message = str(refused.value)
+    assert PREFERRED_CURVE_CELL in message
+    assert AGENT_L3_LOOP in message, "name what IS present, or the reader cannot tell " \
+                                     "a mid-flight sweep from a misconfigured one"
+    assert "Refused rather than substituted" in message
+
+
+def test_nothing_eligible_is_a_different_fact_from_the_named_cell_being_absent():
+    """"Nothing has landed yet" is honest and common. "Cells landed and not the one
+    this curve is drawn from" is a mismatch. They used to produce the same picture."""
+    assert curve_cell([]) is None
+    assert curve_cell([cell(AGENT_L0_ONE_SHOT, mode="one_shot")]) is None
+
+    with pytest.raises(CurveCellMissing):
+        curve_cell([cell(AGENT_L3_LOOP)])
+
+
+def test_the_panel_turns_the_refusal_into_something_the_figure_can_say():
+    """The boundary. The lookup still fails loudly and nothing is substituted; what
+    changes is that a caller which must render SOMETHING gets the reason rather than
+    an empty list, which would put "not yet measured" on a chart in the one case where
+    that sentence is false."""
+    points, refusal = abstention_panel([cell(AGENT_L3_LOOP)])
+    assert points == []
+    assert refusal is not None
+    assert PREFERRED_CURVE_CELL in refusal
+
+    points, refusal = abstention_panel([])
+    assert (points, refusal) == ([], None), "nothing landed is not a refusal"
+
+
+def test_the_summary_reports_the_refusal_without_losing_the_rest():
+    """One missing panel must not cost the operator the counts, the cells and every
+    comparison printed above it."""
+    lines = summarise([cell(AGENT_L3_LOOP)], [], Path("results/sweep"), [])
+    assert any("REFUSED" in line for line in lines)
+    assert any(PREFERRED_CURVE_CELL in line for line in lines)
+    assert any(AGENT_L3_LOOP in line for line in lines), "the cell list still printed"
 
 
 # ---- what the terminal prints ------------------------------------------------
@@ -132,3 +191,24 @@ def test_the_preferred_curve_cell_is_a_key_the_sweep_can_actually_produce():
     from loopeng.sweep.runner import DEVELOPMENT, build_cells
 
     assert PREFERRED_CURVE_CELL in {cell.key for cell in build_cells(DEVELOPMENT)}
+
+
+def test_the_oversight_view_reads_the_same_selector_not_a_second_copy_of_the_key():
+    """OVERSIGHT held `CELL_KEY = "worker_L0_loop_r0"` — the same dead key the curve
+    had, in the same shape, one module over — and looked it up as
+    `cells.get(CELL_KEY, {}).get("items", [])`.
+
+    Here the `.get` default turned the miss into `[]`, which the view renders as "not
+    measured yet — run the sweep first". So OVERSIGHT told anyone who opened it to go
+    and run the sweep they had just run. Not a wrong number: a wrong instruction.
+
+    Two panels drawing from "the same cell" through two hardcoded copies of its key is
+    not one source. Asserted by reading the module rather than by launching gradio: the
+    property is that the key is not defined twice.
+    """
+    import loopeng.views.oversight as oversight
+
+    assert not hasattr(oversight, "CELL_KEY"), (
+        "the view names its own cell again; it must ask sweep.render"
+    )
+    assert oversight.curve_cell is curve_cell

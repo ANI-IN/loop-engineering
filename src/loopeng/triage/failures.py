@@ -82,11 +82,17 @@ def candidates(cells: list[dict], limit: int = 20) -> list[dict]:
     Spread deliberately: twenty failures from one pattern would triage one bug twenty
     times and say nothing about the rest.
     """
+    # `cell["items"]` and `row["outcome"]` are required. They were `.get`s, and unlike
+    # `diff.paired_map` — which tolerates a legacy cell and reports it through
+    # `unpairable_because` — nothing downstream of here would have said anything. A cell
+    # that silently contributed no candidates just makes the triage list shorter, and a
+    # shorter list of failures to look at is indistinguishable from having fewer
+    # failures.
     pool = [
         {**row, "arm": cell["key"]}
         for cell in cells
-        for row in cell.get("items", [])
-        if row.get("outcome") == "silent_error"
+        for row in cell["items"]
+        if row["outcome"] == "silent_error"
     ]
     by_pattern: dict[str, list[dict]] = {}
     for row in pool:

@@ -307,13 +307,32 @@ def paired_map(cell: dict) -> dict[str, bool]:
 
     An empty map for a cell that carries neither, which `paired.compare` handles by
     pairing nothing rather than by inventing evidence.
+
+    THE `items` TOLERANCE IS DELIBERATE AND IT IS NOT THE DEFECT THAT REMOVED THE
+    ABSTENTION FALLBACK.
+
+    `cells` here come from `load_all`, which reads whatever JSON is in the directory —
+    including a cell written before the stored path was removed. A cell carrying neither
+    `paired` nor `items` cannot be produced by any code path in this build any more, but
+    it can still be on someone's disk, and the degradation is REPORTED: `keeps_items_a`
+    and `keeps_items_b` are set from `keeps_per_item_outcomes`, and
+    `unpairable_because` distinguishes "these arms share no answered items" from "the
+    per-item outcomes were not retained when this was frozen".
+
+    That is the whole difference. A lookup may degrade if something downstream says so.
+    The abstention selector degraded into a DIFFERENT MEASUREMENT with nothing anywhere
+    to signal it.
+
+    `row["ran_and_returned"]` is required, though, and that part of the change stands: a
+    cell that HAS items has rows carrying it, and `.get` there dropped malformed rows out
+    of a paired comparison one at a time, silently, changing the denominator.
     """
     if "paired" in cell:
         return {str(k): bool(v) for k, v in cell["paired"].items()}
     return {
         row["item_id"]: bool(row["correct"])
         for row in cell.get("items", ())
-        if row.get("ran_and_returned")
+        if row["ran_and_returned"]
     }
 
 

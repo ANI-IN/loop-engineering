@@ -348,7 +348,10 @@ def bar_rows(cells, *, metric: str) -> list[dict]:
             "value": value,
             "lo": lo,
             "hi": hi,
-            "n": cell.get("rate_n", 0),
+            # Required. `.get("rate_n", 0)` rendered a bar whose n silently defaulted
+            # to zero, and n=0 is a value this project prints for real — it is what an
+            # unmeasured cell says. A row cannot be allowed to claim it.
+            "n": cell["rate_n"],
             "pending": pending,
             "stopped_early": bool(cell.get("stopped_early")),
             "note": note,
@@ -425,8 +428,20 @@ def outcome_shift_rows(arms: list[dict]) -> list[dict]:
     for arm in arms:
         bands = arm.get("bands") or {}
         rows.append({
-            "label": arm.get("arm") or arm.get("condition", "?"),
-            "n": arm.get("n_items", sum(bands.values())),
+            # The arm name when the caller has one, else the condition id — a real
+            # preference between two fields that are both meaningful. What is gone is
+            # the `"?"` third rung: every arm carries a condition, so a bar labelled
+            # "?" was a state nothing could produce, and a KeyError names the caller.
+            "label": arm.get("arm") or arm["condition"],
+            # Required, and this one was the worst of the three. `sum(bands.values())`
+            # is not the same number as `n_items` — the bands count classified outcomes
+            # — so a caller that omitted `n_items` got an n computed from a different
+            # denominator, printed beside the bar as if it were the measured one. The n
+            # on a figure is the one thing that must never be reconstructed.
+            "n": arm["n_items"],
+            # `bands.get(band, 0)` STAYS. `band_counts` returns a total map over
+            # OUTCOME_BANDS, so a band absent from it is genuinely a count of zero
+            # rather than a lookup that failed — the opposite case from the two above.
             "counts": [bands.get(band, 0) for band in SHIFT_BAND_ORDER],
         })
     return rows

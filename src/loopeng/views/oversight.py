@@ -15,13 +15,28 @@ from pathlib import Path
 import gradio as gr
 
 from loopeng.sweep.orchestrator import load_all
+from loopeng.sweep.render import CurveCellMissing, curve_cell
 from loopeng.sweep.runner import SWEEP_DIR
 from loopeng.triage.abstain import DEFAULT_THRESHOLD, curve, operating_point
 from loopeng.triage.escalate import MAX_ESCALATIONS
 from loopeng.views.chrome import NOT_MEASURED, stamp
 from loopeng.views.render import render_declined
 
-CELL_KEY = "worker_L0_loop_r0"
+# WHICH CELL THIS VIEW READS IS NOT DECIDED HERE.
+#
+# It was: `CELL_KEY = "worker_L0_loop_r0"`, looked up as
+# `cells.get(CELL_KEY, {}).get("items", [])`. The same dead key the abstention curve
+# had, in the same shape, one module over — and here the `.get` default turned the miss
+# into `[]`, which this view renders as "not measured yet — run the sweep first".
+#
+# So OVERSIGHT has been telling anyone who opened it to go and run the sweep THEY HAD
+# JUST RUN. Not a wrong number: a wrong instruction, produced by a lookup that answered
+# a question it could not answer.
+#
+# Two panels drawing from "the same cell" via two hardcoded copies of its key is not one
+# source, it is two that happen to agree until one of them is edited. The selector lives
+# in `sweep.render` now and both callers ask it, so they cannot disagree about their
+# source and neither can silently substitute another cell.
 
 # Built from the constants rather than typed. A caveat that names a threshold the
 # slider no longer opens on, or a cap the escalation no longer uses, is worse than
@@ -115,14 +130,25 @@ def build_oversight_app(sweep_dir: Path = SWEEP_DIR,
                         escalation_path: Path = Path("results/phase4_escalation.json"),
                         triage_path: Path = Path("results/phase4_triage.json")) -> gr.Blocks:
     def _load():
-        cells = {c["key"]: c for c in load_all(sweep_dir)}
-        return cells.get(CELL_KEY, {}).get("items", [])
+        """The runs this view reads, or the reason there are none.
+
+        Returns `(runs, refusal)`. Three states, not two — the same three the chart
+        has, because it is the same lookup: runs; nothing landed yet; or cells landed
+        and not the one this view reads, which is a mismatch and says so instead of
+        advising a sweep that has already happened.
+        """
+        try:
+            cell = curve_cell(load_all(sweep_dir))
+        except CurveCellMissing as missing:
+            return [], str(missing)
+        return (cell["items"] if cell else []), None
 
     def _refresh(threshold, _state):
-        runs = _load()
+        runs, refusal = _load()
         if not runs:
-            return (f"_{NOT_MEASURED} — run the sweep first._", "", "", "",
-                    stamp(None), threshold)
+            reason = (f"**REFUSED — nothing was read.**\n\n{refusal}" if refusal
+                      else f"_{NOT_MEASURED} — run the sweep first._")
+            return (reason, "", "", "", stamp(None), threshold)
         point = operating_point(runs, threshold)
         summary = "\n".join([
             f"**coverage** {point['coverage']}",

@@ -465,3 +465,61 @@ def test_the_deadline_disclosure_reaches_the_drawn_figure(chart):
     drawn = texts(chart(cells))
     assert "STOPPED AT A DEADLINE" in drawn
     assert "12 of 50" in drawn
+
+
+# ---- lookups that must fail loudly rather than plausibly ---------------------
+
+
+def test_a_run_with_no_recorded_termination_is_not_scored_as_the_best_outcome():
+    """`confidence_of` read `run.get("termination", "")`. Nothing matches `""`, so a
+    row with no recorded termination fell through every branch to the last line —
+    `clean_first_try`, the HIGHEST confidence band, described as "accepted on the first
+    attempt with no revisions".
+
+    A row too malformed to say how its loop ended was scored as the best possible
+    outcome, and that score feeds the abstention curve, which is the figure about
+    knowing when not to answer.
+    """
+    from loopeng.triage.abstain import confidence_of
+
+    good = {"ran_and_returned": True, "termination": "success", "rejections": 0}
+    best, _ = confidence_of(good)
+
+    with pytest.raises(KeyError, match="termination"):
+        confidence_of({"ran_and_returned": True, "rejections": 0})
+    with pytest.raises(KeyError, match="rejections"):
+        confidence_of({"ran_and_returned": True, "termination": "success"})
+    with pytest.raises(KeyError, match="ran_and_returned"):
+        confidence_of({"termination": "success", "rejections": 0})
+
+    # The old default landed here, which is what made it dangerous rather than merely
+    # wrong: the fallthrough was the top of the scale, not the bottom.
+    assert best == max(
+        confidence_of(dict(good, termination=t, rejections=0))[0]
+        for t in ("success", "budget", "no_progress", "max_attempts")
+    )
+
+
+def test_the_n_on_an_outcome_shift_bar_is_never_reconstructed():
+    """It read `arm.get("n_items", sum(bands.values()))`. Those are different numbers —
+    the bands count classified outcomes — so an arm without `n_items` got an n computed
+    from a different denominator and printed beside the bar as the measured one."""
+    from loopeng.sweep.chart_model import outcome_shift_rows
+
+    arm = {"condition": "A", "n_items": 60,
+           "bands": {"correct": 50, "silent_error": 3}}
+    assert outcome_shift_rows([arm])[0]["n"] == 60
+
+    with pytest.raises(KeyError, match="n_items"):
+        outcome_shift_rows([{"condition": "A", "bands": {"correct": 50}}])
+
+
+def test_a_chart_row_cannot_default_its_own_n_to_zero():
+    """`cell.get("rate_n", 0)` rendered a bar whose n silently defaulted to zero — and
+    n=0 is a value this project prints for real, being what an unmeasured cell says."""
+    from loopeng.sweep.chart_model import bar_rows
+
+    cell = _cell_dict("agent_L0_loop_r0", n_items=50, n_requested=50, stopped=False)
+    del cell["rate_n"]
+    with pytest.raises(KeyError, match="rate_n"):
+        bar_rows([cell], metric="rate")

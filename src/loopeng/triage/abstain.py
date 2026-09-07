@@ -43,13 +43,28 @@ DEFAULT_THRESHOLD = CONFIDENCE["accepted_after_revision"]
 
 
 def confidence_of(run: dict) -> tuple[float, str]:
-    """Score one recorded run. Returns (confidence, the reason in plain English)."""
-    if not run.get("ran_and_returned"):
+    """Score one recorded run. Returns (confidence, the reason in plain English).
+
+    **The three fields are REQUIRED, and a missing one raises here.**
+
+    They were read as `run.get("termination", "")` and `run.get("rejections", 0)`, which
+    look harmless and are not. Nothing below matches `""`, so a row with no recorded
+    termination fell through every branch to the last line — `clean_first_try`, the
+    HIGHEST confidence band, described as "accepted on the first attempt with no
+    revisions". A row too malformed to say how its loop ended was scored as the best
+    possible outcome, and that score feeds the abstention curve, which is the figure
+    about knowing when not to answer.
+
+    Every row the sweep and the conditions write carries all three. So the defaults were
+    never protecting real data; they were protecting malformed data from being noticed,
+    in the one function whose entire job is to say how much a result can be trusted.
+    """
+    if not run["ran_and_returned"]:
         return CONFIDENCE["never_executed"], (
             "the query never returned a usable result, so there is nothing to report"
         )
-    termination = run.get("termination", "")
-    rejections = run.get("rejections", 0)
+    termination = run["termination"]
+    rejections = run["rejections"]
 
     if termination == "budget":
         return CONFIDENCE["budget_exhausted"], (

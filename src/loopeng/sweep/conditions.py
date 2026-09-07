@@ -197,7 +197,7 @@ def summarise_arm(condition: Condition, rows: list[dict]) -> dict:
         "n_visible_failures": bands[BAND_VISIBLE],
         "n_abstained": bands[BAND_ABSTAINED],
         "n_unearned_correct": bands[BAND_UNEARNED],
-        "rejections": sum(row.get("rejections", 0) for row in rows),
+        "rejections": sum(row["rejections"] for row in rows),
         "cost_usd": {"value": round(sum(row["cost_usd"] for row in rows), 6),
                      "source": "estimated"},
         "cost_per_correct_usd": (

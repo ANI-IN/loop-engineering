@@ -20,7 +20,7 @@ from loopeng.entrypoint import run
 from loopeng.logging import configure_logging
 from loopeng.sweep.charts import write_charts
 from loopeng.sweep.orchestrator import load_all
-from loopeng.sweep.render import abstention_points, comparisons_for, summarise
+from loopeng.sweep.render import abstention_panel, comparisons_for, summarise
 from loopeng.sweep.runner import SWEEP_DIR
 
 
@@ -32,9 +32,11 @@ def main(argv: list[str] | None = None) -> int:
 
     configure_logging()
     cells = load_all(args.dir)
+    points, refusal = abstention_panel(cells)
     written = write_charts(cells, args.out,
                            comparisons=comparisons_for(cells),
-                           abstention_points=abstention_points(cells))
+                           abstention_points=points,
+                           abstention_refusal=refusal)
     for line in summarise(cells, comparisons_for(cells), args.dir, written):
         print(line)
     return 0

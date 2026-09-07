@@ -463,12 +463,24 @@ AXIS_PERCENT = 100          # layout: proportion to axis-label percentage. An ax
                             #         locates.
 
 
-def abstention_chart(points: list[dict]):
+def abstention_chart(points: list[dict], *, refusal: str | None = None):
     """Coverage against precision, from `triage.abstain.curve` over a cell's items.
 
     A point with no measurable precision is dropped rather than plotted at zero, and the
     count dropped is reported — a threshold that answered nothing has no precision, and
     a dot on the floor would read as "always wrong".
+
+    THREE STATES, for the same reason the cells have three.
+
+      points        the curve
+      empty         "not yet measured" — no eligible cell has landed
+      `refusal`     eligible cells landed and the one this curve is drawn from is not
+                    among them, so NOTHING was drawn and the figure says why
+
+    The third used to render as the second. "Not yet measured" is a claim that nothing
+    is on disk, and it was false in exactly the case where the selector had silently
+    substituted a different cell — so the chart both drew the wrong curve and described
+    the situation wrongly. See `render.CurveCellMissing`.
     """
     usable = sorted(
         (p for p in points
@@ -500,9 +512,10 @@ def abstention_chart(points: list[dict]):
                   fontsize=SUB_SIZE, color=MUTED)
 
     if not usable:
-        ax.text(MIDPOINT, MIDPOINT, NOT_MEASURED, transform=ax.transAxes,
-                va="center",
-                ha="center", fontsize=LABEL_SIZE, color=MUTED, style="italic")
+        ax.text(MIDPOINT, MIDPOINT, refusal or NOT_MEASURED, transform=ax.transAxes,
+                va="center", ha="center", fontsize=LABEL_SIZE,
+                color=WARNING if refusal else MUTED,
+                style="normal" if refusal else "italic", wrap=True)
         return fig
 
     xs = [p["coverage_value"] * AXIS_PERCENT for p in usable]
@@ -770,7 +783,7 @@ def cost_per_correct_chart(arms: list[dict]):
 
 def write_charts(cells: list[dict], directory: Path, *,
                  comparisons=(), abstention_points=(), arms=(),
-                 trap_cells=()) -> list[Path]:
+                 trap_cells=(), abstention_refusal: str | None = None) -> list[Path]:
     """Every chart the supplied data supports.
 
     DELTA and ABSTENTION are written even when their inputs are empty: they render "not
@@ -792,7 +805,8 @@ def write_charts(cells: list[dict], directory: Path, *,
         ("dial.png", dial_chart(cells)),
         ("cost.png", cost_chart(cells)),
         ("delta.png", delta_chart(list(comparisons))),
-        ("abstention.png", abstention_chart(list(abstention_points))),
+        ("abstention.png", abstention_chart(list(abstention_points),
+                                            refusal=abstention_refusal)),
     )
     for name, figure in figures:
         path = directory / name
