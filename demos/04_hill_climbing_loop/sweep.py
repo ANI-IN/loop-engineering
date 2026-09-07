@@ -14,7 +14,6 @@ from loopeng.entrypoint import run
 from loopeng.gold.build import build_gold
 from loopeng.logging import configure_logging
 from loopeng.settings import load_settings
-from loopeng.sweep.deadline import Deadline
 from loopeng.sweep.detach import detach
 from loopeng.sweep.orchestrator import describe_outcome, run_sweep
 from loopeng.sweep.runner import (
@@ -80,8 +79,7 @@ def main(argv: list[str] | None = None) -> int:
                            directory=args.dir, resume=args.resume,
                            concurrency=args.concurrency,
                            warehouse_seed=settings.warehouse_seed,
-                           deadline=Deadline(seconds=args.deadline)
-                           if args.deadline else None)
+                           deadline_seconds=args.deadline)
     except (StaleCellsPresent, LimitNotAllowed) as refused:
         print(f"\nREFUSING TO START\n{refused}")
         return 3

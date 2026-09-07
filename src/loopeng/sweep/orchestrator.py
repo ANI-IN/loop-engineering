@@ -160,6 +160,7 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEV,
               resume: bool = False, item_limit: int | None = None,
               concurrency: int = CONCURRENCY_PER_MODEL,
               warehouse_seed: int | None = None,
+              deadline_seconds: float | None = None,
               deadline: Deadline | None = None) -> dict:
     """Run the profile's cells, resuming what is on disk, within a cap and a clock.
 
@@ -175,12 +176,29 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEV,
     crash in front of a room, and — worse — would push the partial result into an
     exception path where it is easy to drop.
 
-    `deadline=None` and `Deadline(seconds=None)` are DIFFERENT ANSWERS. The first means
-    the caller did not specify one and gets the profile's; the second means no clock at
-    all. An entry point that built `Deadline(seconds=args.deadline)` unconditionally
-    would silently discard the profile's budget whenever the flag was absent, which is
-    every session run.
+    TWO PARAMETERS FOR THE CLOCK, AND THE FOOTGUN THAT MADE IT TWO.
+
+    `deadline_seconds` is the override — a plain number or None, which is exactly what
+    an entry point has after argparse. `deadline` takes a constructed `Deadline` and
+    exists so tests can inject a clock instead of sleeping.
+
+    There was one parameter, and it was a live footgun with no guard.
+    `deadline=None` and `Deadline(seconds=None)` are DIFFERENT ANSWERS — the first means
+    "the caller did not specify, use the profile's", the second means "no clock at all"
+    — and they are one keystroke apart. An entry point that wrote
+    `Deadline(seconds=args.deadline)` unconditionally would discard the profile's budget
+    on every run without the flag, which is every session run, with no error and no
+    warning: the wall-clock protection simply absent.
+
+    So the entry point no longer constructs a `Deadline`. It passes the number it has,
+    and cannot express "no clock" by accident.
     """
+    if deadline is not None and deadline_seconds is not None:
+        raise ValueError(
+            "pass deadline_seconds (a number, the override) or deadline (a constructed "
+            "clock, for tests) — not both. Two clocks is a question about which one "
+            "wins, and the answer should never be decided here."
+        )
     directory = Path(directory)
     if not resume:
         # BY DEFAULT, and checked before anything else — including the pre-registration.
@@ -215,8 +233,14 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEV,
     # The profile's clock unless the caller brought one. `--deadline` overrides for a
     # rehearsal on a shorter budget; typing nothing gets the slot the profile declares,
     # which is the whole reason it lives on the profile — see `Profile.deadline_seconds`.
-    deadline = replace(deadline or Deadline(seconds=profile.deadline_seconds),
-                       warmup=concurrency)
+    if deadline is None:
+        # The override if the caller gave one, otherwise the profile's own budget. A
+        # profile that declares no clock yields `Deadline(seconds=None)`, which never
+        # expires — see `Profile.deadline_seconds` for why `dev` is that way.
+        seconds = (deadline_seconds if deadline_seconds is not None
+                   else profile.deadline_seconds)
+        deadline = Deadline(seconds=seconds)
+    deadline = replace(deadline, warmup=concurrency)
     if not quiet and deadline.seconds is not None:
         print(f"DEADLINE: {deadline.seconds:.0f}s. Cells are started only while there "
               f"is time left; the one in flight stops between items and keeps what it "

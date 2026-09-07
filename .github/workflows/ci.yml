@@ -106,7 +106,16 @@ jobs:
         # log alone, which the cancelled run was not.
         run: uv run pytest -q --durations=15
 
-      - name: Confirm live tests were deselected, not skipped silently
-        run: |
-          uv run pytest --collect-only -q -m live 2>&1 | tail -3
+      - name: Live tests still exist and are still marked
+        # NO PIPE, and that is the entire fix. This read
+        #     uv run pytest --collect-only -q -m live 2>&1 | tail -3
+        # so the step's exit status was `tail`'s, which is always 0. A step named
+        # "Confirm live tests were deselected" that could not fail — the same defect as
+        # the lint rule that scanned nothing, and the second time in this build that an
+        # exit code has been read through a pipe.
+        #
+        # `pytest --collect-only -m live` exits 5 when it collects nothing, so the exit
+        # code alone now enforces the property: if the live suite is deleted or the
+        # marker is renamed, this step fails instead of printing three lines about it.
+        run: uv run pytest --collect-only -q -m live
 

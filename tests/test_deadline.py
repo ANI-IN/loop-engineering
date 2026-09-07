@@ -523,3 +523,75 @@ def test_a_chart_row_cannot_default_its_own_n_to_zero():
     del cell["rate_n"]
     with pytest.raises(KeyError, match="rate_n"):
         bar_rows([cell], metric="rate")
+
+
+# ---- the profile's clock reaches a run that did not ask for one ---------------
+
+
+def test_a_session_run_with_no_deadline_flag_inherits_the_profile_clock(tmp_path):
+    """`session` is the profile this actually protects, so it is the one asserted.
+
+    The wall clock is on the profile precisely so it applies when nobody types
+    anything — a deadline that has to be typed is one that will be forgotten at the
+    venue, which is the only place it matters. This is the property that says the
+    plumbing between the two delivers it.
+    """
+    from loopeng.sweep.runner import SESSION
+
+    report = run_sweep([], tmp_path / "w.duckdb", profile=SESSION, cap_usd=99.0,
+                       directory=tmp_path / "sweep", quiet=True)
+
+    assert SESSION.deadline_seconds is not None, "the session profile must declare one"
+    assert report["deadline_seconds"] == SESSION.deadline_seconds
+
+
+def test_every_profile_that_declares_a_clock_delivers_it(tmp_path):
+    """Derived across the set, so a new profile cannot declare a budget that never
+    reaches a run — and cannot inherit one it did not declare."""
+    from loopeng.sweep.runner import PROFILES
+
+    for name, profile in PROFILES.items():
+        report = run_sweep([], tmp_path / "w.duckdb", profile=profile, cap_usd=99.0,
+                           directory=tmp_path / name, quiet=True)
+        assert report["deadline_seconds"] == profile.deadline_seconds, name
+
+
+def test_the_flag_overrides_the_profile_and_nothing_else_does(tmp_path):
+    from loopeng.sweep.runner import SESSION
+
+    report = run_sweep([], tmp_path / "w.duckdb", profile=SESSION, cap_usd=99.0,
+                       directory=tmp_path / "sweep", quiet=True, deadline_seconds=30)
+    assert report["deadline_seconds"] == 30
+
+
+def test_the_entry_point_cannot_express_no_clock_by_accident():
+    """The footgun this signature exists to remove.
+
+    `deadline=None` and `Deadline(seconds=None)` are different answers one keystroke
+    apart: the first means "use the profile's", the second means "no clock at all". An
+    entry point building `Deadline(seconds=args.deadline)` unconditionally would
+    discard the session's wall-clock protection on every run without the flag — no
+    error, no warning, the guard simply absent.
+
+    So the entry point passes a NUMBER and never constructs a clock. Checked by reading
+    it, because the defect is in what the file is able to say, not in what it computes.
+    """
+    from pathlib import Path
+
+    entry = (Path(__file__).resolve().parent.parent
+             / "demos" / "04_hill_climbing_loop" / "sweep.py").read_text(encoding="utf-8")
+    assert "deadline_seconds=args.deadline" in entry
+    assert "Deadline(" not in entry, (
+        "the entry point constructs a clock again; it must pass the number and let "
+        "run_sweep resolve the profile's"
+    )
+
+
+def test_two_clocks_is_refused_rather_than_silently_ranked(tmp_path):
+    """Which one wins is a question, and the answer should not be decided here."""
+    from loopeng.sweep.runner import SESSION
+
+    with pytest.raises(ValueError, match="not both"):
+        run_sweep([], tmp_path / "w.duckdb", profile=SESSION, quiet=True,
+                  directory=tmp_path / "sweep",
+                  deadline_seconds=30, deadline=Deadline(seconds=60))
