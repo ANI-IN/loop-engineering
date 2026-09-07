@@ -56,6 +56,13 @@ class Selection:
     # decides whether a gap existed at all.
     gap_only_frontier: int
     gap_only_cheap: int
+    # The RAW accuracy view, over every item each arm was asked — the number a reader
+    # computes first, and the one the verdict is selected on. Carried so the reading can
+    # state the verdict BEFORE decomposing it, rather than decomposing a gap it never
+    # named.
+    n_items: int
+    cheap_correct: int
+    frontier_correct: int
 
     @property
     def gap_existed(self) -> bool:
@@ -79,12 +86,31 @@ class Selection:
                 f"to {self.only_frontier} over {self.n_paired} paired. No p-value: this "
                 f"compares two models, and that refusal is in code."
             )
+        # THE VERDICT FIRST, THEN THE DECOMPOSITION, and the order is the whole point.
+        #
+        # Leading with the decomposition would be the post-hoc reframing the
+        # pre-commitment exists to prevent — choosing a kinder description of a result
+        # after seeing it. Stopping at the verdict would understate the result, because
+        # the raw gap and the paired deficit are not the same size and the difference
+        # between them is made of a DIFFERENT KIND of failure.
+        #
+        # So both, in the order a sceptic would ask for them.
+        raw_gap = self.frontier_correct - self.cheap_correct
+        deficit = self.only_frontier - self.only_cheap
+        unanswered = raw_gap - deficit
         return (
             f"APPROACHED BUT SHORT. The frontier model bare was ahead of the budget "
             f"model bare ({self.gap_only_frontier} items to {self.gap_only_cheap}), and "
-            f"with the loops the budget model was still behind it by "
-            f"{self.only_frontier - self.only_cheap} discordant items "
-            f"({self.only_cheap} to {self.only_frontier}, over {self.n_paired} paired). "
+            f"with the loops the budget model did not catch it.\n"
+            f"BY ACCURACY, over all {self.n_items} items: {self.cheap_correct} correct "
+            f"against {self.frontier_correct} — a gap of {raw_gap}.\n"
+            f"DECOMPOSED, over the {self.n_paired} items BOTH arms answered: the deficit "
+            f"is {deficit} discordant ({self.only_cheap} to {self.only_frontier}). The "
+            f"other {unanswered} are items the looped arm did not answer at all — it "
+            f"declined, or failed visibly. That is a different failure from being wrong: "
+            f"an arm wrong on {deficit} and visibly failing on {unanswered} is not an arm "
+            f"quietly wrong on {raw_gap}, and only one of those categories is what this "
+            f"session is about.\n"
             f"No p-value: this compares two models, and that refusal is in code."
         )
 
@@ -125,6 +151,10 @@ def select(*, cheap_bare: dict, cheap_looped: dict, frontier_bare: dict) -> Sele
     _, gap_cheap, gap_frontier = _discordant(bare, frontier)
     n_paired, only_cheap, only_frontier = _discordant(looped, frontier)
 
+    # Over every item each arm was ASKED, which is accuracy's denominator and is not the
+    # pairing's. Keeping both is what lets the reading state a verdict and decompose it.
+    n_items = max(len(cheap_looped["items"]), len(frontier_bare["items"]))
+
     if gap_frontier <= gap_cheap:
         ending = Ending.NO_GAP_TO_CLOSE
     elif only_frontier <= only_cheap:
@@ -136,4 +166,6 @@ def select(*, cheap_bare: dict, cheap_looped: dict, frontier_bare: dict) -> Sele
         ending=ending, n_paired=n_paired,
         only_cheap=only_cheap, only_frontier=only_frontier,
         gap_only_frontier=gap_frontier, gap_only_cheap=gap_cheap,
+        n_items=n_items,
+        cheap_correct=sum(looped.values()), frontier_correct=sum(frontier.values()),
     )

@@ -125,13 +125,43 @@ def test_the_pilot_selection_matches_what_the_note_records():
                        cheap_looped=arms["C-verified"],
                        frontier_bare=arms["D-reference"])
 
-    note = (REPO_ROOT / "docs" / "three-endings.md").read_text(encoding="utf-8")
+    # Whitespace collapsed before matching, the same convention `tests/figures.py`
+    # settled on for chart text: prose wraps at a column, so a phrase can be split
+    # mid-assertion and an assertion written against the sentence fails on a document
+    # that contains it and renders it correctly. That coupling has cost this build four
+    # test fixes already.
+    note = " ".join(
+        (REPO_ROOT / "docs" / "three-endings.md").read_text(encoding="utf-8").split()
+    )
     assert selection.ending is Ending.APPROACHED_BUT_SHORT
     assert "selects **approached but short**" in note
-    # The counts the note quotes, checked against the ones the function computes.
-    assert f"behind\n  by {selection.only_frontier} discordant items" in note or \
-        f"by {selection.only_frontier} discordant items" in note
+    # Every count the note quotes, checked against the ones the function computes.
+    raw_gap = selection.frontier_correct - selection.cheap_correct
+    deficit = selection.only_frontier - selection.only_cheap
+    assert f"{selection.cheap_correct} correct against {selection.frontier_correct}" in note
+    assert f"a gap of {raw_gap}" in note
     assert f"the {selection.n_paired} items **both arms answered**" in note
+    assert f"**{deficit} discordant items**, not {raw_gap}" in note
+    assert f"other {raw_gap - deficit} are items the looped arm did not answer" in note
+
+
+def test_the_reading_states_the_verdict_BEFORE_the_decomposition():
+    """Both, and the order is load-bearing in both directions.
+
+    Leading with the decomposition is the post-hoc reframing the pre-commitment exists
+    to prevent — a kinder description chosen after seeing the result. Stopping at the
+    verdict understates it, because the raw gap and the paired deficit are different
+    sizes and the difference between them is a different KIND of failure.
+    """
+    rendered = select(
+        cheap_bare=arm(i1="silent_error", i2="silent_error", i3="silent_error"),
+        cheap_looped=arm(i1="correct", i2="silent_error", i3="visible_failure"),
+        frontier_bare=arm(i1="correct", i2="correct", i3="correct"),
+    ).render()
+
+    assert rendered.index("APPROACHED BUT SHORT") < rendered.index("BY ACCURACY")
+    assert rendered.index("BY ACCURACY") < rendered.index("DECOMPOSED")
+    assert "different failure from being wrong" in rendered
 
 
 @pytest.mark.parametrize("ending", list(Ending))

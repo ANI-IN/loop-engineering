@@ -48,17 +48,27 @@ move the pre-registration exists to prevent. What it is instead: the pilot's rea
 written down and dated *before* the rehearsal, so a different reading on the day is a
 visible change rather than a quiet selection.
 
-The pilot selects **approached but short**, and its own numbers are more interesting
-than the verdict:
+The pilot selects **approached but short**. The verdict is one sentence and the
+decomposition is the finding, so both get said, **in that order**:
 
-- The frontier model bare beat the budget model bare on 8 discordant items to 0. A gap
-  existed.
-- With the loops, over the 54 items **both arms answered**, the budget model was behind
-  by 2 discordant items — not the 8 the raw accuracies imply.
-- The other 6 are items the looped arm did not answer at all. That is a different
-  failure from being wrong, and the paired view is what separates them. An arm that
-  fails visibly on six items and is wrong on two is not the same as an arm that is
-  quietly wrong on eight, and only one of those is the category this session is about.
+- **The verdict.** The frontier model bare beat the budget model bare on 8 discordant
+  items to 0 — a gap existed — and with the loops the budget model did not catch it.
+  By accuracy over all 60 items: 52 correct against 60, a gap of 8.
+- **The decomposition.** Over the 54 items **both arms answered**, the deficit is **2
+  discordant items**, not 8. The other 6 are items the looped arm did not answer at
+  all: it declined, or failed visibly.
+- **Why that matters.** An arm wrong on 2 and visibly failing on 6 is not an arm
+  quietly wrong on 8. Six of those failures are in the band a reader of the answer can
+  see, and only the other two are in the band this session exists for.
+
+**The order is load-bearing in both directions.** Leading with the decomposition would
+be the post-hoc reframing this whole note exists to prevent — picking a kinder
+description of a result after seeing it. Stopping at the verdict would understate the
+result, because the raw gap and the paired deficit are different sizes and the
+difference between them is made of a different kind of failure.
+
+`Selection.render()` prints them in that order for the same reason, so what gets said
+out loud cannot drift from what is written here.
 
 ## What would change the reading
 
