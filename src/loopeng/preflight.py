@@ -366,7 +366,12 @@ def render(result: Preflight) -> str:
             "Everything the sweep needs is in place. Next, for a few cents:",
             f"    {NEXT_COMMAND}",
             "",
-            "Then render the charts with your run beside the committed baseline:",
+            # "beside the committed baseline" until 2026-09-08. There is no committed
+            # baseline: the stored-cell path was deleted, and every bar these charts
+            # draw is computed by the run that draws it. Offering a comparison the
+            # renderer cannot express is the last line an operator reads before their
+            # first real command.
+            "Then render the charts from what your run measured:",
             "    uv run python demos/04_hill_climbing_loop/charts.py",
         ]
     else:
