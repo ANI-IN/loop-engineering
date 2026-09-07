@@ -250,13 +250,17 @@ def test_the_command_reader_joins_a_continued_line():
 
 
 def test_no_markdown_points_at_a_file_in_a_deleted_directory():
-    """`docs/`, `scripts/` and `app/` are gone.
+    """`app/` is gone.
 
-    Aimed at *paths*, not at the words: `demos/README.md` says there is no `docs/`
-    directory, and that sentence is true and should stay. What must not survive is
-    a reference to a file inside one of them.
+    `docs/` came back — it holds the design notes and the pre-committed endings — so
+    it is no longer in this list, and the ordinary link check covers it: a `docs/`
+    path that does not resolve fails `test_every_relative_link_resolves` like any
+    other. `scripts/` returns with the preflight and is removed from here then.
+
+    Aimed at *paths*, not at the words. What must not survive is a reference to a
+    file inside a directory that is not there.
     """
-    stale = re.compile(r"`(?:docs|scripts|app)/[\w./-]+\.\w+`")
+    stale = re.compile(r"`(?:app)/[\w./-]+\.\w+`")
     for path in MARKDOWN:
         found = stale.findall(path.read_text(encoding="utf-8"))
         assert not found, (
@@ -427,12 +431,18 @@ def test_the_offline_suite_command_is_what_ci_runs():
 
 
 def test_git_tracks_no_file_under_a_removed_directory():
-    """`docs/`, `scripts/` and `app/` are removed and must stay that way."""
+    """`app/` is removed and must stay that way.
+
+    `docs/` came back — design notes and the pre-committed endings — and `scripts/`
+    returns with the preflight. Both are covered by the ordinary checks instead: a
+    markdown link into either that does not resolve fails
+    `test_every_relative_link_resolves`, which is the property that actually mattered.
+    """
     tracked = subprocess.run(
         ["git", "ls-files"], capture_output=True, text=True, cwd=REPO_ROOT,
     ).stdout.split()
     for path in tracked:
-        assert not path.startswith(("docs/", "scripts/", "app/")), (
+        assert not path.startswith("app/"), (
             f"{path} is still tracked but its directory was removed"
         )
 
