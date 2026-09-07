@@ -315,7 +315,7 @@ called.
 5. **`src/loopeng/gold/build.py :: build_gold()`** produces the list of gold items, using a
    cache file at `results/gold_cache.json` when the inputs have not changed.
 6. **`src/loopeng/sweep/orchestrator.py :: run_sweep()`** takes over.
-   1. If `--fresh` was passed, **`runner.require_fresh()`** raises when finished cells are
+   1. Unless `--resume` was passed, **`runner.require_fresh()`** raises when finished cells are
       already on disk.
    2. **`runner.apply_item_limit()`** applies the profile's item cap and refuses the
       `--limit` flag on profiles that do not permit it.
@@ -416,7 +416,7 @@ sequenceDiagram
 
 **Resume.** If a cell file already exists with `"complete": true`, `runner.load_cell()`
 returns it and the cell is not re-run. This is what makes a dropped network connection
-cost only the cell in flight. It is also the behaviour that `--fresh` exists to refuse,
+cost only the cell in flight. It is also the behaviour the freshness guard exists to refuse,
 because a sweep that resumes and finishes instantly in front of an audience looks
 identical to one that was faked.
 
@@ -460,7 +460,8 @@ Command: `uv run python demos/04_hill_climbing_loop/sweep.py --profile <name>`
 | `--foreground` | flag | no | Block the terminal instead of detaching. |
 | `--concurrency` | integer | no | Requests in flight per model. Defaults to eight. |
 | `--log` | path | no | Where the detached process writes output. Defaults to `results/sweep_run.log`. |
-| `--fresh` | flag | no | Refuse to start when finished cells already exist. |
+| `--resume` | flag | no | Continue from finished cells. Without it the sweep refuses to start when it finds any — that is the default. |
+| `--deadline` | float | no | Override the wall-clock budget the profile declares. |
 
 Exit codes, from `demos/04_hill_climbing_loop/sweep.py :: main()`:
 
@@ -904,7 +905,7 @@ something the hub's version does not. The symptom column is what you will actual
 
 | Symptom | Likely cause | Diagnostic step | Fix |
 |---|---|---|---|
-| `12 completed cell(s) already in results/sweep: ... --fresh means the sweep must build in front of the room` | You passed `--fresh` and finished cells exist. | The message lists the first four cell keys. | Decide whether you still need those files. If not, delete the directory. The guard refuses rather than deleting, because those files may be your only offline copy. From `runner.py :: require_fresh()`. |
+| `12 completed cell(s) already in results/sweep: ...` | Finished cells exist and `--resume` was not passed. **This is the default**, not a flag you switched on. | The message lists the first four cell keys and names all three ways out. | Decide whether you still need those files. If not, delete the directory. The guard refuses rather than deleting, because those files may be your only offline copy. From `runner.py :: require_fresh()`. |
 | `SWEEP ABORTED` followed by `aborting BEFORE '<label>'` | Projected total spend would exceed the profile cap. | Read the projected total in the message. | Do not retry into the cap. Either raise `--cap-usd` deliberately or run a smaller profile. Exit code is `2`. From `orchestrator.py :: run_sweep()`. |
 | `--limit is not accepted by the 'delivery' profile.` | You passed `--limit` to a profile that forbids it. | The message lists which profiles accept it. | Use `smoke` or `development`, or drop the flag. A cell run over fewer items is not that profile's measurement. From `runner.py :: resolve_item_limit()`. |
 | A cell's rate reads `not yet measured` and its bar is a dashed outline | No item in that cell both ran and returned. | Open the cell file and look at `ran_and_returned` and `termination`. | Usually a model or SQL failure affecting the whole cell. This is correct behaviour, not a bug: rendering zero would be a false measurement. |

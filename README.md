@@ -377,7 +377,7 @@ flowchart TD
     REQ -->|no| NODEF(["argparse refuses.<br/><b>There is no default.</b><br/>A delivery run cannot inherit<br/>development settings by omission."])
     REQ -->|yes| PROF["<b>Profile</b> selects:<br/>roles · replicates · spend cap ·<br/>ablation on/off · prompt levels · item cap"]
 
-    PROF --> FRESH{"--fresh?"}
+    PROF --> FRESH{"--resume?"}
     FRESH -->|yes| STALE{"Completed cells<br/>already on disk?"}
     STALE -->|yes| REFUSE(["<b>StaleCellsPresent</b><br/>refuses to start — and refuses<br/>to delete them, because they are<br/>the outage insurance"])
     STALE -->|no| PRE
@@ -793,7 +793,7 @@ good enough to write back. Would you have shipped what they accepted?*
 # there is time left, the one in flight stops BETWEEN items (never mid-item, so no item
 # is scored having run under less than its condition), and the reduced n reaches every
 # figure it produces. Without it the stage overruns into the next one.
-uv run python demos/04_hill_climbing_loop/sweep.py --profile delivery --fresh
+uv run python demos/04_hill_climbing_loop/sweep.py --profile session
 
 # render every chart from whatever exists so far; safe to run repeatedly mid-sweep
 uv run python demos/04_hill_climbing_loop/charts.py
@@ -1026,7 +1026,7 @@ makes the sweep resumable and what makes splicing a corrected subset possible.
 *Given up:* the results directory is large and awkward, and the committed-versus-ignored
 split needs a paragraph of explanation — which it has, in `.gitignore`.
 
-**A `--fresh` flag that refuses rather than deletes.**
+**A freshness guard that is ON BY DEFAULT and refuses rather than deletes.**
 *Reasoning:* cell files must be *present* as outage insurance and *absent* when the live
 sweep starts. Silently deleting the insurance to satisfy a flag trades one failure for a
 worse one, and only the operator knows whether those files are still needed.
@@ -1179,11 +1179,11 @@ a third path written down in its runbook, and it is not an apology.
 
 **The sweep finishes instantly and the chart is already full.** Completed cell files are on
 disk and the sweep resumed from them. That is correct behaviour, and exactly what you do
-not want in front of a room told nothing was precomputed. Pass `--fresh`, which refuses to
+not want in front of a room told nothing was precomputed. The sweep refuses to
 start rather than deleting anything, then clear the results directory yourself if you no
 longer need those cells for outage cover.
 
-**The sweep refuses to start.** That is `--fresh` finding completed cells. Do not drop the
+**The sweep refuses to start.** That is the freshness guard finding completed cells. Do not reach for the
 flag to get past it.
 
 **A rate limit appears mid-sweep.** The recorded ceilings hold for one account on one tier.

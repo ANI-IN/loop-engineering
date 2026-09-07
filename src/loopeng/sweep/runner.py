@@ -100,12 +100,21 @@ TOKEN_FIELDS = (
 
 @dataclass(frozen=True)
 class Profile:
-    """What a sweep run is FOR. Delivery and development are not the same sweep.
+    """What a sweep run is FOR. Three of them, and they are not interchangeable.
 
-    The delivery profile is what runs in front of a room, and its cost is a hard
-    constraint rather than a target. The development profile is what was run once to
-    establish the findings; re-running it per delivery would spend an order of
-    magnitude more to re-measure things that are properties of the setup, not results.
+        smoke    prove the pipeline on YOUR key, for a few cents
+        session  what runs in front of a room, inside a fixed slot
+        dev      run once to establish the findings, offline, no clock
+
+    **Every ceiling this profile has is a PROPERTY OF THE PROFILE, not a flag.** The
+    item count, the spend cap and now the wall-clock budget are all declared here,
+    because a limit that depends on someone remembering to type it is not a limit —
+    the argument `item_limit` already carried, applied to the other two.
+
+    `exhibit` is gone. Its note read "every figure is a stored measurement rendered
+    with its date", which describes a capability that was removed: there is no stored
+    cell format, no loader and no flag. A profile for a system that does not exist is
+    a profile that will eventually be selected.
 
     The findings this docstring used to quote were measured on two models this build
     no longer contains, with a p-value typed into prose. They are gone rather than
@@ -135,21 +144,44 @@ class Profile:
     # property of the profile and the flag is refused where the docs said it was.
     allows_limit: bool = False
 
+    # The wall-clock budget, in seconds. None means no clock.
+    #
+    # On the profile for the same reason `item_limit` is: the sweep launches inside a
+    # slot that ends whether it is finished or not, and a deadline that has to be typed
+    # is a deadline that will be forgotten at the venue — which is the one place it
+    # matters. `--deadline` still overrides, for a rehearsal on a shorter clock.
+    #
+    # `dev` has none deliberately. It is run once, alone, with nothing waiting on it,
+    # and a partial dev sweep is a worse outcome than a slow one.
+    deadline_seconds: float | None = None
 
-DELIVERY = Profile(
-    name="delivery",
+
+SESSION = Profile(
+    name="session",
     roles=("agent",),
     replicates=1,
     cap_usd=0.75,
     runs_ablation=False,
+    # THE SLOT, not a guess. The sweep launches at minute 95 of the session and the
+    # next stage begins at 165 whether it has finished or not, so 70 minutes is the
+    # budget it actually has. Declared here so the operator cannot start it without
+    # one; `--deadline` shortens it for a rehearsal.
+    #
+    # Measured throughput says this is not tight: a cell of 8 items at concurrency 2
+    # ran in 9.8-14.5s across three live runs, i.e. roughly 1.1-1.8 s/item at that
+    # concurrency, and the session default is four times that concurrent. The deadline
+    # is here to bound the tail — a rate-limited or degraded API — rather than to trim
+    # an expected overrun.
+    deadline_seconds=70 * 60,
     note=(
-        "The agent role only, 4 cells, 1 replicate. Superseded by the profile set the "
-        "conditions use; kept until that lands so no entry point loses its profile."
+        "The agent role only: 4 cells (L0/L3 x one-shot/loop), 1 replicate, every "
+        "held-out item. This is what runs in front of a room, and its cost and its "
+        "clock are both hard constraints rather than targets."
     ),
 )
 
-DEVELOPMENT = Profile(
-    name="development",
+DEV = Profile(
+    name="dev",
     roles=("agent", "reference"),
     replicates=3,
     # Raised from 8.00, and the reason is the model policy rather than a change of
@@ -159,12 +191,17 @@ DEVELOPMENT = Profile(
     # eight. A cap that the profile's own projection cannot clear is not a budget,
     # it is a profile that refuses to start.
     #
-    # PROVISIONAL. This whole profile set is replaced by smoke/session/dev, whose
-    # sizes come from measured throughput rather than from what fitted before.
     cap_usd=12.0,
     runs_ablation=True,
     allows_limit=True,
-    note="Both models, replicates on both L0 loop cells, ablation. Run once, not per delivery.",
+    # No clock. See `Profile.deadline_seconds`: this is run once, alone, with nothing
+    # waiting on it, and a partial dev sweep is worse than a slow one.
+    note=(
+        "Both models, replicates on both L0 loop cells, ablation, every held-out item. "
+        "Run ONCE to establish the findings — not per session. Re-running it per "
+        "delivery would spend an order of magnitude more to re-measure things that are "
+        "properties of the setup rather than results."
+    ),
 )
 
 SMOKE = Profile(
@@ -182,25 +219,18 @@ SMOKE = Profile(
         "nothing worth quoting — 8 items cannot separate anything — and that is not "
         "what it is for. It proves the whole pipeline on YOUR key: real calls, cells on "
         "disk, charts rendered, and the delta computed against the stored baseline. The "
-        "smallest live path used to be `delivery` at 4 cells x 50 items, so a first-time "
-        "cloner had no way to spend two cents finding out whether their key worked."
+        "smallest live path used to be the session profile over every gold item, so a "
+        "first-time cloner had no way to spend two cents finding out whether their key "
+        "worked."
     ),
+    # A cloner's first command should not be able to hang. Five minutes is far longer
+    # than three measured runs of this profile took (28s, 21s and a deliberately
+    # deadline-stopped 16s) and exists so a degraded or rate-limited API produces a
+    # partial answer with an honest n rather than a terminal that never returns.
+    deadline_seconds=5 * 60,
 )
 
-EXHIBIT = Profile(
-    name="exhibit",
-    roles=(),
-    replicates=0,
-    cap_usd=0.0,
-    runs_ablation=False,
-    note=(
-        "A frozen exhibit. Makes ZERO model calls: every figure is a stored measurement "
-        "rendered with its date, and the paths that would spend are disabled rather "
-        "than hidden. cap_usd is 0.0 so any attempt to run a cell refuses immediately."
-    ),
-)
-
-PROFILES = {p.name: p for p in (SMOKE, DELIVERY, DEVELOPMENT, EXHIBIT)}
+PROFILES = {p.name: p for p in (SMOKE, SESSION, DEV)}
 
 
 class LimitNotAllowed(RuntimeError):
@@ -281,7 +311,7 @@ class Cell:
         )
 
 
-def build_cells(profile: Profile = DEVELOPMENT) -> tuple[Cell, ...]:
+def build_cells(profile: Profile = DEV) -> tuple[Cell, ...]:
     """The cells this profile runs.
 
     Replicates go on BOTH L0 loop cells when there are two models, not one.
@@ -314,16 +344,27 @@ class SweepAborted(RuntimeError):
 
 
 class StaleCellsPresent(RuntimeError):
-    """--fresh was requested and completed cells are already on disk.
+    """Completed cells are already on disk and `--resume` was not passed.
 
-    This exists because two correct requirements collide. Cell files must be present on
-    the venue machine, because they are the insurance that stages 0, the Phase 2 probes
-    and stage 4 still run if the model API is unreachable. And they must be ABSENT when
-    the live sweep starts, or it resumes and completes instantly, rendering finished
-    numbers to a room that was just told nothing is precomputed.
+    THE DEFAULT IS INVERTED, AND THAT IS THE POINT.
 
-    A checklist line is not enforcement — that is the defect this whole project is
-    about. So the live command carries --fresh and this refuses.
+    This used to fire only when the operator typed `--fresh`. So the dangerous
+    behaviour was the default: run the sweep in a directory that already holds finished
+    cells and it resumes, completes in about a second, and renders a full set of
+    numbers to a room that was told thirty seconds earlier that nothing here is
+    precomputed. Every figure on screen would be correct, and the sentence said over
+    them would be false.
+
+    Two correct requirements collide, which is why the guard exists at all. Cell files
+    must be PRESENT on the venue machine — they are the insurance that stages 0, the
+    Phase 2 probes and stage 4 still run if the model API is unreachable. And they must
+    be ABSENT when the live sweep starts.
+
+    A guard you have to remember to switch on is a checklist line, and a checklist line
+    is not enforcement — which is the defect this entire project is about. Having it
+    behind `--fresh` was that defect, in the guard against that defect. So the safe
+    behaviour is what you get by typing nothing, and RESUMING is what you now have to
+    ask for by name.
 
     It refuses rather than deleting. Silently removing the outage insurance to satisfy a
     flag would trade one failure for a worse one, and the operator is the only one who
@@ -348,18 +389,24 @@ def completed_cells(directory: Path) -> list[str]:
 
 
 def require_fresh(directory: Path) -> None:
-    """Raise unless the directory holds no completed cells."""
+    """Raise unless the directory holds no completed cells. Runs by DEFAULT."""
     stale = completed_cells(directory)
     if stale:
         raise StaleCellsPresent(
             f"{len(stale)} completed cell(s) already in {directory}: "
             f"{', '.join(stale[:4])}{'…' if len(stale) > 4 else ''}.\n"
-            "--fresh means the sweep must build in front of the room, and it would "
-            "resume from these instead, finishing instantly with numbers that look "
-            "computed and were not.\n"
-            "These files are also the outage insurance for stages 0, 2-probes and 4, "
-            "so this refuses rather than deleting them. Move or remove them yourself:\n"
-            f"    rm -rf {directory}"
+            "\nStarting here would RESUME from those files: the sweep would finish in "
+            "about a second and render a full set of numbers that look computed and "
+            "were not. Every figure would be correct and the sentence said over them "
+            "would be false.\n"
+            "\nThese files are also the outage insurance for stages 0, 2-probes and 4, "
+            "so this refuses rather than deleting them. Pick one:\n"
+            "\n  build it live, which is the session path:\n"
+            f"      rm -rf {directory}\n"
+            "\n  continue an interrupted run:\n"
+            "      --resume\n"
+            "\n  keep both:\n"
+            "      --dir <somewhere else>"
         )
 
 

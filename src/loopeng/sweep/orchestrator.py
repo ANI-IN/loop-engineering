@@ -16,7 +16,7 @@ from loopeng.sweep.deadline import Deadline
 from loopeng.sweep.fingerprint import RunFingerprint, resolve_run_id
 from loopeng.sweep.runner import (
     CONCURRENCY_PER_MODEL,
-    DEVELOPMENT,
+    DEV,
     HEADROOM,
     SWEEP_DIR,
     Profile,
@@ -154,10 +154,10 @@ REPLICATES
 """
 
 
-def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
+def run_sweep(items, warehouse: Path, *, profile: Profile = DEV,
               cap_usd: float | None = None, directory: Path = SWEEP_DIR,
               verifier=None, on_cell=None, quiet: bool = False,
-              fresh: bool = False, item_limit: int | None = None,
+              resume: bool = False, item_limit: int | None = None,
               concurrency: int = CONCURRENCY_PER_MODEL,
               warehouse_seed: int | None = None,
               deadline: Deadline | None = None) -> dict:
@@ -174,11 +174,18 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
     whatever it honestly measured. Raising would make a designed ending look like a
     crash in front of a room, and — worse — would push the partial result into an
     exception path where it is easy to drop.
+
+    `deadline=None` and `Deadline(seconds=None)` are DIFFERENT ANSWERS. The first means
+    the caller did not specify one and gets the profile's; the second means no clock at
+    all. An entry point that built `Deadline(seconds=args.deadline)` unconditionally
+    would silently discard the profile's budget whenever the flag was absent, which is
+    every session run.
     """
     directory = Path(directory)
-    if fresh:
-        # Checked before anything else, including the pre-registration: refusing after
-        # printing a hypothesis to the room reads as a crash rather than a guard.
+    if not resume:
+        # BY DEFAULT, and checked before anything else — including the pre-registration.
+        # Refusing after printing a hypothesis to the room reads as a crash rather than
+        # as a guard. See `StaleCellsPresent` for why the default is this way round.
         require_fresh(directory)
     # The profile's own item cap, and the refusal when --limit is not permitted here.
     # Applied in the runner so no caller can report a trimmed run as a full profile.
@@ -205,7 +212,11 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
     # `Deadline.warmup`. Carried on a copy rather than set on the caller's object: a
     # function that mutates an argument to configure itself makes the caller's next use
     # of it depend on whether this ran.
-    deadline = replace(deadline or Deadline(), warmup=concurrency)
+    # The profile's clock unless the caller brought one. `--deadline` overrides for a
+    # rehearsal on a shorter budget; typing nothing gets the slot the profile declares,
+    # which is the whole reason it lives on the profile — see `Profile.deadline_seconds`.
+    deadline = replace(deadline or Deadline(seconds=profile.deadline_seconds),
+                       warmup=concurrency)
     if not quiet and deadline.seconds is not None:
         print(f"DEADLINE: {deadline.seconds:.0f}s. Cells are started only while there "
               f"is time left; the one in flight stops between items and keeps what it "

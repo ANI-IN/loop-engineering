@@ -8,7 +8,7 @@ import pytest
 from loopeng.pricing import PRICES_TAKEN_ON
 from loopeng.sweep.orchestrator import detectable_effect, load_all, pre_registration, run_sweep
 from loopeng.sweep.runner import (
-    DEVELOPMENT,
+    DEV,
     Cell,
     SweepAborted,
     build_cells,
@@ -33,7 +33,7 @@ ITEMS = [_Item(i) for i in range(50)]
 
 
 def test_eight_cells_plus_replicates_on_both_l0_loop_cells():
-    cells = build_cells(DEVELOPMENT)
+    cells = build_cells(DEV)
     assert len(cells) == 12
     l0_loop = [c for c in cells if c.level == "L0" and c.mode == "loop"]
     assert len(l0_loop) == 6
@@ -43,14 +43,14 @@ def test_eight_cells_plus_replicates_on_both_l0_loop_cells():
 def test_replicates_are_on_both_models_not_one():
     """They measure two different determinism floors — Haiku pinned, Sonnet not — and
     neither model's floor may be asserted for the other."""
-    cells = build_cells(DEVELOPMENT)
+    cells = build_cells(DEV)
     per_role = {r: len([c for c in cells if c.role == r and c.level == "L0"
                         and c.mode == "loop"]) for r in ("agent", "reference")}
     assert per_role == {"agent": 3, "reference": 3}
 
 
 def test_cell_keys_are_unique():
-    cells = build_cells(DEVELOPMENT)
+    cells = build_cells(DEV)
     assert len({c.key for c in cells}) == len(cells)
 
 
@@ -61,7 +61,7 @@ def test_abort_triggers_on_projection_not_actuals(tmp_path):
     """The whole point. A cap checked against money already spent only discovers the
     breach afterwards; this refuses to start a cell whose projected total breaches."""
     with pytest.raises(SweepAborted) as exc:
-        run_sweep(ITEMS, tmp_path / "w.duckdb", profile=DEVELOPMENT, cap_usd=0.01,
+        run_sweep(ITEMS, tmp_path / "w.duckdb", profile=DEV, cap_usd=0.01,
                   directory=tmp_path / "sweep", quiet=True)
     message = str(exc.value)
     assert "aborting BEFORE" in message
@@ -72,7 +72,7 @@ def test_abort_triggers_on_projection_not_actuals(tmp_path):
 
 def test_abort_names_the_last_completed_cell(tmp_path):
     with pytest.raises(SweepAborted) as exc:
-        run_sweep(ITEMS, tmp_path / "w.duckdb", profile=DEVELOPMENT, cap_usd=0.01,
+        run_sweep(ITEMS, tmp_path / "w.duckdb", profile=DEV, cap_usd=0.01,
                   directory=tmp_path / "sweep", quiet=True)
     assert "Last completed cell" in str(exc.value)
 
@@ -84,12 +84,12 @@ def test_a_generous_cap_does_not_abort_before_the_first_cell(tmp_path):
     policy did — the reference role is a frontier model now — and a literal here
     would have to be edited in lockstep with a number it is supposed to be checking.
     """
-    cells = build_cells(DEVELOPMENT)
-    assert project_remaining(cells, 50) < DEVELOPMENT.cap_usd
+    cells = build_cells(DEV)
+    assert project_remaining(cells, 50) < DEV.cap_usd
 
 
 def test_projection_covers_every_remaining_cell():
-    cells = build_cells(DEVELOPMENT)
+    cells = build_cells(DEV)
     assert project_remaining(cells, 50) > project_remaining(cells[1:], 50)
 
 
@@ -97,7 +97,7 @@ def test_projection_covers_every_remaining_cell():
 
 
 def test_a_complete_cell_is_resumed_from_disk(tmp_path):
-    cell = build_cells(DEVELOPMENT)[0]
+    cell = build_cells(DEV)[0]
     directory = tmp_path / "sweep"
     directory.mkdir()
     report = summarise_cell(cell, [], complete=True, seconds=1.0)
@@ -108,7 +108,7 @@ def test_a_complete_cell_is_resumed_from_disk(tmp_path):
 def test_an_incomplete_cell_is_not_resumed(tmp_path):
     """A partial cell must be re-run, not counted. Resuming a half-finished cell would
     report a rate over whatever happened to have landed."""
-    cell = build_cells(DEVELOPMENT)[0]
+    cell = build_cells(DEV)[0]
     directory = tmp_path / "sweep"
     directory.mkdir()
     partial = summarise_cell(cell, [], complete=False, seconds=1.0)
@@ -301,36 +301,36 @@ def test_an_empty_chart_says_not_yet_measured_rather_than_drawing_nothing(tmp_pa
 # ---- profiles: delivery cannot inherit development settings ------------------
 
 
-def test_delivery_is_four_haiku_cells():
-    from loopeng.sweep.runner import DELIVERY
+def test_session_is_four_agent_cells():
+    from loopeng.sweep.runner import SESSION
 
-    cells = build_cells(DELIVERY)
+    cells = build_cells(SESSION)
     assert len(cells) == 4
     assert {c.role for c in cells} == {"agent"}
     assert all(c.replicate == 0 for c in cells)
 
 
-def test_delivery_projects_under_its_cap():
-    """Cost is a hard constraint at delivery, not a target."""
-    from loopeng.sweep.runner import DELIVERY
+def test_session_projects_under_its_cap():
+    """Cost is a hard constraint in front of a room, not a target."""
+    from loopeng.sweep.runner import SESSION
 
-    assert project_remaining(build_cells(DELIVERY), 50) < DELIVERY.cap_usd
-
-
-def test_delivery_is_far_cheaper_than_development():
-    from loopeng.sweep.runner import DELIVERY, DEVELOPMENT
-
-    delivery = project_remaining(build_cells(DELIVERY), 50)
-    development = project_remaining(build_cells(DEVELOPMENT), 50)
-    assert development > delivery * 5
+    assert project_remaining(build_cells(SESSION), 50) < SESSION.cap_usd
 
 
-def test_delivery_runs_no_ablation():
-    """The ablation is a development finding and never appears in the session."""
-    from loopeng.sweep.runner import DELIVERY, DEVELOPMENT
+def test_session_is_far_cheaper_than_dev():
+    from loopeng.sweep.runner import DEV, SESSION
 
-    assert DELIVERY.runs_ablation is False
-    assert DEVELOPMENT.runs_ablation is True
+    session = project_remaining(build_cells(SESSION), 50)
+    dev = project_remaining(build_cells(DEV), 50)
+    assert dev > session * 5
+
+
+def test_session_runs_no_ablation():
+    """The ablation is a dev finding and never appears in the session."""
+    from loopeng.sweep.runner import DEV, SESSION
+
+    assert SESSION.runs_ablation is False
+    assert DEV.runs_ablation is True
 
 
 # ---- the smoke profile: the pipeline, on a cloner's key, for pennies ---------
@@ -346,15 +346,15 @@ def test_smoke_is_two_l0_cells():
 
 
 def test_smoke_projects_to_a_few_cents():
-    """The cheapest live path there is. Before it existed, the smallest was `delivery`
-    at 4 cells x 50 items."""
-    from loopeng.sweep.runner import DELIVERY, SMOKE
+    """The cheapest live path there is. Before it existed, the smallest was the
+    session profile over every held-out item."""
+    from loopeng.sweep.runner import SESSION, SMOKE
 
     smoke = project_remaining(build_cells(SMOKE), SMOKE.item_limit)
-    delivery = project_remaining(build_cells(DELIVERY), 50)
+    session = project_remaining(build_cells(SESSION), 50)
 
     assert smoke < SMOKE.cap_usd
-    assert smoke * 10 < delivery, f"smoke projects est. ${smoke:.4f}, not cheap enough"
+    assert smoke * 10 < session, f"smoke projects est. ${smoke:.4f}, not cheap enough"
 
 
 def test_smoke_carries_its_own_item_limit():
@@ -372,17 +372,17 @@ def test_limit_is_refused_where_the_docs_said_it_was():
     """The flag's help text said "(development only)" and it was applied to any
     profile unconditionally — a declared restriction nothing enforced, in the tool
     that runs the sweep."""
-    from loopeng.sweep.runner import DELIVERY, LimitNotAllowed, resolve_item_limit
+    from loopeng.sweep.runner import SESSION, LimitNotAllowed, resolve_item_limit
 
     with pytest.raises(LimitNotAllowed) as exc:
-        resolve_item_limit(DELIVERY, 5)
-    assert "delivery" in str(exc.value)
+        resolve_item_limit(SESSION, 5)
+    assert "session" in str(exc.value)
 
 
 def test_limit_is_accepted_where_it_is_declared():
-    from loopeng.sweep.runner import DEVELOPMENT, SMOKE, resolve_item_limit
+    from loopeng.sweep.runner import DEV, SMOKE, resolve_item_limit
 
-    assert resolve_item_limit(DEVELOPMENT, 5) == 5
+    assert resolve_item_limit(DEV, 5) == 5
     assert resolve_item_limit(SMOKE, 3) == 3
 
 
@@ -392,7 +392,7 @@ def test_every_profile_declares_whether_it_takes_a_limit():
     from loopeng.sweep.runner import PROFILES
 
     permissive = {p.name for p in PROFILES.values() if p.allows_limit}
-    assert permissive == {"smoke", "development"}
+    assert permissive == {"smoke", "dev"}
 
 
 def test_the_limit_spreads_across_clusters_rather_than_taking_a_prefix(tmp_path):
@@ -649,10 +649,16 @@ def a_frozen_frontier_run(tmp_path):
     return directory, reference_path
 
 
-# ---- --fresh: a checklist line is not enforcement ---------------------------
+# ---- the freshness default: a checklist line is not enforcement -------------
+#
+# These used to be named for `--fresh`, the flag that switched the guard ON. The
+# default is inverted now: refusing is what you get by typing nothing, and RESUMING is
+# what has to be asked for. A guard you have to remember to enable is a checklist line,
+# and a checklist line is not enforcement — which is the defect this project is about,
+# so having it behind a flag was that defect inside the guard against it.
 
 
-def test_fresh_refuses_when_completed_cells_exist(tmp_path):
+def test_refuses_when_completed_cells_exist(tmp_path):
     """The single most damaging mistake available on the day: the live sweep resumes
     from yesterday's cells and renders finished numbers to a room that was just told
     nothing is precomputed."""
@@ -662,7 +668,7 @@ def test_fresh_refuses_when_completed_cells_exist(tmp_path):
 
     directory = tmp_path / "sweep"
     directory.mkdir()
-    cell = build_cells(DEVELOPMENT)[0]
+    cell = build_cells(DEV)[0]
     (directory / f"{cell.key}.json").write_text(
         json.dumps(summarise_cell(cell, [], complete=True, seconds=1.0))
     )
@@ -671,7 +677,7 @@ def test_fresh_refuses_when_completed_cells_exist(tmp_path):
     assert cell.key in str(exc.value)
 
 
-def test_fresh_refuses_rather_than_deleting(tmp_path):
+def test_it_refuses_rather_than_deleting(tmp_path):
     """Those files are the outage insurance for stages 0, 2-probes and 4. Silently
     removing them to satisfy a flag trades one failure for a worse one."""
     import json
@@ -680,15 +686,15 @@ def test_fresh_refuses_rather_than_deleting(tmp_path):
 
     directory = tmp_path / "sweep"
     directory.mkdir()
-    cell = build_cells(DEVELOPMENT)[0]
+    cell = build_cells(DEV)[0]
     path = directory / f"{cell.key}.json"
     path.write_text(json.dumps(summarise_cell(cell, [], complete=True, seconds=1.0)))
     with pytest.raises(StaleCellsPresent):
         require_fresh(directory)
-    assert path.is_file(), "--fresh must not delete the outage insurance"
+    assert path.is_file(), "the guard must not delete the outage insurance"
 
 
-def test_fresh_allows_an_empty_directory(tmp_path):
+def test_an_empty_directory_is_allowed(tmp_path):
     from loopeng.sweep.runner import require_fresh
 
     require_fresh(tmp_path / "absent")
@@ -696,34 +702,37 @@ def test_fresh_allows_an_empty_directory(tmp_path):
     require_fresh(tmp_path / "sweep")
 
 
-def test_fresh_ignores_incomplete_cells(tmp_path):
-    """A partial cell is re-run anyway, so it is not the hazard --fresh guards."""
+def test_incomplete_cells_are_ignored(tmp_path):
+    """A partial cell is re-run anyway, so it is not the hazard this guards. That now
+    includes a cell the deadline stopped, which stays `complete: False` for exactly
+    this reason."""
     import json
 
     from loopeng.sweep.runner import require_fresh
 
     directory = tmp_path / "sweep"
     directory.mkdir()
-    cell = build_cells(DEVELOPMENT)[0]
+    cell = build_cells(DEV)[0]
     (directory / f"{cell.key}.json").write_text(
         json.dumps(summarise_cell(cell, [], complete=False, seconds=1.0))
     )
     require_fresh(directory)
 
 
-def test_plain_sweep_still_resumes(tmp_path):
-    """The outage path DEPENDS on resume working, so --fresh must not have broken it."""
+def test_resume_still_works_when_asked_for(tmp_path):
+    """The outage path DEPENDS on resume working. Inverting the default must not have
+    removed the capability, only moved it behind a name."""
     import json
 
     from loopeng.sweep.runner import load_cell
 
     directory = tmp_path / "sweep"
     directory.mkdir()
-    cell = build_cells(DEVELOPMENT)[0]
+    cell = build_cells(DEV)[0]
     (directory / f"{cell.key}.json").write_text(
         json.dumps(summarise_cell(cell, [], complete=True, seconds=1.0))
     )
-    assert load_cell(cell, directory) is not None, "resume must still work without --fresh"
+    assert load_cell(cell, directory) is not None, "resume must still work when asked"
 
 
 def test_run_sweep_refuses_before_printing_the_pre_registration(tmp_path, capsys):
@@ -734,13 +743,63 @@ def test_run_sweep_refuses_before_printing_the_pre_registration(tmp_path, capsys
 
     directory = tmp_path / "sweep"
     directory.mkdir()
-    cell = build_cells(DEVELOPMENT)[0]
+    cell = build_cells(DEV)[0]
     (directory / f"{cell.key}.json").write_text(
         json.dumps(summarise_cell(cell, [], complete=True, seconds=1.0))
     )
     with pytest.raises(StaleCellsPresent):
-        run_sweep(ITEMS, tmp_path / "w.duckdb", directory=directory, fresh=True)
+        # No flag. Refusing is the default, which is the whole change.
+        run_sweep(ITEMS, tmp_path / "w.duckdb", directory=directory)
     assert "PRE-REGISTRATION" not in capsys.readouterr().out
+
+
+def test_the_dangerous_behaviour_is_the_one_you_have_to_ask_for(tmp_path, capsys):
+    """The inversion itself, stated as a test.
+
+    Before: typing nothing resumed, and `--fresh` refused. So the failure mode — a
+    sweep completing in a second and rendering finished numbers to a room told nothing
+    was precomputed — was what you got by forgetting a flag. Now it takes an explicit
+    `--resume` to reach it.
+    """
+    import json
+
+    from loopeng.sweep.runner import StaleCellsPresent
+
+    directory = tmp_path / "sweep"
+    directory.mkdir()
+    cell = build_cells(DEV)[0]
+    (directory / f"{cell.key}.json").write_text(
+        json.dumps(summarise_cell(cell, [], complete=True, seconds=1.0))
+    )
+
+    with pytest.raises(StaleCellsPresent):
+        run_sweep([], tmp_path / "w.duckdb", directory=directory, quiet=True)
+
+    report = run_sweep([], tmp_path / "w.duckdb", directory=directory, quiet=True,
+                       resume=True)
+    assert cell.key in report["resumed"]
+
+
+def test_the_refusal_names_all_three_ways_out(tmp_path):
+    """An operator hitting this is mid-session with a room watching. A refusal that
+    says only "no" costs more than one that says what to type."""
+    import json
+
+    from loopeng.sweep.runner import StaleCellsPresent, require_fresh
+
+    directory = tmp_path / "sweep"
+    directory.mkdir()
+    cell = build_cells(DEV)[0]
+    (directory / f"{cell.key}.json").write_text(
+        json.dumps(summarise_cell(cell, [], complete=True, seconds=1.0))
+    )
+    with pytest.raises(StaleCellsPresent) as exc:
+        require_fresh(directory)
+    message = str(exc.value)
+    assert "rm -rf" in message
+    assert "--resume" in message
+    assert "--dir" in message
+    assert "outage insurance" in message
 
 
 # ---- one profile must not inherit another's cells ----------------------------
@@ -827,5 +886,5 @@ def test_every_cell_the_sweep_builds_has_a_label_naming_its_own_model():
     """The property that matters is per-cell, not per-role: a cell is what gets drawn."""
     from loopeng.registry import spec_for
 
-    for cell in build_cells(DEVELOPMENT):
+    for cell in build_cells(DEV):
         assert spec_for(cell.role).model_id in cell.label

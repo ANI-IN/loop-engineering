@@ -80,7 +80,7 @@ flowchart TD
     REQ -->|no| NODEF(["argparse refuses.<br/><b>There is no default.</b><br/>A delivery run cannot inherit<br/>development settings by omission."])
     REQ -->|yes| PROF["<b>Profile</b> selects:<br/>roles · replicates · spend cap ·<br/>ablation on/off · prompt levels · item cap"]
 
-    PROF --> FRESH{"--fresh?"}
+    PROF --> FRESH{"--resume?"}
     FRESH -->|yes| STALE{"Completed cells<br/>already on disk?"}
     STALE -->|yes| REFUSE(["<b>StaleCellsPresent</b><br/>refuses to start — and refuses<br/>to delete them, because they are<br/>the outage insurance"])
     STALE -->|no| PRE
@@ -116,12 +116,14 @@ discovers the breach after it happened. Before every cell the runner adds what i
 already spent to what every remaining cell is projected to cost, and refuses to start if
 that total exceeds the cap.
 
-**`--fresh` refuses rather than deletes.** Two correct requirements collide here: cell
+**The freshness guard is ON BY DEFAULT, and it refuses rather than deletes.** Two correct requirements collide here: cell
 files must be *present* on the venue machine, because they are what keeps stages 0, the
 Phase 2 probes and stage 4 alive through an API outage — and they must be *absent* when
 the live sweep starts, or it resumes and completes instantly, rendering finished numbers
 to a room just told nothing is precomputed. A checklist line is not enforcement, so the
-live command carries `--fresh` and the code refuses. Silently deleting the outage
+default is to refuse, and `--resume` is what you type to opt back in. A guard you have to
+remember to switch on is a checklist line, and a checklist line is not enforcement — which
+was this flag being the very defect it guarded against. Silently deleting the outage
 insurance to satisfy a flag would trade one failure for a worse one, and only the operator
 knows whether those files are still needed.
 
@@ -182,7 +184,7 @@ No prior stage is required. The sweep builds whatever it needs.
 ### 1. Start the sweep — live, at the top of the stage
 
 ```bash
-uv run python demos/04_hill_climbing_loop/sweep.py --profile delivery --fresh
+uv run python demos/04_hill_climbing_loop/sweep.py --profile session
 ```
 
 **`--detach` is the default and that is deliberate.** A sweep that holds the terminal
@@ -215,7 +217,7 @@ it aborts on *projected* rather than actual spend.
 tail -f results/sweep_run.log
 
 # or run in the foreground instead of detaching
-uv run python demos/04_hill_climbing_loop/sweep.py --profile delivery --foreground
+uv run python demos/04_hill_climbing_loop/sweep.py --profile session --foreground
 ```
 
 ### 3. Render the charts
@@ -270,7 +272,8 @@ captured verbatim in
 | `--foreground` | off (i.e. **detached**) | Block the terminal instead of detaching. Detaching is the default because a sweep that holds the terminal cannot be started while you keep talking. |
 | `--concurrency` | `CONCURRENCY_PER_MODEL`, from `src/loopeng/sweep/runner.py` | Requests in flight per model. **Lower it before the sweep**, not after it starts failing — the default was chosen against ceilings measured on one account, and a lower-tier account has a smaller pool than that. |
 | `--log` | `results/sweep_run.log` | Where the detached run writes. This is the file `tail -f` reads. |
-| `--fresh` | off | **Refuse to start** if completed cells are already on disk. Use it for the live session. It refuses rather than deletes, because those files are the outage insurance and only the operator knows whether they are still needed. |
+| `--resume` | off | Continue from completed cells on disk. **Without it the sweep refuses to start when it finds any** — that is the default, because resuming in front of a room finishes in a second and renders numbers that look computed and were not. The refusal never deletes: those files are the outage insurance and only the operator knows whether they are still needed. |
+| `--deadline` | the profile's | Override the wall-clock budget the profile declares. A cell stops BETWEEN items, never mid-item, and the reduced n reaches every figure. |
 
 **`charts.py`** — makes no model call; needs no key
 
@@ -290,7 +293,7 @@ What each `--reference` mode does, from `src/loopeng/sweep/reference.py`:
 | `compare` | Both, paired, with the difference computed between them. **This is the mode a cloner wants** once they have run anything. |
 
 Exit codes on `sweep.py`: **0** complete · **1** missing credential · **2** `SweepAborted`
-(the projected-spend cap) · **3** refused to start (`--fresh` found cells, or `--limit` on
+(the projected-spend cap) · **3** refused to start (completed cells found, or `--limit` on
 a profile that does not accept it).
 
 ### Expected output — what is captured, and what is not
@@ -319,7 +322,7 @@ that silently does not exist is indistinguishable from a chart whose finding is 
 **Captured: the keyless failure** of `sweep.py`, same day:
 
 ```text
-$ uv run python demos/04_hill_climbing_loop/sweep.py --profile delivery --fresh
+$ uv run python demos/04_hill_climbing_loop/sweep.py --profile session
 
 ANTHROPIC_API_KEY is not set. Add ANTHROPIC_API_KEY=<your key> to .env (see .env.example).
 
@@ -334,7 +337,8 @@ still watching, before the fork.
 $ uv run python demos/04_hill_climbing_loop/sweep.py
 usage: sweep.py [-h] --profile {delivery,development,exhibit,smoke}
                 [--cap-usd CAP_USD] [--limit LIMIT] [--dir DIR] [--foreground]
-                [--concurrency CONCURRENCY] [--log LOG] [--fresh]
+                [--concurrency CONCURRENCY] [--log LOG] [--resume]
+                [--deadline SECONDS]
 sweep.py: error: the following arguments are required: --profile
 ```
 
@@ -386,9 +390,9 @@ failure this whole apparatus exists to prevent.**
 message: it names what was spent, what remained, and the last completed cell. **Do not
 retry into the cap.**
 
-*If the sweep refuses to start*, `--fresh` found completed cells on disk. It is telling
+*If the sweep refuses to start*, the freshness guard found completed cells on disk. It is telling
 you they are still there. Decide whether you still want them for outage cover; if not,
-remove them yourself and re-run. **Do not drop `--fresh` to get past it.**
+remove them yourself and re-run. **Do not reach for `--resume` to get past it** — that is the flag that produces the failure the guard exists for.
 
 *If the sweep finishes instantly and the chart is already full*, you ran without `--fresh`
 and it resumed from disk. That is correct behaviour and exactly what you do not want in

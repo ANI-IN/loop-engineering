@@ -35,8 +35,9 @@ def main(argv: list[str] | None = None) -> int:
     # flag nobody typed.
     parser.add_argument("--profile", required=True, choices=sorted(PROFILES),
                         help="smoke: 2 cells, 8 items, a few cents — proves your key "
-                             "and the whole pipeline. delivery: the agent model only, "
-                             "4 cells. development: both models, replicates, ablation.")
+                             "and the whole pipeline. session: the agent model only, 4 "
+                             "cells, inside the slot's clock. dev: both models, "
+                             "replicates, ablation — run once, not per session.")
     parser.add_argument("--cap-usd", type=float, help="Override the profile's cap.")
     parser.add_argument("--limit", type=int,
                         help="Fewer items. Accepted by the smoke and development "
@@ -51,13 +52,15 @@ def main(argv: list[str] | None = None) -> int:
                              "ceilings measured on one account.")
     parser.add_argument("--log", default="results/sweep_run.log")
     parser.add_argument("--deadline", type=float, metavar="SECONDS",
-                        help="Stop cleanly after this long, keeping what landed. A "
-                             "cell stops BETWEEN items and the reduced n reaches "
-                             "every figure. See loopeng.sweep.deadline.")
-    parser.add_argument("--fresh", action="store_true",
-                        help="Refuse to start if completed cells are already on disk. "
-                             "Use this for the LIVE session: without it the sweep "
-                             "resumes and finishes instantly.")
+                        help="Override the profile's clock. Each profile declares its "
+                             "own; this shortens it for a rehearsal. A cell stops "
+                             "BETWEEN items and the reduced n reaches every figure. "
+                             "See loopeng.sweep.deadline.")
+    parser.add_argument("--resume", action="store_true",
+                        help="Continue from completed cells already on disk. WITHOUT "
+                             "this the sweep REFUSES to start when it finds any — "
+                             "resuming in front of a room finishes in a second and "
+                             "renders numbers that look computed and were not.")
     args = parser.parse_args(argv)
 
     # Credentials BEFORE detaching, in the process the operator is still watching —
@@ -74,10 +77,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         report = run_sweep(build_gold(warehouse), warehouse, cap_usd=args.cap_usd,
                            profile=PROFILES[args.profile], item_limit=args.limit,
-                           directory=args.dir, fresh=args.fresh,
+                           directory=args.dir, resume=args.resume,
                            concurrency=args.concurrency,
                            warehouse_seed=settings.warehouse_seed,
-                           deadline=Deadline(seconds=args.deadline))
+                           deadline=Deadline(seconds=args.deadline)
+                           if args.deadline else None)
     except (StaleCellsPresent, LimitNotAllowed) as refused:
         print(f"\nREFUSING TO START\n{refused}")
         return 3

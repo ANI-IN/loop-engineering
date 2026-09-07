@@ -188,9 +188,9 @@ def test_the_preferred_curve_cell_is_a_key_the_sweep_can_actually_produce():
     wrong.
     """
     from loopeng.sweep.render import PREFERRED_CURVE_CELL
-    from loopeng.sweep.runner import DEVELOPMENT, build_cells
+    from loopeng.sweep.runner import DEV, build_cells
 
-    assert PREFERRED_CURVE_CELL in {cell.key for cell in build_cells(DEVELOPMENT)}
+    assert PREFERRED_CURVE_CELL in {cell.key for cell in build_cells(DEV)}
 
 
 def test_the_oversight_view_reads_the_same_selector_not_a_second_copy_of_the_key():

@@ -18,7 +18,7 @@ from loopeng.sweep.orchestrator import (
     mid_cell_message,
     run_sweep,
 )
-from loopeng.sweep.runner import DEVELOPMENT, Cell, build_cells, load_cell, summarise_cell
+from loopeng.sweep.runner import DEV, Cell, build_cells, load_cell, summarise_cell
 from tests.figures import texts
 
 
@@ -121,7 +121,7 @@ def test_the_orchestrator_sets_the_warmup_from_the_concurrency(tmp_path):
     caller's next use of that object depend on whether this ran.
     """
     mine = Deadline(seconds=0)
-    run_sweep(ITEMS, tmp_path / "w.duckdb", profile=DEVELOPMENT, cap_usd=99.0,
+    run_sweep(ITEMS, tmp_path / "w.duckdb", profile=DEV, cap_usd=99.0,
               directory=tmp_path / "sweep", quiet=True, deadline=mine, concurrency=5)
     assert mine.warmup == 0, "the caller's deadline was mutated"
 
@@ -319,20 +319,20 @@ def test_the_sweep_returns_a_partial_report_instead_of_raising(tmp_path):
     the expected outcome of a fixed session slot, not a mistake — and raising would
     make a designed ending look like a crash AND push the partial result into an
     exception path where it is easy to drop."""
-    report = run_sweep(ITEMS, tmp_path / "w.duckdb", profile=DEVELOPMENT,
+    report = run_sweep(ITEMS, tmp_path / "w.duckdb", profile=DEV,
                        cap_usd=99.0, directory=tmp_path / "sweep", quiet=True,
                        deadline=Deadline(seconds=0))
 
     assert report["stopped_at_deadline"] is True
     assert report["cells"] == [], "the clock was already out; nothing ran"
-    assert report["cells_not_run"] == [c.key for c in build_cells(DEVELOPMENT)]
+    assert report["cells_not_run"] == [c.key for c in build_cells(DEV)]
     assert report["deadline_seconds"] == 0
     assert not list((tmp_path / "sweep").glob("*.json"))
 
 
 def test_a_sweep_without_a_deadline_reports_no_stop(tmp_path):
     """The opposite failure: a stop flag that fires when nothing stopped it."""
-    report = run_sweep([], tmp_path / "w.duckdb", profile=DEVELOPMENT, cap_usd=99.0,
+    report = run_sweep([], tmp_path / "w.duckdb", profile=DEV, cap_usd=99.0,
                        directory=tmp_path / "sweep", quiet=True)
     assert report["stopped_at_deadline"] is False
     assert report["cells_not_run"] == []
@@ -340,7 +340,7 @@ def test_a_sweep_without_a_deadline_reports_no_stop(tmp_path):
 
 
 def test_the_operator_is_told_which_cells_did_not_run(tmp_path, capsys):
-    run_sweep(ITEMS, tmp_path / "w.duckdb", profile=DEVELOPMENT, cap_usd=99.0,
+    run_sweep(ITEMS, tmp_path / "w.duckdb", profile=DEV, cap_usd=99.0,
               directory=tmp_path / "sweep", deadline=Deadline(seconds=0))
     out = capsys.readouterr().out
     assert "DEADLINE REACHED" in out
