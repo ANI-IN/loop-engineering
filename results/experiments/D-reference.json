@@ -1,0 +1,580 @@
+{
+  "condition": "D",
+  "name": "reference",
+  "role": "reference",
+  "loops": "none \u2014 single shot",
+  "note": "The frontier model, bare, on the held-out set. Not a contradiction of 'cheap only': without a bar there is nothing for C to be compared to.",
+  "n_items": 60,
+  "bands": {
+    "correct": 60,
+    "unearned": 0,
+    "wrong_and_silent": 0,
+    "wrong_and_caught": 0,
+    "abstained": 0
+  },
+  "accuracy": "60 of 60 \u2014 at least 94.0% (Wilson 95%, computed 20:15 today)",
+  "accuracy_value": 1.0,
+  "n_silent_errors": 0,
+  "silent_error_rate": "0 of 60 \u2014 at most 6.0% (Wilson 95%, computed 20:15 today)",
+  "n_answered": 60,
+  "n_visible_failures": 0,
+  "n_abstained": 0,
+  "n_unearned_correct": 0,
+  "rejections": 0,
+  "cost_usd": {
+    "value": 0.79012,
+    "source": "estimated"
+  },
+  "cost_per_correct_usd": {
+    "value": 0.013169,
+    "source": "estimated"
+  },
+  "termination": {
+    "success": 60
+  },
+  "items": [
+    {
+      "item_id": "p01_product_count__00",
+      "pattern_key": "p01_product_count",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.00848,
+      "sql": "SELECT COUNT(*) AS apparel_product_count\nFROM products\nWHERE category = 'apparel';"
+    },
+    {
+      "item_id": "p01_product_count__01",
+      "pattern_key": "p01_product_count",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.00843,
+      "sql": "SELECT COUNT(*) AS electronics_product_count\nFROM products\nWHERE category = 'electronics';"
+    },
+    {
+      "item_id": "p01_product_count__02",
+      "pattern_key": "p01_product_count",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.00853,
+      "sql": "SELECT COUNT(*) AS home_product_count\nFROM products\nWHERE LOWER(category) = 'home';"
+    },
+    {
+      "item_id": "p01_product_count__03",
+      "pattern_key": "p01_product_count",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.00773,
+      "sql": "SELECT COUNT(*) AS product_count\nFROM products\nWHERE category = 'outdoors';"
+    },
+    {
+      "item_id": "p01_product_count__04",
+      "pattern_key": "p01_product_count",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.00893,
+      "sql": "SELECT COUNT(*) AS beauty_product_count\nFROM products\nWHERE LOWER(category) = 'beauty';"
+    },
+    {
+      "item_id": "p01_product_count__05",
+      "pattern_key": "p01_product_count",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.00873,
+      "sql": "SELECT COUNT(*) AS product_count\nFROM products\nWHERE LOWER(category) = 'garden';"
+    },
+    {
+      "item_id": "p02_orders_in_month__00",
+      "pattern_key": "p02_orders_in_month",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01078,
+      "sql": "SELECT COUNT(*) AS order_count\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.placed_at >= TIMESTAMP '2025-01-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-02-01 00:00:00'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p02_orders_in_month__01",
+      "pattern_key": "p02_orders_in_month",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01078,
+      "sql": "SELECT COUNT(*) AS order_count\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.placed_at >= TIMESTAMP '2025-02-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-03-01 00:00:00'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p02_orders_in_month__02",
+      "pattern_key": "p02_orders_in_month",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01078,
+      "sql": "SELECT COUNT(*) AS order_count\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.placed_at >= TIMESTAMP '2025-03-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-04-01 00:00:00'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p02_orders_in_month__03",
+      "pattern_key": "p02_orders_in_month",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01078,
+      "sql": "SELECT COUNT(*) AS order_count\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.placed_at >= TIMESTAMP '2025-04-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-05-01 00:00:00'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p02_orders_in_month__04",
+      "pattern_key": "p02_orders_in_month",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01078,
+      "sql": "SELECT COUNT(*) AS order_count\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.placed_at >= TIMESTAMP '2025-05-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-06-01 00:00:00'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p02_orders_in_month__05",
+      "pattern_key": "p02_orders_in_month",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01078,
+      "sql": "SELECT COUNT(*) AS order_count\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.placed_at >= TIMESTAMP '2025-06-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-07-01 00:00:00'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p03_customers_in_region__00",
+      "pattern_key": "p03_customers_in_region",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.00711,
+      "sql": "SELECT COUNT(*) AS customer_count\nFROM customers\nWHERE region = 'NA'\n  AND deleted_at IS NULL\n  AND is_internal = FALSE;"
+    },
+    {
+      "item_id": "p03_customers_in_region__01",
+      "pattern_key": "p03_customers_in_region",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.00717,
+      "sql": "SELECT COUNT(*) AS customer_count\nFROM customers\nWHERE region = 'EMEA'\n  AND deleted_at IS NULL\n  AND is_internal = FALSE;"
+    },
+    {
+      "item_id": "p03_customers_in_region__02",
+      "pattern_key": "p03_customers_in_region",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.00717,
+      "sql": "SELECT COUNT(*) AS customer_count\nFROM customers\nWHERE region = 'APAC'\n  AND deleted_at IS NULL\n  AND is_internal = FALSE;"
+    },
+    {
+      "item_id": "p03_customers_in_region__03",
+      "pattern_key": "p03_customers_in_region",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.00717,
+      "sql": "SELECT COUNT(*) AS customer_count\nFROM customers\nWHERE region = 'LATAM'\n  AND deleted_at IS NULL\n  AND is_internal = FALSE;"
+    },
+    {
+      "item_id": "p03_customers_in_region__04",
+      "pattern_key": "p03_customers_in_region",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.00717,
+      "sql": "SELECT COUNT(*) AS customer_count\nFROM customers\nWHERE region = 'ANZ'\n  AND is_internal = FALSE\n  AND deleted_at IS NULL;"
+    },
+    {
+      "item_id": "p03_customers_in_region__05",
+      "pattern_key": "p03_customers_in_region",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.00712,
+      "sql": "SELECT COUNT(*) AS customer_count\nFROM customers\nWHERE region = 'MEA'\n  AND deleted_at IS NULL\n  AND is_internal = FALSE;"
+    },
+    {
+      "item_id": "p04_gross_revenue__00",
+      "pattern_key": "p04_gross_revenue",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01362,
+      "sql": "SELECT\n    SUM(\n        o.amount_minor *\n        CASE o.currency\n            WHEN 'EUR' THEN 0.0108\n            WHEN 'JPY' THEN 0.0067\n        END\n    ) AS gross_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.status <> 'cancelled'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.placed_at >= TIMESTAMP '2025-01-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-02-01 00:00:00';"
+    },
+    {
+      "item_id": "p04_gross_revenue__01",
+      "pattern_key": "p04_gross_revenue",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01362,
+      "sql": "SELECT\n    SUM(\n        o.amount_minor *\n        CASE o.currency\n            WHEN 'EUR' THEN 0.0108\n            WHEN 'JPY' THEN 0.0067\n        END\n    ) AS gross_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.placed_at >= TIMESTAMP '2025-02-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-03-01 00:00:00'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status <> 'cancelled'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p04_gross_revenue__02",
+      "pattern_key": "p04_gross_revenue",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01417,
+      "sql": "SELECT\n    COALESCE(\n        SUM(\n            o.amount_minor *\n            CASE o.currency\n                WHEN 'EUR' THEN 0.0108\n                WHEN 'JPY' THEN 0.0067\n            END\n        ),\n        0\n    ) AS gross_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.status <> 'cancelled'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.placed_at >= TIMESTAMP '2025-03-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-04-01 00:00:00';"
+    },
+    {
+      "item_id": "p04_gross_revenue__03",
+      "pattern_key": "p04_gross_revenue",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01417,
+      "sql": "SELECT\n    COALESCE(\n        SUM(\n            o.amount_minor *\n            CASE o.currency\n                WHEN 'EUR' THEN 0.0108\n                WHEN 'JPY' THEN 0.0067\n            END\n        ),\n        0\n    ) AS gross_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.placed_at >= TIMESTAMP '2025-04-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-05-01 00:00:00'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status <> 'cancelled'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p04_gross_revenue__04",
+      "pattern_key": "p04_gross_revenue",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01362,
+      "sql": "SELECT\n    SUM(\n        o.amount_minor *\n        CASE o.currency\n            WHEN 'EUR' THEN 0.0108\n            WHEN 'JPY' THEN 0.0067\n        END\n    ) AS gross_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.placed_at >= TIMESTAMP '2025-05-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-06-01 00:00:00'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status <> 'cancelled'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p04_gross_revenue__05",
+      "pattern_key": "p04_gross_revenue",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01412,
+      "sql": "SELECT\n    COALESCE(\n        SUM(\n            o.amount_minor * CASE o.currency\n                WHEN 'EUR' THEN 0.0108\n                WHEN 'JPY' THEN 0.0067\n            END\n        ),\n        0\n    ) AS gross_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.status <> 'cancelled'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.placed_at >= TIMESTAMP '2025-06-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-07-01 00:00:00';"
+    },
+    {
+      "item_id": "p05_net_revenue__00",
+      "pattern_key": "p05_net_revenue",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01977,
+      "sql": "WITH refunds_by_order AS (\n    SELECT\n        order_id,\n        SUM(amount_minor) AS refunded_minor\n    FROM refunds\n    GROUP BY order_id\n)\nSELECT\n    COALESCE(\n        SUM(\n            (o.amount_minor - COALESCE(r.refunded_minor, 0))\n            * CASE o.currency\n                WHEN 'EUR' THEN 0.0108\n                WHEN 'JPY' THEN 0.0067\n              END\n        ),\n        0\n    ) AS net_revenue_usd\nFROM orders AS o\nJOIN customers AS c\n    ON c.customer_id = o.customer_id\nLEFT JOIN refunds_by_order AS r\n    ON r.order_id = o.order_id\nWHERE o.placed_at >= TIMESTAMP '2025-01-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-02-01 00:00:00'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status <> 'cancelled'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p05_net_revenue__01",
+      "pattern_key": "p05_net_revenue",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01902,
+      "sql": "WITH refunds_per_order AS (\n    SELECT order_id, SUM(amount_minor) AS refunded_minor\n    FROM refunds\n    GROUP BY order_id\n)\nSELECT\n    COALESCE(\n        SUM(\n            (o.amount_minor - COALESCE(r.refunded_minor, 0))\n            * CASE o.currency\n                WHEN 'EUR' THEN 0.0108\n                WHEN 'JPY' THEN 0.0067\n              END\n        ),\n        0\n    ) AS net_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nLEFT JOIN refunds_per_order AS r ON r.order_id = o.order_id\nWHERE o.placed_at >= TIMESTAMP '2025-02-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-03-01 00:00:00'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status <> 'cancelled'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p05_net_revenue__02",
+      "pattern_key": "p05_net_revenue",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01862,
+      "sql": "WITH refunds_by_order AS (\n    SELECT order_id, SUM(amount_minor) AS refunded_minor\n    FROM refunds\n    GROUP BY order_id\n)\nSELECT\n    COALESCE(\n        SUM(\n            (o.amount_minor - COALESCE(r.refunded_minor, 0))\n            * CASE o.currency\n                WHEN 'EUR' THEN 0.0108\n                WHEN 'JPY' THEN 0.0067\n              END\n        ),\n        0\n    ) AS net_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nLEFT JOIN refunds_by_order AS r ON r.order_id = o.order_id\nWHERE o.placed_at >= TIMESTAMP '2025-03-01'\n  AND o.placed_at < TIMESTAMP '2025-04-01'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status <> 'cancelled'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p05_net_revenue__03",
+      "pattern_key": "p05_net_revenue",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.02027,
+      "sql": "WITH refunds_per_order AS (\n    SELECT\n        order_id,\n        SUM(amount_minor) AS refunded_minor\n    FROM refunds\n    GROUP BY order_id\n)\nSELECT\n    COALESCE(\n        SUM(\n            (o.amount_minor - COALESCE(r.refunded_minor, 0))\n            * CASE o.currency\n                WHEN 'EUR' THEN 0.0108\n                WHEN 'JPY' THEN 0.0067\n              END\n        ),\n        0\n    ) AS net_revenue_usd\nFROM orders AS o\nJOIN customers AS c\n    ON c.customer_id = o.customer_id\nLEFT JOIN refunds_per_order AS r\n    ON r.order_id = o.order_id\nWHERE o.placed_at >= TIMESTAMP '2025-04-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-05-01 00:00:00'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status <> 'cancelled'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p05_net_revenue__04",
+      "pattern_key": "p05_net_revenue",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01982,
+      "sql": "WITH refunds_per_order AS (\n    SELECT order_id, SUM(amount_minor) AS refunded_minor\n    FROM refunds\n    GROUP BY order_id\n)\nSELECT\n    COALESCE(\n        SUM(\n            (o.amount_minor - COALESCE(r.refunded_minor, 0))\n            * CASE o.currency\n                WHEN 'EUR' THEN 0.0108\n                WHEN 'JPY' THEN 0.0067\n              END\n        ),\n        0\n    ) AS net_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nLEFT JOIN refunds_per_order AS r ON r.order_id = o.order_id\nWHERE o.placed_at >= TIMESTAMP '2025-05-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-06-01 00:00:00'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status <> 'cancelled'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p05_net_revenue__05",
+      "pattern_key": "p05_net_revenue",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01997,
+      "sql": "WITH refunds_per_order AS (\n    SELECT order_id, SUM(amount_minor) AS refunded_minor\n    FROM refunds\n    GROUP BY order_id\n)\nSELECT COALESCE(\n    SUM(\n        (o.amount_minor - COALESCE(r.refunded_minor, 0))\n        * CASE o.currency\n            WHEN 'EUR' THEN 0.0108\n            WHEN 'JPY' THEN 0.0067\n          END\n    ),\n    0\n) AS net_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nLEFT JOIN refunds_per_order AS r ON r.order_id = o.order_id\nWHERE o.placed_at >= TIMESTAMP '2025-06-01 00:00:00'\n  AND o.placed_at < TIMESTAMP '2025-07-01 00:00:00'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status <> 'cancelled'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p06_top_products__00",
+      "pattern_key": "p06_top_products",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01191,
+      "sql": "SELECT\n    p.product_id,\n    SUM(oi.qty) AS units_sold\nFROM products AS p\nJOIN order_items AS oi ON oi.product_id = p.product_id\nJOIN orders AS o ON o.order_id = oi.order_id\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE p.category = 'apparel'\n  AND o.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\nGROUP BY p.product_id\nORDER BY units_sold DESC, p.product_id ASC\nLIMIT 5;"
+    },
+    {
+      "item_id": "p06_top_products__01",
+      "pattern_key": "p06_top_products",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01216,
+      "sql": "SELECT\n    p.product_id,\n    SUM(oi.qty) AS units_sold\nFROM products AS p\nJOIN order_items AS oi\n    ON oi.product_id = p.product_id\nJOIN orders AS o\n    ON o.order_id = oi.order_id\nJOIN customers AS c\n    ON c.customer_id = o.customer_id\nWHERE p.category = 'electronics'\n  AND o.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\nGROUP BY p.product_id\nORDER BY units_sold DESC, p.product_id ASC\nLIMIT 5;"
+    },
+    {
+      "item_id": "p06_top_products__02",
+      "pattern_key": "p06_top_products",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01361,
+      "sql": "SELECT\n    p.product_id,\n    SUM(oi.qty) AS units_sold\nFROM products AS p\nJOIN order_items AS oi ON oi.product_id = p.product_id\nJOIN orders AS o ON o.order_id = oi.order_id\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE p.category = 'home'\n  AND o.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\nGROUP BY p.product_id\nORDER BY units_sold DESC, p.product_id\nLIMIT 5;"
+    },
+    {
+      "item_id": "p06_top_products__03",
+      "pattern_key": "p06_top_products",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01191,
+      "sql": "SELECT\n    p.product_id,\n    SUM(oi.qty) AS units_sold\nFROM products AS p\nJOIN order_items AS oi ON oi.product_id = p.product_id\nJOIN orders AS o ON o.order_id = oi.order_id\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE p.category = 'outdoors'\n  AND o.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\nGROUP BY p.product_id\nORDER BY units_sold DESC, p.product_id ASC\nLIMIT 5;"
+    },
+    {
+      "item_id": "p06_top_products__04",
+      "pattern_key": "p06_top_products",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01201,
+      "sql": "SELECT\n    p.product_id,\n    SUM(oi.qty) AS units_sold\nFROM products AS p\nJOIN order_items AS oi ON oi.product_id = p.product_id\nJOIN orders AS o ON o.order_id = oi.order_id\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE LOWER(p.category) = 'beauty'\n  AND o.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\nGROUP BY p.product_id\nORDER BY units_sold DESC, p.product_id ASC\nLIMIT 5;"
+    },
+    {
+      "item_id": "p06_top_products__05",
+      "pattern_key": "p06_top_products",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01186,
+      "sql": "SELECT\n    p.product_id,\n    SUM(oi.qty) AS units_sold\nFROM products AS p\nJOIN order_items AS oi ON oi.product_id = p.product_id\nJOIN orders AS o ON o.order_id = oi.order_id\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE p.category = 'garden'\n  AND o.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\nGROUP BY p.product_id\nORDER BY units_sold DESC, p.product_id ASC\nLIMIT 5;"
+    },
+    {
+      "item_id": "p07_aov_by_region__00",
+      "pattern_key": "p07_aov_by_region",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01173,
+      "sql": "SELECT\n    AVG(\n        o.amount_minor *\n        CASE o.currency\n            WHEN 'EUR' THEN 0.0108\n            WHEN 'JPY' THEN 0.0067\n        END\n    ) AS average_order_value_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE c.region = 'NA'\n  AND c.is_internal = FALSE\n  AND c.deleted_at IS NULL\n  AND o.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND o.currency IN ('EUR', 'JPY');"
+    },
+    {
+      "item_id": "p07_aov_by_region__01",
+      "pattern_key": "p07_aov_by_region",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01164,
+      "sql": "SELECT AVG(\n    o.amount_minor *\n    CASE o.currency\n        WHEN 'EUR' THEN 0.0108\n        WHEN 'JPY' THEN 0.0067\n    END\n) AS average_order_value_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE c.region = 'EMEA'\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND o.currency IN ('EUR', 'JPY');"
+    },
+    {
+      "item_id": "p07_aov_by_region__02",
+      "pattern_key": "p07_aov_by_region",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01164,
+      "sql": "SELECT AVG(\n    o.amount_minor *\n    CASE o.currency\n        WHEN 'EUR' THEN 0.0108\n        WHEN 'JPY' THEN 0.0067\n    END\n) AS average_order_value_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE c.region = 'APAC'\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND o.currency IN ('EUR', 'JPY');"
+    },
+    {
+      "item_id": "p07_aov_by_region__03",
+      "pattern_key": "p07_aov_by_region",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01179,
+      "sql": "SELECT\n    AVG(\n        o.amount_minor *\n        CASE o.currency\n            WHEN 'EUR' THEN 0.0108\n            WHEN 'JPY' THEN 0.0067\n        END\n    ) AS average_order_value_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE c.region = 'LATAM'\n  AND c.is_internal = FALSE\n  AND c.deleted_at IS NULL\n  AND o.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND o.currency IN ('EUR', 'JPY');"
+    },
+    {
+      "item_id": "p07_aov_by_region__04",
+      "pattern_key": "p07_aov_by_region",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01164,
+      "sql": "SELECT AVG(\n    o.amount_minor *\n    CASE o.currency\n        WHEN 'EUR' THEN 0.0108\n        WHEN 'JPY' THEN 0.0067\n    END\n) AS average_order_value_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE c.region = 'ANZ'\n  AND c.is_internal = FALSE\n  AND c.deleted_at IS NULL\n  AND o.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND o.currency IN ('EUR', 'JPY');"
+    },
+    {
+      "item_id": "p07_aov_by_region__05",
+      "pattern_key": "p07_aov_by_region",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01159,
+      "sql": "SELECT AVG(\n    o.amount_minor *\n    CASE o.currency\n        WHEN 'EUR' THEN 0.0108\n        WHEN 'JPY' THEN 0.0067\n    END\n) AS average_order_value_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE c.region = 'MEA'\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.deleted_at IS NULL\n  AND o.status <> 'cancelled'\n  AND o.currency IN ('EUR', 'JPY');"
+    },
+    {
+      "item_id": "p08_revenue_by_category__00",
+      "pattern_key": "p08_revenue_by_category",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01367,
+      "sql": "SELECT\n    SUM(\n        CAST(oi.qty AS HUGEINT) * oi.unit_price_minor\n        * CASE o.currency\n            WHEN 'EUR' THEN 0.0108\n            WHEN 'JPY' THEN 0.0067\n          END\n    ) AS gross_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nJOIN order_items AS oi ON oi.order_id = o.order_id\nJOIN products AS p ON p.product_id = oi.product_id\nWHERE p.category = 'apparel'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status <> 'cancelled'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p08_revenue_by_category__01",
+      "pattern_key": "p08_revenue_by_category",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01382,
+      "sql": "SELECT\n    COALESCE(\n        SUM(\n            oi.qty * oi.unit_price_minor *\n            CASE o.currency\n                WHEN 'EUR' THEN 0.0108\n                WHEN 'JPY' THEN 0.0067\n            END\n        ),\n        0\n    ) AS gross_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nJOIN order_items AS oi ON oi.order_id = o.order_id\nJOIN products AS p ON p.product_id = oi.product_id\nWHERE p.category = 'electronics'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status <> 'cancelled'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p08_revenue_by_category__02",
+      "pattern_key": "p08_revenue_by_category",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01382,
+      "sql": "SELECT\n    COALESCE(\n        SUM(\n            oi.qty * oi.unit_price_minor *\n            CASE o.currency\n                WHEN 'EUR' THEN 0.0108\n                WHEN 'JPY' THEN 0.0067\n            END\n        ),\n        0\n    ) AS gross_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nJOIN order_items AS oi ON oi.order_id = o.order_id\nJOIN products AS p ON p.product_id = oi.product_id\nWHERE p.category = 'home'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status <> 'cancelled'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p08_revenue_by_category__03",
+      "pattern_key": "p08_revenue_by_category",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01387,
+      "sql": "SELECT\n    COALESCE(\n        SUM(\n            oi.qty * oi.unit_price_minor *\n            CASE o.currency\n                WHEN 'EUR' THEN 0.0108\n                WHEN 'JPY' THEN 0.0067\n            END\n        ),\n        0\n    ) AS gross_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nJOIN order_items AS oi ON oi.order_id = o.order_id\nJOIN products AS p ON p.product_id = oi.product_id\nWHERE p.category = 'outdoors'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status <> 'cancelled'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p08_revenue_by_category__04",
+      "pattern_key": "p08_revenue_by_category",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01392,
+      "sql": "SELECT\n    COALESCE(\n        SUM(\n            oi.qty * oi.unit_price_minor\n            * CASE o.currency\n                WHEN 'EUR' THEN 0.0108\n                WHEN 'JPY' THEN 0.0067\n              END\n        ),\n        0\n    ) AS gross_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nJOIN order_items AS oi ON oi.order_id = o.order_id\nJOIN products AS p ON p.product_id = oi.product_id\nWHERE p.category = 'beauty'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status <> 'cancelled'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p08_revenue_by_category__05",
+      "pattern_key": "p08_revenue_by_category",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01362,
+      "sql": "SELECT\n    COALESCE(SUM(\n        oi.qty * oi.unit_price_minor *\n        CASE o.currency\n            WHEN 'EUR' THEN 0.0108\n            WHEN 'JPY' THEN 0.0067\n        END\n    ), 0) AS gross_revenue_usd\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nJOIN order_items AS oi ON oi.order_id = o.order_id\nJOIN products AS p ON p.product_id = oi.product_id\nWHERE p.category = 'garden'\n  AND o.currency IN ('EUR', 'JPY')\n  AND o.status <> 'cancelled'\n  AND o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE;"
+    },
+    {
+      "item_id": "p09_refund_rate__00",
+      "pattern_key": "p09_refund_rate",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.02423,
+      "sql": "WITH apparel_orders AS (\n    SELECT\n        o.order_id,\n        EXISTS (\n            SELECT 1\n            FROM refunds r\n            WHERE r.order_id = o.order_id\n        ) AS has_refund\n    FROM orders o\n    JOIN customers c ON c.customer_id = o.customer_id\n    WHERE o.deleted_at IS NULL\n      AND c.deleted_at IS NULL\n      AND NOT c.is_internal\n      AND o.status <> 'cancelled'\n      AND EXISTS (\n          SELECT 1\n          FROM order_items oi\n          JOIN products p ON p.product_id = oi.product_id\n          WHERE oi.order_id = o.order_id\n            AND p.category = 'apparel'\n      )\n)\nSELECT AVG(CAST(has_refund AS DOUBLE)) AS apparel_order_refund_share\nFROM apparel_orders;"
+    },
+    {
+      "item_id": "p09_refund_rate__01",
+      "pattern_key": "p09_refund_rate",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01908,
+      "sql": "SELECT\n    AVG(\n        CASE WHEN EXISTS (\n            SELECT 1\n            FROM refunds r\n            WHERE r.order_id = o.order_id\n        ) THEN 1.0 ELSE 0.0 END\n    ) AS electronics_order_refund_share\nFROM orders o\nJOIN customers c ON c.customer_id = o.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND NOT c.is_internal\n  AND o.status <> 'cancelled'\n  AND EXISTS (\n      SELECT 1\n      FROM order_items oi\n      JOIN products p ON p.product_id = oi.product_id\n      WHERE oi.order_id = o.order_id\n        AND p.category = 'electronics'\n  );"
+    },
+    {
+      "item_id": "p09_refund_rate__02",
+      "pattern_key": "p09_refund_rate",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01833,
+      "sql": "SELECT\n    AVG(\n        CASE WHEN EXISTS (\n            SELECT 1\n            FROM refunds r\n            WHERE r.order_id = o.order_id\n        ) THEN 1.0 ELSE 0.0 END\n    ) AS refunded_order_share\nFROM orders o\nJOIN customers c ON c.customer_id = o.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND NOT c.is_internal\n  AND o.status <> 'cancelled'\n  AND EXISTS (\n      SELECT 1\n      FROM order_items oi\n      JOIN products p ON p.product_id = oi.product_id\n      WHERE oi.order_id = o.order_id\n        AND p.category = 'home'\n  );"
+    },
+    {
+      "item_id": "p09_refund_rate__03",
+      "pattern_key": "p09_refund_rate",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01908,
+      "sql": "SELECT\n    AVG(\n        CASE WHEN EXISTS (\n            SELECT 1\n            FROM refunds r\n            WHERE r.order_id = o.order_id\n        ) THEN 1.0 ELSE 0.0 END\n    ) AS outdoors_orders_refund_share\nFROM orders o\nJOIN customers c ON c.customer_id = o.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND c.is_internal = FALSE\n  AND o.status <> 'cancelled'\n  AND EXISTS (\n      SELECT 1\n      FROM order_items oi\n      JOIN products p ON p.product_id = oi.product_id\n      WHERE oi.order_id = o.order_id\n        AND p.category = 'outdoors'\n  );"
+    },
+    {
+      "item_id": "p09_refund_rate__04",
+      "pattern_key": "p09_refund_rate",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.02393,
+      "sql": "WITH beauty_orders AS (\n    SELECT\n        o.order_id,\n        EXISTS (\n            SELECT 1\n            FROM refunds r\n            WHERE r.order_id = o.order_id\n        ) AS has_refund\n    FROM orders o\n    JOIN customers c ON c.customer_id = o.customer_id\n    WHERE o.deleted_at IS NULL\n      AND c.deleted_at IS NULL\n      AND NOT c.is_internal\n      AND o.status <> 'cancelled'\n      AND EXISTS (\n          SELECT 1\n          FROM order_items oi\n          JOIN products p ON p.product_id = oi.product_id\n          WHERE oi.order_id = o.order_id\n            AND p.category = 'beauty'\n      )\n)\nSELECT\n    AVG(CASE WHEN has_refund THEN 1.0 ELSE 0.0 END) AS beauty_order_refund_share\nFROM beauty_orders;"
+    },
+    {
+      "item_id": "p09_refund_rate__05",
+      "pattern_key": "p09_refund_rate",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01798,
+      "sql": "SELECT\n    COUNT(*) FILTER (\n        WHERE EXISTS (\n            SELECT 1\n            FROM refunds AS r\n            WHERE r.order_id = o.order_id\n        )\n    ) * 1.0 / NULLIF(COUNT(*), 0) AS garden_orders_refund_share\nFROM orders AS o\nJOIN customers AS c ON c.customer_id = o.customer_id\nWHERE o.deleted_at IS NULL\n  AND c.deleted_at IS NULL\n  AND NOT c.is_internal\n  AND o.status <> 'cancelled'\n  AND EXISTS (\n      SELECT 1\n      FROM order_items AS oi\n      JOIN products AS p ON p.product_id = oi.product_id\n      WHERE oi.order_id = o.order_id\n        AND p.category = 'garden'\n  );"
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__00",
+      "pattern_key": "p10_repeat_customer_rate",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01357,
+      "sql": "WITH january_customer_orders AS (\n    SELECT\n        o.customer_id,\n        COUNT(*) AS order_count\n    FROM orders AS o\n    JOIN customers AS c ON c.customer_id = o.customer_id\n    WHERE o.placed_at >= TIMESTAMP '2025-01-01'\n      AND o.placed_at < TIMESTAMP '2025-02-01'\n      AND o.deleted_at IS NULL\n      AND c.deleted_at IS NULL\n      AND NOT c.is_internal\n      AND o.status <> 'cancelled'\n    GROUP BY o.customer_id\n)\nSELECT\n    COUNT(*) FILTER (WHERE order_count > 1) * 1.0\n        / NULLIF(COUNT(*), 0) AS share_with_multiple_orders\nFROM january_customer_orders;"
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__01",
+      "pattern_key": "p10_repeat_customer_rate",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01357,
+      "sql": "WITH customer_order_counts AS (\n    SELECT\n        o.customer_id,\n        COUNT(*) AS order_count\n    FROM orders AS o\n    JOIN customers AS c ON c.customer_id = o.customer_id\n    WHERE o.placed_at >= TIMESTAMP '2025-02-01'\n      AND o.placed_at < TIMESTAMP '2025-03-01'\n      AND o.deleted_at IS NULL\n      AND c.deleted_at IS NULL\n      AND NOT c.is_internal\n      AND o.status <> 'cancelled'\n    GROUP BY o.customer_id\n)\nSELECT\n    COUNT(*) FILTER (WHERE order_count > 1) * 1.0\n        / NULLIF(COUNT(*), 0) AS share_with_multiple_orders\nFROM customer_order_counts;"
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__02",
+      "pattern_key": "p10_repeat_customer_rate",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01352,
+      "sql": "WITH customer_order_counts AS (\n    SELECT\n        o.customer_id,\n        COUNT(*) AS order_count\n    FROM orders AS o\n    JOIN customers AS c ON c.customer_id = o.customer_id\n    WHERE o.placed_at >= TIMESTAMP '2025-03-01'\n      AND o.placed_at < TIMESTAMP '2025-04-01'\n      AND o.deleted_at IS NULL\n      AND c.deleted_at IS NULL\n      AND NOT c.is_internal\n      AND o.status <> 'cancelled'\n    GROUP BY o.customer_id\n)\nSELECT\n    COUNT(*) FILTER (WHERE order_count > 1) * 1.0\n        / NULLIF(COUNT(*), 0) AS repeat_customer_share\nFROM customer_order_counts;"
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__03",
+      "pattern_key": "p10_repeat_customer_rate",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01427,
+      "sql": "WITH customer_order_counts AS (\n    SELECT\n        o.customer_id,\n        COUNT(*) AS order_count\n    FROM orders AS o\n    JOIN customers AS c\n        ON c.customer_id = o.customer_id\n    WHERE o.placed_at >= TIMESTAMP '2025-04-01 00:00:00'\n      AND o.placed_at < TIMESTAMP '2025-05-01 00:00:00'\n      AND o.deleted_at IS NULL\n      AND c.deleted_at IS NULL\n      AND NOT c.is_internal\n      AND o.status <> 'cancelled'\n    GROUP BY o.customer_id\n)\nSELECT\n    COUNT(*) FILTER (WHERE order_count > 1) * 1.0\n        / NULLIF(COUNT(*), 0) AS share_with_multiple_orders\nFROM customer_order_counts;"
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__04",
+      "pattern_key": "p10_repeat_customer_rate",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01362,
+      "sql": "WITH customer_order_counts AS (\n    SELECT\n        o.customer_id,\n        COUNT(*) AS order_count\n    FROM orders AS o\n    JOIN customers AS c ON c.customer_id = o.customer_id\n    WHERE o.placed_at >= TIMESTAMP '2025-05-01'\n      AND o.placed_at < TIMESTAMP '2025-06-01'\n      AND o.deleted_at IS NULL\n      AND c.deleted_at IS NULL\n      AND o.status <> 'cancelled'\n      AND c.is_internal = FALSE\n    GROUP BY o.customer_id\n)\nSELECT\n    COUNT(*) FILTER (WHERE order_count > 1) * 1.0\n        / NULLIF(COUNT(*), 0) AS share_with_multiple_orders\nFROM customer_order_counts;"
+    },
+    {
+      "item_id": "p10_repeat_customer_rate__05",
+      "pattern_key": "p10_repeat_customer_rate",
+      "outcome": "correct",
+      "termination": "success",
+      "rejections": 0,
+      "cost_usd": 0.01352,
+      "sql": "WITH customer_order_counts AS (\n    SELECT\n        o.customer_id,\n        COUNT(*) AS order_count\n    FROM orders AS o\n    JOIN customers AS c ON c.customer_id = o.customer_id\n    WHERE o.placed_at >= TIMESTAMP '2025-06-01'\n      AND o.placed_at < TIMESTAMP '2025-07-01'\n      AND o.deleted_at IS NULL\n      AND c.deleted_at IS NULL\n      AND o.status <> 'cancelled'\n      AND NOT c.is_internal\n    GROUP BY o.customer_id\n)\nSELECT\n    COUNT(*) FILTER (WHERE order_count > 1) * 1.0\n        / NULLIF(COUNT(*), 0) AS repeat_customer_share\nFROM customer_order_counts;"
+    }
+  ],
+  "arm": "D-reference",
+  "level": "L3",
+  "seconds": 44.6
+}

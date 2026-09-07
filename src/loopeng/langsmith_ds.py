@@ -406,7 +406,17 @@ def create_fx_queue(name: str = FX_QUEUE_NAME) -> TraceResult:
     """
 
     def _create():
-        queue = _client().create_annotation_queue(
+        client = _client()
+        # Idempotent, because this is run before every session and a second run must
+        # not fail on "already exists". Reusing the queue is also correct rather than
+        # merely convenient: a fresh queue would drop the ratings already collected.
+        existing = next(
+            (q for q in client.list_annotation_queues() if q.name == name), None
+        )
+        if existing is not None:
+            return {"queue_id": str(existing.id), "name": name, "reused": True}
+
+        queue = client.create_annotation_queue(
             name=name,
             description=(
                 "Two wrong answers to the same unanswerable question. The automated "
@@ -416,7 +426,7 @@ def create_fx_queue(name: str = FX_QUEUE_NAME) -> TraceResult:
             rubric_instructions=FX_RUBRIC_INSTRUCTIONS,
             rubric_items=FX_RUBRIC_ITEMS,
         )
-        return {"queue_id": str(queue.id), "name": name}
+        return {"queue_id": str(queue.id), "name": name, "reused": False}
 
     return advisory("create_fx_queue", _create)
 
@@ -429,3 +439,96 @@ def enqueue_for_rating(queue_id, run_ids) -> TraceResult:
         return {"queue_id": str(queue_id), "n_runs": len(list(run_ids))}
 
     return advisory("enqueue_for_rating", _add)
+
+
+# ---------------------------------------------------------------------------
+# Experiments
+#
+# One dataset, one experiment per arm, so LangSmith's built-in side-by-side
+# comparison view works on them. That view is the shared surface the room already
+# knows how to read, and it is worth more than a bespoke chart of the same numbers.
+#
+# **THE FOUR CONDITIONS ARE NOT THE TRAP MATRIX, and conflating them would put the
+# wrong 2x2 on screen.** A, B, C and D vary the LOOPS and the MODEL at a fixed prompt
+# level; the trap varies the PROMPT LEVEL at a fixed loop count. They are different
+# axes and the comparison view cannot infer one from the other.
+#
+# So the trap gets its own two arms — the same single-shot configuration as A and D,
+# run at L0 — and together with A and D they form the four cells of the matrix:
+#
+#                     L0 (withheld)        L3 (given)
+#     agent           trap-agent-L0        A-baseline
+#     reference       trap-reference-L0    D-reference
+#
+# Six experiments, not four, and the two extra ones are cheap on the agent side.
+# ---------------------------------------------------------------------------
+
+EXPERIMENT_PREFIX = "loop-eng"
+
+
+def experiment_name(arm: str) -> str:
+    """Stable, sortable, and readable in a list of a hundred projects."""
+    return f"{EXPERIMENT_PREFIX}-{arm}"
+
+
+def _evaluator_from(judgements: dict, costs: dict):
+    """One evaluator returning every score, keyed by the item it graded.
+
+    The grading has already happened — `loopeng.agent.classify` judged each run
+    against gold while the arm was executing. This hands the result to LangSmith
+    rather than re-deriving it, because a second grader is a second thing to disagree
+    with the results file, and `results/` is the system of record.
+    """
+
+    def _scores(run, example):
+        item_id = (example.metadata or {}).get("item_id")
+        judgement = judgements.get(item_id)
+        if judgement is None:
+            return {"results": []}
+        return {"results": feedback_scores(judgement, costs.get(item_id, 0.0))}
+
+    return _scores
+
+
+def run_experiment(arm: str, judgements: dict, costs: dict, outputs: dict, *,
+                   dataset_name: str = DATASET_NAME, metadata: dict | None = None):
+    """File an already-executed arm as a LangSmith experiment.
+
+    The arm has run. Its results are on disk and are authoritative. This replays the
+    per-item outputs into an experiment so the comparison view has something to
+    compare — it never re-runs the model, which is why a LangSmith outage costs a
+    view and not a measurement.
+    """
+
+    def _upload():
+        from langsmith import evaluate
+
+        def target(inputs, example=None):
+            item_id = (example.metadata or {}).get("item_id") if example else None
+            return outputs.get(item_id, {})
+
+        # `client=` is not optional here, and finding that out cost a run.
+        #
+        # `evaluate` builds its own Client from the environment when none is given,
+        # and this project's credential lives in `.env` — read by pydantic-settings,
+        # never exported to `os.environ`. So every other call in this module worked
+        # (they go through `_client()`, which reads settings) and `evaluate` alone
+        # returned 401 Invalid token, on an account where the key was perfectly
+        # valid.
+        #
+        # The failure was survivable because it is wrapped in `advisory`: six arms
+        # executed, wrote their results, and reported the upload failure per arm. But
+        # the diagnosis reads as "the key is wrong" when the key is right, which is
+        # the kind of error message that sends an operator to the wrong file thirty
+        # minutes before a session.
+        return evaluate(
+            target,
+            data=dataset_name,
+            evaluators=[_evaluator_from(judgements, costs)],
+            experiment_prefix=experiment_name(arm),
+            metadata={"arm": arm, **(metadata or {})},
+            max_concurrency=4,
+            client=_client(),
+        )
+
+    return advisory(f"run_experiment:{arm}", _upload)
