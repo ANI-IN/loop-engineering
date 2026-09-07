@@ -130,7 +130,6 @@ _VIEWS = REPO_ROOT / "src" / "loopeng" / "views"
 #   views/verify.py    the swap table and the probe surface
 #   views/agent.py     the attempt timeline and the queue table
 #   views/intervention.py what the loop declined and why
-#   views/exhibit.py   the public frozen exhibit, which outlives the session
 #   demos/.../charts.py the entry point that renders them live
 #
 # NOT in scope: views/chrome.py. It is furniture and infrastructure — queue
@@ -145,7 +144,6 @@ TARGETS = (
     _VIEWS / "verify.py",
     _VIEWS / "agent.py",
     _VIEWS / "intervention.py",
-    _VIEWS / "exhibit.py",
     REPO_ROOT / "demos" / "04_hill_climbing_loop" / "charts.py",
 )
 

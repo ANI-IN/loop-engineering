@@ -13,7 +13,7 @@ from pathlib import Path
 
 from loopeng.gold.build import ambiguity_summary, clustering_summary
 from loopeng.gold.patterns import PATTERNS
-from loopeng.pricing import PRICES_SOURCE, PRICES_TAKEN_ON
+from loopeng.pricing import PRICES_SOURCES, PRICES_TAKEN_ON
 from loopeng.warehouse.connect import run_sql
 from loopeng.warehouse.generate import content_checksum, generate
 
@@ -23,18 +23,19 @@ TEMPLATING_DISCLOSURE = (
     "rather than left in a footnote."
 )
 
-# Measured, and recorded so the asymmetry is not misread later as a cost confound.
-CACHING_IS_IMMATERIAL = (
-    "Caching is MEASURED AS IMMATERIAL at this prompt size, and the Haiku/Sonnet "
-    "asymmetry is NOT a cost confound. It fires in exactly one cell of eight "
-    "(Sonnet L3, 1037 tokens against a 1024 minimum); Haiku's L3 is 648 against a "
-    "4096 minimum and cannot cache at all. At prefixes of 286-1037 tokens the saving "
-    "is trivial next to output tokens, especially with Sonnet's adaptive thinking on. "
-    "Any Haiku-versus-Sonnet cost gap in the sweep is output tokens and thinking, not "
-    "caching. Two consequences: sweep cell ordering is no longer load-bearing (the "
-    "grouping is kept because it is tidier, not because anything depends on it), and "
-    "Sonnet's 13-token margin is guarded by a test, since one trimmed rule sentence "
-    "would silently drop the only cache that works."
+# Measured, not inferred. See `api_probes.probe_cache_behaviour`: the probe makes the
+# same call twice and reads `cached_tokens` off the second one, so this says what the
+# API did rather than what a documentation page implies it should have done.
+CACHING_IS_MATERIAL = (
+    "Caching is MEASURED AS MATERIAL under the current model policy, and it is part "
+    "of the argument rather than an optimisation footnote. The schema-and-rules block "
+    "sits in the system turn, byte-identical on every call in a run, so the token "
+    "class that dominates the agent's input is discounted on every call after the "
+    "first. That discount is a large part of what separates cost-per-correct-answer "
+    "between the looped cheap arm and the bare frontier one, so a change that "
+    "destabilises the prefix would move the closing chart without failing anything. "
+    "tests/test_caching.py asserts the system block does not vary with the question "
+    "or with the attempt history."
 )
 
 # After the p09 deviation, refunds_net is carried by pattern 5 alone.
@@ -173,7 +174,7 @@ def build_report(
             "token_counts": prompt_tokens,
             "findings": cacheability_notes,
             "how": "client.messages.count_tokens against each model; no inference run.",
-            "caching_materiality": CACHING_IS_IMMATERIAL,
+            "caching_materiality": CACHING_IS_MATERIAL,
         },
         "rate_limits": {
             "observed": rate_limits,
@@ -200,7 +201,7 @@ def build_report(
                 "source": "estimated",
                 "how": (
                     f"measured token counts x a hand-entered price table "
-                    f"(taken {PRICES_TAKEN_ON} from {PRICES_SOURCE}). Only a billing export "
+                    f"(taken {PRICES_TAKEN_ON} from {PRICES_SOURCES}). Only a billing export "
                     "would make this a measurement, so the 'est.' label never comes off."
                 ),
             },

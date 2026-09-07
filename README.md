@@ -414,7 +414,7 @@ Runbook: [`demos/04_hill_climbing_loop/README.md`](demos/04_hill_climbing_loop/R
 | **DuckDB** | The seeded warehouse, and separately the question queue. Opened **read-only** for the agent, enforced by the database rather than by convention. Chosen over a hosted database so the workshop has no network dependency it does not need. |
 | **Gradio** | The five views. Chosen because a view is a function plus a layout, and the alternative was a frontend build step at a venue. |
 | **sqlglot** | Parses model-written SQL into an AST so rule checks can ask whether a column is actually constrained, rather than whether the query text mentions it. Also detects whether the outer query carries an `ORDER BY`, which decides whether result comparison is order-sensitive. |
-| **matplotlib** | **A runtime dependency.** Draws the four live charts in Stage 4 (`src/loopeng/sweep/charts.py`), and renders the deterministic README images in `assets/` from the committed reference measurements (`tools/render_readme_charts.py`). The hosted Space does *not* import it — the exhibit reads pre-rendered images — which is why it is absent from `deploy/hf/requirements.txt`. |
+| **matplotlib** | **A runtime dependency.** Draws the live charts in Stage 4 (`src/loopeng/sweep/charts.py`). Every figure it produces is computed by the run that renders it; there is no stored set and no separate README renderer. |
 | **LangSmith** | Traces and the gold dataset upload. **Advisory only** — `results/*.json` is the system of record, and a test runs a cell with the client stubbed to raise and asserts the results file is still complete and correct. |
 | **pydantic-settings** | Loads settings once, frozen, with `SecretStr` so a key cannot be printed by accident. A missing credential raises an error naming the exact variable and the exact fix. |
 | **structlog** | Console-rendered logs, not JSON: these are read live, on a projector, by a room of people, not shipped to an aggregator. |
@@ -451,38 +451,36 @@ src/loopeng/
   queue/             level 3 queue and worker
   sweep/             level 4 runner, profiles, charts, reference cells
   triage/            abstention, escalation, failure triage
-  views/             the five Gradio views, and the frozen exhibit
+  views/             the Gradio views
 demos/               thin entry points and the runbooks, one folder per loop level
-tools/               the numeric-literal rule, the README chart renderer, the HF sync
-deploy/hf/           the Hugging Face Space entry point
-assets/              generated README images — written only by tools/
-results/             measurements; see below for what is committed
+tools/               the numeric-literal rule (`tools/lint_no_numbers.py`) and the
+                     LangSmith resume probe (`tools/resumability_probe.py`)
+reference/           one full session run, committed so a cloner knows what to
+                     expect — and importable by nothing under src/
+results/             live cell output; see below
 tests/               the offline suite, plus tests/live/ behind the live marker
 ```
 
-**What is committed under `results/`, and why the split matters:**
+**What is committed under `results/`: almost nothing, and that is the design.**
 
 | path | committed | why |
 |---|---|---|
-| `results/reference/` | **yes** | the frozen measurements the delivery charts cite: `measurements.json` (the Sonnet cells, and what `assets/*.png` is drawn from), `worker_baseline.json` (the Haiku half of the same run, so a cloner's own cells have a stored counterpart to be differenced against), and `frontier_paired.json` (the Sonnet cells' per-item outcomes, held apart so that adding them cannot redraw the images) |
-| `results/prefix_v1/` | **yes** | the pre-fix measurements — the triage artifact and what the defect cost |
-| `results/gate0.json` | **yes** | foundation evidence, cited throughout |
-| `results/sweep/`, `results/ablation/` | **no** | live cell output. A committed cell would arrive on every clone and make the *first* live sweep on a fresh machine resume-and-complete instantly, rendering finished numbers to a room told nothing is precomputed. |
+| `results/noise_floor_seeded.json` | **yes** | the measured run-to-run floor the pre-registration cites BY NAME before the first cell runs. A citation printed as provenance has to resolve. |
+| `results/sweep/`, `results/ablation/`, `results/charts/` | **no** | live cell output. A committed cell would arrive on every clone and make the *first* live sweep on a fresh machine resume-and-complete instantly, rendering finished numbers to a room told nothing was precomputed. |
 
-**A fresh clone renders *not yet measured*, and what enforces that changed.** The
-protection above is about *resuming*: an uncommitted `results/sweep/` means the first
-live sweep has nothing to resume from. `results/reference/worker_baseline.json` sits
-outside `results/sweep/`, so it does not make the sweep resume — but it is a full set of
-stored cells, and a renderer asked for them will draw them. **The same end state, reached
-a different way**, which is what a protection written against one mechanism cannot see.
+**A fresh clone renders *not yet measured*, and nothing can override that any more.**
 
-So the property is now enforced where it is claimed rather than inferred from a
-`.gitignore`. `--reference` defaults to `auto`: the stored baseline is shown once this
-run has a cell of its own to compare it against, and hidden until then. A test runs the
-chart entry point against an empty directory and asserts the output carries no
-`REFERENCE` row and no p-value — the path a human takes, not a renderer handed empty
-cells. There is no checklist line beside it, deliberately: a checklist line is not
-enforcement, and a property that needs one to hold is a property that is not enforced.
+This used to be defended by five mechanisms at once: a hatched fill, a REFERENCE badge
+on the row, a date beside every stored value, a four-way `--reference` mode flag with a
+carefully chosen default, and a test running the chart entry point against an empty
+directory. All five guarded the same thing — the possibility of drawing a stored cell —
+and the guarding was the tell. **Removing the capability is stronger than defending it.**
+There is no stored cell format, no loader, and no flag; a render path that cannot express
+"stored" cannot show one.
+
+The stored results that a reader genuinely wants live in `reference/`, which holds one
+full session run and which **no module under `src/loopeng/` may import**. A test asserts
+that. It is documentation, not a data source.
 
 ---
 
@@ -537,16 +535,16 @@ uv run pytest -q
 **Expected output** from the last command:
 
 ```
-970 passed, 5 deselected
+949 passed, 6 deselected
 ```
 
 The `passed` count moves as tests are added and the number above is illustrative —
 what matters is `passed` with **no failures**, and `deselected` rather than `skipped`
-for the live tests. The `5 deselected` is pinned by a test, because that number is a
-claim: it says the live suite is exactly the five tests that cost money.
+for the live tests. The `6 deselected` is pinned by a test, because that number is a
+claim: it says the live suite is exactly the six tests that cost money.
 
-- **`5 deselected` is correct, not a problem.** `pyproject.toml` sets
-  `addopts = "-m 'not live'"`, which excludes the five tests that hit the network and
+- **`6 deselected` is correct, not a problem.** `pyproject.toml` sets
+  `addopts = "-m 'not live'"`, which excludes the six tests that hit the network and
   cost money. Opting in is an explicit act: `uv run pytest -m live`.
 - **On Linux you will also see `2 skipped`.** Two tests are platform-conditional: one
   needs a BSD-only file-flag function, and one only asserts image byte-identity on the
@@ -581,7 +579,7 @@ is committed; `.env` holds values and is ignored.
 
 | variable | required by | notes |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | any live model call | Not needed for the offline suite, the exhibit, or the rule-surface probes. |
+| `ANTHROPIC_API_KEY` | the judge — triage and failure sorting | Not needed for the offline suite or the rule-surface probes. It gates nothing. |
 | `LANGSMITH_API_KEY` | the dataset upload and trace links | Everything works without it; traces degrade, measurements do not. |
 | `LANGSMITH_PROJECT` | the project experiments are filed under | Defaults to the workshop project rather than the SDK's shared `default` bucket. |
 | `LANGSMITH_TRACING` | — | Defaults to **false** and must stay false for the offline suite. See below. |
@@ -613,7 +611,7 @@ uv sync && uv run pytest -q   # offline, free, proves the checkout
 
 uv run python demos/00_preflight/check.py                      # a fraction of a cent
 uv run python demos/04_hill_climbing_loop/sweep.py --profile smoke --foreground
-uv run python demos/04_hill_climbing_loop/charts.py --reference=compare
+uv run python demos/04_hill_climbing_loop/charts.py
 ```
 
 The preflight is the cheap one to run first. Two calls, one per model, **with the request
@@ -627,22 +625,23 @@ What each profile projects, from the repo's own `project_remaining`:
 
 | profile | cells | items | projected |
 |---|---|---|---|
-| `smoke` | 2 | 8 | est. $0.03 |
-| `delivery` | 4 | 50 | est. $0.43 |
-| `development` | 12 | 50 | est. $5.59 |
+| `smoke` | 2 | 8 | est. $0.01 |
+| `delivery` | 4 | 50 | est. $0.09 |
+| `development` | 12 | 50 | est. $9.38 |
 
 `smoke` measures nothing worth quoting — eight items cannot separate anything, and it does
-not pretend to. It proves the whole pipeline on your key: real calls, cells on disk, four
-charts rendered, and the difference against the committed baseline computed with exact
-McNemar. `--reference=compare` is what puts your run and the stored one on the same chart;
-`--reference=fill` shows a stored cell only where you have no live one, and `hide` drops
-them entirely.
+not pretend to. It proves the whole pipeline on your key: real calls, cells on disk, and
+charts rendered from them.
 
-**No chart in this repo can be produced without live Claude API calls**, except the ones
-explicitly badged REFERENCE and the ones served by `--view exhibit`. That has always been
-true and enforced — there is a test asserting a fresh clone renders "not yet measured" —
-and it is worth saying to your face: if a figure appears without you having spent anything,
-it is a stored measurement and it is labelled as one, in the row and inside the image.
+The `development` figure is dominated by one role. The reference model is a frontier
+model, and it is ~50x the agent's cost per item; the twelve cells are eight cheap ones
+and four expensive ones. That ratio is not an accident to be optimised away — it is the
+comparison the session exists to make.
+
+**No chart in this repo can be produced without live model calls.** That is unconditional
+now. It used to carry two exceptions — cells badged as stored measurements, and a frozen
+exhibit view — and both are gone along with the code that could render them. If a figure
+is on your screen, your key paid for it.
 
 If your key is wrong you will find out in **one** call, not three. The loops stop on a
 `401`, `403` or `400` rather than retrying, and the message names the variable and the fix.
@@ -804,16 +803,13 @@ detect. Is the gap you are looking at bigger than that?*
 ### The views
 
 ```bash
-uv run python -u demos/views.py --view {agent,trap,verify,dial,oversight,exhibit}
+uv run python -u demos/views.py --view {agent,trap,verify,dial,oversight}
 ```
 
 Each launch prints a local URL, the LAN address a phone on the same wifi needs, and writes
 a QR code — because nobody types a URL off a projector. Add `--share` for a public tunnel
 when the venue wifi isolates clients. `--port` lets you run several at once, which is how
 the workshop uses them: one tab per stage.
-
-`--view exhibit` is the frozen, zero-model-call version. It is the one to open when you
-want the application readable without any chance of spend.
 
 **The event-driven loop is deliberately not a view.** The point of that stage is that
 nobody is watching, and a browser tab implies a person supervising it.
@@ -822,101 +818,27 @@ nobody is watching, and a browser tab implies a person supervising it.
 
 ## 12 · Expected outputs
 
-Every image below is generated by `tools/render_readme_charts.py` from the committed
-reference measurements, and re-running it produces byte-identical files. Nothing here is
-hand-placed or screenshotted, and a test asserts that.
+**There are no committed figures in this README, and that is the change.**
 
-**Each image carries its measurement date and its `n` inside the image**, because a
-README figure outlives every sentence next to it — it gets screenshotted, pasted into a
-deck, and quoted back with the caption long gone. The prose in this README stays
-number-free for the same reason: the numbers live where they cannot be separated from
-their provenance.
+Every chart this repository can draw is drawn from cells computed by the run that is
+drawing them. There is no stored set to fall back on, no hatched bar, and no
+`--reference` flag — the whole apparatus is gone, along with the three PNGs that used
+to sit in this section and the tool that rendered them.
 
-![Silent-error rate by cell, with Wilson 95% intervals and the n behind each bar, from the frozen reference measurements](assets/dial.png)
+The reason is not tidiness. A stored figure that could pass for a fresh one breaks the
+session's central claim quietly, and the previous design defended against that with
+badges, hatching, dates on rows, a four-way mode flag and a test asserting a fresh
+clone renders nothing — five mechanisms guarding a capability that did not need to
+exist. Removing the capability is stronger than guarding it: a render path that cannot
+express "stored" cannot show one.
 
-*Example output from the development run of 2026-07-29. In the session this chart is
-computed live and stamped with the time; here it renders stored reference cells, drawn
-hatched and dated so a stored figure cannot pass for a fresh one.*
+What replaces it is `reference/`, which holds the results of one full session run — the
+JSONL, the rendered PNGs and a summary table — and which **nothing under `src/loopeng/`
+may import**. A test asserts that. It is there so a cloner knows what to expect before
+spending anything, and it is structurally unable to reach a chart.
 
-<!-- generated: tools/render_readme_charts.py -->
-
-| cell | silent-error rate | est. cost |
-|---|---|---|
-| `frontier_L0_loop_r0` | 42.6% (n=47, ±14.2, measured 2026-07-29) | est. $0.7240 |
-| `frontier_L0_loop_r1` | 45.5% (n=44, ±14.5, measured 2026-07-29) | est. $0.6978 |
-| `frontier_L0_loop_r2` | 32.6% (n=46, ±14.4, measured 2026-07-29) | est. $0.7563 |
-| `frontier_L0_one_shot_r0` | 83.8% (n=37, ±14.9, measured 2026-07-29) | est. $0.3921 |
-| `frontier_L3_loop_r0` | 4.7% (n=43, ±10.8, measured 2026-07-29) | est. $0.3830 |
-| `frontier_L3_one_shot_r0` | 0.0% (n=43, ±8.2, measured 2026-07-29) | est. $0.3646 |
-
-These are the author's development-run measurements from **2026-07-29** on `claude-sonnet-5`. They are **REFERENCE — not computed on your machine.** To render the equivalent chart from your own key:
-
-```bash
-uv run python demos/04_hill_climbing_loop/charts.py --reference=compare
-```
-
-![Estimated spend per cell, with the n behind each bar, from the frozen reference measurements](assets/cost.png)
-
-*Example output from the development run of 2026-07-29. Like the chart above it renders
-stored reference cells, not a live computation — the session recomputes it and stamps it
-with the time. Tokens are measured; dollars are those tokens times a hand-entered price
-table, so every figure keeps its `est.` prefix — and calls that failed are included,
-because they billed.*
-
-<!-- generated: tools/render_readme_charts.py -->
-
-| cell | est. cost | n |
-|---|---|---|
-| `frontier_L0_loop_r0` | est. $0.7240 | 47 |
-| `frontier_L0_loop_r1` | est. $0.6978 | 44 |
-| `frontier_L0_loop_r2` | est. $0.7563 | 46 |
-| `frontier_L0_one_shot_r0` | est. $0.3921 | 37 |
-| `frontier_L3_loop_r0` | est. $0.3830 | 43 |
-| `frontier_L3_one_shot_r0` | est. $0.3646 | 43 |
-
-These are the author's development-run measurements from **2026-07-29** on `claude-sonnet-5`. They are **REFERENCE — not computed on your machine.** To render the equivalent chart from your own key:
-
-```bash
-uv run python demos/04_hill_climbing_loop/charts.py --reference=compare
-```
-
-![Coverage against precision as the abstention threshold moves, with Wilson 95% intervals on precision and the number answered at each operating point](assets/abstention.png)
-
-*Example output from the development run of 2026-07-29, rendered from a stored curve
-rather than computed here. Raising the threshold answers fewer questions and gets more of
-the answered ones right. The trade is the point — a single accuracy number hides it
-completely.*
-
-<!-- generated: tools/render_readme_charts.py -->
-
-| threshold | answered | coverage | precision |
-|---|---|---|---|
-| 0.00 | 50 | 100.0% (n=50, ±7.1, measured 2026-07-29) | 26.0% (n=50, ±13.6, measured 2026-07-29) |
-| 0.15 | 41 | 82.0% (n=50, ±12.8, measured 2026-07-29) | 31.7% (n=41, ±15.3, measured 2026-07-29) |
-| 0.20 | 41 | 82.0% (n=50, ±12.8, measured 2026-07-29) | 31.7% (n=41, ±15.3, measured 2026-07-29) |
-| 0.30 | 41 | 82.0% (n=50, ±12.8, measured 2026-07-29) | 31.7% (n=41, ±15.3, measured 2026-07-29) |
-| 0.70 | 41 | 82.0% (n=50, ±12.8, measured 2026-07-29) | 31.7% (n=41, ±15.3, measured 2026-07-29) |
-| 1.00 | 10 | 20.0% (n=50, ±13.0, measured 2026-07-29) | 50.0% (n=10, ±26.3, measured 2026-07-29) |
-
-These are the author's development-run measurements from **2026-07-29** on `claude-haiku-4-5`. They are **REFERENCE — not computed on your machine.** To render the equivalent chart from your own key:
-
-```bash
-uv run python demos/04_hill_climbing_loop/charts.py --reference=compare
-```
-
-To regenerate them after a new reference measurement:
-
-```bash
-uv run python tools/render_readme_charts.py
-```
-
-`assets/manifest.json` travels with them, recording the hash of each image, the hash of
-every source file it was rendered from, and the environment that rendered it. That last
-part is a limit stated rather than hidden: **re-rendering is byte-identical within one
-environment, but not across them** — matplotlib rasterises text through FreeType, so a
-different platform draws the same figure to different pixels. Freshness is therefore
-checked against the source hashes, which give the same answer anywhere, and byte-identity
-is asserted only where it can honestly hold.
+See [§13](#13--profiles-and-cost) for what a run costs, and "What you should expect"
+for the stored summary.
 
 ---
 
@@ -967,7 +889,6 @@ uv run pytest -q                              # offline: no network, no keys, no
 uv run pytest -m live -q                      # live: real API calls, real money
 uv run ruff check .
 uv run python tools/lint_no_numbers.py
-uv run python tools/render_readme_charts.py   # regenerates assets/; must be a no-op
 ```
 
 Live tests carry a marker and are deselected by default. The split is not a convention:
@@ -1137,43 +1058,17 @@ flat line there means *not measured here*, not *the verifier missed it*. Its enf
 is covered by the rule-surface probes instead, which test the verifier directly rather
 than inferring it from sweep outcomes.
 
-**Cross-model error bars are not comparable.** The cheap model is pinned to a fixed
-temperature; the frontier model rejects that parameter and cannot be pinned. One model's
-bars carry sampling noise; the other's carry sampling noise **plus** run-to-run variance.
-Within a model they are comparable. Across models they are not.
+**No arm can be pinned, so every interval carries run-to-run variance.** Both scoring
+models are reasoning models and both reject a non-default `temperature` with a 400.
+`seed` is pinned instead, which the vendor documents as best-effort rather than a
+guarantee. The residual is measured rather than assumed away — see
+`results/noise_floor_seeded.json` — and the measurement is small but its `n` is 8, so
+what it supports is an upper bound rather than a point estimate.
 
-**At delivery, the frontier cells are reference measurements, not computed live.** Any
-cross-model comparison in the session puts a line measured minutes ago next to one
-measured weeks ago. The charts badge both sides on the row itself rather than in a
-caption read once.
-
-**Six of the ten comparisons used to be untestable, and the freeze was why.**
-`build_reference` strips `items` — SQL and rows are development-only bulk — and
-`{item_id: was_correct}` went with them, so every Sonnet pair had nothing to pair with.
-The chart reported *no shared answered items*, which named a cause that was not the
-cause: the items overlapped perfectly well when they were measured, and the outcomes
-were discarded afterwards. Those outcomes are now re-frozen into
-`results/reference/frontier_paired.json` and reattached at load, and **all ten
-comparisons are testable**. It is a sibling file rather than more fields on
-`measurements.json` because that file is what `assets/*.png` is drawn from and adding to
-it redraws three committed images.
-
-The residue is that four of those ten are now REFERENCE against REFERENCE — two stored
-arms from one development run, both badged and both dated on the row. They are
-within-model, so the temperature asymmetry does not touch them, but they are not
-something the session computes.
-
-**The cloner's baseline is a full set of finished cells, and it ships with the clone.**
-`results/reference/worker_baseline.json` exists because without it the comparison this
-project is built around was structurally impossible for anyone but the author: a cloner
-running `delivery` got four solid bars beside six unrelated hatched ones and no
-difference computable. The cost of fixing that is that twelve finished, dated cells now
-arrive on every clone. They do not make a sweep resume — they sit outside
-`results/sweep/` — but a renderer asked for them will draw them, so *"a fresh clone shows
-nothing finished"* stopped being a property of what is committed and became a property of
-what the renderer is asked for by default. It is enforced there instead (§8), and the
-trade is deliberate: the alternative was leaving every cloner with nothing to test their
-own run against.
+This is a loss compared to the previous design, where the cheap model could be pinned.
+It is also symmetric now, which the previous design was not: both arms sit in the same
+sampling regime from the same vendor, so a cheap-versus-frontier comparison is no longer
+confounded by one side being pinned and the other not.
 
 **The subset analysis was chosen post-hoc.** Two patterns were found — by triaging
 failures — to be under-specified about whether refunds are netted. The exclusion criterion
@@ -1266,8 +1161,7 @@ Lower the per-model concurrency before the sweep rather than after it starts fai
 say out loud that it will take longer.
 
 **Charts say "not yet measured".** There are no sweep cells on disk. That is correct on a
-fresh clone. Run the sweep first, or serve `--view exhibit`, which reads the committed
-reference measurements instead.
+fresh clone. Run the sweep first.
 
 **Port already in use.** Another view is still running. `pkill -f "views.py --view"` or
 pick a different `--port`.
@@ -1293,11 +1187,6 @@ parameters. The cheaper model accepts them and is pinned. The consequence is tha
 models' error bars carry different things, and any cross-model comparison says so on the
 chart itself rather than in a caption.
 
-**Why are some chart cells drawn differently?** Those are reference measurements taken on a
-stated date, not computed in the session. They are drawn as hatched outlines and labelled
-with their date, because a stored figure that could pass for a fresh one would break the
-cost constraint quietly, which is worse than not showing it at all.
-
 **Why is the silent-error rate computed only over answers that ran?** Folding visible
 failures into the denominator would inflate the headline with failures the room can
 already see, which is the opposite of what the metric is for. The two counts are reported
@@ -1309,35 +1198,7 @@ pairing away — besides being a poor proxy for significance even on unpaired da
 uses only the discordant pairs. It still overstates here, because the items are clustered,
 so the on-screen statement is directional and never a specific gap.
 
-**Could this be deployed to Hugging Face Spaces?** A read-only exhibit can, and this
-repository contains one under `deploy/hf/` that makes no model calls at all — verified by
-spying on the client constructor and asserting none is ever built. A full-functionality
-Space would need the API key as a Space secret, and a public Space with a working key
-means unbounded spend by strangers. If that is ever wanted it should be a private Space,
-and the delivery profile should still run from a laptop.
 
-**How do I publish the Space?**
-
-Create the Space in the Hugging Face UI first, then:
-
-```bash
-# stage and run every check, push nothing
-uv run python tools/sync_hf.py --dry-run
-
-# stage, check, and push
-uv run python tools/sync_hf.py --remote https://huggingface.co/spaces/<user>/<name>
-```
-
-One step, not a ritual. The tool refuses to push `.env`, `results/sweep/`,
-`results/ablation/` or any `*.duckdb`, and those refusals are assertions over
-everything staged rather than a copy list that might have missed something. It also
-checks the Space frontmatter, and that `requirements.txt` is still in step with
-`uv.lock` — Spaces do not use uv, so the lock has to be exported.
-
-There is deliberately **no default remote**. It had one, built from the GitHub owner's
-name, and that namespace did not exist on Hugging Face — so the tool pushed confidently
-at a 404. A default naming a place nobody verified is the same defect this project is
-about.
 
 ---
 

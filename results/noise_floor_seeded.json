@@ -1,0 +1,56 @@
+{
+  "what": "run-to-run disagreement with seed pinned, one-shot, rules given",
+  "measured_on": "2026-09-07",
+  "method": "The same items run three times against each model with `seed` pinned and the vendor's default sampling otherwise, because both scoring models reject a non-default temperature with a 400. Two readings are recorded per model: whether the CORRECTNESS VERDICT moved between runs, and whether the SQL TEXT did. They answer different questions and only the first bounds the noise a comparison has to clear.",
+  "caveat": "n=8. A reading of zero here is 'none observed in eight', not 'none exists' \u2014 the Wilson upper bound is what a claim may rely on, and it is wide. It is reported alongside the point estimate for exactly that reason.",
+  "models": {
+    "gpt-5.6-luna": {
+      "n_items": 8,
+      "n_runs": 3,
+      "verdict_flips": 0,
+      "verdict_flip_rate": 0.0,
+      "verdict_flip_ci95": [
+        0.0,
+        0.324408
+      ],
+      "sql_text_differs": 5,
+      "sql_text_differ_rate": 0.625
+    },
+    "gpt-4o-mini": {
+      "n_items": 8,
+      "n_runs": 3,
+      "verdict_flips": 1,
+      "verdict_flip_rate": 0.125,
+      "verdict_flip_ci95": [
+        0.022417,
+        0.470888
+      ],
+      "sql_text_differs": 3,
+      "sql_text_differ_rate": 0.375
+    },
+    "gpt-4.1-nano": {
+      "n_items": 8,
+      "n_runs": 3,
+      "verdict_flips": 0,
+      "verdict_flip_rate": 0.0,
+      "verdict_flip_ci95": [
+        0.0,
+        0.324408
+      ],
+      "sql_text_differs": 6,
+      "sql_text_differ_rate": 0.75
+    },
+    "gpt-6-astra": {
+      "n_items": 8,
+      "n_runs": 3,
+      "verdict_flips": 0,
+      "verdict_flip_rate": 0.0,
+      "verdict_flip_ci95": [
+        0.0,
+        0.324408
+      ],
+      "sql_text_differs": 5,
+      "sql_text_differ_rate": 0.625
+    }
+  }
+}

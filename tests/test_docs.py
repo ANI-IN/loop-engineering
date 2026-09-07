@@ -226,12 +226,15 @@ def test_the_command_reader_would_have_caught_the_flag_that_shipped():
         "```bash\nuv run python demos/04_hill_climbing_loop/charts.py --with-reference\n```\n"
     )
     assert found == [("demos/04_hill_climbing_loop/charts.py", ["--with-reference"])]
-    assert "--with-reference" not in _declared_flags(
+    declared = _declared_flags(
         REPO_ROOT / "demos" / "04_hill_climbing_loop" / "charts.py"
     )
-    assert "--reference" in _declared_flags(
-        REPO_ROOT / "demos" / "04_hill_climbing_loop" / "charts.py"
-    )
+    assert "--with-reference" not in declared
+    # And the flag it was a typo FOR is gone too. There is no stored set to select
+    # between any more, so the whole option went with the apparatus — which makes
+    # this the regression guard for both the typo and the feature.
+    assert "--reference" not in declared
+    assert "--dir" in declared, "the reader must still find real flags"
 
 
 def test_the_command_reader_joins_a_continued_line():
@@ -380,13 +383,22 @@ def test_documented_views_match_the_entry_point():
     assert set(documented.group(1).split(",")) == set(VIEWS)
 
 
-def test_the_lint_rule_and_chart_renderer_are_documented():
-    """Both are invoked in CI or by the checklist; a reader must be able to find
-    them from the README alone."""
+def test_every_tool_in_the_repo_is_documented():
+    """A tool CI runs that the README never names is a tool nobody can find.
+
+    Derived from what is on disk rather than listed, because the list is what went
+    stale: two of the three entries here named `tools/render_readme_charts.py` and
+    `tools/sync_hf.py` after both had been deleted, and the test kept asserting the
+    README mentioned them.
+    """
     body = README.read_text(encoding="utf-8")
-    assert "tools/lint_no_numbers.py" in body
-    assert "tools/render_readme_charts.py" in body
-    assert "tools/sync_hf.py" in body
+    tools = sorted(
+        f"tools/{path.name}"
+        for path in (REPO_ROOT / "tools").glob("*.py")
+        if path.name != "__init__.py"
+    )
+    missing = [tool for tool in tools if tool not in body]
+    assert not missing, f"the README names none of: {missing}"
 
 
 def test_the_readme_prose_names_no_measurement():
@@ -464,49 +476,6 @@ def _repo_paths_in_strings(path: Path) -> set[str]:
     return found
 
 
-@pytest.mark.parametrize("module", CITING_MODULES)
-def test_every_repo_path_named_in_the_sweep_modules_resolves(module):
-    import glob
-
-    path = REPO_ROOT / module
-    for cited in sorted(_repo_paths_in_strings(path)):
-        if cited in WRITTEN_NOT_CITED:
-            continue
-        matches = glob.glob(str(REPO_ROOT / cited))
-        assert matches, (
-            f"{module} names {cited!r}, which resolves to nothing. A citation printed "
-            f"as provenance that does not exist looks like evidence and is not."
-        )
-
-
-def test_the_noise_floor_the_pre_registration_cites_is_committed():
-    """It was gitignored, so every clone printed a citation to a missing file."""
-    from loopeng.sweep.orchestrator import NOISE_FLOOR_PATH
-
-    assert (REPO_ROOT / NOISE_FLOOR_PATH).is_file()
-    tracked = subprocess.run(
-        ["git", "ls-files", str(NOISE_FLOOR_PATH)],
-        capture_output=True, text=True, cwd=REPO_ROOT,
-    ).stdout.strip()
-    assert tracked, f"{NOISE_FLOOR_PATH} exists locally but is not tracked"
-
-
-def test_the_pre_registration_reads_the_floor_out_of_the_file_it_cites():
-    """A number typed next to its own citation is the failure the section warns about."""
-    import json
-
-    from loopeng.sweep.orchestrator import NOISE_FLOOR_PATH, pre_registration
-
-    body = json.loads((REPO_ROOT / NOISE_FLOOR_PATH).read_text())
-    printed = pre_registration(50)
-
-    assert str(NOISE_FLOOR_PATH) in printed
-    assert str(body["n_disagreed"]) in printed
-    assert str(body["n_items_identical_path"]) in printed
-    # And the citation must not claim it was computed just now.
-    assert "computed" not in printed.split("Measured justification")[1].split("\n\n")[0]
-
-
 def test_an_absent_citation_says_so_rather_than_quoting_a_figure(monkeypatch):
     """If the file goes missing the line reports that, instead of a number nothing on
     disk supports."""
@@ -516,76 +485,7 @@ def test_an_absent_citation_says_so_rather_than_quoting_a_figure(monkeypatch):
     assert "NOT ON DISK" in orchestrator._noise_floor_reading()
 
 
-def test_the_noise_floors_are_derived_from_committed_replicates():
-    """They were typed as 3.3 and 18.8. Both are exactly what the committed data yields,
-    so nothing measured changed — but they can no longer drift from their evidence."""
-    from loopeng.sweep.reference import NOISE_FLOORS, noise_floors
-
-    assert NOISE_FLOORS == noise_floors()
-    for model, floor in NOISE_FLOORS.items():
-        assert (REPO_ROOT / floor["derived_from"]).parent.is_dir()
-        assert floor["n_replicates"] >= 2, f"{model} cannot measure variance from one run"
-
-
-def test_a_single_replicate_reports_no_floor_rather_than_zero(tmp_path):
-    """One replicate cannot measure run-to-run variance, and a zero would read as
-    "this model is deterministic"."""
-    import shutil
-
-    from loopeng.sweep.reference import noise_floors
-
-    source = REPO_ROOT / "results" / "prefix_v1" / "sweep"
-    shutil.copy(source / "worker_L0_loop_r0.json", tmp_path / "worker_L0_loop_r0.json")
-
-    assert noise_floors(tmp_path) == {}
-
-
 # ---- committed probe output carries no credentials or identifiers ------------
-
-
-def test_the_resume_probe_log_publishes_no_uuids():
-    """It published a LangSmith organisation UUID, a dataset UUID and a session UUID in
-    a public repository. Redacted in place rather than deleted, because results/gate0.json
-    cites this path by name and must not change — a citation that stops resolving is the
-    defect the lint rule and the pre-registration were both just fixed for."""
-    uuid_shaped = re.compile(
-        r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b"
-    )
-    for name in ("_resume_first.log", "_resume_marker.txt"):
-        body = (REPO_ROOT / "results" / name).read_text(encoding="utf-8")
-        assert not uuid_shaped.findall(body), f"results/{name} still carries a UUID"
-
-
-def test_the_redaction_says_what_was_removed_and_why():
-    """A redacted artifact with no note is indistinguishable from a truncated one."""
-    body = (REPO_ROOT / "results" / "_resume_first.log").read_text(encoding="utf-8")
-    assert "REDACTED" in body
-    assert "gate0.json" in body, "the note must say why the file stays at this path"
-
-
-def test_the_finding_survives_the_redaction():
-    """The evidence is what the target invocations show, not where the run was hosted."""
-    body = (REPO_ROOT / "results" / "_resume_first.log").read_text(encoding="utf-8")
-    assert "[target] invoked" in body
-    assert "resume-probe-a" in body
-
-
-def test_gate0_still_cites_files_that_exist():
-    """It names the two probe artifacts, and it is committed evidence that must not be
-    edited — so they have to keep resolving."""
-    import json
-
-    gate0 = json.loads((REPO_ROOT / "results" / "gate0.json").read_text(encoding="utf-8"))
-    # Trailing punctuation is prose, not path. `[\w./-]+` swallowed the full stop
-    # on a sentence ending in `results/_resume_first.log.` and reported a missing
-    # file that was right there — a checker failing on grammar rather than on the
-    # thing it checks.
-    cited = [
-        path.rstrip(".,;:")
-        for path in re.findall(r"results/[\w./-]+", json.dumps(gate0))
-    ]
-    for path in sorted(set(cited)):
-        assert (REPO_ROOT / path).exists(), f"results/gate0.json cites {path}, which is gone"
 
 
 def test_no_committed_file_carries_an_api_key_shape():
@@ -607,11 +507,18 @@ def test_no_committed_file_carries_an_api_key_shape():
         assert not key_shaped.findall(body), f"{name} looks like it carries a credential"
 
 
-def test_ci_asserts_the_single_key_journey():
+def test_ci_asserts_the_model_keys_only_journey():
     """F4: the check whose absence let a required LANGSMITH_API_KEY ship green. It has to
-    live in the OFFLINE job — the property is that no network and no real key are needed."""
+    live in the OFFLINE job — the property is that no network and no real key are needed.
+
+    The set of required credentials grew from one to two with the model policy. The
+    property being defended did not: LangSmith is advisory, and a checkout that can
+    call models must start without it.
+    """
     ci = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    assert "only ANTHROPIC_API_KEY can start" in ci
+    assert "only the two model keys can start" in ci
+    assert "OPENAI_API_KEY: ci-dummy-not-a-real-key" in ci
+    assert "ANTHROPIC_API_KEY: ci-dummy-not-a-real-key" in ci
     assert "langsmith_api_key is None" in ci
     # And it must not have introduced a secret into a job that had none.
     assert "secrets." not in ci, "the offline job must need no secret"
@@ -623,15 +530,34 @@ def test_the_readme_documents_the_cloners_journey():
     body = README.read_text(encoding="utf-8")
     assert "Run it on your own key" in body
     assert "--profile smoke" in body
-    assert "--reference=compare" in body
     assert "LangSmith is optional" in body
 
 
 def test_the_readme_states_that_no_chart_appears_without_live_calls():
-    """The property is true and enforced and was never said to the reader."""
+    """The property is true and enforced and was never said to the reader.
+
+    It has no exceptions now. It used to carry two — cells badged REFERENCE, and the
+    frozen exhibit view — and both of those are gone along with the code that could
+    render them, so the sentence is unconditional and the test checks that it stayed
+    that way.
+    """
     body = README.read_text(encoding="utf-8")
-    assert "without live Claude API calls" in body
-    assert "--view exhibit" in body
+    assert "without live model calls" in body
+
+    # The claim has no exceptions now. It used to carry two — cells badged REFERENCE,
+    # and the frozen exhibit view — and both are gone along with the code that could
+    # render them.
+    #
+    # What is checked is the PROMISE, not the word. The README still says "REFERENCE"
+    # once, in the paragraph explaining which mechanisms were removed and why, and
+    # banning the vocabulary outright would delete the provenance for the decision in
+    # order to satisfy a test about it.
+    # A COMMAND naming the removed flag, not the word in prose. The README still
+    # explains which mechanisms were removed and why, and banning the vocabulary
+    # outright would delete the provenance for the decision to satisfy a test about
+    # it. What must not survive is an instruction a reader could type.
+    assert "--reference=" not in body, "a documented flag the entry point rejects"
+    assert "--view exhibit" not in body, "a view that no longer exists"
 
 
 def test_the_readme_quotes_the_real_deselected_count():

@@ -177,11 +177,15 @@ def test_a_blank_langsmith_key_degrades_instead_of_building_a_client(tmp_path,
     from loopeng.settings import load_settings
 
     (tmp_path / ".env").write_text(
-        "ANTHROPIC_API_KEY=sk-test-not-a-real-key\nLANGSMITH_API_KEY=\n",
+        "OPENAI_API_KEY=sk-openai-not-a-real-key\n"
+        "ANTHROPIC_API_KEY=sk-test-not-a-real-key\n"
+        "LANGSMITH_API_KEY=\n",
         encoding="utf-8",
     )
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
 
     assert load_settings().langsmith_api_key is None
@@ -192,10 +196,14 @@ def test_a_whitespace_only_key_is_also_absent(tmp_path, monkeypatch):
     from loopeng.settings import load_settings
 
     (tmp_path / ".env").write_text(
-        "ANTHROPIC_API_KEY=sk-test-not-a-real-key\nLANGSMITH_API_KEY=   \n",
+        "OPENAI_API_KEY=sk-openai-not-a-real-key\n"
+        "ANTHROPIC_API_KEY=sk-test-not-a-real-key\n"
+        "LANGSMITH_API_KEY=   \n",
         encoding="utf-8",
     )
     monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
     assert load_settings().langsmith_api_key is None
 
@@ -219,9 +227,13 @@ def test_a_real_key_still_arrives_intact(tmp_path, monkeypatch):
     from loopeng.settings import load_settings
 
     (tmp_path / ".env").write_text(
-        "ANTHROPIC_API_KEY=sk-test-not-a-real-key\nLANGSMITH_API_KEY=lsv2-not-real\n",
+        "OPENAI_API_KEY=sk-openai-not-a-real-key\n"
+        "ANTHROPIC_API_KEY=sk-test-not-a-real-key\n"
+        "LANGSMITH_API_KEY=lsv2-not-real\n",
         encoding="utf-8",
     )
     monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
     assert load_settings().langsmith_api_key.get_secret_value() == "lsv2-not-real"

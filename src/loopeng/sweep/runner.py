@@ -53,13 +53,21 @@ SWEEP_DIR = Path("results/sweep")
 # was chosen against.
 CONCURRENCY_PER_MODEL = 8
 
-# Measured per-call token shapes, 2026-07-29. Used ONLY to project spend before
-# running, never to report it — reported cost always comes from actual usage.
+# Measured per-call token shapes, 2026-09-07, on the models the registry now names.
+# Used ONLY to project spend before running, never to report it — reported cost
+# always comes from actual usage.
+#
+# Input is identical across roles because the prompt is: the same rendered schema
+# and rules go to both, and nothing per-role is added. Output is where they diverge,
+# and the divergence is not symmetric — the reference model writes far MORE at L0
+# than at L3, because with the rules withheld it reasons about what it has not been
+# told. That is a measurement, and it is the reason a reference L0 cell costs more
+# than a reference L3 one despite answering fewer items correctly.
 SHAPES = {
-    ("worker", "L3"): (666, 198),
-    ("worker", "L0"): (304, 151),
-    ("frontier", "L3"): (1060, 247),
-    ("frontier", "L0"): (571, 488),
+    ("agent", "L3"): (552, 157),
+    ("agent", "L0"): (246, 154),
+    ("reference", "L3"): (552, 166),
+    ("reference", "L0"): (246, 286),
 }
 CALLS_PER_ITEM = {("one_shot", "L3"): 1.0, ("one_shot", "L0"): 1.0,
                   ("loop", "L3"): 1.16, ("loop", "L0"): 1.9}
@@ -117,7 +125,7 @@ class Profile:
 
 DELIVERY = Profile(
     name="delivery",
-    roles=("worker",),
+    roles=("agent",),
     replicates=1,
     cap_usd=0.75,
     runs_ablation=False,
@@ -131,9 +139,18 @@ DELIVERY = Profile(
 
 DEVELOPMENT = Profile(
     name="development",
-    roles=("worker", "frontier"),
+    roles=("agent", "reference"),
     replicates=3,
-    cap_usd=8.0,
+    # Raised from 8.00, and the reason is the model policy rather than a change of
+    # appetite. The reference role is now a frontier model at $10/$50 per million
+    # against the $2/$10 this cap was sized for, and it writes MORE at L0 than at L3
+    # — so the same twelve cells project est. $9.38 where they used to project under
+    # eight. A cap that the profile's own projection cannot clear is not a budget,
+    # it is a profile that refuses to start.
+    #
+    # PROVISIONAL. This whole profile set is replaced by smoke/session/dev, whose
+    # sizes come from measured throughput rather than from what fitted before.
+    cap_usd=12.0,
     runs_ablation=True,
     allows_limit=True,
     note="Both models, replicates on both L0 loop cells, ablation. Run once, not per delivery.",
@@ -141,7 +158,7 @@ DEVELOPMENT = Profile(
 
 SMOKE = Profile(
     name="smoke",
-    roles=("worker",),
+    roles=("agent",),
     levels=("L0",),
     replicates=1,
     cap_usd=0.05,
@@ -227,7 +244,7 @@ class Cell:
 
     @property
     def label(self) -> str:
-        model = "Haiku" if self.role == "worker" else "Sonnet"
+        model = "Haiku" if self.role == "agent" else "Sonnet"
         mode = "one-shot" if self.mode == "one_shot" else "loop"
         rep = f" (rep {self.replicate + 1})" if self.replicate else ""
         return f"{model} · {self.level} · {mode}{rep}"

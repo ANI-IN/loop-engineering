@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     #
     # Nothing about fail-fast is given up: `load_settings()` with no argument
     # still raises `MissingCredential` before anything else happens.
+    #
+    # BOTH vendors are required, for different reasons. OPENAI_API_KEY runs the
+    # agent and the reference arm, so without it there is no measurement at all.
+    # ANTHROPIC_API_KEY runs the judge, which triages and sorts failures — it
+    # gates nothing, but a session that cannot explain its own failures is a
+    # session missing the part that makes the failures useful.
+    openai_api_key: SecretStr | None = None
     anthropic_api_key: SecretStr | None = None
 
     # Optional, and it has to be, because §15 promises LangSmith is advisory and never
@@ -57,7 +64,9 @@ class Settings(BaseSettings):
     langsmith_api_key: SecretStr | None = None
     langsmith_project: str = "loop-eng-workshop"
 
-    @field_validator("anthropic_api_key", "langsmith_api_key", mode="before")
+    @field_validator(
+        "openai_api_key", "anthropic_api_key", "langsmith_api_key", mode="before"
+    )
     @classmethod
     def _blank_is_absent(cls, value):
         """An empty variable means "not configured", not "configured as empty".
@@ -99,11 +108,27 @@ class Settings(BaseSettings):
 # deliberately absent: it is optional, so it can never raise here, and an entry for it
 # would be a fix message for a failure that cannot happen.
 _FIXES = {
+    "openai_api_key": (
+        "OPENAI_API_KEY",
+        "Add OPENAI_API_KEY=<your key> to .env (see .env.example). It runs the "
+        "agent and the reference arm, so nothing measurable happens without it.",
+    ),
     "anthropic_api_key": (
         "ANTHROPIC_API_KEY",
-        "Add ANTHROPIC_API_KEY=<your key> to .env (see .env.example).",
+        "Add ANTHROPIC_API_KEY=<your key> to .env (see .env.example). It runs the "
+        "judge, which triages failures and never gates a result.",
     ),
 }
+
+# Which settings field holds each vendor's credential. The one place the mapping
+# lives; `loopeng.providers` reads roles off the registry and comes here for the key.
+_KEY_FIELDS = {"openai": "openai_api_key", "anthropic": "anthropic_api_key"}
+
+# Every credential `load_settings()` insists on by default, in the order they are
+# reported. Both, because both are required — a run that can score but not triage
+# is half a session, and finding that out at minute forty is the failure this
+# module exists to prevent.
+REQUIRED_CREDENTIALS = ("openai_api_key", "anthropic_api_key")
 
 
 def _not_set(field: str) -> str:
@@ -152,18 +177,35 @@ def load_settings(*, require_credential: bool = True) -> Settings:
                 )
         raise MissingCredential("\n".join(lines)) from exc
 
-    if require_credential and settings.anthropic_api_key is None:
-        raise MissingCredential(_not_set("anthropic_api_key"))
+    if require_credential:
+        # Every missing credential is reported, not just the first. An operator
+        # thirty minutes from a session should learn about both keys in one run
+        # rather than fixing one, re-running, and discovering the other.
+        missing = [
+            field
+            for field in REQUIRED_CREDENTIALS
+            if getattr(settings, field) is None
+        ]
+        if missing:
+            raise MissingCredential("\n".join(_not_set(field) for field in missing))
     return settings
 
 
-def require_api_key(settings: Settings) -> SecretStr:
-    """The credential, or the same failure `load_settings()` would have raised.
+def require_key(settings: Settings, provider: str) -> SecretStr:
+    """One vendor's credential, or the same failure `load_settings()` would raise.
 
-    Every place that constructs an Anthropic client calls this. A caller that
-    opted out of the up-front check still cannot make a request without one, and
-    when it fails it fails with the message that names the variable and the fix.
+    Every place that constructs a client calls this. A caller that opted out of
+    the up-front check still cannot make a request without one, and when it fails
+    it fails with the message that names the variable and the fix.
     """
-    if settings.anthropic_api_key is None:
-        raise MissingCredential(_not_set("anthropic_api_key"))
-    return settings.anthropic_api_key
+    try:
+        field = _KEY_FIELDS[provider]
+    except KeyError:
+        raise ValueError(
+            f"unknown provider {provider!r}; this build has credentials for "
+            f"{sorted(_KEY_FIELDS)}"
+        ) from None
+    key = getattr(settings, field)
+    if key is None:
+        raise MissingCredential(_not_set(field))
+    return key

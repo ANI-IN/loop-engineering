@@ -26,14 +26,14 @@ from loopeng.agent.loop import (
     Attempt,
     SupportsMessages,
     TerminationReason,
-    _build_messages,
+    backoff_delay,
+    build_turns,
     extract_sql,
-    retry_after_seconds,
-    triage_call_failure,
 )
 from loopeng.contracts import VerifyContext
+from loopeng.prompts import render_prompt
+from loopeng.providers import complete, triage_call_failure
 from loopeng.registry import spec_for
-from loopeng.settings import load_settings, require_api_key
 from loopeng.usage import CallUsage, UsageLedger
 from loopeng.verify.verifiers import VerifyResult, verify
 from loopeng.warehouse.connect import QueryTimeout, run_sql
@@ -65,6 +65,10 @@ class VerifiedRun:
     termination: TerminationReason
     item_id: str | None = None
     ledger: UsageLedger = field(default_factory=UsageLedger)
+    # The exact version string the API reported. Carried for the same reason
+    # `AgentRun` carries it: a silent model swap invalidates every comparison in
+    # the run and is invisible anywhere else.
+    served_model: str | None = None
 
     @property
     def final(self) -> VerifiedAttempt | None:
@@ -127,7 +131,7 @@ def run_verified(
     *,
     warehouse: Path,
     rules: tuple[str, ...] = (),
-    role: str = "worker",
+    role: str = "agent",
     level: str = "L3",
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
     budget_usd: float = DEFAULT_BUDGET_USD,
@@ -139,11 +143,8 @@ def run_verified(
 ) -> VerifiedRun:
     """Run one question until a query both executes and passes the verifiers."""
     spec = spec_for(role)
-    if client is None:
-        import anthropic
-
-        settings = load_settings()
-        client = anthropic.Anthropic(api_key=require_api_key(settings).get_secret_value())
+    system = render_prompt(level)
+    served_model: str | None = None
 
     ledger = UsageLedger()
     attempts: list[VerifiedAttempt] = []
@@ -158,34 +159,33 @@ def run_verified(
             break
 
         try:
-            response = client.messages.create(
-                model=spec.model_id,
-                messages=_build_messages(question, level, plain_attempts, role=role),
-                **spec.request_kwargs,
+            completion = complete(
+                spec,
+                system=system,
+                messages=build_turns(question, plain_attempts),
+                client=client,
             )
-            usage = CallUsage.from_response(spec.model_id, response, outcome="ok")
-            raw = "".join(
-                block.text for block in response.content if getattr(block, "type", None) == "text"
-            )
-            sql = extract_sql(raw)
+            usage = completion.usage
+            served_model = completion.served_model
+            sql = extract_sql(completion.text)
         except Exception as exc:  # noqa: BLE001 - a failed call still billed
             # Same triage as Level 1, from the same function. This loop runs the sweep
             # cells, so it is the one where retrying a rejected credential is most
             # expensive: 50 items x 3 attempts per cell, all guaranteed to fail.
-            fatal, message = triage_call_failure(exc, role=role, model_id=spec.model_id)
+            fatal, message = triage_call_failure(exc, spec=spec)
             usage = CallUsage(spec.model_id, "error")
             ledger.record(usage)
             failed = Attempt(n=n, sql="", rows=None, error=message, usage=usage)
             plain_attempts.append(failed)
             attempts.append(VerifiedAttempt(failed, VerifyResult(())))
             if fatal is not None:
-                log.error("model_call_refused", attempt=n, termination=str(fatal),
+                log.error("model_call_refused", attempt=n, termination=fatal,
                           error=str(exc))
-                termination = fatal
+                termination = TerminationReason(fatal)
                 break
             # Retryable, so wait before going round. See agent.loop.
             if n < max_attempts:
-                sleeper(retry_after_seconds(exc, n))
+                sleeper(backoff_delay(exc, n))
             continue
 
         ledger.record(usage)
@@ -238,4 +238,5 @@ def run_verified(
         termination=termination,
         item_id=item_id,
         ledger=ledger,
+        served_model=served_model,
     )

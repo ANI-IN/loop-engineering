@@ -171,7 +171,6 @@ def test_the_targets_are_the_modules_that_render():
         views / "verify.py",
         views / "agent.py",
         views / "intervention.py",
-        views / "exhibit.py",
         REPO_ROOT / "demos" / "04_hill_climbing_loop" / "charts.py",
     }
 

@@ -361,7 +361,7 @@ Everything the sweep needs is in place. Next, for a few cents:
     uv run python demos/04_hill_climbing_loop/sweep.py --profile smoke --foreground
 
 Then render the charts with your run beside the committed baseline:
-    uv run python demos/04_hill_climbing_loop/charts.py --reference=compare
+    uv run python demos/04_hill_climbing_loop/charts.py
 ```
 
 **What to observe:** the two model lines report the tokens each call actually used, and

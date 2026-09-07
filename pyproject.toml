@@ -9,7 +9,12 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    # The judge only. Kept a first-class dependency rather than an extra: the judge
+    # is required, so a checkout that cannot import this cannot run a session.
     "anthropic>=0.120.2",
+    # The agent and the reference arm — the two roles that produce every measured
+    # number. See src/loopeng/registry.py for why the split is what it is.
+    "openai>=2.14.0",
     "duckdb>=1.5.5",
     "gradio>=6.20.0",
     "langsmith>=0.10.11",
@@ -48,10 +53,14 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    # Imported by seven tests (anthropic's transport, for scripted error responses)
-    # and declared in no group — it resolved as a transitive of anthropic, so the
-    # suite depended on another package's dependency choice staying still.
+    # Both vendors' transports, for scripted error responses in tests/fakes.py.
+    # The two SDKs are on DIFFERENT major versions of the same library — anthropic
+    # on httpx, openai on httpx2 — and an error object built with the wrong one is
+    # rejected by the SDK's constructor. Declared explicitly rather than left to
+    # resolve transitively: the suite would otherwise depend on two other packages'
+    # dependency choices staying still, and they have already diverged once.
     "httpx>=0.28.1",
+    "httpx2>=2.12.0",
     "pytest>=9.1.1",
     "pytest-timeout>=2.4.0",
     "ruff>=0.16.0",

@@ -40,7 +40,7 @@ def run_level2_pass(
     items: list[GoldItem],
     warehouse: Path,
     *,
-    role: str = "worker",
+    role: str = "agent",
     level: str = "L3",
     max_attempts: int = 3,
     budget_usd: float = 0.15,

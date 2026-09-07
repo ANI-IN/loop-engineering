@@ -10,8 +10,8 @@ from pathlib import Path
 
 import structlog
 
+from loopeng.registry import spec_for
 from loopeng.sweep.fingerprint import RunFingerprint, resolve_run_id
-from loopeng.sweep.reference import as_measured
 from loopeng.sweep.runner import (
     CONCURRENCY_PER_MODEL,
     DEVELOPMENT,
@@ -38,17 +38,22 @@ GRID_CAP_USD = 8.0
 # printed as provenance that resolves to nothing is the same defect class as the lint
 # rule that pointed at a moved path and scanned nothing: it looks like evidence and is
 # not checkable. The file is committed now, and a test asserts every repo-relative path
-# named in this module and in `sweep/reference.py` exists on disk.
-NOISE_FLOOR_PATH = Path("results/noise_floor_haiku_default_temp.json")
+# named in this module exists on disk.
+NOISE_FLOOR_PATH = Path("results/noise_floor_seeded.json")
 NOISE_FLOOR_CITATION = str(NOISE_FLOOR_PATH)
 
 
-def _noise_floor_reading() -> str:
+def _noise_floor_reading(role: str = "agent") -> str:
     """The floor, read out of the cited file rather than restated beside it.
 
     A number typed next to its own citation is the failure this whole section is warning
     the room about. If the file is absent the line says so instead of quoting a figure
     nothing on disk supports.
+
+    The UPPER BOUND is what gets quoted, not the point estimate. The measurement saw no
+    verdict flips in eight items, and "0%" would be a claim the data cannot support —
+    the honest reading of zero-in-eight is that the rate is somewhere below the Wilson
+    bound, which is wide enough to matter.
     """
     if not NOISE_FLOOR_PATH.is_file():
         return (
@@ -56,12 +61,20 @@ def _noise_floor_reading() -> str:
             f"be shown. The claim above stands or falls on that file."
         )
     body = json.loads(NOISE_FLOOR_PATH.read_text())
-    # The stored rate carries "computed HH:MM today", which is false on a cited figure in
-    # exactly the way the reference module exists to prevent. Rewritten with the same
-    # helper the frozen cells use, so a citation cannot look like a fresh computation.
+    model_id = spec_for(role).model_id
+    entry = body["models"].get(model_id)
+    if entry is None:
+        return (
+            f"NOT MEASURED — {NOISE_FLOOR_PATH} carries no reading for {model_id}, "
+            f"which is the model this run uses. The floor below is unknown."
+        )
     return (
-        f"{body['what']}: {body['n_disagreed']} of {body['n_items_identical_path']} "
-        f"that took an identical path disagreed — {as_measured(body['disagreement_rate'])}"
+        f"{entry['verdict_flips']} of {entry['n_items']} items changed verdict across "
+        f"{entry['n_runs']} runs, so the flip rate is at most "
+        f"{entry['verdict_flip_ci95'][1] * 100:.0f}% (Wilson 95%, measured "
+        f"{body['measured_on']}). Its SQL TEXT differed on "
+        f"{entry['sql_text_differs']} of {entry['n_items']} — the wording moves freely "
+        f"while the answer holds, so no comparison here may key on query identity."
     )
 
 
@@ -70,7 +83,7 @@ def detectable_effect(n: int, baseline: float = 0.5) -> float:
 
     Normal approximation, two-sided alpha=0.05, power 0.80, unpaired worst case. It is
     an approximation and is labelled as one, but the point stands whichever exact form
-    is used: at n=50 the sweep can only see large effects.
+    is used: at this n the sweep can only see large effects.
     """
     z_alpha, z_beta = 1.959963984540054, 0.8416212335729143
     return (z_alpha + z_beta) * (2 * baseline * (1 - baseline) / n) ** 0.5
@@ -84,41 +97,47 @@ PRE-REGISTRATION — stated before the first cell runs
 {'=' * 78}
 
 HEADLINE (what this sweep is for)
-  L0 one-shot vs L0 loop, WITHIN each model.
-  Within-model, so the temperature asymmetry below does not touch it.
+  RULES WITHHELD vs RULES GIVEN, within each model.
+  The same model, the same items, the same loop — the only thing that changes is
+  whether the business rules are in the prompt. Within-model, so nothing about the
+  models' relative capability enters it.
+
+  This is the primary result, and it was chosen before the cells ran because a
+  pilot on a subset already showed it to be the largest effect this design
+  produces. Naming it afterwards would be choosing the winner and calling it a
+  hypothesis.
 
 NAMED SECONDARY
-  Haiku + loop vs Sonnet one-shot, at each completeness level.
-  Cross-model: underpowered AND carries the variance asymmetry. See below.
+  Cheap-plus-loops vs frontier-bare, on the held-out items.
+  Underpowered by construction — see below — and reported with its discordant-pair
+  count so the basis of the claim is visible rather than implied.
+
+  It is PRE-COMMITTED to one of three readings, written down in docs/ before the
+  data landed: reached, approached-but-short, or no-gap-to-close. A null here is a
+  finding and will be shown as one. No subgroup will be gone looking for.
 
 EXPLICITLY UNDERPOWERED
-  Haiku vs Sonnet at L0. Reported, not concluded from.
-
-NOT DETECTABLE AT ANY AFFORDABLE n — AND ALREADY MEASURED
-  The L3 delta between one-shot and loop. Measured 2026-07-29 before this sweep:
-  29/42 correct one-shot against 26/44 looped, McNemar exact p=0.219. Six discordant
-  pairs, every one of them on an item where the loop never intervened — so that
-  disagreement was the model's own run-to-run variance, not the loop.
-  This sweep is not expected to resolve it and will not claim to.
+  Anything that turns on a handful of discordant pairs. Exact McNemar needs six
+  discordant pairs all in one direction to clear alpha=0.05, and nine if one pair
+  runs the other way. Reported, not concluded from.
 
 DETECTABLE EFFECT SIZE AT n={n_items}
   ~{mde * 100:.0f} percentage points (two-sided alpha=0.05, power 0.80, normal
   approximation, worst case at p=0.5). Differences smaller than that are not
   measurable here, whatever the bars look like.
-  The items are 10 clusters of 5, so the true figure is WORSE than this.
+  The items are clustered by pattern, so the true figure is WORSE than this.
 
-THE TEMPERATURE ASYMMETRY — applies to every cross-model comparison
-  Haiku is pinned to temperature=0. Sonnet 5 rejects non-default sampling parameters
-  with a 400, so it cannot be pinned.
-  Haiku's error bars carry SAMPLING noise only.
-  Sonnet's carry SAMPLING noise PLUS run-to-run variance.
-  The bars are therefore NOT comparable across models. Within-model they are.
+THE SAMPLING FLOOR — applies to every comparison
+  Neither scoring model can be pinned to a fixed temperature: both reject a
+  non-default sampling parameter with a 400. `seed` is pinned instead, which the
+  vendor documents as best-effort rather than a guarantee, so a residual remains
+  and it is measured rather than assumed away.
   Measured justification: {NOISE_FLOOR_CITATION}
   {_noise_floor_reading()}
 
 REPLICATES
-  3 on BOTH L0 loop cells. They measure two different determinism floors, and neither
-  model's floor may be asserted for the other. Reported separately.
+  Reported separately per model. Two models' determinism floors are two different
+  measurements and neither may be asserted for the other.
 {'=' * 78}
 """
 

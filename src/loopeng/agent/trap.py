@@ -44,13 +44,13 @@ log = structlog.get_logger(__name__)
 CONCURRENCY_PER_MODEL = 8
 
 # (role, level). The spec level is the variable; the model is held constant.
-ARMS: tuple[tuple[str, str], ...] = (("worker", "L3"), ("worker", "L0"))
+ARMS: tuple[tuple[str, str], ...] = (("agent", "L3"), ("agent", "L0"))
 
 ARM_LABELS = {
-    ("worker", "L3"): "Haiku · rules given (L3)",
-    ("worker", "L0"): "Haiku · rules withheld (L0)",
-    ("frontier", "L3"): "Sonnet · rules given (L3)",
-    ("frontier", "L0"): "Sonnet · rules withheld (L0)",
+    ("agent", "L3"): "Haiku · rules given (L3)",
+    ("agent", "L0"): "Haiku · rules withheld (L0)",
+    ("reference", "L3"): "Sonnet · rules given (L3)",
+    ("reference", "L0"): "Sonnet · rules withheld (L0)",
 }
 
 
@@ -233,8 +233,8 @@ def run_trap(
 # patterns write joins and CASE expressions. An unrepresentative sample is a worse
 # input to a spend cap than a small one.
 _CALIBRATION = {
-    "worker": {"input": 700, "output": 210},
-    "frontier": {"input": 1100, "output": 260},
+    "agent": {"input": 700, "output": 210},
+    "reference": {"input": 1100, "output": 260},
 }
 
 

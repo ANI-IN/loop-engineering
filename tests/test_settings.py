@@ -1,12 +1,15 @@
 """Configuration, and the one case 583 green tests never covered.
 
-Every passing case in this file used to set BOTH keys, so nothing ever exercised the
-journey a first-time cloner actually takes: drop `ANTHROPIC_API_KEY` into `.env` and
-run. That path raised `MissingCredential: LANGSMITH_API_KEY is not set`, while README
-§10 promised LangSmith was optional. A suite that only tests the fully-configured case
+Every passing case in this file used to set every key, so nothing ever exercised the
+journey a first-time cloner actually takes: fill in the model credentials and run.
+That path raised `MissingCredential: LANGSMITH_API_KEY is not set`, while README §10
+promised LangSmith was optional. A suite that only tests the fully-configured case
 cannot see a required setting that should not be.
 
-`test_only_the_anthropic_key_is_required` is that case, and CI runs the same assertion.
+`test_the_two_model_keys_are_required_and_langsmith_is_not` is that case, and CI runs
+the same assertion. The set of required credentials changed with the model policy —
+there are two vendors now — but the property being defended did not: LangSmith is
+advisory, and a checkout that can call models must start without it.
 """
 
 import pytest
@@ -15,6 +18,7 @@ from loopeng.settings import MissingCredential, load_settings
 
 
 def test_missing_key_names_the_env_var_and_the_fix(tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)  # no .env here
@@ -29,24 +33,34 @@ def test_missing_key_names_the_env_var_and_the_fix(tmp_path, monkeypatch):
     assert "LANGSMITH_API_KEY" not in message
 
 
-def test_only_the_anthropic_key_is_required(tmp_path, monkeypatch):
-    """THE regression test for the journey. One key in, settings load.
+def test_the_two_model_keys_are_required_and_langsmith_is_not(tmp_path, monkeypatch):
+    """THE regression test for the journey. Both model keys in, settings load.
+
+    Both are required because both are load-bearing in different ways: OPENAI runs
+    the agent and the reference arm, so without it nothing is measured at all;
+    ANTHROPIC runs the judge, which gates nothing but is the only thing that can say
+    WHY a failure happened. LangSmith is advisory and must stay optional — §15
+    promises it is never the system of record, and a required key would make that
+    promise false.
 
     `chdir` into an empty directory so the repo's own `.env` cannot supply the
     LangSmith key and make this pass for the wrong reason.
     """
     monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-test")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
     monkeypatch.chdir(tmp_path)
 
     settings = load_settings()
 
+    assert settings.openai_api_key.get_secret_value() == "sk-openai-test"
     assert settings.anthropic_api_key.get_secret_value() == "sk-test"
     assert settings.langsmith_api_key is None
 
 
 def test_the_langsmith_key_is_still_read_when_present(tmp_path, monkeypatch):
     """Optional is not ignored. A key that is set must still reach the client."""
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-test")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
     monkeypatch.setenv("LANGSMITH_API_KEY", "ls-test")
     monkeypatch.chdir(tmp_path)
@@ -58,6 +72,7 @@ def test_the_langsmith_key_is_still_read_when_present(tmp_path, monkeypatch):
 
 
 def test_settings_are_frozen(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-test")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
     monkeypatch.setenv("LANGSMITH_API_KEY", "ls-test")
     settings = load_settings()
@@ -70,6 +85,7 @@ def test_settings_are_frozen(monkeypatch):
 
 def test_secrets_do_not_render(monkeypatch):
     """A key must never reach a log line or a projector."""
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-test")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-secret-value")
     monkeypatch.setenv("LANGSMITH_API_KEY", "ls-test")
     settings = load_settings()
@@ -85,22 +101,58 @@ def test_the_default_still_refuses_a_checkout_with_no_key(monkeypatch, tmp_path)
     """The whole point of making the field optional was to change nothing here."""
     from loopeng.settings import MissingCredential, load_settings
 
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)  # no .env to read
 
     with pytest.raises(MissingCredential) as exc:
         load_settings()
-    assert "ANTHROPIC_API_KEY is not set" in str(exc.value)
+    assert "OPENAI_API_KEY is not set" in str(exc.value)
     assert ".env.example" in str(exc.value)
+
+
+def test_every_missing_credential_is_reported_not_just_the_first(monkeypatch, tmp_path):
+    """An operator half an hour from a session should learn about both keys in one
+    run, rather than fixing one, re-running, and discovering the other."""
+    from loopeng.settings import MissingCredential, load_settings
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(MissingCredential) as exc:
+        load_settings()
+    message = str(exc.value)
+    assert "OPENAI_API_KEY is not set" in message
+    assert "ANTHROPIC_API_KEY is not set" in message
+
+
+def test_each_missing_credential_says_what_it_is_for(monkeypatch, tmp_path):
+    """"Set this key" is not a reason. The agent key stops every measurement; the
+    judge key stops triage and gates nothing — different consequences, so the fix
+    text says which."""
+    from loopeng.settings import MissingCredential, load_settings
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(MissingCredential) as exc:
+        load_settings()
+    message = str(exc.value)
+    assert "agent and the reference arm" in message
+    assert "triages failures and never gates" in message
 
 
 def test_opting_out_loads_settings_without_a_key(monkeypatch, tmp_path):
     from loopeng.settings import load_settings
 
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
 
     settings = load_settings(require_credential=False)
+    assert settings.openai_api_key is None
     assert settings.anthropic_api_key is None
     assert settings.warehouse_seed  # ordinary configuration is readable
 
@@ -108,14 +160,15 @@ def test_opting_out_loads_settings_without_a_key(monkeypatch, tmp_path):
 def test_opting_out_does_not_buy_the_right_to_spend(monkeypatch, tmp_path):
     """A path that skipped the door still cannot make a request, and the failure
     text is identical to the one the door would have produced."""
-    from loopeng.settings import MissingCredential, load_settings, require_api_key
+    from loopeng.settings import MissingCredential, load_settings, require_key
 
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-judge-present")
     monkeypatch.chdir(tmp_path)
 
     settings = load_settings(require_credential=False)
     with pytest.raises(MissingCredential) as deferred:
-        require_api_key(settings)
+        require_key(settings, "openai")
 
     with pytest.raises(MissingCredential) as upfront:
         load_settings()
@@ -133,25 +186,41 @@ def test_require_credential_is_keyword_only():
     assert param.default is True
 
 
-def test_every_client_construction_goes_through_require_api_key():
+def test_every_client_construction_goes_through_require_key():
     """The credential check is enforced at the sites that spend, not by convention.
 
-    Reading `settings.anthropic_api_key` directly is how a future client site
-    would quietly accept `None` and fail with an SDK error naming nothing.
+    Reading a `*_api_key` field directly is how a future client site would quietly
+    accept `None` and fail with an SDK error naming nothing. There are two vendors
+    now, so there are two ways to make that mistake.
     """
     import pathlib
 
     root = pathlib.Path(__file__).resolve().parent.parent / "src" / "loopeng"
     offenders = []
     for path in root.rglob("*.py"):
-        if path.name == "settings.py":
+        if path.name in ("settings.py", "langsmith_ds.py"):
             continue
         for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-            if "anthropic_api_key" in line:
+            if "openai_api_key" in line or "anthropic_api_key" in line:
                 offenders.append(f"{path.relative_to(root)}:{n}")
     assert not offenders, (
-        f"read the credential directly instead of via require_api_key(): {offenders}"
+        f"read a credential directly instead of via require_key(): {offenders}"
     )
+
+
+def test_exactly_one_module_builds_a_vendor_client():
+    """Two vendors is two SDKs, and a second construction site is a second place to
+    forget the credential check, the version check, or the usage convention."""
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parent.parent / "src" / "loopeng"
+    builders = sorted(
+        str(path.relative_to(root))
+        for path in root.rglob("*.py")
+        if "openai.OpenAI(" in path.read_text(encoding="utf-8")
+        or "anthropic.Anthropic(" in path.read_text(encoding="utf-8")
+    )
+    assert builders == ["providers.py"], f"clients are constructed in {builders}"
 
 
 # ---- the setup path the documentation actually tells people to take ----------
@@ -173,8 +242,10 @@ def test_copying_the_example_env_file_produces_a_loadable_config(tmp_path, monke
     example = pathlib.Path(__file__).resolve().parent.parent / ".env.example"
     shutil.copy(example, tmp_path / ".env")
     with (tmp_path / ".env").open("a", encoding="utf-8") as handle:
+        handle.write("OPENAI_API_KEY=sk-openai-not-a-real-key\n")
         handle.write("ANTHROPIC_API_KEY=sk-test-not-a-real-key\n")
 
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
 

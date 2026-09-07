@@ -71,22 +71,23 @@ jobs:
         # missing path passes while enforcing nothing.
         run: uv run python tools/lint_no_numbers.py
 
-      - name: A checkout with only ANTHROPIC_API_KEY can start
+      - name: A checkout with only the two model keys can start
         # THE check whose absence let a required LANGSMITH_API_KEY ship green. README §10
         # promised LangSmith was optional; settings.py declared it required; every passing
-        # test in tests/test_settings.py set BOTH keys, so nothing exercised the journey a
+        # test in tests/test_settings.py set every key, so nothing exercised the journey a
         # first-time cloner actually takes.
         #
-        # A dummy value, and no network. This must never need a real key — it runs in the
+        # Dummy values, and no network. This must never need a real key — it runs in the
         # offline job on purpose, because that is where the property belongs.
         env:
+          OPENAI_API_KEY: ci-dummy-not-a-real-key
           ANTHROPIC_API_KEY: ci-dummy-not-a-real-key
         run: |
           uv run python -c "
           from loopeng.settings import load_settings
           s = load_settings()
           assert s.langsmith_api_key is None, 'LANGSMITH_API_KEY leaked in from somewhere'
-          print('settings load with ANTHROPIC_API_KEY alone')"
+          print('settings load with the two model keys alone')"
 
       - name: Offline test suite
         # No ANTHROPIC_API_KEY is set anywhere in this job, on purpose. If a test ever
@@ -100,22 +101,3 @@ jobs:
         run: |
           uv run pytest --collect-only -q -m live 2>&1 | tail -3
 
-      - name: README images render, and are current with the reference data
-        # Renders to a scratch directory, NOT over assets/.
-        #
-        # An earlier version re-rendered in place and ran `git diff --exit-code`,
-        # which cannot work: matplotlib rasterises through FreeType, so a Linux
-        # runner does not reproduce the pixels a macOS machine committed. That
-        # step failed for a reason that had nothing to do with the images being
-        # wrong.
-        #
-        # Byte-identity within an environment, and freshness against the source
-        # data, are both asserted by tests/test_readme_charts.py — which is
-        # platform-independent because it compares manifest hashes rather than
-        # pixels.
-        run: uv run python tools/render_readme_charts.py "${RUNNER_TEMP}/assets-check"
-
-      - name: Space sync stages cleanly and refuses what it must
-        # Pushes nothing. Asserts .env, live cell output and generated databases
-        # cannot reach a public Space, and that the Space frontmatter still builds.
-        run: uv run python tools/sync_hf.py --dry-run

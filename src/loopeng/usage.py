@@ -12,12 +12,19 @@ produced a usable answer would drop exactly the retries a loop exists to make.
 reads well below it, so `input_tokens` alone is wrong on any cell where caching
 fires. The four fields are kept separately all the way to the report.
 
+**Reading a response is NOT this module's job.** It used to be: `from_response`
+lived here and read Anthropic's field names off a response object. That stopped being
+correct the moment a second vendor arrived, because the two report cached input with
+opposite conventions and one of them needs arithmetic. Extraction now lives in
+`loopeng.providers`, next to the code that knows which vendor answered, and this
+module stays a record of counts that have already been read.
+
 Dollars carry `source="estimated"` forever — see loopeng.pricing.
 """
 
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
-from typing import Any, Literal
+from typing import Literal
 
 from loopeng.pricing import prices_for
 
@@ -42,27 +49,6 @@ class CallUsage:
     output_tokens: int = 0
     cache_creation_input_tokens: int = 0
     cache_read_input_tokens: int = 0
-
-    @classmethod
-    def from_response(cls, model_id: str, response: Any, outcome: Outcome = "ok") -> "CallUsage":
-        """Read all four fields off an Anthropic response.
-
-        The cache fields are absent on responses where caching was not in play, and
-        the SDK reports them as None rather than 0, so both are normalised here.
-        """
-        usage = getattr(response, "usage", None)
-
-        def field_value(name: str) -> int:
-            return int(getattr(usage, name, 0) or 0)
-
-        return cls(
-            model_id=model_id,
-            outcome=outcome,
-            input_tokens=field_value("input_tokens"),
-            output_tokens=field_value("output_tokens"),
-            cache_creation_input_tokens=field_value("cache_creation_input_tokens"),
-            cache_read_input_tokens=field_value("cache_read_input_tokens"),
-        )
 
     @property
     def total_tokens(self) -> int:

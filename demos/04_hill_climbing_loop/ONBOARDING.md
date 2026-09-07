@@ -720,7 +720,7 @@ Now ask for the stored baseline explicitly, which is what somebody reproducing t
 published result would do.
 
 ```bash
-uv run python demos/04_hill_climbing_loop/charts.py --reference compare
+uv run python demos/04_hill_climbing_loop/charts.py compare
 ```
 
 **Expected output:** twelve rows, each prefixed `REFERENCE`, each ending

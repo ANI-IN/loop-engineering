@@ -44,49 +44,43 @@ from loopeng.prompts import LEVELS
 from loopeng.sweep.chart_model import COST_CAPTION, DIAL_CAPTION
 from loopeng.sweep.diff import named_secondary_deltas
 from loopeng.sweep.orchestrator import load_all
-from loopeng.sweep.reference import MEASURED_ON, MODE_FILL, load_reference
 from loopeng.sweep.runner import SWEEP_DIR
-from loopeng.views.chrome import NOT_MEASURED, live_or_reference_badge, stamp
+from loopeng.views.chrome import NOT_MEASURED, stamp
 
-ROW_HEADER = "| | cell | silent-error rate | cost |\n|---|---|---|---|\n"
+ROW_HEADER = "| cell | silent-error rate | cost |\n|---|---|---|\n"
 
 
 def _rows(cells: list[dict]) -> str:
     if not cells:
         return "_No cells yet. Start the sweep and this fills in._"
     body = []
-    for cell in sorted(cells, key=lambda c: (c.get("reference", False), c["role"],
-                                             c["level"], c["mode"], c["replicate"])):
-        badge = live_or_reference_badge(cell.get("reference", False),
-                                        cell.get("measured_on", MEASURED_ON))
+    for cell in sorted(cells, key=lambda c: (c["role"], c["level"], c["mode"],
+                                             c["replicate"])):
         rate = cell["silent_error_rate"]
         if not cell["complete"] and cell["rate_value"] is None:
             rate = NOT_MEASURED
         cost = cell["cost_usd"]["value"]
         money = f"est. ${cost:.4f}" if cost else "—"
-        body.append(f"| {badge} | {cell['label']} | {rate} | {money} |")
+        body.append(f"| {cell['label']} | {rate} | {money} |")
     return ROW_HEADER + "\n".join(body)
 
 
 AWAITING = "_awaiting measurement — this row fills in when both cells land_"
 
 CROSS_MODEL_NOTE = (
-    "**Read the badges before reading the numbers.** Where one side is LIVE and the "
-    "other REFERENCE, this compares a measurement taken minutes ago against one taken "
-    "weeks ago, on a model that cannot be pinned to a fixed temperature. That is a real "
-    "comparison and a weaker one than it looks — which is why the reading column carries "
-    "no p-value: this is the NAMED SECONDARY, it is cross-model, and "
-    "`loopeng.sweep.diff` refuses to put a significance claim across that asymmetry. "
-    "Every reading below is computed from the cells on this screen; none is stored."
+    "**This row is cross-model, and the reading column carries no p-value on purpose.** "
+    "Both models are reasoning models that reject a pinned temperature, so both arms "
+    "carry run-to-run variance and a significance claim across them would be reading "
+    "two noisy arms as if only one thing had changed. `loopeng.sweep.diff` refuses it "
+    "in code rather than in a caption. Every reading below is computed from the cells "
+    "on this screen; none is stored."
 )
 
 
 def _badged(cell: dict | None) -> str:
     if cell is None:
         return NOT_MEASURED
-    badge = live_or_reference_badge(cell.get("reference", False),
-                                   cell.get("measured_on", MEASURED_ON))
-    return f"{badge} {cell['silent_error_rate']}"
+    return cell["silent_error_rate"]
 
 
 def _comparison(cells: list[dict]) -> str:
@@ -98,32 +92,31 @@ def _comparison(cells: list[dict]) -> str:
     by_key = {c["key"]: c for c in cells}
     derived = {c.key_a: c for c in named_secondary_deltas(cells)}
     lines = [
-        "### Haiku + loop vs Sonnet one-shot — the pre-registered NAMED SECONDARY",
+        "### Cheap + loop vs frontier one-shot — the pre-registered NAMED SECONDARY",
         "",
-        "| level | Haiku + loop | Sonnet one-shot | reading |",
+        "| level | cheap + loop | frontier one-shot | reading |",
         "|---|---|---|---|",
     ]
     # Levels come from the prompt module, so a new level appears here without anyone
     # remembering to add a row — and cannot appear with a stored conclusion attached.
     for level in LEVELS:
-        haiku = by_key.get(f"worker_{level}_loop_r0")
-        sonnet = by_key.get(f"frontier_{level}_one_shot_r0")
-        comparison = derived.get(f"worker_{level}_loop_r0")
+        cheap = by_key.get(f"agent_{level}_loop_r0")
+        frontier = by_key.get(f"reference_{level}_one_shot_r0")
+        comparison = derived.get(f"agent_{level}_loop_r0")
         # The row renders whether or not the cells landed. What it must never do is fill
         # the gap with a conclusion nothing on screen supports.
         reading = comparison.reading() if comparison else AWAITING
-        lines.append(f"| {level} | {_badged(haiku)} | {_badged(sonnet)} | {reading} |")
+        lines.append(f"| {level} | {_badged(cheap)} | {_badged(frontier)} | {reading} |")
     lines.append("")
     lines.append(CROSS_MODEL_NOTE)
     return "\n".join(lines)
 
 
-def build_dial_app(sweep_dir: Path = SWEEP_DIR, *,
-                   reference_mode: str = MODE_FILL) -> gr.Blocks:
+def build_dial_app(sweep_dir: Path = SWEEP_DIR) -> gr.Blocks:
     def _refresh(_state):
+        # Cells on disk, and nothing else. There is no stored set to fold in: every
+        # figure this view can draw was computed by the run that is being watched.
         cells = load_all(sweep_dir)
-        cells = cells + load_reference(mode=reference_mode,
-                                       live_keys={c["key"] for c in cells})
         done = [c for c in cells if c["complete"]]
         landed = sum(c["rate_n"] for c in done)
         return (

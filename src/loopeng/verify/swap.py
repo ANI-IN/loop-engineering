@@ -74,7 +74,7 @@ def run_swap(
     warehouse: Path,
     *,
     level: str = "L3",
-    role: str = "worker",
+    role: str = "agent",
     max_attempts: int = 3,
     client=None,
 ) -> dict:

@@ -73,7 +73,7 @@ def build_agent_app(warehouse: Path, queue_path: Path = store.DEFAULT_QUEUE_PATH
 
         with gr.Row():
             question = gr.Textbox(label="Question", scale=4, lines=2)  # layout: row split
-            role = gr.Dropdown(["worker", "frontier"], value="worker", label="Model")
+            role = gr.Dropdown(["agent", "reference"], value="agent", label="Model")
             attempts = gr.Number(value=DEFAULT_MAX_ATTEMPTS, label="Max attempts", precision=0)
         with gr.Row():
             ask = gr.Button("Run it here", variant="primary")
@@ -136,7 +136,7 @@ def build_run_app(warehouse: Path, level: str = "L3") -> gr.Blocks:
 
         with gr.Row():
             question = gr.Textbox(label="Question", scale=4)  # layout: row split
-            role = gr.Dropdown(["worker", "frontier"], value="worker", label="Model")
+            role = gr.Dropdown(["agent", "reference"], value="agent", label="Model")
             attempts = gr.Number(value=DEFAULT_MAX_ATTEMPTS, label="Max attempts",
                                  precision=0)
         go = gr.Button("Run", variant="primary")

@@ -125,34 +125,34 @@ def role_colour(role: str, *, pending: bool = False) -> str:
     is more important to see than which model is running."""
     if pending:
         return PENDING_COLOUR
-    return WORKER_COLOUR if role == "worker" else FRONTIER_COLOUR
+    return WORKER_COLOUR if role == "agent" else FRONTIER_COLOUR
 
 
 def ordered_cells(cells) -> list[dict]:
-    """Sorted explicitly, with `reference` LAST.
+    """Sorted explicitly.
 
     File order is not a contract and a reordered input must not silently produce a
-    different image. `reference` sorts last so a stored cell lands beside its live
-    counterpart rather than in a block at the bottom — see the module docstring.
+    different image.
     """
     return sorted(
         cells,
-        key=lambda c: (c["role"], c["level"], c["mode"], c["replicate"],
-                       bool(c.get("reference"))),
+        key=lambda c: (c["role"], c["level"], c["mode"], c["replicate"]),
     )
 
 
 def label_for(cell: dict) -> str:
-    """The row label. A stored cell says so in the label, not only in a caption."""
-    if cell.get("reference"):
-        return f"REFERENCE · {cell['label']}"
+    """The row label.
+
+    There is no stored-cell case any more. Every cell a chart draws was computed in
+    the run that is drawing it, so there is nothing here to badge — and the badge is
+    gone rather than left as an unreachable branch, because a rendering path that can
+    still express "stored" is a rendering path that can still show one.
+    """
     return cell["label"]
 
 
 def note_for(cell: dict, text: str) -> str:
-    """The value printed beside a bar, with the date on it when it is stored."""
-    if cell.get("reference"):
-        return f"{text}  [REFERENCE, measured {cell.get('measured_on', 'date unknown')}]"
+    """The value printed beside a bar. Live, like everything else."""
     return text
 
 
@@ -254,7 +254,6 @@ def bar_rows(cells, *, metric: str) -> list[dict]:
             "hi": hi,
             "n": cell.get("rate_n", 0),
             "pending": pending,
-            "reference": bool(cell.get("reference")),
             "note": note,
         })
     return rows

@@ -63,8 +63,21 @@ class TraceResult:
 
 
 def credential() -> str | None:
-    """The LangSmith key, or None when it is not configured. Never the secret in a log."""
-    key = load_settings().langsmith_api_key
+    """The LangSmith key, or None when it is not configured. Never the secret in a log.
+
+    `require_credential=False` is load-bearing, not a shortcut. Whether tracing is
+    available has nothing to do with whether the MODEL credentials are present, and
+    reading them through the strict door would make a checkout with no OpenAI key
+    report `OPENAI_API_KEY is not set` from the tracing subsystem — a message naming
+    the wrong variable, raised by the one part of the system §15 promises is never
+    load-bearing.
+
+    That coupling arrived with the second vendor: `load_settings()` began requiring
+    two keys instead of one, and this call site inherited a dependency it never
+    wanted. The check has not moved; every site that SPENDS still goes through
+    `require_key`.
+    """
+    key = load_settings(require_credential=False).langsmith_api_key
     return key.get_secret_value() if key is not None else None
 
 

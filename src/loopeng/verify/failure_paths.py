@@ -113,7 +113,7 @@ def run_scenario(scenario: Scenario, question: str, rules: tuple[str, ...], ware
         question,
         warehouse=warehouse,
         rules=rules,
-        role="worker",
+        role="agent",
         level="L3",
         max_attempts=scenario.max_attempts,
         budget_usd=scenario.budget_usd,

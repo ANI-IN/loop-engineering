@@ -6,52 +6,47 @@ the offline steps run for real — they are free.
 """
 
 from pathlib import Path
-from types import SimpleNamespace
 
-import anthropic
-import httpx
 import pytest
 
 from loopeng import preflight
 from loopeng.registry import REGISTRY
+from tests.fakes import FakeClient, refusal
 
 
-class StubClient:
-    """Answers every role. Records which model ids it was asked for."""
+class StubRoster:
+    """One client per role, in that role's own vendor shape.
+
+    The three roles no longer share a vendor, so a single stub cannot serve them all
+    — which is exactly the mistake this roster exists to make impossible. It hands
+    `preflight.run` a `client_for` callable and remembers every client it built, so a
+    test can still ask what was sent and to which model.
+    """
 
     def __init__(self):
-        self.models = []
-        self.kwargs = []
-        self.messages = SimpleNamespace(create=self._create)
+        self.clients = {}
 
-    def _create(self, *, model, messages, **kwargs):
-        self.models.append(model)
-        self.kwargs.append(kwargs)
-        return SimpleNamespace(
-            content=[SimpleNamespace(type="text", text="ok")],
-            usage=SimpleNamespace(input_tokens=12, output_tokens=2),
-        )
+    def __call__(self, role):
+        client = FakeClient(role, ["ok"], tokens={"input_tokens": 12,
+                                                  "output_tokens": 2})
+        self.clients[role] = client
+        return client
 
+    @property
+    def models(self):
+        return [client.spec.model_id for client in self.clients.values()]
 
-class RefusingClient:
-    def __init__(self, status=401, exc=None):
-        self.calls = 0
-        self._exc = exc or anthropic.AuthenticationError(
-            "Error code: 401 - invalid x-api-key",
-            response=httpx.Response(
-                status, request=httpx.Request("POST", "https://api.anthropic.com/")
-            ),
-            body=None,
-        )
-        self.messages = SimpleNamespace(create=self._create)
-
-    def _create(self, **kwargs):
-        self.calls += 1
-        raise self._exc
+    def kwargs_for(self, role):
+        """The request kwargs this role was actually called with, minus the body."""
+        request = dict(self.clients[role].requests[0])
+        for key in ("model", "messages", "system"):
+            request.pop(key, None)
+        return request
 
 
 @pytest.fixture
 def keyed(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-test")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
     monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
@@ -62,12 +57,14 @@ def keyed(tmp_path, monkeypatch):
 
 
 def test_a_missing_key_fails_by_name(tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
 
     step = preflight.check_key()
 
     assert not step.ok
+    assert "OPENAI_API_KEY" in step.detail
     assert "ANTHROPIC_API_KEY" in step.detail
     assert ".env" in step.fix
 
@@ -79,7 +76,8 @@ def test_the_key_value_is_never_printed(keyed):
 
 
 def test_a_missing_langsmith_key_does_not_fail_preflight(keyed):
-    """The journey this whole part exists for: one key in, preflight proceeds."""
+    """The journey this whole part exists for: the model keys in, preflight
+    proceeds. LangSmith is advisory and must never be a gate."""
     assert preflight.check_key().ok
 
 
@@ -87,49 +85,64 @@ def test_a_missing_langsmith_key_does_not_fail_preflight(keyed):
 
 
 def test_every_registry_role_is_probed(keyed):
-    client = StubClient()
-    result = preflight.run(client=client)
+    roster = StubRoster()
+    result = preflight.run(client_for=roster)
 
-    assert set(client.models) == {spec.model_id for spec in REGISTRY.values()}
+    assert set(roster.models) == {spec.model_id for spec in REGISTRY.values()}
     assert all(step.ok for step in result.steps), [s.render() for s in result.steps]
 
 
+def test_each_role_is_probed_through_its_own_vendors_surface(keyed):
+    """One client cannot serve three roles across two vendors. A probe that used the
+    wrong SDK surface would fail for a reason the sweep would never hit — or worse,
+    pass while exercising nothing."""
+    roster = StubRoster()
+    preflight.run(client_for=roster)
+
+    assert set(roster.clients) == set(REGISTRY)
+    for role, client in roster.clients.items():
+        assert client.spec.provider == REGISTRY[role].provider
+
+
 def test_the_probe_uses_the_kwargs_the_registry_declares(keyed):
-    """Not a simplified call. temperature=0 is legal on Haiku and a 400 on Sonnet 5,
-    so a probe that dropped the kwargs could pass where the sweep fails."""
-    from loopeng.usage import UsageLedger
+    """Not a simplified call. `temperature=0` is legal on the judge and a 400 on both
+    scoring roles, so a probe that dropped the kwargs could pass on an account where
+    the sweep fails."""
+    roster = StubRoster()
+    preflight.run(client_for=roster)
 
-    client = StubClient()
-    preflight.check_model("worker", client=client, ledger=UsageLedger())
-
-    sent = client.kwargs[0]
-    assert sent["temperature"] == REGISTRY["worker"].request_kwargs["temperature"]
+    for role, spec in REGISTRY.items():
+        assert roster.kwargs_for(role) == dict(spec.request_kwargs), role
 
 
-def test_the_frontier_max_tokens_is_left_alone(keyed):
-    """It caps thinking plus output there. Squeezing it would invent a failure the
-    sweep would never hit."""
-    from loopeng.usage import UsageLedger
+def test_no_role_has_its_output_budget_trimmed_for_the_probe(keyed):
+    """On the reference role the cap covers reasoning plus the query together, so
+    squeezing it would invent a failure the sweep would never hit. It is simpler and
+    more honest to trim nothing: "reply with one word" produces few tokens either
+    way, so the saving was never real."""
+    roster = StubRoster()
+    preflight.run(client_for=roster)
 
-    client = StubClient()
-    preflight.check_model("frontier", client=client, ledger=UsageLedger())
-
-    assert client.kwargs[0]["max_tokens"] == REGISTRY["frontier"].request_kwargs["max_tokens"]
+    for role, spec in REGISTRY.items():
+        sent = roster.kwargs_for(role)
+        for cap in ("max_tokens", "max_completion_tokens"):
+            if cap in spec.request_kwargs:
+                assert sent[cap] == spec.request_kwargs[cap], role
 
 
 def test_a_refused_call_reports_the_fix_not_a_traceback(keyed):
     from loopeng.usage import UsageLedger
 
-    client = RefusingClient()
-    step = preflight.check_model("worker", client=client, ledger=UsageLedger())
+    client = FakeClient("agent", raises=lambda: refusal("credential"))
+    step = preflight.check_model("agent", client=client, ledger=UsageLedger())
 
     assert not step.ok
     assert client.calls == 1
-    assert "ANTHROPIC_API_KEY" in step.fix
+    assert "OPENAI_API_KEY" in step.fix
 
 
 def test_the_probe_cost_is_reported_and_estimated(keyed):
-    result = preflight.run(client=StubClient())
+    result = preflight.run(client_for=StubRoster())
     line = result.cost_line()
 
     assert line.startswith("est. $"), "dollars are a price table, never a measurement"
@@ -141,6 +154,7 @@ def test_the_probe_cost_is_reported_and_estimated(keyed):
 
 def test_the_offline_steps_run_without_any_key(tmp_path, monkeypatch):
     """A cloner with a typo still finds out the rest of the checkout is sound."""
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
 
@@ -173,12 +187,13 @@ def test_the_rule_surface_reports_both_columns():
 
 
 def test_a_passing_run_prints_the_next_command(keyed):
-    rendered = preflight.render(preflight.run(client=StubClient()))
+    rendered = preflight.render(preflight.run(client_for=StubRoster()))
     assert preflight.NEXT_COMMAND in rendered
     assert "--reference=compare" in rendered
 
 
 def test_a_failing_run_says_nothing_was_spent(tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
 

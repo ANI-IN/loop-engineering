@@ -224,7 +224,7 @@ uv run python demos/04_hill_climbing_loop/sweep.py --profile delivery --foregrou
 uv run python demos/04_hill_climbing_loop/charts.py
 
 # force the stored cells in — drawn hatched and dated — even with nothing of your own
-uv run python demos/04_hill_climbing_loop/charts.py --reference compare
+uv run python demos/04_hill_climbing_loop/charts.py compare
 ```
 
 `--reference` defaults to `auto`: the stored baseline appears once this run has a cell

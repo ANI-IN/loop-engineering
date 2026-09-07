@@ -1,7 +1,6 @@
 """The five views. Rendering only — no view makes a model call in these tests."""
 
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -10,6 +9,7 @@ from loopeng.agent.trap import TrapState, run_trap
 from loopeng.gold.build import build_gold
 from loopeng.views import agent, chrome, dial, render, verify
 from loopeng.warehouse.connect import ensure_warehouse
+from tests.fakes import FakeClient
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -24,18 +24,15 @@ def items(warehouse):
     return build_gold(warehouse)
 
 
-class ScriptedClient:
-    def __init__(self, sql):
-        self.calls = 0
-        self._sql = sql
-        self.messages = SimpleNamespace(create=self._create)
+def ScriptedClient(replies):
+    """The agent's client, in whichever vendor shape the registry says it needs.
 
-    def _create(self, **kwargs):
-        self.calls += 1
-        return SimpleNamespace(
-            content=[SimpleNamespace(type="text", text=self._sql)],
-            usage=SimpleNamespace(input_tokens=10, output_tokens=5),
-        )
+    The vendor-shaped double lives in `tests/fakes.py`. This file used to carry its
+    own Anthropic-shaped stub; eight modules did, all subtly different, which was
+    survivable with one vendor and is not with two — a per-module stub is a
+    per-module chance to fake the wrong SDK surface and prove nothing.
+    """
+    return FakeClient("agent", replies)
 
 
 # ---- TRAP: reveal is a state flip, tested against the VIEW ------------------
@@ -46,7 +43,7 @@ def test_reveal_makes_zero_model_calls_through_the_view(items, warehouse):
     whole wall-clock again and lose the room, so the view path needs it too."""
     subset = items[:3]
     client = ScriptedClient("SELECT COUNT(*) FROM products")
-    state = run_trap(subset, warehouse, arms=(("worker", "L3"),), client=client)
+    state = run_trap(subset, warehouse, arms=(("agent", "L3"),), client=client)
     after_run = client.calls
 
     ids = [i.item_id for i in subset]
@@ -63,7 +60,7 @@ def test_visible_failures_look_identical_to_successes_before_reveal(items, wareh
     key for that row."""
     subset = items[:2]
     client = ScriptedClient("SELECT * FROM no_such_table")
-    state = run_trap(subset, warehouse, arms=(("worker", "L3"),), client=client)
+    state = run_trap(subset, warehouse, arms=(("agent", "L3"),), client=client)
     ids = [i.item_id for i in subset]
 
     before = render.grid(state, ids)
@@ -79,7 +76,7 @@ def test_visible_failures_look_identical_to_successes_before_reveal(items, wareh
 
 def test_the_scoreboard_is_withheld_not_absent(items, warehouse):
     client = ScriptedClient("SELECT COUNT(*) FROM products")
-    state = run_trap(items[:2], warehouse, arms=(("worker", "L3"),), client=client)
+    state = run_trap(items[:2], warehouse, arms=(("agent", "L3"),), client=client)
     assert "withheld, not deferred" in render.scoreboard(state)
 
 
@@ -113,45 +110,21 @@ def test_an_empty_queue_says_so_rather_than_rendering_nothing(tmp_path):
 # ---- DIAL: live and reference are visibly different -------------------------
 
 
-def test_a_reference_row_is_badged_and_dated():
-    cells = [{
-        "key": "frontier_L3_one_shot_r0", "label": "Sonnet · L3 · one-shot",
-        "role": "frontier", "level": "L3", "mode": "one_shot", "replicate": 0,
-        "complete": True, "rate_value": 0.0, "rate_n": 43,
-        "silent_error_rate": "0.0% (n=43, measured 2026-07-29)",
-        "cost_usd": {"value": 0.36}, "reference": True, "measured_on": "2026-07-29",
-    }]
-    rendered = dial._rows(cells)
-    assert "REFERENCE" in rendered
-    assert "2026-07-29" in rendered
-    assert "LIVE" not in rendered
-
-
-def test_a_live_row_is_badged_live():
+def test_a_row_carries_its_cell_and_its_rate():
     cells = [{
         "key": "worker_L3_loop_r0", "label": "Haiku · L3 · loop",
-        "role": "worker", "level": "L3", "mode": "loop", "replicate": 0,
+        "role": "agent", "level": "L3", "mode": "loop", "replicate": 0,
         "complete": True, "rate_value": 0.09, "rate_n": 43,
         "silent_error_rate": "9.3% (n=43, computed 20:11 today)",
-        "cost_usd": {"value": 0.1}, "reference": False,
+        "cost_usd": {"value": 0.1},
     }]
-    assert "LIVE" in dial._rows(cells)
-
-
-def test_the_comparison_carries_the_badge_on_both_sides():
-    """At delivery this compares a live line against a frozen one, and that has to be
-    visible on the row rather than in a caption read afterwards."""
-    def cell(key, role, level, mode, is_ref):
-        return {"key": key, "label": key, "role": role, "level": level, "mode": mode,
-                "replicate": 0, "complete": True, "rate_value": 0.1, "rate_n": 40,
-                "silent_error_rate": "10.0% (n=40)", "cost_usd": {"value": 0.1},
-                "reference": is_ref, "measured_on": "2026-07-29"}
-
-    cells = [cell("worker_L0_loop_r0", "worker", "L0", "loop", False),
-             cell("frontier_L0_one_shot_r0", "frontier", "L0", "one_shot", True)]
-    rendered = dial._comparison(cells)
-    assert "LIVE" in rendered and "REFERENCE" in rendered
-    assert "Read the badges before reading the numbers" in rendered
+    rendered = dial._rows(cells)
+    assert "Haiku · L3 · loop" in rendered
+    assert "9.3% (n=43" in rendered
+    assert "REFERENCE" not in rendered, (
+        "there is no stored-cell case any more; a row that can still say REFERENCE "
+        "is a row that can still show one"
+    )
 
 
 def test_a_row_with_no_cells_says_awaiting_measurement_not_a_conclusion():
@@ -184,12 +157,12 @@ def test_the_reading_is_derived_from_the_cells_on_screen():
                            "ran_and_returned": True} for n in range(10)]}
 
     rendered = dial._comparison([
-        cell("worker_L0_loop_r0", "worker", "L0", "loop", True),
-        cell("frontier_L0_one_shot_r0", "frontier", "L0", "one_shot", False),
+        cell("agent_L0_loop_r0", "agent", "L0", "loop", True),
+        cell("reference_L0_one_shot_r0", "reference", "L0", "one_shot", False),
     ])
 
-    assert "No p-value" in rendered
-    assert "cannot be pinned" in rendered
+    assert "no p-value" in rendered.lower()
+    assert "reject a pinned temperature" in rendered
     assert "p=0.039" not in rendered
 
 

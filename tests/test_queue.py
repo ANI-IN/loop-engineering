@@ -1,11 +1,11 @@
 """The Level 3 queue: atomic claim, and the omissions that are deliberate."""
 
-from types import SimpleNamespace
 
 import pytest
 
 from loopeng.queue import store, worker
 from loopeng.warehouse.connect import ensure_warehouse
+from tests.fakes import FakeClient
 
 
 @pytest.fixture
@@ -18,18 +18,15 @@ def warehouse(tmp_path_factory):
     return ensure_warehouse(tmp_path_factory.mktemp("wh") / "w.duckdb", seed=20260729)
 
 
-class ScriptedClient:
-    def __init__(self, sql):
-        self.calls = 0
-        self._sql = sql
-        self.messages = SimpleNamespace(create=self._create)
+def ScriptedClient(replies):
+    """The agent's client, in whichever vendor shape the registry says it needs.
 
-    def _create(self, **kwargs):
-        self.calls += 1
-        return SimpleNamespace(
-            content=[SimpleNamespace(type="text", text=self._sql)],
-            usage=SimpleNamespace(input_tokens=10, output_tokens=5),
-        )
+    The vendor-shaped double lives in `tests/fakes.py`. This file used to carry its
+    own Anthropic-shaped stub; eight modules did, all subtly different, which was
+    survivable with one vendor and is not with two — a per-module stub is a
+    per-module chance to fake the wrong SDK surface and prove nothing.
+    """
+    return FakeClient("agent", replies)
 
 
 def test_enqueue_then_claim_round_trips(con):

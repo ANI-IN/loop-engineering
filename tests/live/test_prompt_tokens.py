@@ -1,33 +1,39 @@
-"""The true token count, against the real tokenizer.
+"""Does prompt caching actually fire? Measured against the real API.
 
-The offline guard in tests/test_prompt_rendering.py uses a character-count proxy so
-it stays free. This is the one that actually knows.
+The offline tests in tests/test_caching.py assert the request SHAPE — that the static
+block is in the system turn and does not vary with the question or the retry history.
+That is the property caching depends on, and it is checkable for free.
+
+This is the one that confirms the vendor agrees. It calls twice with an identical
+prefix and reads `cached_tokens` off the second response. A shape that looks right and
+a cache that never fires is exactly the failure the old threshold-based probe could
+not see, because it never asked the API anything.
 """
 
 import pytest
 
-from loopeng.api_probes import CACHE_MINIMUM_TOKENS, probe_prompt_tokens
+from loopeng.api_probes import probe_cache_behaviour
 
 
 @pytest.mark.live
-def test_l3_still_clears_sonnets_cache_minimum():
-    """Measured 1037 against a minimum of 1024 on 2026-07-29: thirteen tokens. If a
-    rule was trimmed, this is where it shows up rather than in a cost column nobody
-    reads until after the workshop."""
-    probe = probe_prompt_tokens()
-    l3 = probe["frontier"]["L3"]
-    assert l3["cacheable"], (
-        f"L3 is {l3['tokens']} tokens against a {CACHE_MINIMUM_TOKENS['claude-sonnet-5']} "
-        "minimum — caching now fires in zero cells of eight"
+def test_the_agents_prefix_is_actually_served_from_cache():
+    """The agent runs every loop, every retry and every sweep cell, so this is the
+    token class that dominates the bill. If it stops caching, the cost-per-correct
+    -answer chart moves and nothing else says why."""
+    probe = probe_cache_behaviour(roles=("agent",))
+    l3 = probe["agent"]["L3"]
+    assert l3["hit"], (
+        f"the agent's L3 prefix is {l3['prefix_tokens']} tokens and none of it came "
+        f"back as cached. Either it is below the vendor's minimum cacheable length, "
+        f"or something per-item has drifted into the system block."
     )
 
 
 @pytest.mark.live
-def test_the_measured_asymmetry_still_holds():
-    """Sonnet caches L3, Haiku does not. Recorded so a later prompt change that
-    happens to fix or worsen it is visible rather than silent."""
-    probe = probe_prompt_tokens()
-    assert probe["frontier"]["L3"]["cacheable"] is True
-    assert probe["worker"]["L3"]["cacheable"] is False
-    assert probe["frontier"]["L0"]["cacheable"] is False
-    assert probe["worker"]["L0"]["cacheable"] is False
+def test_both_prompt_levels_cache():
+    """L0 is the shorter prefix and therefore the one that would fall below a minimum
+    first. The trap runs both levels, so a level that silently stops caching would
+    make the two arms differ in price for a reason that is not the experiment."""
+    probe = probe_cache_behaviour(roles=("agent",))
+    assert probe["agent"]["L0"]["hit"]
+    assert probe["agent"]["L3"]["hit"]

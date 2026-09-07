@@ -36,7 +36,7 @@ def _rules_for(question: str, warehouse: Path) -> tuple[str, ...]:
     return ()
 
 
-def process_one(con, warehouse: Path, *, role: str = "worker", level: str = "L3",
+def process_one(con, warehouse: Path, *, role: str = "agent", level: str = "L3",
                 client=None) -> store.QueueRow | None:
     """Claim and answer one row. Returns the row, or None if the queue was empty."""
     row = store.claim(con)

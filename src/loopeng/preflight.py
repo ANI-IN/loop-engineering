@@ -30,21 +30,23 @@ from pathlib import Path
 import structlog
 
 from loopeng.gold.build import build_gold, clustering_summary
-from loopeng.registry import REGISTRY
-from loopeng.settings import MissingCredential, Settings, load_settings, require_api_key
+from loopeng.providers import build_client, complete, triage_call_failure
+from loopeng.registry import REGISTRY, key_variable_for_role, spec_for
+from loopeng.settings import MissingCredential, Settings, load_settings
 from loopeng.usage import CallUsage, UsageLedger
 from loopeng.verify.probes import run_probes
 from loopeng.warehouse.connect import ensure_warehouse
 
 log = structlog.get_logger(__name__)
 
-KEY_VAR = "ANTHROPIC_API_KEY"
-
-# Enough output for a model to say one word. Applied only where max_tokens is not also
-# the thinking budget — see the module docstring.
-PROBE_MAX_TOKENS = 16
+# Every credential a live path needs, in the order they are reported.
+KEY_VARS = tuple(dict.fromkeys(key_variable_for_role(role) for role in sorted(REGISTRY)))
 
 PROBE_PROMPT = "Reply with the single word: ok"
+
+# A system block, because that is where every real call puts its static prefix. A
+# probe that omitted it would exercise a request shape the sweep never sends.
+PROBE_SYSTEM = "You are a preflight check. Answer in one word."
 
 NEXT_COMMAND = (
     "uv run python demos/04_hill_climbing_loop/sweep.py --profile smoke --foreground"
@@ -103,48 +105,48 @@ class Preflight:
 
 
 def check_key(settings=None) -> Step:
-    """Is the one required credential present? Nothing else here works without it."""
+    """Are the required credentials present? Nothing live works without both.
+
+    `load_settings` reports EVERY missing credential rather than the first, so an
+    operator half an hour from a session fixes both keys in one pass instead of
+    fixing one, re-running, and finding the other.
+    """
+    listed = " and ".join(KEY_VARS)
     try:
         settings = settings or load_settings()
     except MissingCredential as exc:
         return Step(
-            f"{KEY_VAR} is set", False, str(exc).splitlines()[0],
-            fix=f"cp .env.example .env, then add {KEY_VAR}=<your key>. "
+            f"{listed} are set", False, "; ".join(str(exc).splitlines()),
+            fix=f"cp .env.example .env, then fill in {listed}. "
                 f"LANGSMITH_API_KEY is optional and can stay empty.",
         )
-    return Step(f"{KEY_VAR} is set", True, "present (value never printed or logged)")
+    return Step(f"{listed} are set", True, "present (values never printed or logged)")
 
 
-def check_model(role: str, *, client, ledger: UsageLedger) -> Step:
+def check_model(role: str, *, client=None, ledger: UsageLedger) -> Step:
     """One minimal call, with the registry's own kwargs. Records what it billed."""
-    spec = REGISTRY[role]
-    kwargs = dict(spec.request_kwargs)
-    # Trimmed only where it is purely an output cap. On the frontier role max_tokens
-    # also bounds adaptive thinking, and squeezing it there is how a preflight invents
-    # a failure the sweep would never have hit.
-    if role == "worker":
-        kwargs["max_tokens"] = PROBE_MAX_TOKENS
+    spec = spec_for(role)
+    client = build_client(spec) if client is None else client
 
     try:
-        response = client.messages.create(
-            model=spec.model_id,
+        completion = complete(
+            spec,
+            system=PROBE_SYSTEM,
             messages=[{"role": "user", "content": PROBE_PROMPT}],
-            **kwargs,
+            client=client,
         )
     except Exception as exc:  # noqa: BLE001 - the verdict IS the exception
-        from loopeng.agent.loop import triage_call_failure
-
-        _termination, message = triage_call_failure(exc, role=role, model_id=spec.model_id)
+        _termination, message = triage_call_failure(exc, spec=spec)
         ledger.record(CallUsage(spec.model_id, "error"))
         return Step(
             f"{role} model reachable ({spec.model_id})", False,
             f"the call was refused: {type(exc).__name__}", fix=message,
         )
 
-    usage = ledger.record(CallUsage.from_response(spec.model_id, response))
+    usage = ledger.record(completion.usage)
     return Step(
         f"{role} model reachable ({spec.model_id})", True,
-        f"answered with the registry's own kwargs "
+        f"answered with the registry's own kwargs as {completion.served_model} "
         f"({usage.input_tokens} in, {usage.output_tokens} out)",
     )
 
@@ -203,26 +205,28 @@ def check_rule_surface() -> Step:
     )
 
 
-def run(*, client=None) -> Preflight:
-    """Every check, in order, with the network ones skipped when the key is absent."""
+def run(*, client_for=None) -> Preflight:
+    """Every check, in order, with the network ones skipped when a key is absent.
+
+    `client_for` is a callable taking a role and returning that role's client, not a
+    single client. The three roles no longer share a vendor, so one client cannot
+    serve them all — an OpenAI client handed the judge would fail on a surface it
+    does not have. Defaults to building each one from the registry.
+    """
     result = Preflight()
 
     key_step = result.add(check_key())
     if key_step.ok:
         settings = load_settings()
-        if client is None:
-            import anthropic
-
-            client = anthropic.Anthropic(
-                api_key=require_api_key(settings).get_secret_value()
-            )
         for role in sorted(REGISTRY):
+            client = client_for(role) if client_for else None
             result.add(check_model(role, client=client, ledger=result.ledger))
         warehouse_path, seed = settings.warehouse_path, settings.warehouse_seed
     else:
         result.add(Step(
             "models reachable", False, "not attempted — there is no key to call with",
-            fix=f"Set {KEY_VAR} first; the offline checks below still ran.",
+            fix=f"Set {' and '.join(KEY_VARS)} first; the offline checks below "
+                f"still ran.",
         ))
         # Read off the Settings class rather than retyped, because instantiating it is
         # what just failed. A second copy of the defaults here would drift from the

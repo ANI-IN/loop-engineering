@@ -1,17 +1,17 @@
-from types import SimpleNamespace
-
-import anthropic
 import pytest
 
 from loopeng.agent.loop import (
     Attempt,
     TerminationReason,
+    build_turns,
     extract_sql,
     run_question,
 )
 from loopeng.usage import CallUsage
 from loopeng.views.render import render_attempt_timeline
 from loopeng.warehouse.connect import ensure_warehouse
+from tests.fakes import FakeClient as _VendorClient
+from tests.fakes import refusal
 
 
 @pytest.fixture(scope="module")
@@ -19,32 +19,19 @@ def warehouse(tmp_path_factory):
     return ensure_warehouse(tmp_path_factory.mktemp("wh") / "w.duckdb", seed=20260729)
 
 
-class FakeClient:
-    """Returns canned SQL in order. Counts calls, so tests can assert on spend."""
+def FakeClient(replies, usage=None):
+    """The agent's client, in whichever vendor shape the registry says it needs.
 
-    def __init__(self, replies, usage=None):
-        self._replies = list(replies)
-        self.calls = 0
-        self._usage = usage or {"input_tokens": 100, "output_tokens": 50}
-        self.messages = SimpleNamespace(create=self._create)
-
-    def _create(self, **kwargs):
-        self.calls += 1
-        text = self._replies[min(self.calls - 1, len(self._replies) - 1)]
-        return SimpleNamespace(
-            content=[SimpleNamespace(type="text", text=text)],
-            usage=SimpleNamespace(**self._usage),
-        )
+    The double itself lives in `tests/fakes.py` and is built from the registry, so a
+    role change moves every test's stub with it. This file used to define its own
+    Anthropic-shaped one; that was fine with a single vendor and is a trap with two.
+    """
+    return _VendorClient("agent", replies, tokens=usage)
 
 
-class ExplodingClient:
-    def __init__(self):
-        self.calls = 0
-        self.messages = SimpleNamespace(create=self._create)
-
-    def _create(self, **kwargs):
-        self.calls += 1
-        raise RuntimeError("overloaded_error")
+def ExplodingClient():
+    """A failure with no vendor class at all — the broad retryable arm."""
+    return _VendorClient("agent", raises=RuntimeError("overloaded_error"))
 
 
 # ---- SQL extraction ---------------------------------------------------------
@@ -138,10 +125,12 @@ def test_every_termination_reason_is_reachable():
       no_progress  test_no_progress_fires_on_identical_sql
       credential   test_a_rejected_credential_stops_after_one_call
       bad_request  test_a_malformed_request_is_not_a_credential_problem
+      model_unavailable
+                   test_a_model_that_does_not_resolve_stops_after_one_call
     """
     assert {r.value for r in TerminationReason} == {
         "success", "max_attempts", "budget", "no_progress",
-        "credential", "bad_request",
+        "credential", "bad_request", "model_unavailable",
     }
 
 
@@ -224,12 +213,13 @@ def test_all_four_token_classes_survive_into_the_run(warehouse):
         usage={
             "input_tokens": 10,
             "output_tokens": 20,
-            "cache_creation_input_tokens": 30,
-            "cache_read_input_tokens": 40,
+            "cache_write_tokens": 30,
+            "cached_tokens": 40,
         },
     )
     run = run_question("q", warehouse=warehouse, client=client)
     totals = run.ledger.totals()
+    assert totals["input_tokens"] == 10, "the cached portion must not be counted twice"
     assert totals["cache_creation_input_tokens"] == 30
     assert totals["cache_read_input_tokens"] == 40
 
@@ -244,7 +234,7 @@ def test_a_timeout_is_recorded_as_an_error_not_a_success(warehouse):
 
 
 def test_attempt_reports_whether_it_executed():
-    usage = CallUsage("claude-haiku-4-5", "ok")
+    usage = CallUsage("gpt-5.6-luna", "ok")
     assert Attempt(1, "SELECT 1", [[1]], None, usage).executed
     assert not Attempt(1, "SELECT 1", None, "boom", usage).executed
 
@@ -256,31 +246,13 @@ def test_attempt_reports_whether_it_executed():
 # problem. At 4 cells x 50 items that is ~200 calls with a guaranteed zero return.
 
 
-def _http_response(status: int):
-    import httpx
-
-    return httpx.Response(status, request=httpx.Request("POST", "https://api.anthropic.com/v1/messages"))
-
-
-class RefusingClient:
-    """Raises one specific anthropic error on every call. Counts them."""
-
-    def __init__(self, exc):
-        self.calls = 0
-        self._exc = exc
-        self.messages = SimpleNamespace(create=self._create)
-
-    def _create(self, **kwargs):
-        self.calls += 1
-        raise self._exc
+def RefusingClient(exc):
+    """Raises one specific vendor error on every call. Counts them."""
+    return _VendorClient("agent", raises=exc)
 
 
 def _auth_error():
-    return anthropic.AuthenticationError(
-        "Error code: 401 - {'error': {'message': 'invalid x-api-key'}}",
-        response=_http_response(401),
-        body=None,
-    )
+    return refusal("credential")
 
 
 def test_a_rejected_credential_stops_after_one_call(warehouse):
@@ -297,9 +269,9 @@ def test_the_credential_failure_names_the_variable_and_the_fix(warehouse):
     client = RefusingClient(_auth_error())
     run = run_question("q", warehouse=warehouse, client=client)
 
-    assert "ANTHROPIC_API_KEY" in run.error
+    assert "OPENAI_API_KEY" in run.error
     assert ".env" in run.error
-    assert "demos/00_preflight/check.py" in run.error
+    assert "preflight" in run.error
 
 
 def test_a_model_failure_is_never_reported_as_a_database_failure(warehouse):
@@ -315,40 +287,59 @@ def test_a_model_failure_is_never_reported_as_a_database_failure(warehouse):
 
 def test_a_403_is_also_non_retryable(warehouse):
     """The account cannot call this model. Retrying does not change the account."""
-    client = RefusingClient(
-        anthropic.PermissionDeniedError("Error code: 403", response=_http_response(403), body=None)
-    )
+    import httpx2
+    import openai
+
+    client = RefusingClient(openai.PermissionDeniedError(
+        "Error code: 403",
+        response=httpx2.Response(403, request=httpx2.Request(
+            "POST", "https://api.openai.com/v1/chat/completions")),
+        body=None,
+    ))
     run = run_question("q", warehouse=warehouse, client=client, max_attempts=3)
 
     assert client.calls == 1
     assert run.termination is TerminationReason.CREDENTIAL
 
 
+def test_a_model_that_does_not_resolve_stops_after_one_call(warehouse):
+    """A 404 means the id is not served to this account — a retired or renamed model
+    looks exactly like this. It used to fall into the broad retryable arm and be
+    retried three times per item, which at sweep scale is several hundred calls that
+    could not have worked."""
+    client = RefusingClient(refusal("model_unavailable"))
+    run = run_question("q", warehouse=warehouse, client=client, max_attempts=3)
+
+    assert client.calls == 1
+    assert run.termination is TerminationReason.MODEL_UNAVAILABLE
+    assert "registry.py" in run.error
+    assert "gpt-5.6-luna" in run.error
+
+
 def test_a_malformed_request_is_not_a_credential_problem(warehouse):
     """400 is the class Sonnet 5 returns for a pinned temperature. It stops, but it
     stops under its own name and points at the registry rather than at .env."""
-    client = RefusingClient(
-        anthropic.BadRequestError(
-            "Error code: 400 - temperature is not supported",
-            response=_http_response(400),
-            body=None,
-        )
-    )
+    client = RefusingClient(refusal("bad_request"))
     run = run_question("q", warehouse=warehouse, client=client, max_attempts=3)
 
     assert client.calls == 1
     assert run.termination is TerminationReason.BAD_REQUEST
     assert "registry.py" in run.error
-    assert "ANTHROPIC_API_KEY" not in run.error
+    assert "OPENAI_API_KEY" not in run.error
 
 
 def test_a_transient_failure_is_still_retried(warehouse):
     """The triage must not have turned every failure into a stop. A 529 is exactly
     the case a retry loop exists for."""
-    client = RefusingClient(
-        anthropic.APIStatusError("Error code: 529 - overloaded",
-                                 response=_http_response(529), body=None)
-    )
+    import httpx2
+    import openai
+
+    client = RefusingClient(openai.APIStatusError(
+        "Error code: 529 - overloaded",
+        response=httpx2.Response(529, request=httpx2.Request(
+            "POST", "https://api.openai.com/v1/chat/completions")),
+        body=None,
+    ))
     run = run_question("q", warehouse=warehouse, client=client, max_attempts=3)
 
     assert client.calls == 3
@@ -385,41 +376,35 @@ def test_a_failed_model_call_contributes_no_turns_to_the_retry():
     RateLimitError: 429 — return a corrected query", which is false twice: there
     is no query to correct, and the complaint is attributed to the wrong system.
     """
-    from loopeng.agent.loop import _build_messages
-
     history = [_attempt(1, "", "RateLimitError: 429 rate limited", "rate_limit")]
-    messages = _build_messages("q", "L3", history, role="worker")
+    turns = build_turns("q", history)
 
-    assert len(messages) == 1, "a call that never happened added turns to the prompt"
-    assert not any(m["content"] == "" for m in messages), "empty assistant turn"
-    assert not any("That query failed" in str(m["content"]) for m in messages)
-    assert not any("RateLimitError" in str(m["content"]) for m in messages)
+    assert len(turns) == 1, "a call that never happened added turns to the prompt"
+    assert not any(t["content"] == "" for t in turns), "empty assistant turn"
+    assert not any("That query failed" in str(t["content"]) for t in turns)
+    assert not any("RateLimitError" in str(t["content"]) for t in turns)
 
 
 def test_a_query_that_really_failed_is_still_fed_back():
     """The fix must not silence genuine database errors — that is the whole loop."""
-    from loopeng.agent.loop import _build_messages
-
     history = [_attempt(1, "SELECT nope FROM orders", 'Binder Error: no "nope"', "ok")]
-    messages = _build_messages("q", "L3", history, role="worker")
+    turns = build_turns("q", history)
 
-    assert len(messages) == 3
-    assert messages[1] == {"role": "assistant", "content": "SELECT nope FROM orders"}
-    assert "That query failed with" in messages[2]["content"]
-    assert 'Binder Error: no "nope"' in messages[2]["content"]
+    assert len(turns) == 3
+    assert turns[1] == {"role": "assistant", "content": "SELECT nope FROM orders"}
+    assert "That query failed with" in turns[2]["content"]
+    assert 'Binder Error: no "nope"' in turns[2]["content"]
 
 
 def test_a_failed_call_between_two_real_attempts_drops_only_itself():
-    from loopeng.agent.loop import _build_messages
-
     history = [
         _attempt(1, "SELECT 1", "Binder Error: first", "ok"),
         _attempt(2, "", "APIStatusError: 529 overloaded", "transient"),
         _attempt(3, "SELECT 2", "Binder Error: third", "ok"),
     ]
-    messages = _build_messages("q", "L3", history, role="worker")
+    turns = build_turns("q", history)
 
-    assert len(messages) == 5, "one prompt turn plus two real attempts"
-    assert not any("529" in str(m["content"]) for m in messages)
-    assert "Binder Error: first" in messages[2]["content"]
-    assert "Binder Error: third" in messages[4]["content"]
+    assert len(turns) == 5, "one question turn plus two real attempts"
+    assert not any("529" in str(t["content"]) for t in turns)
+    assert "Binder Error: first" in turns[2]["content"]
+    assert "Binder Error: third" in turns[4]["content"]

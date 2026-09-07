@@ -69,7 +69,7 @@ def test_the_call_ceiling_stops_it():
     budget = LiveBudget(read_config({**FULL, "LOOPENG_LIVE_MAX_CALLS": "2"}))
     budget.check()
     for _ in range(2):
-        budget.record(CallUsage("claude-haiku-4-5", "ok", input_tokens=1, output_tokens=1))
+        budget.record(CallUsage("gpt-5.6-luna", "ok", input_tokens=1, output_tokens=1))
     with pytest.raises(BudgetExhausted) as exc:
         budget.check()
     assert "call ceiling" in str(exc.value)
@@ -78,7 +78,7 @@ def test_the_call_ceiling_stops_it():
 def test_the_spend_ceiling_stops_it():
     budget = LiveBudget(read_config({**FULL, "LOOPENG_LIVE_CEILING_USD": "0.001"}))
     budget.check()
-    budget.record(CallUsage("claude-sonnet-5", "ok", input_tokens=100_000, output_tokens=100_000))
+    budget.record(CallUsage("gpt-6-astra", "ok", input_tokens=100_000, output_tokens=100_000))
     with pytest.raises(BudgetExhausted):
         budget.check()
 
@@ -87,14 +87,14 @@ def test_a_failed_call_still_counts_against_the_ceiling():
     """Tokens bill whether or not the answer shipped, so an errored call must not be
     a free retry."""
     budget = LiveBudget(read_config({**FULL, "LOOPENG_LIVE_MAX_CALLS": "1"}))
-    budget.record(CallUsage("claude-haiku-4-5", "error", input_tokens=500, output_tokens=200))
+    budget.record(CallUsage("gpt-5.6-luna", "error", input_tokens=500, output_tokens=200))
     with pytest.raises(BudgetExhausted):
         budget.check()
 
 
 def test_the_meter_renders_both_bounds():
     budget = LiveBudget(read_config(FULL))
-    budget.record(CallUsage("claude-haiku-4-5", "ok", input_tokens=1000, output_tokens=500))
+    budget.record(CallUsage("gpt-5.6-luna", "ok", input_tokens=1000, output_tokens=500))
     rendered = budget.render()
     assert "est. $" in rendered and "of $0.50" in rendered and "1 of" in rendered
 

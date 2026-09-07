@@ -191,10 +191,6 @@ def reference_stamp(measured_on: str, n: int | None = None) -> str:
     )
 
 
-def live_or_reference_badge(is_reference: bool, measured_on: str = "") -> str:
-    if is_reference:
-        return f"<span class='ref-badge'>REFERENCE ({measured_on})</span>"
-    return "<span class='live-badge'>LIVE</span>"
 
 
 def lan_url(port: int | None) -> str | None:

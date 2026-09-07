@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from loopeng.api_probes import CACHE_MINIMUM_TOKENS, cacheability_findings
+from loopeng.api_probes import cacheability_findings
 from loopeng.gate0 import REFUNDS_NET_CAVEAT, TEMPLATING_DISCLOSURE, rule_coverage
 from loopeng.gold.build import build_gold
 from loopeng.warehouse.connect import ensure_warehouse
@@ -56,32 +56,53 @@ def test_coverage_lists_every_pattern(items):
 
 
 def test_asymmetric_caching_is_flagged_explicitly():
-    """A prompt between the two minimums caches on Sonnet and silently does not on
-    Haiku. Silent is the problem: no error, just a different cost per cell."""
+    """A prefix that caches on one scoring role and not the other is a cost confound
+    on the exact comparison the session turns on. Silent is the problem: no error,
+    just a different price per cell."""
     probe = {
-        "frontier": {"L0": {"cacheable": False}, "L3": {"cacheable": True}},
-        "worker": {"L0": {"cacheable": False}, "L3": {"cacheable": False}},
+        "reference": {"L0": {"hit": False}, "L3": {"hit": True}},
+        "agent": {"L0": {"hit": False}, "L3": {"hit": False}},
     }
     findings = " ".join(cacheability_findings(probe))
-    assert "L3 caches on frontier but NOT on worker" in findings
+    assert "L3 caches on reference but NOT on agent" in findings
     assert "silent" in findings.lower()
     assert "cost comparison" in findings.lower()
 
 
 def test_uniform_cacheability_is_reported_without_a_warning():
     probe = {
-        "frontier": {"L0": {"cacheable": True}, "L3": {"cacheable": True}},
-        "worker": {"L0": {"cacheable": True}, "L3": {"cacheable": True}},
+        "reference": {"L0": {"hit": True}, "L3": {"hit": True}},
+        "agent": {"L0": {"hit": True}, "L3": {"hit": True}},
     }
     findings = " ".join(cacheability_findings(probe))
     assert "NOT" not in findings
+    assert "dominates" in " ".join(cacheability_findings(probe))
 
 
-def test_cache_minimums_are_per_model():
-    """Haiku's minimum is four times Sonnet's; treating them as one number is what
-    produces the silent asymmetry."""
-    assert CACHE_MINIMUM_TOKENS["claude-haiku-4-5"] == 4096
-    assert CACHE_MINIMUM_TOKENS["claude-sonnet-5"] == 1024
+def test_caching_nowhere_names_the_two_causes_worth_checking():
+    """A prefix that never caches is either too short or not stable. Those have
+    different fixes, and a finding that does not distinguish them sends the reader
+    to the wrong one."""
+    probe = {
+        "reference": {"L0": {"hit": False}, "L3": {"hit": False}},
+        "agent": {"L0": {"hit": False}, "L3": {"hit": False}},
+    }
+    findings = " ".join(cacheability_findings(probe))
+    assert "minimum cacheable length" in findings
+    assert "varies inside it" in findings
+
+
+def test_the_probe_measures_rather_than_infers():
+    """It used to compare a token count against a documented minimum and declare the
+    prefix cacheable. That is an inference, and it inherited every assumption in it.
+    The probe now calls twice and reads what the API actually served from cache."""
+    import inspect
+
+    from loopeng import api_probes
+
+    source = inspect.getsource(api_probes.probe_cache_behaviour)
+    assert "cache_read_input_tokens" in source, "the verdict must come from usage"
+    assert "complete(" in source, "it has to make the call to know"
 
 
 # ---- the written report -----------------------------------------------------

@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 
 import pytest
 
@@ -7,6 +6,7 @@ from loopeng.agent.loop import run_question
 from loopeng.agent.trap import TrapState, run_trap
 from loopeng.gold.build import build_gold
 from loopeng.warehouse.connect import ensure_warehouse
+from tests.fakes import FakeClient
 
 
 @pytest.fixture(scope="module")
@@ -19,21 +19,15 @@ def items(warehouse):
     return build_gold(warehouse)
 
 
-class ScriptedClient:
-    """Returns SQL chosen per question, so a whole grid can be driven offline."""
+def ScriptedClient(replies):
+    """The agent's client, in whichever vendor shape the registry says it needs.
 
-    def __init__(self, sql_for):
-        self.calls = 0
-        self._sql_for = sql_for
-        self.messages = SimpleNamespace(create=self._create)
-
-    def _create(self, **kwargs):
-        self.calls += 1
-        question = kwargs["messages"][0]["content"].split("Question: ")[-1]
-        return SimpleNamespace(
-            content=[SimpleNamespace(type="text", text=self._sql_for(question))],
-            usage=SimpleNamespace(input_tokens=100, output_tokens=50),
-        )
+    The vendor-shaped double lives in `tests/fakes.py`. This file used to carry its
+    own Anthropic-shaped stub; eight modules did, all subtly different, which was
+    survivable with one vendor and is not with two — a per-module stub is a
+    per-module chance to fake the wrong SDK surface and prove nothing.
+    """
+    return FakeClient("agent", replies)
 
 
 def _item(items, key):
@@ -164,7 +158,7 @@ def test_reveal_triggers_zero_model_calls(items, warehouse):
     judgement is computed as each cell lands; reveal only decides whether it shows."""
     subset = items[:3]
     client = ScriptedClient(lambda q: "SELECT COUNT(*) FROM products")
-    state = run_trap(subset, warehouse, arms=(("worker", "L3"),), client=client)
+    state = run_trap(subset, warehouse, arms=(("agent", "L3"),), client=client)
 
     calls_after_run = client.calls
     assert calls_after_run == len(subset)
@@ -177,7 +171,7 @@ def test_reveal_triggers_zero_model_calls(items, warehouse):
 def test_judgements_exist_before_reveal(items, warehouse):
     """Scoring happens on arrival. The button reveals; it does not compute."""
     client = ScriptedClient(lambda q: "SELECT COUNT(*) FROM products")
-    state = run_trap(items[:2], warehouse, arms=(("worker", "L3"),), client=client)
+    state = run_trap(items[:2], warehouse, arms=(("agent", "L3"),), client=client)
     assert not state.revealed
     assert all(cell.judgement is not None for cell in state.cells.values())
 
@@ -185,14 +179,14 @@ def test_judgements_exist_before_reveal(items, warehouse):
 def test_silent_error_rate_is_none_before_anything_lands():
     """A rate with no observations is not a rate. Rendering it as 0% would be a
     claim, and "not yet measured" is the truth."""
-    assert TrapState().silent_error_rate("worker") is None
+    assert TrapState().silent_error_rate("agent") is None
 
 
 def test_silent_error_rate_carries_its_n(items, warehouse):
     item = _item(items, "p04_gross_revenue")
     client = ScriptedClient(lambda q: item.naive_sql)
-    state = run_trap([item], warehouse, arms=(("worker", "L3"),), client=client)
-    metric = state.silent_error_rate("worker@L3")
+    state = run_trap([item], warehouse, arms=(("agent", "L3"),), client=client)
+    metric = state.silent_error_rate("agent@L3")
     assert metric.n == 1
     assert metric.value == 1.0
     assert "n=1" in metric.render()
@@ -205,7 +199,7 @@ def test_trap_runs_every_item_against_every_arm(items, warehouse):
     state = run_trap(subset, warehouse, client=client)
     assert len(state.cells) == len(subset) * 2
     assert client.calls == len(subset) * 2
-    assert {cell.arm for cell in state.cells.values()} == {"worker@L3", "worker@L0"}
+    assert {cell.arm for cell in state.cells.values()} == {"agent@L3", "agent@L0"}
 
 
 def test_the_default_arms_hold_the_model_constant(items, warehouse):
@@ -213,7 +207,7 @@ def test_the_default_arms_hold_the_model_constant(items, warehouse):
     thesis. Same model at two spec levels makes the spec the variable."""
     from loopeng.agent.trap import ARMS
 
-    assert {role for role, _ in ARMS} == {"worker"}
+    assert {role for role, _ in ARMS} == {"agent"}
     assert {level for _, level in ARMS} == {"L0", "L3"}
 
 
@@ -233,7 +227,7 @@ def test_cells_stream_back_as_they_land(items, warehouse):
     than batching and dumping at the end."""
     seen = []
     client = ScriptedClient(lambda q: "SELECT COUNT(*) FROM products")
-    run_trap(items[:4], warehouse, arms=(("worker", "L3"),), client=client,
+    run_trap(items[:4], warehouse, arms=(("agent", "L3"),), client=client,
              on_cell=seen.append)
     assert len(seen) == 4
 
@@ -359,7 +353,7 @@ def _run_ending_in(sql, error, outcome):
     from loopeng.usage import CallUsage
 
     return AgentRun(
-        question="q", level="L3", role="worker", model_id="m",
+        question="q", level="L3", role="agent", model_id="m",
         attempts=(Attempt(n=1, sql=sql, rows=None, error=error,
                           usage=CallUsage(model_id="m", outcome=outcome)),),
         termination=TerminationReason.MAX_ATTEMPTS,

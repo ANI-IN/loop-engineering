@@ -1,5 +1,4 @@
 import inspect
-from types import SimpleNamespace
 
 import pytest
 
@@ -10,6 +9,7 @@ from loopeng.verify.probes import PROBES, UNPROBED_BY_DESIGN, run_probes
 from loopeng.verify.regex_verifiers import verify_with_regex
 from loopeng.verify.verifiers import verify
 from loopeng.warehouse.connect import ensure_warehouse
+from tests.fakes import FakeClient
 
 
 @pytest.fixture(scope="module")
@@ -17,19 +17,15 @@ def warehouse(tmp_path_factory):
     return ensure_warehouse(tmp_path_factory.mktemp("wh") / "w.duckdb", seed=20260729)
 
 
-class ScriptedClient:
-    def __init__(self, replies):
-        self._replies = list(replies)
-        self.calls = 0
-        self.messages = SimpleNamespace(create=self._create)
+def ScriptedClient(replies):
+    """The agent's client, in whichever vendor shape the registry says it needs.
 
-    def _create(self, **kwargs):
-        self.calls += 1
-        text = self._replies[min(self.calls - 1, len(self._replies) - 1)]
-        return SimpleNamespace(
-            content=[SimpleNamespace(type="text", text=text)],
-            usage=SimpleNamespace(input_tokens=100, output_tokens=50),
-        )
+    The vendor-shaped double lives in `tests/fakes.py`. This file used to carry its
+    own Anthropic-shaped stub; eight modules did, all subtly different, which was
+    survivable with one vendor and is not with two — a per-module stub is a
+    per-module chance to fake the wrong SDK surface and prove nothing.
+    """
+    return FakeClient("agent", replies)
 
 
 # ---- THE architectural contract, discharged structurally ---------------------
@@ -266,31 +262,18 @@ def test_budget_fires_before_the_attempt_cap(warehouse):
 def test_a_rejected_credential_stops_the_level_2_loop_too(warehouse):
     """This is the loop the sweep cells run, so it is where retrying a dead key is
     most expensive: 50 items x 3 attempts per cell, every one guaranteed to fail."""
-    import anthropic
-    import httpx
+    from tests.fakes import refusal
 
-    class RefusingClient:
-        def __init__(self):
-            self.calls = 0
-            self.messages = SimpleNamespace(create=self._create)
-
-        def _create(self, **kwargs):
-            self.calls += 1
-            raise anthropic.AuthenticationError(
-                "Error code: 401 - invalid x-api-key",
-                response=httpx.Response(
-                    401, request=httpx.Request("POST", "https://api.anthropic.com/")
-                ),
-                body=None,
-            )
-
-    client = RefusingClient()
+    client = FakeClient("agent", raises=lambda: refusal("credential"))
     run = run_verified("q", warehouse=warehouse, rules=("soft_delete",), client=client,
                        max_attempts=3)
 
     assert client.calls == 1, f"made {client.calls} calls against a dead key"
     assert run.termination is TerminationReason.CREDENTIAL
-    assert "ANTHROPIC_API_KEY" in run.error
+    # The AGENT's variable, not the judge's. Two vendors means two credentials, and
+    # a message naming the wrong one sends the operator to the wrong line of .env.
+    assert "OPENAI_API_KEY" in run.error
+    assert "ANTHROPIC_API_KEY" not in run.error
 
 
 def test_a_clean_query_passes_first_time(warehouse):

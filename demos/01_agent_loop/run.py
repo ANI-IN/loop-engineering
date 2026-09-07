@@ -18,7 +18,7 @@ from loopeng.warehouse.connect import ensure_warehouse
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Level 1 agent loop — one question.")
     parser.add_argument("--question", help="Run headless in the terminal instead of the browser.")
-    parser.add_argument("--role", default="worker", choices=("worker", "frontier"))
+    parser.add_argument("--role", default="agent", choices=("agent", "reference"))
     parser.add_argument("--level", default="L3", choices=("L0", "L3"))
     parser.add_argument("--max-attempts", type=int, default=3)
     parser.add_argument("--share", action="store_true", help="Expose the Gradio app publicly.")

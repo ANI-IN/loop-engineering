@@ -16,7 +16,7 @@ from loopeng.sweep.charts import delta_chart
 from tests.figures import texts
 
 
-def cell(key, *, role="worker", level="L0", mode="loop", replicate=0,
+def cell(key, *, role="agent", level="L0", mode="loop", replicate=0,
          correct=(), wrong=(), reference=False, complete=True, label=None):
     """A cell file, reduced to what a comparison reads off it."""
     items = [
@@ -62,8 +62,8 @@ def test_a_cross_model_comparison_gets_no_p_value():
     """The guardrail in pre_registration and in the DIAL caption, enforced in the code
     that draws the chart. Haiku is pinned to temperature=0 and Sonnet cannot be, so a
     significance claim across the two would be measuring the asymmetry."""
-    haiku = cell("worker_L0_loop_r0", role="worker", correct=list("abcdefghij"))
-    sonnet = cell("frontier_L0_one_shot_r0", role="frontier", mode="one_shot",
+    haiku = cell("worker_L0_loop_r0", role="agent", correct=list("abcdefghij"))
+    sonnet = cell("frontier_L0_one_shot_r0", role="reference", mode="one_shot",
                   wrong=list("abcdefghij"))
 
     comparison = diff._build("mode", haiku, sonnet)
@@ -77,8 +77,8 @@ def test_a_cross_model_comparison_gets_no_p_value():
 def test_a_cross_model_p_value_is_refused_even_when_the_data_would_support_one():
     """The refusal must not be a side effect of thin data. Ten discordant pairs all one
     way would be significant within a model; across models it still says no."""
-    haiku = cell("worker_L0_loop_r0", role="worker", correct=list("abcdefghij"))
-    sonnet = cell("frontier_L0_loop_r0", role="frontier", wrong=list("abcdefghij"))
+    haiku = cell("worker_L0_loop_r0", role="agent", correct=list("abcdefghij"))
+    sonnet = cell("frontier_L0_loop_r0", role="reference", wrong=list("abcdefghij"))
 
     comparison = diff._build("mode", haiku, sonnet)
 
@@ -129,7 +129,7 @@ def test_no_shared_items_is_reported_rather_than_differenced():
 
 def _frozen_without_items(key, **kw):
     """A stored frontier cell as `build_reference` freezes it: no `items`, no `paired`."""
-    body = cell(key, role="frontier", reference=True, correct=list("abcde"), **kw)
+    body = cell(key, role="reference", reference=True, correct=list("abcde"), **kw)
     body.pop("paired", None)
     return body
 
@@ -146,18 +146,6 @@ def test_a_pair_stripped_at_freeze_time_says_so_rather_than_blaming_the_items():
         "the items overlapped when they were measured; saying they did not is a claim "
         "about the data that the freeze is responsible for"
     )
-
-
-def test_only_the_side_that_lost_its_items_is_named():
-    """A live arm against a stripped stored one: the live side kept everything, and a
-    message blaming both would send a reader looking in the wrong file."""
-    live = cell("frontier_L0_loop_r0", role="frontier", correct=list("abcde"))
-    stored = _frozen_without_items("frontier_L0_one_shot_r0", mode="one_shot")
-
-    reading = diff._build("mode", stored, live).reading()
-
-    assert "REFERENCE frontier_L0_one_shot_r0" in reading
-    assert "LIVE frontier_L0_loop_r0" not in reading
 
 
 def test_the_delta_chart_carries_the_real_cause_too():
@@ -219,19 +207,6 @@ def test_the_interval_is_reported_with_the_delta():
 
 
 # ---- provenance -------------------------------------------------------------
-
-
-def test_a_live_versus_stored_comparison_carries_both_dates():
-    """So it cannot be read as two fresh measurements."""
-    stored = cell("worker_L0_loop_r0", reference=True, correct=list("abcdefgh"))
-    live = cell("worker_L0_loop_r0", wrong=list("abcdefgh"))
-
-    [comparison] = diff.live_vs_reference([stored, live])
-
-    assert comparison.measured_on_a == "2026-07-29"
-    assert comparison.measured_on_b == diff.LIVE_STAMP
-    assert "2026-07-29" in comparison.provenance()
-    assert diff.LIVE_STAMP in comparison.provenance()
 
 
 def test_two_live_cells_say_both_computed_this_run():
@@ -296,8 +271,8 @@ def test_untestable_comparisons_are_partitioned_rather_than_dropped():
         cell("worker_L0_loop_r0", wrong=["a"]),
     ]
     unpairable = [
-        cell("frontier_L0_one_shot_r0", role="frontier", mode="one_shot"),
-        cell("frontier_L0_loop_r0", role="frontier"),
+        cell("frontier_L0_one_shot_r0", role="reference", mode="one_shot"),
+        cell("frontier_L0_loop_r0", role="reference"),
     ]
     testable, untestable = diff.partition(diff.all_comparisons(pairable + unpairable))
 
@@ -336,8 +311,8 @@ def test_the_delta_chart_reports_what_it_could_not_compare():
     and defers; only the row is entitled to name a cause.
     """
     drawn = texts(delta_chart(diff.all_comparisons([
-        cell("frontier_L0_one_shot_r0", role="frontier", mode="one_shot"),
-        cell("frontier_L0_loop_r0", role="frontier"),
+        cell("frontier_L0_one_shot_r0", role="reference", mode="one_shot"),
+        cell("frontier_L0_loop_r0", role="reference"),
     ])))
     assert "1 comparison(s) not shown" in drawn
     assert "each row says which of the two reasons applies" in drawn
@@ -347,12 +322,12 @@ def test_the_delta_chart_reports_what_it_could_not_compare():
 
 def test_the_delta_chart_refuses_a_cross_model_p_value_on_screen():
     drawn = texts(delta_chart(diff.all_comparisons([
-        cell("worker_L0_loop_r0", role="worker", correct=list("abcdefghij")),
-        cell("frontier_L0_one_shot_r0", role="frontier", mode="one_shot",
+        cell("agent_L0_loop_r0", role="agent", correct=list("abcdefghij")),
+        cell("reference_L0_one_shot_r0", role="reference", mode="one_shot",
              wrong=list("abcdefghij")),
     ])))
     assert "no p-value — cross-model" in drawn
-    assert "cannot be pinned" in drawn
+    assert "reject a pinned temperature" in drawn
 
 
 def test_the_cross_model_refusal_is_reachable_at_all():
@@ -361,8 +336,8 @@ def test_the_cross_model_refusal_is_reachable_at_all():
     is the same defect as one that exists only in prose. The NAMED SECONDARY family
     exists to make it real."""
     comparisons = diff.all_comparisons([
-        cell("worker_L0_loop_r0", role="worker", correct=list("abcdefghij")),
-        cell("frontier_L0_one_shot_r0", role="frontier", mode="one_shot",
+        cell("agent_L0_loop_r0", role="agent", correct=list("abcdefghij")),
+        cell("reference_L0_one_shot_r0", role="reference", mode="one_shot",
              wrong=list("abcdefghij")),
     ])
     cross = [c for c in comparisons if c.cross_model]
@@ -373,10 +348,10 @@ def test_the_cross_model_refusal_is_reachable_at_all():
 def test_the_named_secondary_follows_the_level_rather_than_being_typed_per_level():
     comparisons = diff.named_secondary_deltas([
         cell("worker_L0_loop_r0", level="L0", correct=["a"]),
-        cell("frontier_L0_one_shot_r0", role="frontier", level="L0",
+        cell("frontier_L0_one_shot_r0", role="reference", level="L0",
              mode="one_shot", wrong=["a"]),
         cell("worker_L3_loop_r0", level="L3", correct=["a"]),
-        cell("frontier_L3_one_shot_r0", role="frontier", level="L3",
+        cell("frontier_L3_one_shot_r0", role="reference", level="L3",
              mode="one_shot", wrong=["a"]),
     ])
     assert [c.key_a for c in comparisons] == ["worker_L0_loop_r0", "worker_L3_loop_r0"]

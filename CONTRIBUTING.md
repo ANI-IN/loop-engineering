@@ -29,8 +29,6 @@ Run everything CI runs:
 uv run ruff check .
 uv run python tools/lint_no_numbers.py
 uv run pytest -q
-uv run python tools/render_readme_charts.py "$(mktemp -d)"
-uv run python tools/sync_hf.py --dry-run
 ```
 
 The offline suite needs no key, makes no network call, and costs nothing. If a
@@ -90,7 +88,6 @@ and `build_context()` takes no such argument. Do not add one. Judgement against
 gold happens afterwards, on the finished run.
 
 **`assets/` is generated.** Never hand-edit or hand-place an image. It is written
-only by `tools/render_readme_charts.py`, from `results/reference/`.
 
 If you change anything under `results/reference/`, re-render and commit both the
 images and `assets/manifest.json`. The manifest records the source hashes, so a

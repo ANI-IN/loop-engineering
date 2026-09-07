@@ -63,17 +63,16 @@ from pathlib import Path
 
 from loopeng.paired import CLUSTERING_CAVEAT, PairedComparison, compare
 from loopeng.sweep.orchestrator import load_all
-from loopeng.sweep.reference import keeps_per_item_outcomes, paired_map
 
 ALPHA = 0.05
 
 LIVE_STAMP = "computed this run"
 
 CROSS_MODEL_REFUSAL = (
-    "No p-value: this compares two models, and their bars do not mean the same thing. "
-    "Haiku is pinned to temperature=0; Sonnet 5 rejects non-default sampling and cannot "
-    "be pinned, so its numbers carry run-to-run variance that Haiku's do not. A "
-    "significance claim across that asymmetry would be measuring the asymmetry."
+    "No p-value: this compares two models. Both are reasoning models that reject a "
+    "pinned temperature, so both carry run-to-run variance, and this design measures "
+    "that residual rather than assuming it away. A cross-model claim would be reading "
+    "a difference between two noisy arms as if only one thing had changed."
 )
 
 
@@ -250,11 +249,47 @@ class Comparison:
 
 
 def _stamp(cell: dict) -> str:
-    return cell.get("measured_on", LIVE_STAMP) if cell.get("reference") else LIVE_STAMP
+    """When this cell was computed.
+
+    Every cell is computed in the run that renders it, so this is a constant now —
+    kept as a function because the provenance row still prints it, and a row that
+    silently stopped carrying a date would be indistinguishable from one that never
+    had one.
+    """
+    return LIVE_STAMP
 
 
 def _side(cell: dict) -> str:
-    return "REFERENCE" if cell.get("reference") else "LIVE"
+    return "LIVE"
+
+
+def keeps_per_item_outcomes(cell: dict) -> bool:
+    """Whether this cell retained the per-item outcomes a paired test needs.
+
+    The distinction a diagnostic depends on. A cell with neither `items` nor `paired`
+    can never be paired with anything; a cell that HAS the record and simply overlaps
+    nothing with its partner is a different fact, about the data rather than about the
+    file, and only one of the two is fixable.
+
+    Rehomed from `sweep/reference.py` when the stored-measurement path was removed. It
+    was never reference-specific — it reads a cell, and every cell is live now.
+    """
+    return "paired" in cell or "items" in cell
+
+
+def paired_map(cell: dict) -> dict[str, bool]:
+    """`{item_id: was_correct}` for a cell. McNemar's input.
+
+    An empty map for a cell that carries neither, which `paired.compare` handles by
+    pairing nothing rather than by inventing evidence.
+    """
+    if "paired" in cell:
+        return {str(k): bool(v) for k, v in cell["paired"].items()}
+    return {
+        row["item_id"]: bool(row["correct"])
+        for row in cell.get("items", ())
+        if row.get("ran_and_returned")
+    }
 
 
 def _build(kind: str, a: dict, b: dict) -> Comparison:
@@ -278,12 +313,11 @@ def _complete(cells) -> list[dict]:
 
 
 def _index(cells) -> dict[tuple, dict]:
-    """Live cells win the slot. A stored twin is compared separately, by live_vs_reference."""
+    """One cell per slot. Every cell is live now, so the last one written wins."""
     indexed: dict[tuple, dict] = {}
     for cell in cells:
         slot = (cell["role"], cell["level"], cell["mode"], cell["replicate"])
-        if slot not in indexed or not cell.get("reference"):
-            indexed[slot] = cell
+        indexed[slot] = cell
     return indexed
 
 
@@ -315,8 +349,8 @@ def level_deltas(cells) -> list[Comparison]:
 
 # The pre-registered NAMED SECONDARY, declared as a pair of slots rather than as two
 # cell keys, so it follows the level rather than being typed once per level.
-SECONDARY_A = ("worker", "loop")
-SECONDARY_B = ("frontier", "one_shot")
+SECONDARY_A = ("agent", "loop")
+SECONDARY_B = ("reference", "one_shot")
 
 
 def named_secondary_deltas(cells) -> list[Comparison]:
@@ -337,27 +371,13 @@ def named_secondary_deltas(cells) -> list[Comparison]:
     return out
 
 
-def live_vs_reference(cells) -> list[Comparison]:
-    """The same cell key, computed now against the stored baseline.
-
-    The cloner's question, and the one `fill` mode made unanswerable by deleting the
-    stored cell as soon as a live one existed.
-    """
-    live = {c["key"]: c for c in _complete(cells) if not c.get("reference")}
-    stored = {c["key"]: c for c in cells if c.get("reference")}
-    return [
-        _build("live_vs_reference", stored[key], live[key])
-        for key in sorted(live.keys() & stored.keys())
-    ]
-
-
 def all_comparisons(cells) -> list[Comparison]:
     """Every difference these cells support, in a stable order.
 
     Includes the ones that cannot be tested. Filtering them out here would let a chart
     quietly show fewer rows than the data implies — see `partition`.
     """
-    return (live_vs_reference(cells) + mode_deltas(cells) + level_deltas(cells)
+    return (mode_deltas(cells) + level_deltas(cells)
             + named_secondary_deltas(cells))
 
 
@@ -387,6 +407,6 @@ def partition(comparisons) -> tuple[list[Comparison], list[Comparison]]:
     return testable, [c for c in comparisons if not c.n_pairs]
 
 
-def from_disk(sweep_dir: Path, reference_cells=()) -> list[Comparison]:
-    """Comparisons over the cell files on disk, plus whatever reference set is supplied."""
-    return all_comparisons(load_all(sweep_dir) + list(reference_cells))
+def from_disk(sweep_dir: Path) -> list[Comparison]:
+    """Comparisons over the cell files on disk. There is no other source."""
+    return all_comparisons(load_all(sweep_dir))

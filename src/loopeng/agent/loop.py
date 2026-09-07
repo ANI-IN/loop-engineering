@@ -15,17 +15,36 @@ The loop never touches gold. Classification against gold happens afterwards, in
 contract enforces for Phase 2.
 
 **Not every failed call is worth retrying, and the loop used to retry all of them.** A
-bare `except Exception` around `client.messages.create` treated a revoked API key
-exactly like a transient 529: three round-trips, then `max_attempts`, and a screen that
-said `database said: AuthenticationError` — blaming the warehouse for a credential
-problem. At sweep scale that is ~200 doomed calls before a uniformly failed grid.
+bare `except Exception` around the model call treated a revoked API key exactly like a
+transient 529: three round-trips, then `max_attempts`, and a screen that said
+`database said: AuthenticationError` — blaming the warehouse for a credential problem.
+At sweep scale that is ~200 doomed calls before a uniformly failed grid.
 
-A retry is only a retry when the next attempt could plausibly differ. `FATAL_CALL_ERRORS`
-is the set where it cannot, and the loop stops on the first one with a message naming the
-variable and the fix. Retrying those is not a budget guard; it is spend with a guaranteed
-zero return.
+A retry is only a retry when the next attempt could plausibly differ. The triage in
+`loopeng.providers` names the set where it cannot, and the loop stops on the first one
+with a message naming the variable and the fix. Retrying those is not a budget guard;
+it is spend with a guaranteed zero return.
+
+**ONE LOOP, TWO VENDORS.** The agent is an OpenAI budget model and the judge is
+Anthropic, and nothing about that reaches this file. Everything vendor-shaped —
+request shape, usage conventions, which failures are fatal — lives behind
+`loopeng.providers.complete`. A second copy of this loop with different imports would
+be a second place for the termination policy to drift, and the termination policy is
+what the session is about.
+
+**WHERE THE STATIC PREFIX GOES, AND WHY IT MOVED.** The schema and the business rules
+are byte-identical on every call in a run, and they now sit in the `system` block —
+first, ahead of everything that varies. They used to be concatenated with the question
+into a single user turn, which put a per-item string inside the cached region and made
+the prefix different on every call. OpenAI caches the longest common prefix
+automatically, with no marker to set, so prefix STABILITY is the entire mechanism and
+that layout defeated it silently: no error, no warning, just full input price on every
+call. The retry feedback is appended as later turns for the same reason — feedback
+inside the prefix would break the cache on every retry, which is every call a loop
+makes beyond the first.
 """
 
+import random
 import re
 import time
 from dataclasses import dataclass, field
@@ -33,13 +52,11 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
 
-import anthropic
 import structlog
 
-from loopeng.caching import user_content
 from loopeng.prompts import render_prompt
+from loopeng.providers import complete, retry_after_seconds, triage_call_failure
 from loopeng.registry import spec_for
-from loopeng.settings import load_settings, require_api_key
 from loopeng.usage import CallUsage, UsageLedger
 from loopeng.warehouse.connect import QueryTimeout, run_sql
 
@@ -48,9 +65,21 @@ log = structlog.get_logger(__name__)
 DEFAULT_MAX_ATTEMPTS = 3
 
 # Per question, not per run. Sized so one pathological question cannot eat a sweep.
-DEFAULT_BUDGET_USD = 0.10
+#
+# Lowered along with the model policy. The agent is a budget model at $0.20/$1.20 per
+# million tokens, so the old $0.10 ceiling was roughly two hundred full attempts —
+# a cap that could never bind, which is a cap in name only.
+DEFAULT_BUDGET_USD = 0.02
 
 _SQL_FENCE = re.compile(r"```(?:sql)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
+
+# Jitter on the retry backoff, as a fraction of the computed delay.
+#
+# Without it, N workers rate-limited by the same 429 all sleep the same duration and
+# arrive back together — the thundering herd that turns one rate limit into a
+# sustained one. The sweep runs several requests in flight per model, so this is the
+# regime it actually operates in.
+BACKOFF_JITTER = 0.25
 
 
 class TerminationReason(StrEnum):
@@ -66,100 +95,12 @@ class TerminationReason(StrEnum):
     BUDGET = "budget"
     NO_PROGRESS = "no_progress"
 
-    # The two non-retryable branches. Separate names rather than one, because they are
+    # The non-retryable branches. Separate names rather than one, because they are
     # different problems with different fixes and a run labelled `credential` when the
     # request was merely malformed would send an operator to the wrong file.
-    CREDENTIAL = "credential"    # 401/403 — the key or the account, not the request
-    BAD_REQUEST = "bad_request"  # 400 — the request itself; retrying sends it again
-
-
-# Failures a retry cannot fix. Named against the client's own exception classes rather
-# than against status codes: the SDK already models that mapping, and a second copy of it
-# here is a second thing to drift.
-CREDENTIAL_ERRORS = (
-    anthropic.AuthenticationError,    # 401 — key wrong, revoked, or account unfunded
-    anthropic.PermissionDeniedError,  # 403 — the account may not call this model
-)
-
-# 400. This is the class Sonnet 5 returns for a pinned temperature, and retrying a
-# malformed request is exactly the same waste as retrying a bad key.
-BAD_REQUEST_ERRORS = (anthropic.BadRequestError,)
-
-FATAL_CALL_ERRORS = CREDENTIAL_ERRORS + BAD_REQUEST_ERRORS
-
-# Everything else the client can raise is retryable and stays retryable: 429s, 5xx,
-# timeouts, connection resets. Listed for the reader rather than matched on — the code
-# below reaches them through the `except Exception` fallback, which is deliberately the
-# broad arm so a transport failure class we have not met still gets its retry.
-RETRYABLE_CALL_ERRORS = (
-    anthropic.RateLimitError,        # 429
-    anthropic.APITimeoutError,       # no response in time
-    anthropic.APIConnectionError,    # transport
-    anthropic.APIStatusError,        # 5xx, after the fatal subclasses above are taken
-)
-
-
-# Backoff for the retryable branch. README §18 tells the operator to "lower the per-model
-# concurrency before the sweep rather than after it starts failing" — and until now there
-# was no flag to do it with, and no backoff either, so a 429 was retried immediately into
-# the same limit. Sleeping is what turns a retry into a retry rather than a second refusal.
-#
-# `retry-after` is honoured when the API sends it, because the server knows when the pool
-# refills and we do not. The doubling below is the fallback.
-BACKOFF_BASE_SECONDS = 1.0
-BACKOFF_CEILING_SECONDS = 30.0
-
-
-def retry_after_seconds(exc: Exception, attempt: int) -> float:
-    """How long to wait before the next attempt.
-
-    The server's own `retry-after` wins. It knows when the pool refills; a client
-    doubling a guess is what makes a rate limit last longer than it had to.
-    """
-    header = getattr(getattr(exc, "response", None), "headers", None)
-    if header is not None:
-        raw = header.get("retry-after")
-        if raw:
-            try:
-                return min(float(raw), BACKOFF_CEILING_SECONDS)
-            except (TypeError, ValueError):
-                pass
-    return min(BACKOFF_BASE_SECONDS * (2 ** (attempt - 1)), BACKOFF_CEILING_SECONDS)
-
-
-def triage_call_failure(
-    exc: Exception, *, role: str, model_id: str
-) -> tuple[TerminationReason | None, str]:
-    """How to stop after a failed model call, and what to say about it.
-
-    Returns `(termination, message)`. A `None` termination means retryable: the tokens
-    billed, the attempt is recorded, and the loop goes round again. Anything else stops
-    the loop now, and the message names the variable and the fix in the same shape as
-    `MissingCredential`, because the person reading it is in the same position.
-    """
-    if isinstance(exc, CREDENTIAL_ERRORS):
-        return TerminationReason.CREDENTIAL, (
-            f"{type(exc).__name__}: the Anthropic API rejected the credential for "
-            f"{model_id}. ANTHROPIC_API_KEY is set but not usable — it is wrong, "
-            f"revoked, or the account cannot call this model.\n"
-            f"Fix: check ANTHROPIC_API_KEY in .env (see .env.example), then run "
-            f"`uv run python demos/00_preflight/check.py` to confirm both models are "
-            f"reachable before spending anything.\n"
-            f"This stopped after one call. Retrying a rejected credential bills three "
-            f"times for the same refusal.\n"
-            f"The API said: {exc}"
-        )
-    if isinstance(exc, BAD_REQUEST_ERRORS):
-        return TerminationReason.BAD_REQUEST, (
-            f"{type(exc).__name__}: {model_id} rejected the request itself, so sending "
-            f"it again sends the same rejection.\n"
-            f"Fix: check the request kwargs for role '{role}' in "
-            f"src/loopeng/registry.py. Sonnet 5 returns this for any non-default "
-            f"sampling parameter, which is why temperature=0 is pinned on the worker "
-            f"role and not on the frontier one.\n"
-            f"The API said: {exc}"
-        )
-    return None, f"{type(exc).__name__}: {exc}"
+    CREDENTIAL = "credential"                # 401/403 — the key or the account
+    BAD_REQUEST = "bad_request"              # 400 — the request itself
+    MODEL_UNAVAILABLE = "model_unavailable"  # 404 — the id does not resolve here
 
 
 @dataclass(frozen=True)
@@ -197,6 +138,11 @@ class AgentRun:
     termination: TerminationReason
     item_id: str | None = None
     ledger: UsageLedger = field(default_factory=UsageLedger)
+    # The exact version string the API reported for this run, which is usually a
+    # dated snapshot of `model_id`. Recorded because a silent model swap would
+    # invalidate every comparison in the run and nothing on any chart would look
+    # wrong — see `registry.assert_served_by`.
+    served_model: str | None = None
 
     @property
     def final(self) -> Attempt | None:
@@ -223,10 +169,13 @@ class AgentRun:
 
 
 class SupportsMessages(Protocol):
-    """Just enough of the Anthropic client for the loop, so tests can substitute."""
+    """Just enough of a vendor client for the loop, so tests can substitute.
 
-    @property
-    def messages(self): ...
+    Deliberately loose. The two vendors expose different surfaces — `messages.create`
+    against `chat.completions.create` — and the loop touches neither directly; it
+    hands whatever it is given to `loopeng.providers.complete`, which knows which one
+    this role needs.
+    """
 
 
 def extract_sql(text: str) -> str:
@@ -242,25 +191,14 @@ def extract_sql(text: str) -> str:
     return text.strip()
 
 
-def _build_messages(question: str, level: str, history: list[Attempt],
-                    *, role: str = "worker") -> list[dict]:
-    """The conversation. The static prefix is marked cacheable where it can be.
+def build_turns(question: str, history: list[Attempt]) -> list[dict]:
+    """The conversation turns, everything that varies per item and per attempt.
 
-    `role` decides only whether `cache_control` is attached — see `loopeng.caching`, which
-    reads the committed token measurement rather than estimating. Where the prefix cannot
-    cache the first turn is the same single string it always was, so the request stays
-    byte-identical to what the reference measurements were taken with.
-
-    The retry feedback below is appended as later turns and therefore sits OUTSIDE the
-    cached prefix. It has to: feedback inside the prefix would break the cache on every
-    retry, which is every call a loop makes beyond the first.
+    The static schema-and-rules block is NOT here — it is the system prompt, so that
+    the cacheable prefix is identical across every call in a run. See the module
+    docstring.
     """
-    messages: list[dict] = [
-        {
-            "role": "user",
-            "content": user_content(render_prompt(level), question, role=role, level=level),
-        }
-    ]
+    turns: list[dict] = [{"role": "user", "content": f"Question: {question}"}]
     for attempt in history:
         # A call that never reached the model produced no query, so there is no
         # turn to replay and nothing the database ever complained about.
@@ -274,16 +212,16 @@ def _build_messages(question: str, level: str, history: list[Attempt],
         # and this builder was the one place ignoring it.
         #
         # The empty assistant turn was the more expensive half. A non-final
-        # assistant message with empty content is rejected by the API, and
+        # assistant message with empty content is rejected by both vendors, and
         # `triage_call_failure` maps that 400 to the FATAL `bad_request`, so a
         # transient 429 that should have been retried ended the run instead and
         # pointed the operator at registry.py — the wrong file entirely.
         if attempt.model_call_failed:
             continue
-        messages.append({"role": "assistant", "content": attempt.sql})
+        turns.append({"role": "assistant", "content": attempt.sql})
         # The only feedback this level has. Not a hint, not a rule reminder — the
         # database's own complaint, which is all a Level 1 loop is entitled to.
-        messages.append(
+        turns.append(
             {
                 "role": "user",
                 "content": (
@@ -292,14 +230,21 @@ def _build_messages(question: str, level: str, history: list[Attempt],
                 ),
             }
         )
-    return messages
+    return turns
+
+
+def backoff_delay(exc: Exception, attempt: int, *, rng: random.Random | None = None) -> float:
+    """The retry delay, with jitter, so concurrent workers do not resynchronise."""
+    base = retry_after_seconds(exc, attempt)
+    rng = random.Random() if rng is None else rng
+    return base * (1 + rng.uniform(0, BACKOFF_JITTER))
 
 
 def run_question(
     question: str,
     *,
     warehouse: Path,
-    role: str = "worker",
+    role: str = "agent",
     level: str = "L3",
     max_attempts: int = DEFAULT_MAX_ATTEMPTS,
     budget_usd: float = DEFAULT_BUDGET_USD,
@@ -310,15 +255,14 @@ def run_question(
 ) -> AgentRun:
     """Run one question to termination. Never raises on a model or SQL failure."""
     spec = spec_for(role)
-    if client is None:
-        settings = load_settings()
-        client = anthropic.Anthropic(api_key=require_api_key(settings).get_secret_value())
+    system = render_prompt(level)
 
     ledger = UsageLedger()
     attempts: list[Attempt] = []
     seen_sql: set[str] = set()
     seen_errors: set[str] = set()
     termination = TerminationReason.MAX_ATTEMPTS
+    served_model: str | None = None
 
     for n in range(1, max_attempts + 1):
         # Checked before spending, not after: a budget enforced only in arrears is a
@@ -328,35 +272,34 @@ def run_question(
             break
 
         try:
-            response = client.messages.create(
-                model=spec.model_id,
-                messages=_build_messages(question, level, attempts, role=role),
-                **spec.request_kwargs,
+            completion = complete(
+                spec,
+                system=system,
+                messages=build_turns(question, attempts),
+                client=client,
             )
-            usage = CallUsage.from_response(spec.model_id, response, outcome="ok")
-            raw = "".join(
-                block.text for block in response.content if getattr(block, "type", None) == "text"
-            )
-            sql = extract_sql(raw)
+            usage = completion.usage
+            served_model = completion.served_model
+            sql = extract_sql(completion.text)
         except Exception as exc:  # noqa: BLE001 - a failed call still billed
             # Recorded, not swallowed: the tokens are gone either way, and dropping
             # them would make the loop look cheaper than it is. That holds for the
             # fatal branch too — a refused call still made a round trip.
-            fatal, message = triage_call_failure(exc, role=role, model_id=spec.model_id)
+            fatal, message = triage_call_failure(exc, spec=spec)
             usage = CallUsage(spec.model_id, "error")
             ledger.record(usage)
             attempts.append(Attempt(n=n, sql="", rows=None, error=message, usage=usage))
             if fatal is not None:
                 log.error("model_call_refused", question=question[:60], attempt=n,
-                          termination=str(fatal), error=str(exc))
-                termination = fatal
+                          termination=fatal, error=str(exc))
+                termination = TerminationReason(fatal)
                 break
             log.warning("model_call_failed", question=question[:60], attempt=n,
                         error=str(exc))
             # Retryable, so wait before going round. Retrying a 429 immediately
             # arrives back at the same limit and makes it last longer.
             if n < max_attempts:
-                sleeper(retry_after_seconds(exc, n))
+                sleeper(backoff_delay(exc, n))
             continue
 
         ledger.record(usage)
@@ -393,4 +336,5 @@ def run_question(
         termination=termination,
         item_id=item_id,
         ledger=ledger,
+        served_model=served_model,
     )

@@ -33,7 +33,7 @@ def _render(run) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Level 2 verification loop — one question.")
     parser.add_argument("--item", help="Gold item id; defaults to a rule-heavy one.")
-    parser.add_argument("--role", default="worker", choices=("worker", "frontier"))
+    parser.add_argument("--role", default="agent", choices=("agent", "reference"))
     parser.add_argument("--level", default="L3", choices=("L0", "L3"))
     parser.add_argument("--max-attempts", type=int, default=3)
     args = parser.parse_args(argv)
