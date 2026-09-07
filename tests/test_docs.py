@@ -689,3 +689,24 @@ def test_the_trap_arms_hold_the_model_constant():
 
     assert len({role for role, _level in ARMS}) == 1
     assert {level for _role, level in ARMS} == {"L0", "L3"}
+
+
+def test_the_instruments_note_counts_its_own_entries():
+    """It opened "Twelve instruments have been caught…" while carrying fourteen
+    numbered entries — a typed count going stale, in the document about typed things
+    going stale. Both figures in the prose are checked against the headings.
+
+    One entry is a PLAN rather than an instrument (§7, the four charts specified for a
+    session that no longer existed), which is why the opening says "N instruments and
+    one plan" while the closing counts every entry as a data point.
+    """
+    import re
+    from pathlib import Path
+
+    body = (Path(__file__).resolve().parent.parent
+            / "docs" / "every-instrument-has-been-wrong.md").read_text(encoding="utf-8")
+    numbers = [int(n) for n in re.findall(r"^## (\d+)\. ", body, flags=re.M)]
+
+    assert numbers == list(range(1, len(numbers) + 1)), "the entries are misnumbered"
+    assert f"**{len(numbers) - 1} instruments have been caught" in body
+    assert f"It is {len(numbers)} data points" in body

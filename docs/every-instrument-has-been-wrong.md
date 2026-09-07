@@ -8,9 +8,13 @@ apart, and that you cannot tell by looking. It makes that argument about a text-
 agent. The argument is stronger made about the repository, because here the failures are
 documented, dated, and were all found the same way.
 
-**Twelve instruments have been caught measuring something other than what they
+**13 instruments have been caught measuring something other than what they
 claimed, and one plan has.** Not one was found by reading code. All of them were
 green.
+
+*The count above is checked against the numbered entries below by
+`tests/test_docs.py`. It said "Twelve" for two entries longer than that was true — a
+typed count going stale, in the document about typed things going stale.*
 
 ## 1. The lint rule that scanned nothing
 
@@ -193,6 +197,75 @@ An instrument that checks the spelling passes and fails for reasons unrelated to
 property it is protecting, in both directions. That is the same defect as a checker
 that matches nothing, wearing better clothes.
 
+## 13. The confidence scorer, whose failure mode was maximum confidence
+
+`triage.abstain.confidence_of` read `run.get("termination", "")`. Nothing in the function
+matches `""`, so a row with no recorded termination fell through every branch to the last
+line — `clean_first_try`, the **highest** confidence band, described as "accepted on the
+first attempt with no revisions".
+
+A row too malformed to say how its loop ended was scored as the best possible outcome,
+inside the one function whose only job is to say how much a result can be trusted, and
+that score feeds the abstention curve — the figure about knowing when not to answer.
+
+The defaults were never protecting real data. Every row the sweep and the conditions
+write carries all three fields. They were protecting *malformed* data from being noticed.
+
+## 14. The selector that quietly drew a different cell
+
+`render.curve_cell` looked up the cell the abstention curve is computed over and, when it
+was absent, returned `max(candidates, key=lambda c: len(c["items"]))`. The key it looked
+for named a role that had not existed since the roles were renamed, so the fallback fired
+on every run: the curve was drawn from a cell nobody chose, and nothing about the output
+said so.
+
+Then the same key turned up again, one module over, in `views/oversight.py` as
+`cells.get(CELL_KEY, {}).get("items", [])` — where the default made the view render "not
+measured yet — run the sweep first". **OVERSIGHT was telling anyone who opened it to go
+and run the sweep they had just run.** Not a wrong number: a wrong instruction, which is
+a category this build had not produced before.
+
+The fallback's stated justification was false in both halves. It read: *"the fallbacks
+exist so a `smoke` or frontier-only run still gets a curve rather than an empty panel."*
+Smoke **does** produce that cell, and no profile is frontier-only — the reference role
+never appears without the agent role. It insured against a case no profile can create,
+and the one case it ever fired on was the one where it was wrong. The test asserted the
+fallback rather than the property, which is how the fallback survived.
+
+That shape — *a guard written against a case that cannot happen, which then fires on the
+case where it is wrong, protected by a test asserting the guard rather than the property*
+— has now appeared three times: the p10 share-question regex, the retired-model-name
+prose ban, and this.
+
+## The rule that came out of it
+
+Three of the entries above are the same defect, and "fail loudly" is not the right
+statement of it, because two lookups in this repo degrade on purpose and are correct to.
+The general form is:
+
+> **A lookup may degrade if something downstream reports the degradation.**
+
+`diff.paired_map` tolerates a cell with no `items`, and earns it: `keeps_per_item_outcomes`
+sets a flag and `unpairable_because` distinguishes *"these arms share no answered items"*
+from *"the per-item outcomes were not retained when this was frozen"*. The reader is told
+which.
+
+`fingerprint.model_versions` falls back to the requested model id when nothing has been
+served yet, and earns it for a different reason: its failure mode is a false **mismatch**,
+which is loud. A fallback that can only make the guard fire more often is not this defect.
+
+The abstention selector degraded into a **different measurement** with nothing anywhere to
+signal it. That is the line. It is not about how a lookup fails; it is about whether
+anything downstream is in a position to say that it did.
+
+The same rule settled a return type. `named_secondary_deltas` emitted a comparison only
+when both its cells existed, so a **pre-registered** result whose cell was missing did not
+become an empty row — it stopped being a row. The pre-registration is read aloud before
+the first cell runs and the room checks the result against it, so a claim with no row at
+all is a claim nobody notices went missing. Nothing downstream could report it, because
+there was nothing to report on. It renders as a row with no bar now, naming the cell it
+needed.
+
 ## What they have in common
 
 **None was found by reading code.** They were found four different ways: by running
@@ -218,6 +291,9 @@ Each had a plausible reason to look correct:
 | the Wilson interval | it clamped the direction it had thought about |
 | DIAL | every test of it used cells with no data |
 | two assertions | they checked the exact string, which was almost the property |
+| the confidence scorer | every real row carries the field it defaulted |
+| the curve selector | it always returned a cell, and the cell was always plausible |
+| the absent comparison | every comparison it emitted was correct |
 
 The last two are the most uncomfortable, because **both were correct when written.** They
 did not decay through neglect. They decayed because a category was added somewhere else,
@@ -259,7 +335,7 @@ list's recurring entry.
 ## The honest reading
 
 This is not a list of things that went wrong on the way to a build that is now correct.
-It is four data points on how instruments fail, in a repository written by someone paying
+It is 14 data points on how instruments fail, in a repository written by someone paying
 attention specifically to that failure mode, with tests for it.
 
 The claim the session should make is not "we measured this carefully". It is: *every

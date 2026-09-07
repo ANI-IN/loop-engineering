@@ -340,7 +340,13 @@ def _delta_row(comparison) -> dict:
     testable = comparison.n_pairs and comparison.n_discordant >= MIN_DISCORDANT \
         and not comparison.cross_model
     interval = comparison.interval_pp
-    if comparison.cross_model:
+    if comparison.missing:
+        # FIRST, ahead of the cross-model branch. "no p-value — cross-model" is true of
+        # the named secondary and says nothing about one of its cells not existing — a
+        # reader would take the row for a measured pair that merely cannot be tested,
+        # which is the more reassuring of the two readings.
+        note = comparison.unpairable_because
+    elif comparison.cross_model:
         note = "no p-value — cross-model, see the caption"
     elif not comparison.n_pairs:
         # Derived, not asserted. This row used to read "no per-item record on one side"
@@ -375,10 +381,25 @@ def delta_chart(comparisons):
     notes = [DELTA_LOOPS_NOTE]
     if coverage_is_asymmetric(comparisons):
         notes.append(COVERAGE_ASYMMETRY_NOTE)
-    if untestable:
+    # Named, not counted. A pre-registered comparison that could not be formed is the
+    # one absence a reader is actively checking for — the pre-registration is read out
+    # before the sweep starts — so the note says WHICH cell is missing rather than how
+    # many rows are short.
+    absent = [c for c in comparisons if c.missing]
+    if absent:
+        notes.append(
+            f"{len(absent)} PRE-REGISTERED comparison(s) could not be formed: "
+            + "; ".join(f"{c.label_a} -> {c.label_b} needs "
+                        f"{' and '.join(c.missing)}" for c in absent)
+            + ". Rendered as rows with no bar rather than omitted, because a claim "
+              "that was announced before the run and then has no row at all is a claim "
+              "nobody notices went missing."
+        )
+    unformed = [c for c in untestable if not c.missing]
+    if unformed:
         # Counted and named, never dropped quietly. A chart showing fewer comparisons
         # than the cells imply is the same failure as a bar that renders zero.
-        notes.append(f"{len(untestable)} comparison(s) {NO_PER_ITEM_DETAIL}")
+        notes.append(f"{len(unformed)} comparison(s) {NO_PER_ITEM_DETAIL}")
     if any(c.cross_model for c in comparisons):
         notes.append(CROSS_MODEL_REFUSAL)
     if not rows:

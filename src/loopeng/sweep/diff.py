@@ -68,6 +68,7 @@ from pathlib import Path
 
 from loopeng.paired import CLUSTERING_CAVEAT, PairedComparison, compare
 from loopeng.sweep.orchestrator import load_all
+from loopeng.sweep.runner import Cell
 
 ALPHA = 0.05
 
@@ -122,6 +123,15 @@ class Comparison:
     # n_pairs alone.
     n_answered_a: int = 0
     n_answered_b: int = 0
+    # Cell keys this comparison NEEDED and did not find. Empty for every pair that
+    # was actually formed.
+    #
+    # A comparison used to be emitted only when both its cells existed, so a
+    # PRE-REGISTERED result whose cell was missing did not become an empty row — it
+    # stopped being a row. The pre-registration is read aloud before the first cell
+    # runs and the room checks the result against it, so a claim that quietly has no
+    # row is a claim nobody notices went missing. See `named_secondary_deltas`.
+    missing: tuple[str, ...] = ()
 
     @property
     def n_pairs(self) -> int:
@@ -203,6 +213,11 @@ class Comparison:
         Short, because it is what the DELTA chart prints in a row. `reading` adds the
         explanation; a row is a label, not a paragraph.
         """
+        if self.missing:
+            return (
+                f"not run: {' and '.join(self.missing)} "
+                f"{'is' if len(self.missing) == 1 else 'are'} not on disk"
+            )
         stripped = [label for label, keeps in
                     ((self.label_a, self.keeps_items_a), (self.label_b, self.keeps_items_b))
                     if not keeps]
@@ -218,6 +233,16 @@ class Comparison:
 
     def reading(self) -> str:
         """What may be said. Directional at most, never a specific gap."""
+        if self.missing:
+            # BEFORE the cross-model refusal. "No p-value: this compares two models" is
+            # true of the named secondary and says nothing about the fact that one of
+            # its cells does not exist — a reader would take it for a measured pair
+            # that merely cannot be tested, which is the more reassuring of the two.
+            return (
+                f"NOT MEASURED — {self.unpairable_because}. This comparison is "
+                f"pre-registered, so its absence is reported rather than left as a "
+                f"missing row: nothing was computed for it and nothing was substituted."
+            )
         if self.cross_model:
             return CROSS_MODEL_REFUSAL
         if not self.n_pairs:
@@ -402,6 +427,28 @@ SECONDARY_A = ("agent", "loop")
 SECONDARY_B = ("reference", "one_shot")
 
 
+def _absent(kind: str, slots: tuple[tuple, tuple], found: tuple) -> Comparison:
+    """A pre-registered pair that could not be formed, as a row rather than a gap.
+
+    Labels come from `Cell`, so a missing cell is named exactly as it would have been
+    had it landed — the reader compares the row against the pre-registration without
+    translating between two vocabularies.
+    """
+    cells = [Cell(role, level, mode, rep) for role, level, mode, rep in slots]
+    return Comparison(
+        kind=kind,
+        key_a=cells[0].key, key_b=cells[1].key,
+        label_a=cells[0].label, label_b=cells[1].label,
+        measured_on_a=_stamp({}), measured_on_b=_stamp({}),
+        # An empty paired comparison: n_pairs is 0, so `partition` files this under
+        # untestable and no arithmetic anywhere treats it as evidence.
+        paired=compare({}, {}),
+        cross_model=cells[0].role != cells[1].role,
+        missing=tuple(cell.key for cell, present in zip(cells, found, strict=True)
+                      if present is None),
+    )
+
+
 def named_secondary_deltas(cells) -> list[Comparison]:
     """The agent with loops against the frontier model bare, at each level.
 
@@ -419,10 +466,19 @@ def named_secondary_deltas(cells) -> list[Comparison]:
     levels = sorted({level for _role, level, _mode, _rep in indexed})
     out = []
     for level in levels:
-        a = indexed.get((SECONDARY_A[0], level, SECONDARY_A[1], 0))
-        b = indexed.get((SECONDARY_B[0], level, SECONDARY_B[1], 0))
-        if a and b:
-            out.append(_build("secondary", a, b))
+        slots = ((SECONDARY_A[0], level, SECONDARY_A[1], 0),
+                 (SECONDARY_B[0], level, SECONDARY_B[1], 0))
+        found = tuple(indexed.get(slot) for slot in slots)
+        # EVERY level the sweep produced cells for gets a row, formed or not. Skipping
+        # the unformed ones is what let a pre-registered comparison disappear from both
+        # the DELTA chart and the terminal summary with nothing to mark its place.
+        #
+        # A profile that cannot produce this family at all — smoke runs the agent role
+        # only — therefore reports it as not run rather than omitting it. That is the
+        # honest reading: the pre-registration is printed whatever the profile, so a
+        # profile that cannot deliver it should say so.
+        out.append(_build("secondary", *found) if all(found)
+                   else _absent("secondary", slots, found))
     return out
 
 

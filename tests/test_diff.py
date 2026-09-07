@@ -479,3 +479,82 @@ def test_a_symmetric_pair_says_so_rather_than_repeating_one_number():
     comparison = diff.level_deltas([a, b])[0]
 
     assert "answered all of them" in comparison.provenance()
+
+
+# ---- a pre-registered comparison may be empty; it may not be absent --------------
+
+
+def _secondary_cell(key, role, level, mode):
+    return {"key": key, "label": key, "role": role, "level": level, "mode": mode,
+            "replicate": 0, "complete": True, "items": []}
+
+
+def test_a_pre_registered_pair_with_a_missing_cell_is_a_row_not_a_gap():
+    """The single most damaging failure available in the session.
+
+    The pre-registration is read aloud before the first cell runs and the room checks
+    the result against it. `named_secondary_deltas` emitted a comparison only when both
+    its cells existed, so a missing cell did not make the row empty — it removed the
+    row. The claim disappears and nobody notices, because there is nothing on the chart
+    where it used to be.
+
+    `views/dial.py` already rendered "awaiting measurement" for exactly this; the chart
+    and summary path had no equivalent.
+    """
+    comparisons = diff.named_secondary_deltas([
+        _secondary_cell("agent_L0_loop_r0", "agent", "L0", "loop"),
+    ])
+    assert len(comparisons) == 1, "the level produced cells, so the pair owes a row"
+    absent = comparisons[0]
+    assert absent.missing == ("reference_L0_one_shot_r0",)
+    assert absent.n_pairs == 0, "an absence must never be counted as evidence"
+    assert absent.delta_pp is None
+    assert absent.p_value is None
+    assert absent.distinguishable is False
+
+
+def test_the_absence_reading_beats_the_cross_model_refusal():
+    """"No p-value: this compares two models" is TRUE of the named secondary and says
+    nothing about one of its cells not existing. A reader would take the row for a
+    measured pair that merely cannot be tested, which is the more reassuring of the
+    two readings."""
+    absent = diff.named_secondary_deltas([
+        _secondary_cell("agent_L3_loop_r0", "agent", "L3", "loop"),
+    ])[0]
+    assert absent.cross_model is True
+    reading = absent.reading()
+    assert "NOT MEASURED" in reading
+    assert "reference_L3_one_shot_r0" in reading
+    assert "nothing was substituted" in reading
+    assert diff.CROSS_MODEL_REFUSAL not in reading
+
+
+def test_a_formed_pair_carries_no_missing_cells():
+    """The opposite failure: an absence flag that fires on a pair that exists."""
+    formed = diff.named_secondary_deltas([
+        _secondary_cell("agent_L0_loop_r0", "agent", "L0", "loop"),
+        _secondary_cell("reference_L0_one_shot_r0", "reference", "L0", "one_shot"),
+    ])
+    assert len(formed) == 1
+    assert formed[0].missing == ()
+
+
+def test_a_level_the_sweep_never_touched_owes_no_row():
+    """Only levels the sweep actually produced cells for. A profile that ran L0 does
+    not owe an absence row for L3 — nothing about that level was attempted."""
+    comparisons = diff.named_secondary_deltas([
+        _secondary_cell("agent_L0_loop_r0", "agent", "L0", "loop"),
+    ])
+    assert {c.key_a for c in comparisons} == {"agent_L0_loop_r0"}
+
+
+def test_the_missing_cell_is_named_on_the_drawn_figure():
+    """Named rather than counted: a pre-registered absence is the one thing a reader
+    is actively checking for, so "1 comparison could not be formed" is not enough."""
+    figure = delta_chart(diff.named_secondary_deltas([
+        _secondary_cell("agent_L0_loop_r0", "agent", "L0", "loop"),
+    ]))
+    drawn = texts(figure)
+    assert "PRE-REGISTERED" in drawn
+    assert "reference_L0_one_shot_r0" in drawn
+    assert "nobody notices went missing" in drawn
