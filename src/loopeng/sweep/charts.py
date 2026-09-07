@@ -97,6 +97,7 @@ from loopeng.sweep.diff import (  # noqa: E402
     coverage_is_asymmetric,
     partition,
 )
+from loopeng.sweep.fingerprint import assert_comparable  # noqa: E402
 
 render_p = PairedComparison.render_p
 
@@ -762,6 +763,11 @@ def write_charts(cells: list[dict], directory: Path, *,
     yet measured" and say what would fill them. A chart that silently does not exist is
     indistinguishable from a chart whose finding is absent.
     """
+    # Refuse BEFORE drawing anything. A chart rendered from a mismatched set is the
+    # worst failure this module has: every number on it is computed correctly and it
+    # compares two different experiments.
+    assert_comparable(cells)
+
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     written = []

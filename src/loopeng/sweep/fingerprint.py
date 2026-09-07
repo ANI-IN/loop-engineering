@@ -53,7 +53,7 @@ import hashlib
 import json
 import subprocess
 import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from loopeng.pricing import PRICES_TAKEN_ON
@@ -67,7 +67,17 @@ UNKNOWN_REVISION = "unknown — not a git checkout"
 
 # Everything except `run_id`. Two cells that agree on these came out of the same
 # measurement setup; the id then says whether they came out of the same invocation.
-INPUT_FIELDS = ("warehouse_seed", "gold_sha256", "prices_taken_on", "code_revision")
+INPUT_FIELDS = ("warehouse_seed", "gold_sha256", "prompt_sha256", "models",
+                "prices_taken_on", "code_revision")
+
+# The two a CHART may not mix, whatever else differs.
+#
+# A cell measured against different questions, or against a differently-worded prompt,
+# is not the same measurement — and unlike a price-table change, which moves the cost
+# column and leaves the outcomes alone, either of these moves what "correct" means.
+# Drawing two of them in one figure produces a comparison of nothing, and nothing
+# about the figure looks wrong.
+COMPARABLE_FIELDS = ("gold_sha256", "prompt_sha256")
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -120,6 +130,43 @@ def gold_digest(items) -> str:
     return digest.hexdigest()
 
 
+def prompt_digest() -> str:
+    """A hash of every rendered prompt level.
+
+    The prompts are built from `semantic_model.yaml`, so a rule edited there changes
+    what the model is told without changing the gold set or the code path that reads
+    it. Two cells measured either side of that edit answer different questions and
+    have nothing to say to each other.
+    """
+    from loopeng.prompts import LEVELS, render_prompt
+
+    digest = hashlib.sha256()
+    for level in sorted(LEVELS):
+        digest.update(level.encode("utf-8"))
+        digest.update(b"\x00")
+        digest.update(render_prompt(level).encode("utf-8"))
+        digest.update(b"\x00")
+    return digest.hexdigest()
+
+
+def model_versions(served: dict[str, str] | None = None) -> dict[str, str]:
+    """Role to the model that answered, EXACT rather than the alias requested.
+
+    `registry.assert_served_by` accepts a dated snapshot of the id we asked for and
+    returns the snapshot, because the snapshot is the more precise fact. That precise
+    string is what belongs here: a silent reroute from one snapshot to another would
+    invalidate every comparison in a run and is visible in no other place.
+
+    Falls back to the requested id where nothing has answered yet, so a fingerprint
+    minted before the first call is still comparable on everything else.
+    """
+    from loopeng.registry import REGISTRY
+
+    served = served or {}
+    return {role: served.get(role, spec.model_id)
+            for role, spec in sorted(REGISTRY.items())}
+
+
 @dataclass(frozen=True)
 class RunFingerprint:
     """Which measurement run wrote a cell. Stamped at write time, compared at freeze."""
@@ -129,13 +176,27 @@ class RunFingerprint:
     gold_sha256: str
     prices_taken_on: str
     code_revision: str
+    # What the model was told, and which model answered. Both were absent, and both
+    # decide whether two cells mean the same thing: a reworded rule changes the task,
+    # and a rerouted snapshot changes the answerer.
+    prompt_sha256: str = ""
+    # A dict, not a tuple of pairs, and the reason is the round trip. A fingerprint is
+    # written as JSON and read back to decide whether a resumed sweep is the same run —
+    # and JSON has no tuples, so a stored `(("agent", "gpt-5.6-luna"),)` returns as
+    # `[["agent", "gpt-5.6-luna"]]` and never compares equal to a freshly built one.
+    # Every resume would have minted a new id and every freeze would have refused,
+    # for a difference that is only a container type.
+    models: dict[str, str] = field(default_factory=dict)
 
     @classmethod
-    def for_run(cls, items, *, warehouse_seed: int | None = None) -> "RunFingerprint":
+    def for_run(cls, items, *, warehouse_seed: int | None = None,
+                served: dict[str, str] | None = None) -> "RunFingerprint":
         return cls(
             run_id=uuid.uuid4().hex[:RUN_ID_CHARS],
             warehouse_seed=warehouse_seed,
             gold_sha256=gold_digest(items),
+            prompt_sha256=prompt_digest(),
+            models=dict(sorted(model_versions(served).items())),
             prices_taken_on=PRICES_TAKEN_ON,
             code_revision=code_revision(),
         )
@@ -187,3 +248,63 @@ def resolve_run_id(fingerprint: RunFingerprint, directory: Path) -> RunFingerpri
         if RunFingerprint.from_dict(stored).inputs == fingerprint.inputs:
             return fingerprint.with_run_id(stored["run_id"])
     return fingerprint
+
+
+class IncomparableCells(RuntimeError):
+    """Cells in one figure disagree about what was asked, or about what counts as right.
+
+    Raised rather than drawn. This is the failure the whole module exists for and the
+    one with no visible symptom: a chart rendered from a mismatched set produces bars,
+    intervals and a p-value, all computed correctly, comparing two different
+    experiments. Nothing about the image says so.
+
+    It is deliberately narrower than the run fingerprint. A price-table change moves
+    the cost column and leaves every outcome alone; a code revision may be a comment.
+    Only the gold set and the prompt change what "correct" MEANS, so only those two
+    refuse.
+    """
+
+
+def assert_comparable(cells) -> None:
+    """Refuse to draw cells that answer different questions.
+
+    Cells with no fingerprint are skipped rather than refused. The name is additive —
+    a cell written before it existed carries none — and treating absence as a mismatch
+    would make the guard fire on age rather than on disagreement. Absence means
+    unverifiable, which is a different thing from wrong and is reported as such by
+    `unverifiable_count`.
+    """
+    seen: dict[str, dict[str, list[str]]] = {name: {} for name in COMPARABLE_FIELDS}
+    for cell in cells:
+        stamp = cell.get(FINGERPRINT_FIELD)
+        if not stamp:
+            continue
+        for name in COMPARABLE_FIELDS:
+            value = stamp.get(name)
+            if value:
+                seen[name].setdefault(str(value), []).append(cell.get("key", "?"))
+
+    for name, groups in seen.items():
+        if len(groups) > 1:
+            detail = "; ".join(
+                f"{value[:12]}…: {', '.join(sorted(keys))}"
+                for value, keys in sorted(groups.items())
+            )
+            raise IncomparableCells(
+                f"these cells disagree on {name}, so they were not measured against "
+                f"the same {'gold set' if name == 'gold_sha256' else 'prompt'} and "
+                f"cannot share a figure — {detail}.\n"
+                f"Drawing them would produce bars, intervals and a p-value, every one "
+                f"computed correctly, comparing two different experiments. Re-run the "
+                f"odd cells or render them separately."
+            )
+
+
+def unverifiable_count(cells) -> int:
+    """How many cells carry no fingerprint at all.
+
+    Reported rather than refused, and reported rather than ignored: a figure drawn
+    partly from cells whose provenance cannot be checked is not the same as one where
+    every cell agreed.
+    """
+    return sum(1 for cell in cells if not cell.get(FINGERPRINT_FIELD))
