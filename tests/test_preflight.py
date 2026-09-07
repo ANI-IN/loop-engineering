@@ -251,3 +251,78 @@ def test_a_stale_warehouse_fails_the_preflight_by_name(tmp_path, monkeypatch, ke
     assert CATEGORIES[-1] in built.detail
     assert "rm " in built.fix, "the fix must be a command, not advice"
     assert not gold.ok, "the gold step must not run against a stale warehouse"
+
+
+# ---- the journey a cloner following the documented setup actually takes ------
+
+
+def test_the_judge_is_not_probed_when_its_optional_key_is_absent(monkeypatch, tmp_path):
+    """Found by cloning the repository and running the documented minimal setup.
+
+    `run()` looped over every role in the registry and built a client for each,
+    including the JUDGE — whose key README §10 and SECURITY.md both call optional
+    because the judge never gates a result. So a checkout with only `OPENAI_API_KEY`
+    crashed in the one command written to tell it what is wrong.
+
+    That is the required-credential defect from two commits earlier, still live one
+    layer down: making the key optional in `settings` did not make it optional in the
+    tool that checks your setup.
+    """
+    from loopeng.preflight import _skip_optional_role
+    from loopeng.registry import SCORING_ROLES
+    from loopeng.settings import load_settings
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.chdir(tmp_path)
+    settings = load_settings()
+
+    step = _skip_optional_role("judge", settings)
+    assert step is not None, "the judge must not be called without its key"
+    assert step.skipped is True
+    assert step.ok is True, "an optional role must not fail the preflight"
+    assert "gates nothing" in step.detail
+
+    for role in SCORING_ROLES:
+        assert _skip_optional_role(role, settings) is None, (
+            f"{role} is a scoring role; it must always be probed"
+        )
+
+
+def test_a_skip_is_reported_as_a_skip_and_never_as_a_pass():
+    """"We did not call it" and "we called it and it worked" are different facts, and
+    reporting the first as the second tells someone their triage path is fine when it
+    has never been exercised."""
+    from loopeng.preflight import Step
+
+    skipped = Step("judge model reachable", True, "not called", skipped=True)
+    assert "[SKIP]" in skipped.render()
+    assert "[PASS]" not in skipped.render()
+
+
+def test_a_missing_credential_becomes_a_step_rather_than_a_traceback(monkeypatch,
+                                                                     tmp_path):
+    """The client was built OUTSIDE the try, so a missing credential escaped as an
+    unhandled MissingCredential and the preflight printed twelve lines of traceback
+    instead of the sentence naming the variable and the fix."""
+    from loopeng.preflight import check_model
+    from loopeng.usage import UsageLedger
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    step = check_model("agent", ledger=UsageLedger())
+    assert step.ok is False
+    assert "OPENAI_API_KEY" in (step.fix or "") + step.detail
+
+
+def test_the_preflight_entry_point_goes_through_the_shared_guard():
+    """It was the one demo calling `main()` directly, in the command whose entire job
+    is to fail readably before you spend anything."""
+    from pathlib import Path
+
+    entry = (Path(__file__).resolve().parent.parent
+             / "demos" / "00_preflight" / "check.py").read_text(encoding="utf-8")
+    assert "from loopeng.entrypoint import run" in entry
+    assert "SystemExit(main())" not in entry

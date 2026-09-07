@@ -122,7 +122,11 @@ _FIXES = {
 
 # Which settings field holds each vendor's credential. The one place the mapping
 # lives; `loopeng.providers` reads roles off the registry and comes here for the key.
-_KEY_FIELDS = {"openai": "openai_api_key", "anthropic": "anthropic_api_key"}
+# Which settings field holds which provider's key. Public, because the preflight
+# needs the same mapping to decide whether an OPTIONAL role can be probed, and a
+# second copy of "where does this provider's key live" is the drift this build
+# keeps finding.
+KEY_FIELDS = {"openai": "openai_api_key", "anthropic": "anthropic_api_key"}
 
 # Every credential `load_settings()` insists on by default.
 #
@@ -216,11 +220,11 @@ def require_key(settings: Settings, provider: str) -> SecretStr:
     it fails with the message that names the variable and the fix.
     """
     try:
-        field = _KEY_FIELDS[provider]
+        field = KEY_FIELDS[provider]
     except KeyError:
         raise ValueError(
             f"unknown provider {provider!r}; this build has credentials for "
-            f"{sorted(_KEY_FIELDS)}"
+            f"{sorted(KEY_FIELDS)}"
         ) from None
     key = getattr(settings, field)
     if key is None:

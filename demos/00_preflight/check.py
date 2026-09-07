@@ -7,6 +7,7 @@ Numbered 00 because it runs before the loops, not because it is a loop level.
 
 import argparse
 
+from loopeng.entrypoint import run as guarded
 from loopeng.logging import configure_logging
 from loopeng.preflight import render, run
 
@@ -27,4 +28,8 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    # Through `entrypoint.run` like every other demo. This was the ONE that called
+    # `main()` directly, so a `MissingCredential` escaping any check inside it printed
+    # a traceback rather than the sentence naming the variable and the fix — in the
+    # command whose entire job is to fail readably before you spend anything.
+    raise SystemExit(guarded(main))

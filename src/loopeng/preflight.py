@@ -32,8 +32,14 @@ import structlog
 
 from loopeng.gold.build import build_gold, clustering_summary
 from loopeng.providers import build_client, complete, triage_call_failure
-from loopeng.registry import REGISTRY, key_variable_for_role, spec_for
+from loopeng.registry import (
+    REGISTRY,
+    SCORING_ROLES,
+    key_variable_for_role,
+    spec_for,
+)
 from loopeng.settings import (
+    KEY_FIELDS,
     REQUIRED_CREDENTIALS,
     MissingCredential,
     Settings,
@@ -71,8 +77,15 @@ class Step:
     ok: bool
     detail: str
     fix: str | None = None
+    # A check that was NOT ATTEMPTED, and correctly so. Distinct from a pass, because
+    # "we did not look" and "we looked and it was fine" are different facts and this
+    # whole module exists to keep those apart. `ok` stays True so an optional probe
+    # cannot fail the preflight; `skipped` is what stops it claiming a result.
+    skipped: bool = False
 
     def render(self) -> str:
+        if self.skipped:
+            return f"[SKIP] {self.name} — {self.detail}"
         mark = "PASS" if self.ok else "FAIL"
         line = f"[{mark}] {self.name} — {self.detail}"
         if self.ok:
@@ -108,6 +121,34 @@ class Preflight:
             f"est. ${self.ledger.cost_usd():.6f} over {totals['n_calls']} call(s) "
             f"({totals['input_tokens']} in, {totals['output_tokens']} out)"
         )
+
+
+def _skip_optional_role(role: str, settings: Settings) -> Step | None:
+    """A `Step` when this role must not be probed, or None to probe it.
+
+    The preflight looped over every role in the registry and built a client for each,
+    including the JUDGE — whose key README §10 and SECURITY.md both call optional
+    because the judge never gates a result. So a checkout following the documented
+    minimal setup crashed in the one command written to tell it what is wrong.
+
+    That is the required-credential defect from two commits ago, still live one layer
+    down: making the key optional in `settings` did not make it optional in the tool
+    that checks your setup.
+
+    A skip rather than a pass. "We did not call it" and "we called it and it worked"
+    are different facts, and reporting the first as the second is how a preflight tells
+    someone their triage path is fine when it has never been exercised.
+    """
+    field = KEY_FIELDS[spec_for(role).provider]
+    if role in SCORING_ROLES or getattr(settings, field) is not None:
+        return None
+    return Step(
+        f"{role} model reachable ({spec_for(role).model_id})", True,
+        f"not called — {field.upper()} is not set, and this role gates nothing. "
+        f"Every scored figure in a session is produced without it; only triage and "
+        f"failure sorting need it.",
+        skipped=True,
+    )
 
 
 def _required_vars() -> str:
@@ -155,11 +196,18 @@ def check_key(settings=None) -> Step:
 
 
 def check_model(role: str, *, client=None, ledger: UsageLedger) -> Step:
-    """One minimal call, with the registry's own kwargs. Records what it billed."""
+    """One minimal call, with the registry's own kwargs. Records what it billed.
+
+    **The client is built INSIDE the try**, and that is not tidiness. It was built
+    above it, so a missing credential escaped as an unhandled `MissingCredential` and
+    the preflight — the one command whose entire job is to fail readably before you
+    spend anything — printed a twelve-line traceback instead of the sentence that names
+    the variable and the fix.
+    """
     spec = spec_for(role)
-    client = build_client(spec) if client is None else client
 
     try:
+        client = build_client(spec) if client is None else client
         completion = complete(
             spec,
             system=PROBE_SYSTEM,
@@ -283,6 +331,10 @@ def run(*, client_for=None) -> Preflight:
     if key_step.ok:
         settings = load_settings()
         for role in sorted(REGISTRY):
+            step = _skip_optional_role(role, settings)
+            if step is not None:
+                result.add(step)
+                continue
             client = client_for(role) if client_for else None
             result.add(check_model(role, client=client, ledger=result.ledger))
         warehouse_path, seed = settings.warehouse_path, settings.warehouse_seed
