@@ -233,10 +233,28 @@ class Comparison:
         return self.paired.render()
 
     def provenance(self) -> str:
-        """Both dates, on the row. A caption is read once; a row is read every time."""
-        if self.measured_on_a == self.measured_on_b == LIVE_STAMP:
-            return "both computed this run"
-        return f"{self.label_a}: {self.measured_on_a} · {self.label_b}: {self.measured_on_b}"
+        """The DENOMINATORS, on the row. A caption is read once; a row is read every time.
+
+        This used to carry both measurement dates, and once every cell became live it
+        said "both computed this run" forever — a sub-line under every row with one
+        possible value.
+
+        What belongs there instead is the n, and specifically the n that DIFFERS. This
+        project's rule is that every figure carries its n; a paired delta has three of
+        them — the pairs, and each arm's answered count — and they come apart exactly
+        when one arm declines. The reference arm answered 36 of the 60 it was asked
+        while the other answered all 60, and a reader glancing at "-75.0 pp" cannot
+        infer that from the interval.
+        """
+        if self.n_answered_a == self.n_answered_b == self.n_pairs:
+            return f"n={self.n_pairs} paired · both arms answered all of them"
+        # Compact, because it has to fit the reading gutter beside the number it
+        # qualifies. What the asymmetry MEANS is in the caption; what a reader needs
+        # on the row is that it exists and by how much.
+        return (
+            f"n={self.n_pairs} paired · arms answered "
+            f"{self.n_answered_a} vs {self.n_answered_b}"
+        )
 
     def as_dict(self) -> dict:
         return {

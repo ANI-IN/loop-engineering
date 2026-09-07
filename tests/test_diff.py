@@ -221,13 +221,6 @@ def test_the_interval_is_reported_with_the_delta():
 # ---- provenance -------------------------------------------------------------
 
 
-def test_two_live_cells_say_both_computed_this_run():
-    a = cell("worker_L0_one_shot_r0", mode="one_shot", correct=["a"])
-    b = cell("worker_L0_loop_r0", correct=["a"])
-
-    assert diff._build("mode", a, b).provenance() == "both computed this run"
-
-
 def test_a_live_cell_wins_its_slot_so_the_stored_twin_is_not_self_compared():
     """The mode and level families must compare live against live, not accidentally
     pick up the stored twin as one of the arms."""
@@ -456,3 +449,33 @@ def test_arms_that_answered_the_same_items_raise_no_coverage_note():
     a = cell("a0", role="agent", level="L0", correct=list("abcde"), wrong=list("fg"))
     b = cell("a3", role="agent", level="L3", correct=list("abcdefg"), wrong=[])
     assert not coverage_is_asymmetric(diff.level_deltas([a, b]))
+
+
+def test_the_row_carries_its_own_n_and_the_arms_denominators():
+    """Every figure carries its n, and a paired delta has three of them — the pairs,
+    and each arm's answered count. They come apart exactly when one arm declines.
+
+    The sub-line used to carry both measurement dates. Once every cell became live it
+    read "both computed this run" forever: a line under every row with one possible
+    value, in the place a reader looks for the qualifier on the number beside it.
+    """
+    declining = cell("d0", role="reference", level="L0",
+                     correct=list("abc"), wrong=list("de"))
+    full = cell("d3", role="reference", level="L3",
+                correct=list("abcdefghij"), wrong=[])
+    comparison = diff.level_deltas([declining, full])[0]
+
+    line = comparison.provenance()
+    assert f"n={comparison.n_pairs} paired" in line
+    assert f"{comparison.n_answered_a} vs {comparison.n_answered_b}" in line
+    assert "computed this run" not in line
+
+
+def test_a_symmetric_pair_says_so_rather_than_repeating_one_number():
+    """Where the arms answered the same items there is no asymmetry to disclose, and
+    printing "5 vs 5" invites a reader to look for a difference that is not there."""
+    a = cell("a0", role="agent", level="L0", correct=list("abc"), wrong=list("de"))
+    b = cell("a3", role="agent", level="L3", correct=list("abcde"), wrong=[])
+    comparison = diff.level_deltas([a, b])[0]
+
+    assert "answered all of them" in comparison.provenance()
