@@ -457,6 +457,8 @@ src/loopeng/
 demos/               thin entry points and the runbooks, one folder per loop level
 notebooks/           three notebooks, thin by the same rule; the filename says whether
                      each one spends. Needs `uv sync --extra notebooks`
+scripts/             gold build and validation, the experiment runner, the failure
+                     taxonomy observer, and the starter-branch generator
 tools/               the numeric-literal rule (`tools/lint_no_numbers.py`) and the
                      LangSmith resume probe (`tools/resumability_probe.py`)
 results/             live cell output; see below
@@ -912,6 +914,26 @@ measurement, and this project does not read one.
 
 ---
 
+### The starter branch
+
+```bash
+git clone -b starter https://github.com/ANI-IN/loop-engineering
+```
+
+`run_question` (Level 1) and `run_verified` (Level 2) are removed, with their
+signatures and docstrings kept. **Everything that measures whether you have put them
+back correctly is intact** — the warehouse, the gold set, the verifiers, the
+classifier, the charts and every guard. 76 tests fail; making them pass is the
+exercise, and the tests are the specification. See `STARTER.md` on that branch.
+
+It is **generated** by `scripts/make_starter.py`, not maintained. A hand-maintained
+starter is correct for about a week and then describes a system that no longer exists
+— this repository's own subject, arriving in the thing an attendee clones first. Fix
+bugs on `main` and regenerate. CI skips that branch on purpose: a run that is red by
+design is indistinguishable at a glance from one that is red by accident.
+
+---
+
 ## 14 · Testing
 
 ```bash
@@ -1081,8 +1103,51 @@ supports**, and every chart caption says so.
 **The warehouse is synthetic.** Generated from a seed, deliberately rule-heavy so each
 rule has rows on both sides of it. Real data is messier in ways not simulated here.
 
-**One provider.** Both roles are Anthropic models. That is why no LLM judge blocks
-anything, and it means nothing here is evidence about cross-provider behaviour.
+**Both scoring roles are the same provider.** `agent` and `reference` are both OpenAI
+models, so every comparison this project draws is within one vendor's family. Nothing
+here is evidence about cross-provider behaviour, and the cheap-versus-frontier result
+would need re-running against another vendor before it could be claimed as a general
+one. The judge is Anthropic and gates nothing, which is why a checkout with no Anthropic
+key runs every scored path.
+
+*This paragraph read "Both roles are Anthropic models" until 2026-09-08 — true of the
+build it was written for, and a limitation section that names the wrong vendor is worse
+than one that names none, because it invites a reader to discount the wrong thing.*
+
+## CI, and what it does not cover
+
+CI runs one job, `offline`, on every push: ruff, the numeric-literal rule, a checkout
+starting with only the required key, gold-set validation, the offline suite, and a check
+that the live tests are still marked. **It is the only automated verification this
+project has**, and it is worth being explicit about its edges.
+
+**It never calls a model.** No secret is available to that job, on purpose. So nothing
+CI runs can catch a change that breaks a live path — a request-kwarg the vendor rejects,
+a response shape that moved, a retry that no longer fires. Those are caught by the
+preflight and by running a smoke sweep, both of which cost money and neither of which
+is automated.
+
+**It runs on Linux only, and development happens on macOS.** The suite passes on both,
+and the two platform-conditional skips are documented, but "works on Windows" is
+untested and stated as such in §9.
+
+**The GitHub Actions runners have deprecated Node 20, and three of the actions this
+workflow uses still target it** — `actions/checkout@v4`, `actions/cache@v4` and
+`astral-sh/setup-uv@v5`. Every run currently prints:
+
+> Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced
+> to run on Node.js 24.
+
+It passes today because the runner forces the newer runtime. **When that forcing stops,
+this workflow fails for a reason unrelated to anything in this repository**, and a
+cloner six months from now will hit it on a version they did not choose. The pins are
+deliberately not bumped: pinning to a newer action would hide the date this was known
+and swap a loud future failure for a silent present change. The caveat is here instead,
+with the date, so the failure arrives explained.
+
+**A green CI badge means the offline contract holds.** It does not mean the numbers are
+reproducible on your account, that your key works, or that a session would run. Those
+are what §11.0 is for.
 
 **One rule is exercised by a single pattern.** The sweep can make no claim about it: a
 flat line there means *not measured here*, not *the verifier missed it*. Its enforcement

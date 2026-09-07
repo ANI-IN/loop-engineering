@@ -910,3 +910,39 @@ def test_evidence_cited_by_a_design_note_is_TRACKED_not_merely_present(path):
             f"tracked by git. It may exist on your machine; it does not exist on a "
             f"clone, which is where anyone checking the claim will look."
         )
+
+
+def test_the_ci_caveat_names_actions_the_workflow_actually_uses():
+    """A caveat that outlives the thing it warns about is this project's own defect.
+
+    README §16 records that three actions still target the deprecated Node 20 runtime
+    and that the workflow passes only because the runner forces a newer one. The pins
+    are deliberately not bumped — pinning would hide the date this was known and swap a
+    loud future failure for a silent present change.
+
+    So the caveat has to stay true. Every action version it names is checked against
+    the workflow: bump one and this fails, which is the prompt to update the caveat
+    rather than leave a warning about a version nobody uses any more.
+    """
+    body = README.read_text(encoding="utf-8")
+    ci = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+
+    caveat = body[body.index("deprecated Node 20"):body.index("**A green CI badge")]
+    named = set(re.findall(r"`([a-z][\w.-]+/[\w.-]+@v\d+)`", caveat))
+    assert named, "the caveat no longer names any action version"
+
+    for action in sorted(named):
+        assert action in ci, (
+            f"README §16 warns about {action}, which this workflow no longer uses. "
+            f"Update the caveat: a warning about a version nobody runs is noise, and "
+            f"it hides whether the real one is still affected."
+        )
+
+
+def test_the_ci_caveat_is_honest_about_what_ci_cannot_catch():
+    """The property, not the wording: a reader must learn from §16 that CI makes no
+    model call, so nothing it runs can catch a broken live path."""
+    body = README.read_text(encoding="utf-8")
+    caveat = body[body.index("## CI, and what it does not cover"):]
+    assert "never calls a model" in caveat
+    assert "offline contract" in caveat

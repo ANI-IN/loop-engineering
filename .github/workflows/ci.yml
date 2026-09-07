@@ -6,6 +6,14 @@ name: CI
 # missing secret.
 on:
   push:
+    # `starter` is EXCLUDED, and it is the only exclusion.
+    #
+    # That branch is generated from main with the two loop bodies removed, so 76 tests
+    # fail there BY DESIGN — making them pass is the exercise. Running CI on it would
+    # produce a permanently red run that is indistinguishable at a glance from a real
+    # failure, and a red mark nobody is meant to act on is how people learn to ignore
+    # the red marks they are.
+    branches-ignore: [starter]
   pull_request:
 
 # Read-only by default. Without this block GitHub grants the job the default
