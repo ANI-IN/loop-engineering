@@ -170,6 +170,32 @@ right answer.
 That is the clearest statement of what verification adds that measurement cannot, and it
 was found by measuring rather than by arguing.
 
+---
+
+# Postscript: it fires on the real set
+
+Everything above was written when the outcome had fired zero times. On the 60-item
+held-out set it fires twice, on the first live run:
+
+| | items matching gold | scored correct | scored unearned |
+|---|---|---|---|
+| L0 · rules withheld | 8 | 6 | **2** |
+| L3 · rules given | 50 | 50 | 0 |
+
+Both are currency items — `p07_aov_by_region__04` and `p08_revenue_by_category__04` —
+where a guessed conversion rate landed on an item needing both factors, which is the
+case the earlier measurement narrowly missed.
+
+**Without the category, L0 would have read 13.3% instead of 10.0%,** and the headline
+gap would have been 70.0 points instead of 73.3. The category moves the headline by
+3.3 points, in the direction that makes the claim *stronger* — which is the direction
+that matters, because a metric that flatters the arm you are arguing against is the
+only kind you can trust.
+
+The six genuinely correct L0 answers are all `p01_product_count`, the pattern that
+requires no rules. That is the L0 floor doing exactly its job: without it, L0 would sit
+at zero by construction and the whole comparison would be rigged.
+
 ## What it does not fix
 
 The eight L0 currency items remain unanswerable. Scoring an abstention correctly does

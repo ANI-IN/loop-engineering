@@ -95,3 +95,56 @@ def test_the_connection_survives_a_timeout(warehouse):
             timeout_s=0.5,
         )
     assert run_sql("SELECT COUNT(*) FROM products", warehouse)[0][0] > 0
+
+
+# ---- a stale warehouse is refused, not used ---------------------------------
+
+
+def test_a_warehouse_missing_a_declared_slice_is_refused(tmp_path, monkeypatch):
+    """It cost a 120-call measurement, and the failure was silent in the worst way.
+
+    `ensure_warehouse` only checked absence. Its docstring said that was deliberate —
+    silently regenerating a file mid-session because a seed drifted would be worse
+    than using what is there — and that reasoning is right, and it is about the SEED.
+
+    It does not cover the schema's vocabulary changing. When CATEGORIES and REGIONS
+    were widened for the 84-item gold set, a warehouse generated before the widening
+    had none of the new slices, so every gold answer referencing them came back empty
+    and both arms scored exactly zero, including the pattern that requires no rules.
+
+    Zero everywhere is at least loud. A partial overlap would have been worse: some
+    items right, some wrong, and a plausible number on a chart.
+    """
+    import duckdb
+    import pytest
+
+    from loopeng.warehouse.connect import StaleWarehouse, ensure_warehouse
+    from loopeng.warehouse.schema import CATEGORIES
+
+    path = tmp_path / "stale.duckdb"
+    ensure_warehouse(path, seed=20260729)
+
+    # Remove one declared category, which is what a pre-widening warehouse looks like.
+    con = duckdb.connect(str(path))
+    con.execute("DELETE FROM products WHERE category = ?", [CATEGORIES[-1]])
+    con.close()
+
+    with pytest.raises(StaleWarehouse) as caught:
+        ensure_warehouse(path, seed=20260729)
+    message = str(caught.value)
+    assert CATEGORIES[-1] in message
+    assert "delete" in message.lower(), "the fix must be named"
+    assert path.exists(), "it must refuse rather than regenerate over the file"
+
+
+def test_a_current_warehouse_is_returned_untouched(tmp_path):
+    """The check must not become a reason to regenerate on every call."""
+    from loopeng.warehouse.connect import ensure_warehouse
+    from loopeng.warehouse.generate import content_checksum
+
+    path = tmp_path / "w.duckdb"
+    ensure_warehouse(path, seed=20260729)
+    before = content_checksum(path)
+
+    ensure_warehouse(path, seed=20260729)
+    assert content_checksum(path) == before

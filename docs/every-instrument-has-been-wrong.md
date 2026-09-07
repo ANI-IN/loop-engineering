@@ -8,8 +8,8 @@ apart, and that you cannot tell by looking. It makes that argument about a text-
 agent. The argument is stronger made about the repository, because here the failures are
 documented, dated, and were all found the same way.
 
-**Four instruments have been caught measuring something other than what they claimed.
-None of the four was found by reading the code.** All four were green.
+**Five instruments have been caught measuring something other than what they claimed.
+Not one was found by reading the code.** All five were green.
 
 ## 1. The lint rule that scanned nothing
 
@@ -64,10 +64,32 @@ item of the reveal — in front of the room, on the headline visual.
 
 Louder than a silent default, and worse than either.
 
+## 5. The warehouse factory that used a warehouse the gold set could not index into
+
+`ensure_warehouse` generated the file when absent and returned it otherwise. Its
+docstring said the missing check was deliberate: silently regenerating someone's
+warehouse mid-session because a seed argument drifted would be worse than using the
+file that is there.
+
+That reasoning is correct, and it is about the **seed**. It does not cover the
+schema's *vocabulary* changing. When the categories and regions were widened to build
+the 84-item gold set, a warehouse generated before the widening contained none of the
+new slices — so gold answers referencing them came back empty, and a 120-call
+measurement scored exactly zero on every arm, including the pattern that requires no
+rules at all.
+
+Zero everywhere is at least loud, and it is why this was caught in one run. **A partial
+overlap would have been worse:** some items right, some wrong, and a plausible number
+on a chart.
+
+The fix keeps the original reasoning intact. It refuses rather than regenerates, and it
+asks about the content the gold set indexes into rather than about the seed.
+
 ## What they have in common
 
-**None was found by reading code. All four were found by running the thing and looking at
-what came out.** Two were found by a measurement taken for an unrelated reason.
+**None was found by reading code. All five were found by running the thing and looking at
+what came out.** Two were found by a measurement taken for an unrelated reason, and one
+by a measurement it had itself silently ruined.
 
 Each had a plausible reason to look correct:
 
@@ -77,6 +99,7 @@ Each had a plausible reason to look correct:
 | the classifier | its rule and its enforcement agree everywhere except one case |
 | the band subtraction | the arithmetic is correct, for the category set that existed |
 | the label map | it was total when it was written |
+| the warehouse factory | its docstring argued, correctly, for the check it did have |
 
 The last two are the most uncomfortable, because **both were correct when written.** They
 did not decay through neglect. They decayed because a category was added somewhere else,
@@ -92,6 +115,8 @@ The fix is never the interesting part. What changed is what makes the *next* one
 - every dict keyed on `Outcome` must be total, checked by walking the AST of `src/`
 - the grep that bans band-subtraction has its own test proving it matches the two lines
   it was written for
+- a warehouse that cannot represent the declared vocabulary is refused, with the fix
+  named, rather than silently used
 
 That last one is the pattern worth naming. **A checker that silently matches nothing is
 indistinguishable from a checker that passes**, so every checker added here now carries a
