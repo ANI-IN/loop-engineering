@@ -85,6 +85,17 @@ on a chart.
 The fix keeps the original reasoning intact. It refuses rather than regenerates, and it
 asks about the content the gold set indexes into rather than about the seed.
 
+**And it exposes a limit of this project's headline guarantee, which is worth stating
+on its own.** "Every figure shown in the session is computed during the session"
+protects against a stale *number*. It does nothing against a stale *substrate*. A
+warehouse built before the vocabulary widened yields figures that are freshly
+computed, honestly timestamped, and drawn from the wrong world — the timestamp is
+true and the number is meaningless.
+
+Freshness is a property of the computation. Correctness is a property of the
+computation *and* everything it read. The preflight now checks the second, because
+nothing else in the pipeline could tell the difference.
+
 ## What they have in common
 
 **None was found by reading code. All five were found by running the thing and looking at

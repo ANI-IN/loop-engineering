@@ -147,7 +147,9 @@ def test_a_complete_cell_renders_a_plain_metric():
     ]
     report = summarise_cell(Cell("agent", "L0", "loop"), rows, complete=True, seconds=1.0)
     assert "in progress" not in report["silent_error_rate"]
-    assert "n=1" in report["silent_error_rate"]
+    # Carries its n, in whichever form the value calls for. One silent error out of
+    # one is a boundary observation and renders as "1 of 1 — at least ...".
+    assert "1 of 1" in report["silent_error_rate"]
 
 
 def test_a_cell_never_reports_a_bare_zero():

@@ -35,7 +35,7 @@ from loopeng.registry import REGISTRY, key_variable_for_role, spec_for
 from loopeng.settings import MissingCredential, Settings, load_settings
 from loopeng.usage import CallUsage, UsageLedger
 from loopeng.verify.probes import run_probes
-from loopeng.warehouse.connect import ensure_warehouse
+from loopeng.warehouse.connect import StaleWarehouse, ensure_warehouse
 
 log = structlog.get_logger(__name__)
 
@@ -152,9 +152,41 @@ def check_model(role: str, *, client=None, ledger: UsageLedger) -> Step:
 
 
 def check_warehouse_and_gold(*, warehouse_path: Path, seed: int) -> tuple[Step, Step]:
-    """Offline. Runs even when the key is bad, so a typo does not hide the rest."""
+    """Offline. Runs even when the key is bad, so a typo does not hide the rest.
+
+    **It checks the warehouse's VOCABULARY, not just that a file is there, and the
+    difference is the one this preflight exists for.**
+
+    Every figure this project renders is computed during the session. That guarantee
+    protects against a stale NUMBER. It does nothing against a stale SUBSTRATE — a
+    warehouse generated before the schema's categories and regions were widened
+    produces perfectly fresh figures computed from the wrong world, and every one of
+    them carries a live timestamp.
+
+    Measured, not hypothetical: a 120-call run scored exactly zero on every arm,
+    including the pattern that requires no rules, because the local warehouse
+    predated the widening. That failure was caught only because zero everywhere is
+    loud. A PARTIAL overlap — some slices present, some missing — would have produced
+    a plausible number on a chart and nobody would have looked twice.
+
+    `ensure_warehouse` raises `StaleWarehouse` for exactly this, and the preflight is
+    where an operator should meet it: thirty minutes before the session, with the fix
+    named, rather than at minute forty of a stage.
+    """
     try:
         warehouse = ensure_warehouse(warehouse_path, seed=seed)
+    except StaleWarehouse as exc:
+        return (
+            Step("warehouse matches the declared schema", False, str(exc).splitlines()[0],
+                 fix=(
+                     f"rm {warehouse_path} and re-run. It is generated from seed "
+                     f"{seed}; nothing is lost. Until then every figure would be "
+                     f"freshly computed from a warehouse the gold set cannot index "
+                     f"into — live, timestamped, and wrong."
+                 )),
+            Step("gold set builds", False, "not attempted — the warehouse is stale",
+                 fix="Fix the warehouse first."),
+        )
     except Exception as exc:  # noqa: BLE001 - report, do not traceback at a cloner
         return (
             Step("warehouse builds", False, f"{type(exc).__name__}: {exc}",
@@ -162,7 +194,8 @@ def check_warehouse_and_gold(*, warehouse_path: Path, seed: int) -> tuple[Step, 
             Step("gold set builds", False, "not attempted — it needs the warehouse",
                  fix="Fix the warehouse first."),
         )
-    built = Step("warehouse builds", True, f"{warehouse} verified from seed {seed}")
+    built = Step("warehouse matches the declared schema", True,
+                 f"{warehouse} carries every declared category and region (seed {seed})")
 
     try:
         items = build_gold(warehouse)

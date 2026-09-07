@@ -162,7 +162,7 @@ def test_the_offline_steps_run_without_any_key(tmp_path, monkeypatch):
 
     names = {step.name: step for step in result.steps}
     assert not result.ok
-    assert names["warehouse builds"].ok
+    assert names["warehouse matches the declared schema"].ok
     assert names["gold set builds"].ok
     assert names["rule surface (offline, free)"].ok
 
@@ -211,3 +211,37 @@ def test_the_entry_point_is_thin_and_delegates():
               / "demos" / "00_preflight" / "check.py").read_text(encoding="utf-8")
     assert "from loopeng.preflight import" in source
     assert len(source.splitlines()) < 100
+
+
+def test_a_stale_warehouse_fails_the_preflight_by_name(tmp_path, monkeypatch, keyed):
+    """The gap that "every figure is computed live" does not close.
+
+    Live computation protects against a stale NUMBER. It does nothing against a stale
+    SUBSTRATE: a warehouse built before the schema's vocabulary widened produces
+    perfectly fresh figures, carrying live timestamps, computed from the wrong world.
+
+    Measured — a 120-call run scored zero on every arm, including the pattern that
+    cannot fail, because the local warehouse predated the widening. It was caught only
+    because zero everywhere is loud. A partial overlap would have produced a plausible
+    number on a chart.
+
+    So the preflight is where an operator meets it: thirty minutes before, with the
+    fix named, rather than at minute forty of a stage.
+    """
+    import duckdb
+
+    from loopeng.warehouse.connect import ensure_warehouse
+    from loopeng.warehouse.schema import CATEGORIES
+
+    path = tmp_path / "stale.duckdb"
+    ensure_warehouse(path, seed=20260729)
+    con = duckdb.connect(str(path))
+    con.execute("DELETE FROM products WHERE category = ?", [CATEGORIES[-1]])
+    con.close()
+
+    built, gold = preflight.check_warehouse_and_gold(warehouse_path=path, seed=20260729)
+
+    assert not built.ok
+    assert CATEGORIES[-1] in built.detail
+    assert "rm " in built.fix, "the fix must be a command, not advice"
+    assert not gold.ok, "the gold step must not run against a stale warehouse"

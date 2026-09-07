@@ -199,7 +199,11 @@ def test_silent_error_rate_carries_its_n(items, warehouse):
     metric = state.silent_error_rate("agent@L3")
     assert metric.n == 1
     assert metric.value == 1.0
-    assert "n=1" in metric.render()
+    # The property, not the spelling. A boundary observation renders as "1 of 1 — at
+    # least ...", because "100.0% ±X" reads as a point estimate with noise when what
+    # was observed is every trial going one way.
+    assert str(metric.n) in metric.render()
+    assert "at least" in metric.render()
 
 
 def test_trap_runs_every_item_against_every_arm(items, warehouse):

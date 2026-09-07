@@ -157,6 +157,30 @@ class Metric:
             # precision nobody computed.
             return f"{prefix}{_render_number(self.value)} (n={self.n}, computed {when})"
 
+        # A boundary observation is not a point estimate with noise around it, and
+        # rendering it as one invites the wrong question.
+        #
+        # "0.0% ±13.8" reads as a small number that might be smaller, or — worse, out
+        # loud, in a room — as though the value could be negative. What was actually
+        # observed is ZERO events in n trials, and what the interval says is that the
+        # rate is at most the upper bound. Those are different sentences and only one
+        # of them is true.
+        #
+        # It matters here specifically: the withheld-rules arm scores zero on whole
+        # rule families, next to a rule-free row sitting at 100%. Both are boundary
+        # observations, both were rendering as a percentage plus a symmetric-looking
+        # tolerance, and neither is that.
+        if self.value == 0:
+            return (
+                f"{prefix}0 of {self.n} — at most {self.ci_high * 100:.1f}% "
+                f"(Wilson 95%, computed {when})"
+            )
+        if self.value == 1:
+            return (
+                f"{prefix}{self.n} of {self.n} — at least {self.ci_low * 100:.1f}% "
+                f"(Wilson 95%, computed {when})"
+            )
+
         # Wilson is asymmetric about p, so there is no single ± that is exact.
         # Reporting the wider arm bounds the error on both sides; reporting the
         # narrower one, or the mean of the two, would understate it.
