@@ -6,6 +6,18 @@ it exists.
 
 This lives in `src/` rather than in the entry point because it is process management, not
 argument wiring — the demo's job is to parse flags, call in, and print.
+
+CALLERS MUST VALIDATE CREDENTIALS BEFORE CALLING THIS
+
+Detaching first meant a keyless sweep printed `sweep detached: pid 41293`, exited 0, and
+died in a log file the operator had no reason to open — at the top of the most expensive
+stage, in front of a room, with the terminal handed back looking like success. The one
+failure the fail-fast design exists to prevent was the one failure detaching hid.
+
+So `load_settings()` runs in the process the operator is still watching, and its
+`MissingCredential` reaches them as the sentence naming the variable and the fix. The
+constraint is recorded here rather than only at the one call site, because it binds
+every caller of this function and the next one will not have read that call site.
 """
 
 import os

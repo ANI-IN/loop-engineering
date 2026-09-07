@@ -20,7 +20,6 @@ chart reads as a measurement.
 
 import json
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -39,6 +38,7 @@ from loopeng.gold.build import json_default, spread_across_clusters
 from loopeng.metric import Metric
 from loopeng.pricing import prices_for
 from loopeng.registry import spec_for
+from loopeng.sweep.deadline import Deadline, run_bounded
 from loopeng.sweep.fingerprint import FINGERPRINT_FIELD, RunFingerprint
 from loopeng.verify.batch import as_agent_run
 from loopeng.verify.governance import verify_governed
@@ -248,10 +248,22 @@ class Cell:
 
     @property
     def label(self) -> str:
-        model = "Haiku" if self.role == "agent" else "Sonnet"
+        """What a reader sees on the axis. **The model name is DERIVED, not typed.**
+
+        This read `"Haiku" if self.role == "agent" else "Sonnet"`, and both names were
+        wrong: the roles resolve to a different vendor's models entirely now. Every
+        dial and cost chart in the sweep was labelling its bars with the models from
+        two registries ago, and nothing failed, because a hardcoded string cannot
+        disagree with anything.
+
+        The same defect was found and fixed on the trap grid earlier in this build.
+        Finding it a second time, in a second renderer, is the argument for the rule
+        rather than for the fix: a label that RESTATES configuration goes stale
+        silently, and the only version that cannot is the one that reads it.
+        """
         mode = "one-shot" if self.mode == "one_shot" else "loop"
         rep = f" (rep {self.replicate + 1})" if self.replicate else ""
-        return f"{model} · {self.level} · {mode}{rep}"
+        return f"{spec_for(self.role).model_id} · {self.level} · {mode}{rep}"
 
     def projected_usd(self, n_items: int) -> float:
         inp, out = SHAPES[(self.role, self.level)]
@@ -382,12 +394,18 @@ def load_cell(cell: Cell, directory: Path = SWEEP_DIR,
 def run_cell(cell: Cell, items, warehouse: Path, *, verifier=verify_governed,
              directory: Path = SWEEP_DIR, on_progress=None,
              concurrency: int = CONCURRENCY_PER_MODEL,
-             fingerprint: RunFingerprint | None = None) -> dict:
+             fingerprint: RunFingerprint | None = None,
+             deadline: Deadline | None = None) -> dict:
     """Run one cell, writing partial state as items land so progress is observable.
 
     `fingerprint` is stamped into the file at write time. It makes run identity a
     recorded fact rather than something `assert_same_run` has to infer from which
     directory a file happens to sit in — see `loopeng.sweep.fingerprint`.
+
+    `deadline` stops the cell BETWEEN items rather than during one — see
+    `loopeng.sweep.deadline` for why an item is never cut short and scored. A cell the
+    clock stopped is written with `stopped_early`, a reduced `n_items`, and a rate
+    string that says the run ended rather than that it is still going.
     """
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -426,25 +444,67 @@ def run_cell(cell: Cell, items, warehouse: Path, *, verifier=verify_governed,
             "tokens": run.ledger.totals(),
         }
 
-    with ThreadPoolExecutor(max_workers=max(1, concurrency)) as pool:
-        futures = [pool.submit(_one, item) for item in items]
-        for future in as_completed(futures):
-            rows.append(future.result())
-            partial = summarise_cell(cell, rows, complete=False,
-                                     seconds=time.perf_counter() - started,
-                                     fingerprint=fingerprint)
-            path.write_text(json.dumps(partial, indent=2, default=json_default))
-            if on_progress:
-                on_progress(partial)
+    items = list(items)
 
-    report = summarise_cell(cell, rows, complete=True, seconds=time.perf_counter() - started,
-                            fingerprint=fingerprint)
+    def _landed(row: dict) -> None:
+        """Write the cell to disk on every completion, deadline or no deadline.
+
+        This is what makes the stop clean rather than lossy: the file on disk is
+        already correct for the items that have landed, so stopping is a matter of
+        not starting more.
+        """
+        rows.append(row)
+        partial = summarise_cell(cell, rows, complete=False,
+                                 seconds=time.perf_counter() - started,
+                                 fingerprint=fingerprint)
+        path.write_text(json.dumps(partial, indent=2, default=json_default))
+        if on_progress:
+            on_progress(partial)
+
+    bounded = run_bounded(items, _one, concurrency=concurrency, deadline=deadline,
+                          on_result=_landed)
+
+    # `complete` means EVERY REQUESTED ITEM RAN, which a deadline-stopped cell did not.
+    # It stays False so `load_cell` will not resume one as if it were whole and
+    # `completed_cells` does not count it — a partial cell must not be able to satisfy
+    # a later full run by sitting in the directory.
+    report = summarise_cell(cell, rows, complete=not bounded.stopped_early,
+                            seconds=time.perf_counter() - started,
+                            fingerprint=fingerprint,
+                            stopped_early=bounded.stopped_early,
+                            n_requested=bounded.requested)
     path.write_text(json.dumps(report, indent=2, default=json_default))
     return report
 
 
+def _partial_rate(metric: Metric, n_ran: int, stopped_early: bool) -> str:
+    """How an incomplete cell describes its own rate.
+
+    "in progress, n=NN so far" is a promise that the number will move. It is true of a
+    cell mid-flight and false of a cell the deadline ended, and the two used to render
+    identically — so a stopped cell invited a room to keep waiting on a figure that was
+    already final.
+    """
+    if stopped_early:
+        return f"stopped at the deadline, final at n={n_ran} — {metric.render()}"
+    return f"in progress, n={n_ran} so far — {metric.render()}"
+
+
 def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: float,
-                   fingerprint: RunFingerprint | None = None) -> dict:
+                   fingerprint: RunFingerprint | None = None,
+                   stopped_early: bool = False,
+                   n_requested: int | None = None) -> dict:
+    """One cell as a dict. **Three states, not two.**
+
+    `complete` was a boolean and the renderers read `not complete` as "in progress,
+    more is coming". A deadline-stopped cell is neither: it is finished, at a smaller
+    n, and will not grow. Rendering it as in-progress would tell a room watching the
+    charts to wait for a number that is never going to arrive.
+
+        complete=True                    ran every item it was asked for
+        complete=False, stopped_early    the clock ended it; this n is final
+        complete=False                   still running; the n is still moving
+    """
     ran = [r for r in rows if r["ran_and_returned"]]
     # Counted by enumeration, never derived. `silent = len(ran) - correct` swept an
     # unearned correct into the silent-error band the moment that outcome existed —
@@ -459,6 +519,14 @@ def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: flo
         "key": cell.key, "label": cell.label, "role": cell.role, "level": cell.level,
         "mode": cell.mode, "replicate": cell.replicate,
         "complete": complete, "seconds": round(seconds, 1),
+        # Additive, like the cache token classes: a cell written before this field
+        # existed has no key, and absence means "not deadline-stopped" — which is what
+        # every cell measured before there was a deadline in fact was.
+        "stopped_early": stopped_early,
+        # How many items were ASKED FOR, as distinct from how many ran. Equal unless
+        # the clock stopped it, and the pair is what the disclosure is computed from
+        # rather than remembered.
+        "n_requested": len(rows) if n_requested is None else n_requested,
         # How many items this cell was RUN OVER, as distinct from how many
         # produced an answer. `load_cell` refuses to resume a cell measured over a
         # different number, which is what stops one profile inheriting another's.
@@ -470,7 +538,7 @@ def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: flo
         # Never blank, never zero, never a guess.
         "silent_error_rate": (
             metric.render() if metric and complete
-            else (f"in progress, n={len(ran)} so far — {metric.render()}" if metric
+            else (_partial_rate(metric, len(ran), stopped_early) if metric
                   else "not yet measured")
         ),
         "rate_value": metric.value if metric else None,

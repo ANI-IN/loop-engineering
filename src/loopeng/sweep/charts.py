@@ -86,6 +86,7 @@ from loopeng.sweep.chart_model import (
     TRAP_TWO_ERRORS_NOTE,
     bar_rows,
     cache_note,
+    deadline_note,
     outcome_shift_rows,  # noqa: E402
     role_colour,
     trap_matrix_rows,
@@ -224,10 +225,10 @@ def _frame(title: str, caption: str, *, body_h_in: float, notes=(),
     return fig, ax
 
 
-def _bar_figure(title: str, caption: str, rows: list[dict], unit: str):
+def _bar_figure(title: str, caption: str, rows: list[dict], unit: str, notes=()):
     """DIAL and COST. One row per cell, in the order `chart_model` decides."""
     fig, ax = _frame(title, f"{unit} {caption}",
-                     body_h_in=max(1, len(rows)) * ROW_H_IN)
+                     body_h_in=max(1, len(rows)) * ROW_H_IN, notes=notes)
 
     positions = list(range(len(rows)))
     ax.set_yticks(positions)
@@ -279,11 +280,22 @@ def _bar_figure(title: str, caption: str, rows: list[dict], unit: str):
     return fig
 
 
+def _deadline_notes(cells) -> tuple[str, ...]:
+    """The deadline warning as a `notes=` tuple, empty when nothing was cut short.
+
+    A tuple rather than a truthy-or-None argument so the two callers cannot disagree
+    about how "no warning" is spelled.
+    """
+    note = deadline_note(cells)
+    return (note,) if note else ()
+
+
 def dial_chart(cells: list[dict]):
     return _bar_figure(
         "DIAL — silent-error rate by cell", DIAL_CAPTION,
         bar_rows(cells, metric="rate"),
         "Lower is better. Bars are hollow while a cell is still running.",
+        notes=_deadline_notes(cells),
     )
 
 
@@ -294,6 +306,7 @@ def cost_chart(cells: list[dict]):
         "COST — estimated spend by cell", f"{COST_CAPTION} {cache_note(cells)}",
         bar_rows(cells, metric="cost"),
         "Estimated, not billed. Includes calls that failed.",
+        notes=_deadline_notes(cells),
     )
 
 

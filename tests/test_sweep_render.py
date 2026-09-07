@@ -114,3 +114,21 @@ def test_an_untestable_comparison_is_still_listed_with_its_reason():
     finding, so a comparison that could not be tested is printed with why."""
     lines = summarise([cell("a")], [], Path("d"), [])
     assert any("comparisons: 0 testable, 0 not" in line for line in lines)
+
+
+def test_the_preferred_curve_cell_is_a_key_the_sweep_can_actually_produce():
+    """It read `"worker_L0_loop_r0"`, and no cell has been keyed `worker_*` since the
+    roles were renamed to agent/reference.
+
+    So the preference never matched, every run fell through to "whichever cell has the
+    most items", and the curve was drawn from a cell nobody chose — no error, no empty
+    panel, just a different measurement rendered confidently.
+
+    Asserted against the keys `build_cells` produces rather than against the literal,
+    because a test that restates the string would have passed the whole time it was
+    wrong.
+    """
+    from loopeng.sweep.render import PREFERRED_CURVE_CELL
+    from loopeng.sweep.runner import DEVELOPMENT, build_cells
+
+    assert PREFERRED_CURVE_CELL in {cell.key for cell in build_cells(DEVELOPMENT)}

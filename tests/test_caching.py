@@ -312,24 +312,27 @@ def test_the_concurrency_flag_exists_and_defaults_to_the_measured_value():
     assert CONCURRENCY_PER_MODEL > 0
 
 
-def test_the_concurrency_reaches_the_thread_pool(warehouse, tmp_path):
-    """A flag that is accepted and then ignored is worse than no flag."""
-    import loopeng.sweep.runner as runner_module
+def test_the_concurrency_reaches_the_thread_pool(warehouse, tmp_path, monkeypatch):
+    """A flag that is accepted and then ignored is worse than no flag.
+
+    The pool moved from `sweep.runner` to `sweep.deadline` when the deadline made item
+    submission incremental, so this patches the module that now owns it. The property
+    is unchanged and so is the reason for it — the assertion follows the pool rather
+    than the pool's old address.
+    """
+    import loopeng.sweep.deadline as deadline_module
     from loopeng.sweep.runner import Cell, run_cell
 
     seen = {}
-    real = runner_module.ThreadPoolExecutor
+    real = deadline_module.ThreadPoolExecutor
 
     def spy(*args, **kwargs):
         seen["max_workers"] = kwargs.get("max_workers")
         return real(*args, **kwargs)
 
-    runner_module.ThreadPoolExecutor = spy
-    try:
-        run_cell(Cell("agent", "L0", "loop"), [], warehouse,
-                 directory=tmp_path, concurrency=3)
-    finally:
-        runner_module.ThreadPoolExecutor = real
+    monkeypatch.setattr(deadline_module, "ThreadPoolExecutor", spy)
+    run_cell(Cell("agent", "L0", "loop"), [], warehouse,
+             directory=tmp_path, concurrency=3)
 
     assert seen["max_workers"] == 3
 

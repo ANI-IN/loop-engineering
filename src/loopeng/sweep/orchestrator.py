@@ -11,6 +11,7 @@ from pathlib import Path
 import structlog
 
 from loopeng.registry import spec_for
+from loopeng.sweep.deadline import Deadline
 from loopeng.sweep.fingerprint import RunFingerprint, resolve_run_id
 from loopeng.sweep.runner import (
     CONCURRENCY_PER_MODEL,
@@ -30,6 +31,16 @@ from loopeng.sweep.runner import (
 log = structlog.get_logger(__name__)
 
 GRID_CAP_USD = 8.0
+
+# How often a deadline-bounded sweep prints where it is, in items.
+#
+# Every item would be 480 lines for a full development sweep and the useful ones would
+# be lost in it; only at cell boundaries would be too coarse, because a cell is the
+# unit that overruns. The other trigger is not periodic at all: the line ALSO prints
+# the moment the projection crosses from on-track to WILL OVERRUN, because that is the
+# instant the operator has a decision to make and waiting for the next multiple to tell
+# them would be withholding it.
+STATUS_EVERY_ITEMS = 20
 
 # The file this pre-registration cites, by name, before the first cell runs.
 #
@@ -147,7 +158,22 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
               verifier=None, on_cell=None, quiet: bool = False,
               fresh: bool = False, item_limit: int | None = None,
               concurrency: int = CONCURRENCY_PER_MODEL,
-              warehouse_seed: int | None = None) -> dict:
+              warehouse_seed: int | None = None,
+              deadline: Deadline | None = None) -> dict:
+    """Run the profile's cells, resuming what is on disk, within a cap and a clock.
+
+    TWO LIMITS, AND THEY FAIL DIFFERENTLY, ON PURPOSE.
+
+    The spend cap RAISES. Breaching it is a mistake — money is spent that was not
+    authorised — so the sweep refuses to start the cell that would do it and the
+    operator has to decide.
+
+    The deadline RETURNS. Running out of time is not a mistake; it is the expected
+    outcome of a fixed session slot, and the sweep's job at that point is to hand back
+    whatever it honestly measured. Raising would make a designed ending look like a
+    crash in front of a room, and — worse — would push the partial result into an
+    exception path where it is easy to drop.
+    """
     directory = Path(directory)
     if fresh:
         # Checked before anything else, including the pre-registration: refusing after
@@ -174,9 +200,47 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
         RunFingerprint.for_run(items, warehouse_seed=warehouse_seed), directory
     )
 
+    deadline = deadline or Deadline()
+    if not quiet and deadline.seconds is not None:
+        print(f"DEADLINE: {deadline.seconds:.0f}s. Cells are started only while there "
+              f"is time left; the one in flight stops between items and keeps what it "
+              f"measured.\n", flush=True)
+
     spent = 0.0
     completed, skipped = [], []
+    not_run: list[str] = []
+    stopped_at_deadline = False
+    # Sweep-wide, not per cell: the operator's question is whether the SWEEP finishes,
+    # and a cell that is on track inside a sweep that is not would answer the wrong one.
+    # Mutable and shared rather than closed over per cell: `items_total` shrinks when a
+    # cell resumes, and a per-iteration closure would capture the loop variable — which
+    # ruff flags, correctly, as the shape where a callback reads a value that has moved
+    # on since it was written.
+    clock = {"total": len(items) * len(cells), "done": 0, "at": 0, "overrun": None}
+
+    def _progress(_partial) -> None:
+        """One item landed anywhere in the sweep. Print only when it changes a decision."""
+        clock["done"] += 1
+        if quiet or deadline.seconds is None:
+            return
+        done, total = clock["done"], clock["total"]
+        overrun = deadline.will_overrun(done, total)
+        if overrun != clock["overrun"] or done - clock["at"] >= STATUS_EVERY_ITEMS:
+            clock.update(at=done, overrun=overrun)
+            print(f"      {deadline.status(done, total)}", flush=True)
+
     for index, cell in enumerate(cells):
+        # Checked before the cell starts, like the cap, and for the same reason: a
+        # limit enforced after the fact is a limit that has already been breached.
+        if deadline.expired():
+            stopped_at_deadline = True
+            not_run = [c.key for c in cells[index:]]
+            if not quiet:
+                print(f"\nDEADLINE REACHED after {deadline.elapsed:.0f}s — not "
+                      f"starting '{cell.label}'. {len(not_run)} cell(s) will not run: "
+                      f"{', '.join(not_run)}", flush=True)
+            break
+
         # `expect_items` is what stops one profile resuming another's cells. See
         # `load_cell`: the key encodes neither profile nor item count, and every
         # profile defaults to the same directory.
@@ -185,6 +249,11 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
             spent += cached["cost_usd"]["value"]
             completed.append(cached)
             skipped.append(cell.key)
+            # A resumed cell cost no time, so it must not count toward the rate the
+            # projection extrapolates from. Removed from the denominator rather than
+            # added to the numerator: counting it as instantly-done work would make
+            # the sweep look faster than it is and hide a real overrun.
+            clock["total"] -= len(items)
             if not quiet:
                 print(f"[{index + 1}/{len(cells)}] {cell.label} — resumed from disk", flush=True)
             continue
@@ -209,7 +278,8 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
                   f"${projected_total:.4f} of ${cap_usd:.2f})", flush=True)
         kwargs = {"verifier": verifier} if verifier is not None else {}
         report = run_cell(cell, items, warehouse, directory=directory,
-                          concurrency=concurrency, fingerprint=fingerprint, **kwargs)
+                          concurrency=concurrency, fingerprint=fingerprint,
+                          deadline=deadline, on_progress=_progress, **kwargs)
         spent += report["cost_usd"]["value"]
         completed.append(report)
         if on_cell:
@@ -217,6 +287,16 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
         if not quiet:
             print(f"      {report['silent_error_rate']}  "
                   f"est. ${report['cost_usd']['value']:.4f}  {report['seconds']}s", flush=True)
+        if report["stopped_early"]:
+            # The cell itself was cut. Every later cell is unreachable by definition —
+            # the clock that stopped this one has not restarted.
+            stopped_at_deadline = True
+            not_run = [c.key for c in cells[index + 1:]]
+            if not quiet:
+                print(f"\nDEADLINE REACHED mid-cell: '{cell.label}' measured "
+                      f"{report['n_items']} of {report['n_requested']} items and "
+                      f"stopped. {len(not_run)} later cell(s) will not run.", flush=True)
+            break
 
     return {
         "profile": profile.name, "n_cells": len(cells),
@@ -224,8 +304,47 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
         "projected_usd": round(projected, 6),
         "spend_usd": {"value": round(spent, 6), "source": "estimated"},
         "cap_usd": cap_usd, "concurrency": concurrency,
+        # The clock, reported like the money: what was allowed, what was used, and what
+        # did not happen as a result. `cells_not_run` is named rather than counted so
+        # the gap between `n_cells` and `len(cells)` never has to be inferred.
+        "deadline_seconds": deadline.seconds,
+        "elapsed_seconds": round(deadline.elapsed, 1),
+        "stopped_at_deadline": stopped_at_deadline,
+        "cells_not_run": not_run,
         "run_fingerprint": fingerprint.as_dict(), "cells": completed,
     }
+
+
+def describe_outcome(report: dict) -> str:
+    """How a finished sweep describes itself, deadline or no deadline.
+
+    Here rather than in the entry point because the demo files are thin by rule and
+    lint-checked for it — and the rule earned its keep on this very change: the first
+    version of this text went into `demos/.../sweep.py` and pushed it past the budget.
+    A block that decides what a partial measurement is allowed to claim is not argument
+    wiring.
+    """
+    lines = []
+    if report["stopped_at_deadline"]:
+        lines.append(
+            f"STOPPED AT THE DEADLINE after {report['elapsed_seconds']:.0f}s of "
+            f"{report['deadline_seconds']:.0f}s."
+        )
+        lines.append(f"  measured : {len(report['cells'])} of {report['n_cells']} cells")
+        if report["cells_not_run"]:
+            lines.append(f"  not run  : {', '.join(report['cells_not_run'])}")
+        for cell in report["cells"]:
+            if cell.get("stopped_early"):
+                lines.append(f"  partial  : {cell['label']} — {cell['n_items']} of "
+                             f"{cell['n_requested']} items")
+        lines.append("  The charts render from what landed and carry the reduced n. "
+                     "Nothing was estimated for the items that never ran.")
+    else:
+        lines.append(f"complete: {report['profile']} profile, {report['n_cells']} cells "
+                     f"({report['n_resumed']} resumed from disk)")
+    lines.append(f"spend: est. ${report['spend_usd']['value']:.4f} "
+                 f"of ${report['cap_usd']:.2f}")
+    return "\n".join(lines)
 
 
 def load_all(directory: Path = SWEEP_DIR) -> list[dict]:

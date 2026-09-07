@@ -217,24 +217,63 @@ def cache_note(cells) -> str:
     )
 
 
+def deadline_note(cells) -> str | None:
+    """The warning naming every cell the clock cut short, or None if none were.
+
+    Returned as a chart-level WARNING rather than folded into the caption because the
+    caption describes what the figure measures and this describes what it could not.
+    A reader who stops after the first paragraph must still have met it.
+    """
+    stopped = [cell for cell in cells if cell.get("stopped_early")]
+    if not stopped:
+        return None
+    parts = ", ".join(
+        f"{label_for(cell)} ({cell['n_items']} of {cell.get('n_requested', cell['n_items'])})"
+        for cell in ordered_cells(stopped)
+    )
+    return (
+        f"STOPPED AT A DEADLINE: {len(stopped)} of {len(cells)} cell(s) ran fewer items "
+        f"than they were asked for — {parts}. Every bar is computed over the items that "
+        f"ACTUALLY RAN and each row carries its own n, because the rows no longer share "
+        f"a denominator. Nothing was estimated for the items that never started, and no "
+        f"bar was scaled to make the cells look comparable."
+    )
+
+
 def bar_rows(cells, *, metric: str) -> list[dict]:
     """Cells as drawable rows, for either backend.
 
     `metric` is "rate" or "cost". Both backends get the same rows for the same payload,
     which is what stops the two figures from disagreeing about ordering, colour, the
     reference convention, or what a cell with nothing landed should say.
+
+    **When any cell was deadline-stopped, EVERY row carries its n.** On a complete
+    sweep the cells share a denominator and it belongs in the caption once; the moment
+    one cell is short, the bars are no longer commensurable and a reader comparing two
+    of them needs each one's n where their eye already is. Applied to every row rather
+    than only the short ones, because "the row without the annotation is the full one"
+    is a convention the reader has to be taught, and the point of putting it on the row
+    was to stop asking them to hold something in their head.
     """
+    cells = list(cells)
+    any_stopped = any(cell.get("stopped_early") for cell in cells)
     rows = []
     for cell in ordered_cells(cells):
         pending = not cell["complete"]
         if metric == "rate":
             value = cell["rate_value"]
             lo, hi = cell["rate_ci_low"], cell["rate_ci_high"]
+            # Already carries its own n and its own "stopped at the deadline" —
+            # `summarise_cell` builds it, so the figure and the cell file cannot
+            # disagree about what happened.
             note = note_for(cell, cell["silent_error_rate"])
         elif metric == "cost":
             value = cell["cost_usd"]["value"] or None
             lo = hi = None
             note = note_for(cell, money(value))
+            if any_stopped:
+                ran, asked = cell["n_items"], cell.get("n_requested", cell["n_items"])
+                note = f"{note} · n={ran}" + (f" of {asked}" if ran != asked else "")
         else:
             raise ValueError(f"unknown metric {metric!r}; expected 'rate' or 'cost'")
         rows.append({
@@ -246,6 +285,7 @@ def bar_rows(cells, *, metric: str) -> list[dict]:
             "hi": hi,
             "n": cell.get("rate_n", 0),
             "pending": pending,
+            "stopped_early": bool(cell.get("stopped_early")),
             "note": note,
         })
     return rows

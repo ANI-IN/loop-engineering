@@ -8,17 +8,31 @@ means the selection is testable without going through argparse.
 
 from pathlib import Path
 
+from loopeng.registry import spec_for
 from loopeng.sweep.diff import all_comparisons, partition
+from loopeng.sweep.runner import Cell
 from loopeng.triage.abstain import curve
 
 # Which cell the abstention curve is computed over.
 #
 # Preference order, not a hardcoded key: the curve needs per-item telemetry from a cell
 # where the loop actually had something to do, and a one-shot cell can never produce a
-# `no_progress` or `hit_the_attempt_cap` band. `worker_L0_loop_r0` is what OVERSIGHT
-# uses; the fallbacks exist so a `smoke` or frontier-only run still gets a curve rather
-# than an empty panel.
-PREFERRED_CURVE_CELL = "worker_L0_loop_r0"
+# `no_progress` or `hit_the_attempt_cap` band. The fallbacks exist so a `smoke` or
+# frontier-only run still gets a curve rather than an empty panel.
+#
+# **BUILT, not typed.** This read `"worker_L0_loop_r0"` and no cell has been keyed
+# `worker_*` since the roles were renamed to agent/reference — so the preference never
+# matched, every run silently fell through to "whichever cell has the most items", and
+# the curve was drawn from a cell nobody chose. No error, no empty panel: a different
+# measurement, rendered confidently, because a string cannot disagree with the thing it
+# restates.
+#
+# Constructing it through `Cell` ties it to the key format, and `spec_for` makes the
+# role a lookup that RAISES on an unknown name rather than a literal that quietly stops
+# matching. That is the third time in this build a hardcoded restatement of
+# configuration went stale in silence — after the trap grid's model labels and the
+# sweep cells' own.
+PREFERRED_CURVE_CELL = Cell(spec_for("agent").role, "L0", "loop").key
 
 
 def curve_cell(cells) -> dict | None:

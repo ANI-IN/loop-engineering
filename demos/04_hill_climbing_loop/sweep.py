@@ -14,8 +14,9 @@ from loopeng.entrypoint import run
 from loopeng.gold.build import build_gold
 from loopeng.logging import configure_logging
 from loopeng.settings import load_settings
+from loopeng.sweep.deadline import Deadline
 from loopeng.sweep.detach import detach
-from loopeng.sweep.orchestrator import run_sweep
+from loopeng.sweep.orchestrator import describe_outcome, run_sweep
 from loopeng.sweep.runner import (
     CONCURRENCY_PER_MODEL,
     PROFILES,
@@ -49,24 +50,19 @@ def main(argv: list[str] | None = None) -> int:
                              "on a lower-tier account; the default was chosen against "
                              "ceilings measured on one account.")
     parser.add_argument("--log", default="results/sweep_run.log")
+    parser.add_argument("--deadline", type=float, metavar="SECONDS",
+                        help="Stop cleanly after this long, keeping what landed. A "
+                             "cell stops BETWEEN items and the reduced n reaches "
+                             "every figure. See loopeng.sweep.deadline.")
     parser.add_argument("--fresh", action="store_true",
                         help="Refuse to start if completed cells are already on disk. "
                              "Use this for the LIVE session: without it the sweep "
                              "resumes and finishes instantly.")
     args = parser.parse_args(argv)
 
-    # Validate the credential BEFORE detaching, in the process the operator is
-    # still watching.
-    #
-    # Detaching first meant a keyless sweep printed `sweep detached: pid 41293`,
-    # exited 0, and died in a log file the operator had no reason to open — at the
-    # top of the most expensive stage, in front of a room, with the terminal handed
-    # back looking like success. The one failure the fail-fast design exists to
-    # prevent was the one failure detaching hid.
-    #
-    # This raises MissingCredential, which `loopeng.entrypoint.run` renders as the
-    # sentence naming the variable and the fix. The settings object is reused below
-    # rather than loaded twice.
+    # Credentials BEFORE detaching, in the process the operator is still watching —
+    # see `loopeng.sweep.detach`, which records why that ordering is a constraint on
+    # every caller rather than a habit of this one.
     configure_logging()
     settings = load_settings()
 
@@ -80,7 +76,8 @@ def main(argv: list[str] | None = None) -> int:
                            profile=PROFILES[args.profile], item_limit=args.limit,
                            directory=args.dir, fresh=args.fresh,
                            concurrency=args.concurrency,
-                           warehouse_seed=settings.warehouse_seed)
+                           warehouse_seed=settings.warehouse_seed,
+                           deadline=Deadline(seconds=args.deadline))
     except (StaleCellsPresent, LimitNotAllowed) as refused:
         print(f"\nREFUSING TO START\n{refused}")
         return 3
@@ -90,9 +87,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nSWEEP ABORTED\n{abort}")
         return 2
 
-    print(f"\ncomplete: {report['profile']} profile, {report['n_cells']} cells "
-          f"({report['n_resumed']} resumed from disk)")
-    print(f"spend: est. ${report['spend_usd']['value']:.4f} of ${report['cap_usd']:.2f}")
+    print()
+    print(describe_outcome(report))
     return 0
 
 

@@ -756,3 +756,32 @@ def test_a_completed_cell_still_resumes_when_no_expectation_is_given(tmp_path):
     _stored_cell(tmp_path, "agent_L0_loop_r0", n_items=50, cost=0.4)
     cell = Cell(role="agent", level="L0", mode="loop", replicate=0)
     assert load_cell(cell, tmp_path) is not None
+
+
+# ---- labels are derived, never restated -------------------------------------
+
+
+def test_a_cell_label_names_the_model_the_registry_actually_holds():
+    """The label read `"Haiku" if role == "agent" else "Sonnet"`, and both names were
+    wrong: the roles resolve to a different vendor's models now. Every dial and cost
+    bar in the sweep was labelled with the models from two registries ago, and nothing
+    failed, because a hardcoded string cannot disagree with anything.
+
+    Derived on both sides — the assertion reads the registry too — so this keeps
+    holding when the registry changes rather than becoming the next stale literal.
+    """
+    from loopeng.registry import SCORING_ROLES, spec_for
+
+    for role in SCORING_ROLES:
+        label = Cell(role, "L0", "loop").label
+        assert spec_for(role).model_id in label, (
+            f"the {role} label says {label!r}, which does not name its model"
+        )
+
+
+def test_every_cell_the_sweep_builds_has_a_label_naming_its_own_model():
+    """The property that matters is per-cell, not per-role: a cell is what gets drawn."""
+    from loopeng.registry import spec_for
+
+    for cell in build_cells(DEVELOPMENT):
+        assert spec_for(cell.role).model_id in cell.label
