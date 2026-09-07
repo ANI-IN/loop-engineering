@@ -420,7 +420,9 @@ Runbook: [`demos/04_hill_climbing_loop/README.md`](demos/04_hill_climbing_loop/R
 | **structlog** | Console-rendered logs, not JSON: these are read live, on a projector, by a room of people, not shipped to an aggregator. |
 | **ruff** | Lint and import sorting, run in CI on every push. |
 | **pytest** | The offline suite, plus a `live` marker that is deselected by default so the default run needs no key and no network. |
-| **Anthropic API** | The only model provider. Two roles — a cheap worker and a frontier model — with per-model request kwargs, because the two do not accept the same request. |
+| **OpenAI API** | The provider for both **scoring** roles: `agent` (`gpt-5.6-luna`, the budget model everything the agent does runs on) and `reference` (`gpt-6-astra`, the frontier bar, called once per item and never inside a loop). |
+| **Anthropic API** | The provider for the `judge` role (`claude-haiku-4-5`) only — triage and failure sorting. **It gates nothing**, by design: no LLM judge is a blocking check anywhere in this repo, so a checkout with no Anthropic key runs every scoring path and every number in the session. |
+| **`providers.py`** | One `complete()` across two vendor SDKs, because the roles no longer share a provider. It also absorbs the two vendors' **opposite cached-token conventions** — Anthropic's `input_tokens` excludes cached tokens, OpenAI's `prompt_tokens` includes them as a subset — and raises rather than guessing if a response ever reports more cached tokens than prompt tokens. |
 
 ---
 
@@ -449,14 +451,12 @@ src/loopeng/
   verify/            level 2 loop, verifiers, governance, the OFFLINE
                      rule-surface probes, the swap
   queue/             level 3 queue and worker
-  sweep/             level 4 runner, profiles, charts, reference cells
+  sweep/             level 4 runner, profiles, deadline, charts, provenance
   triage/            abstention, escalation, failure triage
   views/             the Gradio views
 demos/               thin entry points and the runbooks, one folder per loop level
 tools/               the numeric-literal rule (`tools/lint_no_numbers.py`) and the
                      LangSmith resume probe (`tools/resumability_probe.py`)
-reference/           one full session run, committed so a cloner knows what to
-                     expect — and importable by nothing under src/
 results/             live cell output; see below
 tests/               the offline suite, plus tests/live/ behind the live marker
 ```
@@ -478,9 +478,13 @@ and the guarding was the tell. **Removing the capability is stronger than defend
 There is no stored cell format, no loader, and no flag; a render path that cannot express
 "stored" cannot show one.
 
-The stored results that a reader genuinely wants live in `reference/`, which holds one
-full session run and which **no module under `src/loopeng/` may import**. A test asserts
-that. It is documentation, not a data source.
+**`reference/` is not in the tree.** This section used to describe it as holding one full
+session run, committed so a cloner knows what to expect. The directory does not exist: it
+was removed along with the stored-cell path, and it is to be rebuilt from a dress
+rehearsal under the current model policy rather than inherited from a build with different
+models, a different gold set and a different price table. Until it lands there is nothing
+to point a cloner at except a `smoke` run on their own key, which §11.0 covers and which
+is better evidence anyway — it is theirs.
 
 ---
 
@@ -579,7 +583,8 @@ is committed; `.env` holds values and is ignored.
 
 | variable | required by | notes |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | the judge — triage and failure sorting | Not needed for the offline suite or the rule-surface probes. It gates nothing. |
+| `OPENAI_API_KEY` | **everything that calls a model** — the agent loop, the verification loop, the Level 3 worker, the trap, the sweep, the conditions | **The one credential this repo cannot run live without.** Both scoring roles are OpenAI models. Not needed for the offline suite, the warehouse, the gold build or the rule-surface probes, all of which are free and make no network calls. |
+| `ANTHROPIC_API_KEY` | the `judge` role — triage and failure sorting only | **Optional. It gates nothing, and that is structural rather than a convention:** no LLM judge is a blocking check anywhere in this repo. Every figure in the session is produced without it. This table used to name it as the required key, which was wrong in the way most likely to turn away a valid checkout — a cloner with a working `OPENAI_API_KEY` and no Anthropic account can run the entire thing. |
 | `LANGSMITH_API_KEY` | the dataset upload and trace links | Everything works without it; traces degrade, measurements do not. |
 | `LANGSMITH_PROJECT` | the project experiments are filed under | Defaults to the workshop project rather than the SDK's shared `default` bucket. |
 | `LANGSMITH_TRACING` | — | Defaults to **false** and must stay false for the offline suite. See below. |
@@ -606,7 +611,7 @@ Everything below §11.0 is written for the author delivering a workshop. This pa
 someone who just cloned.
 
 ```bash
-cp .env.example .env          # add ANTHROPIC_API_KEY only; LangSmith is optional
+cp .env.example .env          # add OPENAI_API_KEY only; Anthropic and LangSmith are optional
 uv sync && uv run pytest -q   # offline, free, proves the checkout
 
 uv run python demos/00_preflight/check.py                      # a fraction of a cent
@@ -614,12 +619,15 @@ uv run python demos/04_hill_climbing_loop/sweep.py --profile smoke --foreground
 uv run python demos/04_hill_climbing_loop/charts.py
 ```
 
-The preflight is the cheap one to run first. Two calls, one per model, **with the request
-kwargs the registry declares** — which is the point, because `temperature=0` is legal on
-Haiku and a `400` on Sonnet 5, so a simplified probe could pass on an account where the
-sweep fails. It also builds the warehouse and the gold set and runs the rule-surface
-probes, and those three are offline, so a bad key still tells you the rest of the checkout
-is sound.
+The preflight is the cheap one to run first. One call per scoring role, **with the request
+kwargs the registry declares** — which is the point: the roles do not accept the same
+request. Neither scoring model accepts a pinned `temperature` (both answer a non-default
+sampling parameter with a `400`), so they pin `seed` instead and the agent additionally
+sends `reasoning_effort` and `max_completion_tokens`; the judge is the only role that
+pins `temperature=0`, and it uses `max_tokens`. A probe that simplified those kwargs into
+one shape could pass on an account where the sweep fails. The preflight also builds the
+warehouse and the gold set and runs the rule-surface probes, and those three are offline,
+so a bad key still tells you the rest of the checkout is sound.
 
 What each profile projects, from the repo's own `project_remaining`:
 
@@ -780,10 +788,14 @@ good enough to write back. Would you have shipped what they accepted?*
 ### Stage 4 — hill climbing
 
 ```bash
-# start the sweep — detaches and hands the terminal straight back
+# start the sweep — detaches and hands the terminal straight back.
+# --deadline SECONDS stops it cleanly when the slot ends: cells are started only while
+# there is time left, the one in flight stops BETWEEN items (never mid-item, so no item
+# is scored having run under less than its condition), and the reduced n reaches every
+# figure it produces. Without it the stage overruns into the next one.
 uv run python demos/04_hill_climbing_loop/sweep.py --profile delivery --fresh
 
-# render all four charts from whatever exists so far; safe to run repeatedly mid-sweep
+# render every chart from whatever exists so far; safe to run repeatedly mid-sweep
 uv run python demos/04_hill_climbing_loop/charts.py
 ```
 
@@ -832,13 +844,20 @@ clone renders nothing — five mechanisms guarding a capability that did not nee
 exist. Removing the capability is stronger than guarding it: a render path that cannot
 express "stored" cannot show one.
 
-What replaces it is `reference/`, which holds the results of one full session run — the
-JSONL, the rendered PNGs and a summary table — and which **nothing under `src/loopeng/`
-may import**. A test asserts that. It is there so a cloner knows what to expect before
-spending anything, and it is structurally unable to reach a chart.
+**`reference/` is not in the tree yet, and this section used to say it was.** The plan is
+one full session run — the JSONL, the rendered PNGs and a summary table — committed where
+**nothing under `src/loopeng/` may import it**, so a cloner knows what to expect before
+spending anything and no render path can reach it. It has to be rebuilt from a dress
+rehearsal under the current model policy rather than carried over: the models, the gold
+set and the price table have all changed, and a stored run from the previous build would
+be a reference to a system that no longer exists — which is the failure this whole section
+is about, arriving through the door marked "documentation".
 
-See [§13](#13--profiles-and-cost) for what a run costs, and "What you should expect"
-for the stored summary.
+Until then, the cheapest honest answer to "what should I expect?" is
+[§11.0](#110--run-it-on-your-own-key): a `smoke` run on your own key for a few cents. It
+is better evidence than a committed one anyway, because it is yours.
+
+See [§13](#13--profiles-and-cost) for what a run costs.
 
 ---
 
@@ -858,21 +877,31 @@ start if the projection would breach the cap — a cap checked against money alr
 only discovers the breach afterwards. The delivery figure appears on screen in the
 application, stamped with the time it was computed.
 
-**Prompt caching saves nothing on any profile you are likely to run, and that is
-measured.** A prefix has to clear the model's minimum cacheable length before
-`cache_control` buys anything. Measured with `count_tokens` (`results/gate0.json`,
-2026-07-29): Haiku's minimum is 4096 tokens against prefixes of 286 (L0) and 648 (L3);
-Sonnet's is 1024 against 548 (L0) and 1037 (L3). **Exactly one combination clears it —
-the frontier role at L3** — which is two of `development`'s twelve cells and none at all
-of `delivery`, `smoke` or `exhibit`, since those run the worker role only.
+**Prompt caching fires in no cell of any profile here, and that is measured rather than
+assumed.** On the current provider caching is automatic — there is no `cache_control`
+marker to set — but it applies only above a minimum cacheable prefix length, and every
+prefix in this project is shorter than that minimum at every role and level. So the
+schema-and-rules block is re-sent at full input price on every call, and the COST chart
+says so in those words rather than reporting a nil hit rate: **there was no cache to hit,
+and a zero would read as a measurement of one.**
 
-So the note on the COST chart is a teaching beat rather than a saving you are getting:
-the apparatus for this was all present — cache pricing, cache-token accounting, a probe
-that measured which prefixes clear which minimum — and `cache_control` was set nowhere.
-The instrument existed, the number was known, and the optimisation was never switched on.
-It is switched on now, and on the profiles above it correctly does nothing. Where a
-prefix cannot cache the request is left byte-identical to what the reference
-measurements were taken with, so turning it on changed no committed number.
+Prompt caching was on the build plan as a cost lever and was **dropped after the
+measurement**, rather than tuned until it fired. Padding the prefix with few-shot
+examples to clear the threshold would have bought a discount by making every call larger
+— optimising the metric instead of the bill — so the honest outcome is that this lever
+does not apply at this prompt size.
+
+What survives is the teaching beat, and it is a better one. The apparatus was all present
+long before the optimisation was: `pricing.py` has priced cache reads and writes since
+Phase 0, `usage.py` has carried all four token classes on every call, and a probe reported
+which prefixes could cache. The instrument existed, the number was known, and nothing
+acted on it. See `src/loopeng/caching.py`, which is now purely reporting.
+
+*This paragraph previously quoted per-model minimums and prefix lengths, cited
+`results/gate0.json`, and concluded that one combination did clear the threshold. All of
+it described the previous provider, and the file it cited had already been deleted — a
+citation printed as provenance that resolves to nothing, which is the exact failure the
+pre-registration's own noise-floor citation was fixed for.*
 
 **Every dollar figure in this project is an estimate and the label never comes off.**
 Tokens are measured — they come off the response, all four classes separately, including
@@ -1022,14 +1051,15 @@ rule excluding cancelled orders, and a bare `WHERE c.is_internal` satisfied the 
 excluding internal accounts. That is fixed, and the four bypasses are pinned as
 tests.
 
-**Everything in `results/reference/`, `results/prefix_v1/`, the tables in §12 and
-the three images in `assets/` was measured with the old checks.** They describe a
-verifier that no longer exists, and re-running them costs real API spend, so they
-are deliberately left alone rather than quietly regenerated. Treat every silent-error
-rate here as measured against a *weaker* verifier than the one in the repository —
-the true rates for the affected rules can only be worse, never better. If you re-run
-the sweep on your own key, expect your numbers to differ from the committed ones for
-exactly this reason, and that difference is the finding rather than a fault.
+**Every measurement taken against those old checks has been deleted rather than
+annotated.** `results/reference/`, `results/prefix_v1/`, the figure tables that used to
+sit in §12 and the images in `assets/` are all gone. The earlier version of this paragraph
+asked a reader to mentally discount them — "treat every silent-error rate here as measured
+against a *weaker* verifier" — which is a caveat doing the job of a deletion, and this
+project's whole argument is that a caveat nothing enforces is not a control. Numbers you
+have to remember to distrust are numbers that will eventually be quoted without the
+caveat. Nothing measured under the old verifier survives in this repository, so there is
+nothing left to discount.
 
 **The Level 3 queue is single-writer, and that is a non-goal rather than a bug.** DuckDB
 locks the database file exclusively, so exactly one process can hold the queue at a time
@@ -1289,8 +1319,8 @@ this project uses them, which is occasionally narrower than the general meaning.
 | Term | Meaning here |
 |---|---|
 | **Semantic model** | `src/loopeng/warehouse/semantic_model.yaml` — the one file where business rules, the schema vocabulary and the currency factors are declared. Rendered into prompts and read by the governance verifier, so a rule cannot exist in one and not the other. |
-| **Gold set / gold item** | The answer key: 50 items built from 10 SQL patterns, each executed against the seeded warehouse to freeze its correct answer. A gold item carries the question, the rules that apply to it, the gold SQL and the gold rows. |
-| **Pattern** | One of the 10 parameterised SQL templates in `gold/patterns.py`. Each contributes ~5 items, which is why items are *clustered* rather than independent. |
+| **Gold set / gold item** | The answer key: **84 items built from 11 SQL patterns**, each executed against the seeded warehouse to freeze its correct answer. Split into **60 held out** (every reported figure) and **24 development** (used while building, never scored). Committed at `gold/gold.jsonl` and re-validated against a freshly seeded warehouse by `scripts/validate_gold.py`. A gold item carries the question, the rules that apply to it, the gold SQL and the gold rows. |
+| **Pattern** | One of the **11** parameterised SQL templates in `gold/patterns.py`. Ten contribute 8 items each and one contributes 4, which is why items are *clustered* rather than independent — a flaw in one pattern fails eight items together. |
 | **Warehouse** | A DuckDB database generated deterministically from a seed (`warehouse_seed`, default `20260729`). Read-only to the agent. Rebuilt on first use, never committed. |
 | **Rule** | One declared business constraint. Seven of them: `soft_delete`, `cancelled_orders`, `internal_accounts`, `multi_currency`, `minor_units`, `fan_out`, `refunds_net`. |
 | **Soft delete** | Rows with `deleted_at IS NOT NULL` are deleted and must be excluded — for customers and orders **independently**. |
@@ -1308,7 +1338,7 @@ this project uses them, which is occasionally narrower than the general meaning.
 | **Level 3 / event-driven loop** | A queue and a worker: claim a question, run Level 2, write the answer back, with nobody watching. |
 | **Level 4 / hill-climbing loop** | The loop around the loop — a sweep across configurations, measuring which is better. |
 | **Attempt** | One pass through a loop: the SQL the model wrote, whether it executed, and what came back. |
-| **Termination** | Why a run stopped: `success`, `max_attempts`, `budget`, `no_progress`, `credential`, `bad_request`. |
+| **Termination** | Why **one agent loop stopped on one item**: `success`, `max_attempts`, `budget`, `no_progress`, `declined`, `credential`, `bad_request`, `model_unavailable`. A test pins the set, so a new reason has to arrive with the test that fires it. There is deliberately **no `deadline`**: the deadline stops the runner *between* items, so an item that never started has no run and no reason — see `sweep/deadline.py`. |
 
 ### The verifiers
 
@@ -1324,15 +1354,15 @@ this project uses them, which is occasionally narrower than the general meaning.
 
 | Term | Meaning here |
 |---|---|
-| **Cell** | One measured configuration: role × level × mode × replicate. Keyed `worker_L0_loop_r0`. **Note:** `Cell` also names an unrelated chart-row type in `sweep/chart_model.py`. |
+| **Cell** | One measured configuration: role × level × mode × replicate. Keyed `agent_L0_loop_r0`. Its label is **derived from the registry**, not typed, so a bar cannot be captioned with a model the run did not call. |
 | **Sweep** | A run over all the cells a profile defines. Resumable, self-aborting on **projected** spend. |
-| **Profile** | What a sweep run is *for*: `delivery` (runs in front of a room), `development` (run once to establish findings), `smoke` (a few cents, proves your key works), `exhibit` (runs nothing). |
-| **Role** | `worker` (the cheap model) or `frontier` (the expensive one). |
+| **Profile** | What a sweep run is *for*: `delivery` (runs in front of a room), `development` (run once to establish findings), `smoke` (a few cents, proves your key works), `exhibit` (runs nothing). The item cap is a property of the profile rather than a flag, because a ceiling that depends on someone typing `--limit` is not a ceiling. |
+| **Role** | One of three, resolved through `registry.spec_for`: `agent` (the budget model everything the agent does runs on), `reference` (the frontier model, called once per item as the bar being cleared, never inside a loop), and `judge` (triage and failure sorting, **never a blocking check**). |
 | **Level, as a prompt spec** | `L0` = rules withheld; `L3` = rules given. The difference between them is the experiment. |
 | **Mode** | `one_shot` (no retry) or `loop` (the full loop). |
 | **Replicate** | A repeat run of the same cell, to see run-to-run variance. |
 | **Metric** | The only way a measured number enters this project. Carries its own `n` and interval, so no figure can appear without them. |
-| **Reference cell** | A committed, frozen measurement (`results/reference/`). Rendered visibly differently from a live one. |
+| **Deadline** | A wall-clock budget on a sweep, checked cooperatively **between items**. An item runs fully under its condition or not at all; a cell the clock stops is final at a smaller `n`, and that `n` reaches every figure it produces. Distinct from the spend cap: the cap *raises* because breaching a budget is a mistake, the deadline *returns* because running out of time is the expected end of a fixed slot. |
 | **Abstention** | The loop declining to answer rather than guessing — coverage becomes a *choice* instead of a synonym for "did not crash". |
 | **Escalation** | Handing a declined question to the more expensive model. **Implemented and not run in this build** — see §16. |
 | **Triage** | Classifying failures by **cause** rather than counting them. |
@@ -1345,9 +1375,9 @@ this project uses them, which is occasionally narrower than the general meaning.
 | Term | Meaning here |
 |---|---|
 | **McNemar's test** | The paired significance test used here. Correct for "same questions, two configurations". |
-| **Discordant pairs** | Items where the two arms disagreed. The only ones McNemar uses — which is why `n` can be 50 and the test still be underpowered. |
+| **Discordant pairs** | Items where the two arms disagreed. The only ones McNemar uses — which is why `n` can be 60 and the test still be underpowered. |
 | **Wilson interval** | The confidence interval used for a proportion. Behaves sensibly near 0% and 100%, where the textbook normal interval does not. |
-| **Clustering** | Items come in 10 groups of ~5, so a flaw in one pattern fails ~5 items together. **Every interval shown is narrower than the evidence strictly supports**, and every caption says so. |
+| **Clustering** | Items come in 11 groups — ten of 8 and one of 4 — so a flaw in one pattern fails eight items together. **Every interval shown is narrower than the evidence strictly supports**, and every caption says so. |
 | **p-value** | Reported only within a model. Refused across models — see §16. |
 
 ### Acronyms
@@ -1360,8 +1390,9 @@ this project uses them, which is occasionally narrower than the general meaning.
 | **CI** | Continuous Integration — here, the GitHub Actions workflow |
 | **SQL** | Structured Query Language |
 | **LLM** | Large Language Model |
-| **API** | Application Programming Interface — here, almost always the Anthropic API |
+| **API** | Application Programming Interface — here, the OpenAI API for both scoring roles and the Anthropic API for the judge |
 | **UUID** | Universally Unique Identifier |
 | **WAL** | Write-Ahead Logging — a journal mode enabling multi-writer access, which DuckDB does not offer |
 | **PEP** | Python Enhancement Proposal — e.g. PEP 561, which `py.typed` relates to |
-| **DIAL / COST / DELTA / ABSTENTION** | The four rendered charts: silent-error rate per cell, spend per cell, the paired difference between cells, and the coverage-versus-precision curve |
+| **DIAL / COST / DELTA / ABSTENTION** | Four of the **seven** rendered charts: silent-error rate per cell, spend per cell, the paired difference between cells, and the coverage-versus-precision curve |
+| **TRAP MATRIX / OUTCOME SHIFT / COST PER CORRECT** | The other three, and the first of them is the session's headline: two models × two prompt levels, rules withheld against rules given |

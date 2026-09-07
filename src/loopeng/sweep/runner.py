@@ -48,8 +48,15 @@ log = structlog.get_logger(__name__)
 
 SWEEP_DIR = Path("results/sweep")
 
-# Per-model pools. The measured ceiling is 10,000 requests/minute per model
-# (results/gate0.json); this is far below it and exists to be predictable.
+# Per-model pools. Far below any ceiling this project has come near; it exists to be
+# predictable rather than to avoid a limit.
+#
+# This used to read "the measured ceiling is 10,000 requests/minute per model
+# (results/gate0.json)". That file is not in the repository — it was removed with the
+# rest of the stored results — so the citation resolved to nothing while still reading
+# as provenance, which is the same defect the pre-registration's noise-floor citation was
+# fixed for. The measurement was also taken on one account against a different vendor,
+# and a cloner on a lower tier has a smaller pool than either number describes.
 #
 # It is now the DEFAULT rather than the only value. README §18 tells the operator to
 # "lower the per-model concurrency before the sweep rather than after it starts failing",

@@ -414,7 +414,7 @@ Two values behave like configuration but are code, and both are deliberate:
 | Constant | Where | Why it is not a flag |
 |---|---|---|
 | `DEFAULT_BUDGET_USD` | `loop.py` | Per **question**, not per run. Sized so one pathological question cannot eat a sweep. |
-| `CONCURRENCY_PER_MODEL` | `trap.py` | Far below the measured ceiling recorded in `results/gate0.json`. The cap exists to be polite and predictable, not because the limit is near. |
+| `CONCURRENCY_PER_MODEL` | `trap.py` | Far below any ceiling this project has come near. The cap exists to be polite and predictable, not because the limit is near. It used to cite `results/gate0.json`, which is no longer in the repository. |
 
 ---
 
@@ -814,7 +814,7 @@ Three additions for this area:
 |---|---|
 | `budget` and `no_progress` cannot fire at the trap's defaults. | `run_trap()` passes `max_attempts=1`; both branches need a second iteration. Read from the code, not executed. |
 | The live output shapes in section 10 Part D. | Read off `render_attempt_timeline()` and `print_grid()`. Part A exercises the same renderer over a real run, so the shape is confirmed even though the live command is not. |
-| The concurrency cap is well below the real limit. | The docstring cites `results/gate0.json`, which is committed. I read the file's presence, not a fresh rate-limit measurement. |
+| The concurrency cap is well below the real limit. | **Nothing in the repository supports this.** The docstring used to cite `results/gate0.json` and I read the file's presence rather than a rate-limit measurement — and that file has since been deleted, so even the presence check would now fail. The cap is a choice, not a finding. |
 | A `sleeper` argument exists solely as a test seam. | It defaults to `time.sleep` and is overridden only in tests. |
 
 ### Things I verified by executing them

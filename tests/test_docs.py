@@ -540,7 +540,24 @@ def test_the_readme_documents_the_cloners_journey():
     body = README.read_text(encoding="utf-8")
     assert "Run it on your own key" in body
     assert "--profile smoke" in body
-    assert "LangSmith is optional" in body
+
+    # The PROPERTY, not the sentence. This read `assert "LangSmith is optional" in body`
+    # and failed the moment the line was corrected to "Anthropic and LangSmith are
+    # optional" — an improvement, blocked by a test pinning a spelling. That is the same
+    # shape as the DIAL caption test, which asserted its exact wording and so passed for
+    # the whole time the caption was false.
+    #
+    # What §11.0 owes a cloner is: name the credential that is actually required, and say
+    # the others are not. Both sides read the registry, so this keeps holding if a role
+    # changes provider.
+    from loopeng.registry import PROVIDER_KEY_VARS, spec_for
+
+    required = PROVIDER_KEY_VARS[spec_for("agent").provider]
+    journey = body[body.index("Run it on your own key"):]
+    assert required in journey, (
+        f"§11.0 must name {required}, which is the key the agent role actually needs"
+    )
+    assert "optional" in journey.lower()
 
 
 def test_the_readme_states_that_no_chart_appears_without_live_calls():

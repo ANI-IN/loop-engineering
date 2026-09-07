@@ -20,9 +20,11 @@ The L3 column is not decoration: it is the baseline that makes L0 legible. L0 on
 own is a wall of red that teaches nothing, because a reader has no way to tell how much
 of it is the missing spec and how much is the task simply being hard.
 
-Concurrency is capped well below the measured ceilings in `results/gate0.json` (10,000
-requests/minute per model). The cap exists to be polite and predictable, not because
-the limit is near.
+Concurrency is capped far below any ceiling this project has come near. The cap exists to
+be polite and predictable, not because the limit is close. It used to cite a per-model
+rate ceiling in `results/gate0.json`, a file that is no longer in the repository — a
+citation that resolves to nothing still reads as provenance, which is the failure the
+pre-registration's noise-floor citation was fixed for.
 """
 
 import time
