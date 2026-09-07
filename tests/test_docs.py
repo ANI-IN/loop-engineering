@@ -17,7 +17,6 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 README = REPO_ROOT / "README.md"
-CHECKLIST = REPO_ROOT / "PRE-DELIVERY-CHECKLIST.md"
 
 def _is_ours(path: Path) -> bool:
     """Skip anything under a dot-directory.
@@ -265,7 +264,7 @@ def test_no_markdown_points_at_a_file_in_a_deleted_directory():
 def test_the_clone_instructions_are_real():
     """`git clone <repo>` was a placeholder in two files, and `cd \"Loop Eng\"` was
     never the directory a clone produces."""
-    for path in (README, CHECKLIST):
+    for path in (README,):
         body = path.read_text(encoding="utf-8")
         if "git clone" not in body:
             continue
@@ -275,9 +274,24 @@ def test_the_clone_instructions_are_real():
         assert "cd loop-engineering" in body
 
 
-def test_the_readme_links_to_the_checklist_and_it_resolves():
-    assert "PRE-DELIVERY-CHECKLIST.md" in README.read_text(encoding="utf-8")
-    assert CHECKLIST.is_file()
+def test_no_document_points_at_the_deleted_checklist():
+    """`PRE-DELIVERY-CHECKLIST.md` is gone and nothing may cite it.
+
+    It was a list of things the operator had to remember to do, which is the shape of
+    control this repository spends twenty sections arguing against. Every item on it
+    that mattered became a check that runs and fails — `scripts/preflight.py` — and
+    every item that could not be made to run was not load-bearing.
+
+    A citation that resolves to nothing is the defect this suite already has two other
+    tests for, so the removal gets the same treatment rather than being trusted.
+    """
+    offenders = [
+        path.relative_to(REPO_ROOT)
+        for path in MARKDOWN
+        if "PRE-DELIVERY-CHECKLIST" in path.read_text(encoding="utf-8")
+    ]
+    assert not offenders, f"these still cite the removed checklist: {offenders}"
+    assert not (REPO_ROOT / "PRE-DELIVERY-CHECKLIST.md").exists()
 
 
 # ---- diagrams ---------------------------------------------------------------

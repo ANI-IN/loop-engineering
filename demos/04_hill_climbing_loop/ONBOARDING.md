@@ -1039,7 +1039,7 @@ These are gaps I observed, stated as facts about what is not tested:
 | `src/loopeng/views/oversight.py` | Per item telemetry inside cell files, through the triage modules. |
 | `tools/render_readme_charts.py` | `results/reference/measurements.json` and the caption constants in `chart_model.py`. |
 | `results/reference/*.json` on disk | The cell file format as it was when those files were frozen. They cannot be regenerated without the original measurement run. |
-| `PRE-DELIVERY-CHECKLIST.md` | The exact commands and flags of both entry points. Step 0b names the chart command and its expected output. |
+| the preflight entry point | The exact commands and flags of both entry points, checked rather than listed. |
 
 ### Pre merge checklist
 

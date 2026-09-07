@@ -481,8 +481,8 @@ So the property is now enforced where it is claimed rather than inferred from a
 run has a cell of its own to compare it against, and hidden until then. A test runs the
 chart entry point against an empty directory and asserts the output carries no
 `REFERENCE` row and no p-value — the path a human takes, not a renderer handed empty
-cells. `PRE-DELIVERY-CHECKLIST.md` step 0b is the same check in a session, since a
-checklist line is not enforcement and this needs both.
+cells. There is no checklist line beside it, deliberately: a checklist line is not
+enforcement, and a property that needs one to hold is a property that is not enforced.
 
 ---
 
@@ -1379,9 +1379,18 @@ This is a single-maintainer workshop repository, not a supported product. Issues
 read; response time is whatever it is. The most useful bug report is one that names the
 command you ran and pastes what it printed.
 
-Before delivering, work through [`PRE-DELIVERY-CHECKLIST.md`](PRE-DELIVERY-CHECKLIST.md)
-on the venue machine. It is ordered by when each step has to happen, and every item says
-what passing looks like and what to do when it does not.
+Before delivering, run the preflight on the venue machine. It prints a go/no-go:
+credentials valid, the warehouse and gold set building, and the rule surface intact —
+for a fraction of a cent.
+
+```bash
+uv run python demos/00_preflight/check.py
+```
+
+It replaced a hand-written checklist. A checklist is a list of things a person has to
+remember to do, which is the shape of control this project spends twenty sections
+arguing against — every item on it that mattered is now a check that runs and fails,
+and every item that could not be made to run was not load-bearing.
 
 ---
 

@@ -532,7 +532,7 @@ No `deselected` line here, unlike the whole-suite run: the five `live` tests are
 | Depends on | What it consumes |
 |---|---|
 | `demos/00_preflight/README.md` | The five check names and the two failure modes it calls out |
-| `PRE-DELIVERY-CHECKLIST.md` | The command and its exit code |
+| the preflight entry point | The command and its exit code |
 | `src/loopeng/agent/loop.py :: triage_call_failure()` messages | Named in reverse: that function's credential message tells the reader to run **this** command |
 | Any CI or script using `--quiet` | The exit code only |
 
