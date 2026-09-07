@@ -12,13 +12,25 @@ from pathlib import Path
 import yaml
 
 TABLES = ("customers", "orders", "order_items", "products", "refunds")
-CATEGORIES = ("apparel", "electronics", "home", "outdoors", "beauty")
-REGIONS = ("NA", "EMEA", "APAC", "LATAM", "ANZ")
+# Eight of each, and the number is load-bearing rather than aesthetic: ten patterns
+# at eight parameterisations is the 80-item gold set, which splits 6/2 per pattern
+# into 60 held-out and 20 development. Sixty is what the headline comparisons need
+# for enough discordant pairs; the split is per-pattern so neither side is missing a
+# cluster the other has.
+CATEGORIES = (
+    "apparel", "electronics", "home", "outdoors", "beauty",
+    "garden", "toys", "grocery",
+)
+REGIONS = ("NA", "EMEA", "APAC", "LATAM", "ANZ", "MEA", "SEA", "NORDICS")
 CURRENCIES = ("USD", "EUR", "JPY")
 
-# The generator places orders across calendar 2025; these are the months gold
-# patterns parameterise over.
-MONTHS = ("2025-01-01", "2025-02-01", "2025-03-01", "2025-04-01", "2025-05-01")
+# The generator has always placed orders across the whole of calendar 2025. Only five
+# months were exposed here, so widening this required no change to the generator at
+# all — the rows were already there.
+MONTHS = (
+    "2025-01-01", "2025-02-01", "2025-03-01", "2025-04-01",
+    "2025-05-01", "2025-06-01", "2025-07-01", "2025-08-01",
+)
 
 _SEMANTIC_MODEL_PATH = Path(__file__).parent / "semantic_model.yaml"
 

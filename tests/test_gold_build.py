@@ -22,9 +22,9 @@ def items(warehouse):
 # ---- all 50 execute ---------------------------------------------------------
 
 
-def test_fifty_items(items):
-    assert len(items) == 50
-    assert len({item.item_id for item in items}) == 50
+def test_the_gold_set_is_every_parameterisation_of_every_pattern(items):
+    assert len(items) == sum(len(p.params) for p in PATTERNS)
+    assert len({item.item_id for item in items}) == sum(len(p.params) for p in PATTERNS)
 
 
 def test_every_item_executed_against_the_read_only_connection(items):
@@ -66,8 +66,9 @@ def test_only_the_rule_free_pattern_lacks_naive_answers(items):
 def test_the_rule_free_pattern_is_present_and_keeps_l0_off_the_floor(items):
     """Without it L0 sits at 0% by construction and the dial chart is rigged."""
     rule_free = [item for item in items if not item.rules]
-    assert len(rule_free) == 5
-    assert all(item.pattern_key == "p01_product_count" for item in rule_free)
+    expected = next(p for p in PATTERNS if not p.rules)
+    assert len(rule_free) == len(expected.params)
+    assert all(item.pattern_key == expected.key for item in rule_free)
 
 
 # ---- currency scoping -------------------------------------------------------
@@ -100,7 +101,7 @@ def test_colliding_variants_are_recorded_not_dropped(items):
 
 def test_no_item_was_lost_to_ambiguity(items):
     """The count is a measurement, not a filter."""
-    assert len(items) == 50
+    assert len(items) == sum(len(p.params) for p in PATTERNS)
 
 
 def test_the_comparison_tolerance_cannot_swallow_a_naive_variant(items):
@@ -172,17 +173,23 @@ def test_order_sensitivity_is_recorded_per_item(items):
 
 
 def test_clustering_is_reported_so_precision_is_not_overstated(items):
-    """50 items are 10 clusters of 5, not 50 independent trials. A systematic flaw in
-    one pattern fails all five of its items together, so a Wilson interval computed
-    as if n=50 is too narrow. This is not fixable by construction — it is recorded so
-    it reaches the screen alongside the templating disclosure."""
+    """The items are clusters, not independent trials: a systematic flaw in one
+    pattern fails every item in its cluster together, so a Wilson interval computed
+    as if each item were independent is too narrow. Not fixable by construction — it
+    is recorded so it reaches the screen alongside the templating disclosure.
+
+    Every number here is derived. The caveat used to carry the counts in its text and
+    they went stale the moment the set was widened, which put a warning on screen
+    stating a shape the data no longer had.
+    """
     from loopeng.gold.build import clustering_summary
 
     summary = clustering_summary(items)
-    assert summary["n_items"] == 50
-    assert summary["n_clusters"] == 10
-    assert summary["items_per_cluster"] == 5
+    assert summary["n_items"] == sum(len(p.params) for p in PATTERNS)
+    assert summary["n_clusters"] == len(PATTERNS)
+    assert summary["items_per_cluster"] == sorted({len(p.params) for p in PATTERNS})
     assert "independent" in summary["caveat"].lower()
+    assert str(summary["n_items"]) in summary["caveat"], "the caveat must be derived"
 
 
 # ---- persistence ------------------------------------------------------------
@@ -248,7 +255,7 @@ def test_every_pattern_contributes_five_items(items):
 
     counts = Counter(item.pattern_key for item in items)
     assert set(counts) == {pattern.key for pattern in PATTERNS}
-    assert set(counts.values()) == {5}
+    assert set(counts.values()) == {4, 8}
 
 
 # ---- the cache: derived, invalidated by its inputs, and type-stable ----------
@@ -291,7 +298,7 @@ def test_the_cache_is_written_and_then_actually_used(tmp_path, warehouse, monkey
 
     monkeypatch.setattr(build_module, "_build_item",
                         lambda *a, **k: pytest.fail("rebuilt despite a valid cache"))
-    assert len(build_gold(warehouse, cache_path=cache)) == 50
+    assert len(build_gold(warehouse, cache_path=cache)) == sum(len(p.params) for p in PATTERNS)
 
 
 def test_editing_the_patterns_invalidates_the_cache(tmp_path, monkeypatch):
@@ -336,7 +343,7 @@ def test_a_damaged_cache_is_ignored_rather_than_raising(tmp_path, warehouse):
     cache = tmp_path / "gold_cache.json"
     cache.write_text("{not json", encoding="utf-8")
     assert read_cache(cache_key(20260729), cache) is None
-    assert len(build_gold(warehouse, cache_path=cache)) == 50
+    assert len(build_gold(warehouse, cache_path=cache)) == sum(len(p.params) for p in PATTERNS)
 
     cache.write_text('{"key": "stale", "items": []}', encoding="utf-8")
     assert read_cache(cache_key(20260729), cache) is None
@@ -361,7 +368,7 @@ def test_the_limit_is_not_part_of_the_key(tmp_path, warehouse):
     full = build_gold(warehouse, cache_path=cache)
 
     assert len(subset) == 8
-    assert len(full) == 50
+    assert len(full) == sum(len(p.params) for p in PATTERNS)
     assert {i.item_id for i in subset} <= {i.item_id for i in full}
 
 
@@ -371,7 +378,8 @@ def test_building_gold_needs_no_credential(tmp_path, monkeypatch, warehouse):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
-    assert len(build_gold(warehouse, cache_path=tmp_path / "c.json")) == 50
+    built = build_gold(warehouse, cache_path=tmp_path / "c.json")
+    assert len(built) == sum(len(p.params) for p in PATTERNS)
 
 
 def test_one_serialisation_serves_the_file_and_the_cache():

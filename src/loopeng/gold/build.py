@@ -36,6 +36,16 @@ from loopeng.warehouse.connect import run_sql
 
 MAX_REGENERATIONS = 2
 
+# The committed gold set. Written by scripts/build_gold.py, checked against a freshly
+# seeded warehouse by scripts/validate_gold.py on every CI run.
+#
+# `.gitignore` used to exclude the memoised cache with the reasoning that "committing
+# it would ship an answer key nobody re-derived". That objection was correct and is
+# now answered rather than ignored: the validator IS the re-derivation, it runs in CI,
+# and it fails on any drift. The cache stays ignored — it is a build artefact keyed on
+# a hash — while this file is the contract a reader can open.
+GOLD_PATH = Path("gold/gold.jsonl")
+
 
 class DegenerateGoldItem(RuntimeError):
     """The gold answer is all nulls or zeros and cannot separate right from wrong."""
@@ -176,8 +186,8 @@ def _build_item(pattern: Pattern, params: dict, index: int, warehouse: Path) -> 
 def spread_across_clusters(items: list[GoldItem], limit: int) -> list[GoldItem]:
     """The first `limit` items, taking one per pattern before taking a second of any.
 
-    A prefix would be wrong here. The items are 10 clusters of 5, and `items[:8]` is
-    two clusters — so a subset run would concentrate every observation on two patterns
+    A prefix would be wrong here. The items are clusters, and a prefix of eight is
+    one or two whole clusters — so a subset run would concentrate every observation on two patterns
     and inherit the worst version of the clustering problem the rest of this project
     keeps warning about. Round-robin maximises clusters at small n.
 
@@ -224,6 +234,68 @@ _CACHE_INPUTS = (
     Path(__file__).resolve().parent / "patterns.py",
     Path(__file__).resolve().parent.parent / "warehouse" / "semantic_model.yaml",
 )
+
+
+# How many of each pattern's items the held-out set takes. Ten patterns at six is
+# sixty, which is the number the headline comparisons are sized for: McNemar's power
+# comes from discordant pairs rather than from n, and sixty paired items produces
+# enough of them for a large effect while finishing inside a lecture block.
+HELD_OUT_PER_PATTERN = 6
+
+
+class SplitImbalance(RuntimeError):
+    """A pattern contributed a different number of held-out items than the rest.
+
+    Raised rather than tolerated. The whole point of splitting per pattern is that
+    both sides carry every cluster in the same proportion; a pattern short of items
+    would quietly weight the held-out set toward the others, and a clustered interval
+    computed over an unbalanced set is wrong in a direction nobody would check.
+    """
+
+
+def split_items(items: list[GoldItem]) -> tuple[list[GoldItem], list[GoldItem]]:
+    """(held_out, development), split per pattern and deterministically.
+
+    **Per pattern, not by slicing the list.** The items are clusters, and a prefix or
+    a random draw would put whole patterns on one side — so the held-out set would be
+    missing a rule family the development set had, and every comparison across the two
+    would be measuring the split rather than the arm.
+
+    **Deterministic, by item id.** The split has to be identical on every machine and
+    every run, because it decides which items a headline number is computed over. A
+    seeded shuffle would be reproducible too, but the id order is already stable and
+    needs nothing to be remembered or configured.
+
+    **`dev_only` patterns never reach the held-out side.** `p11_jpy_only_revenue`
+    exists to be guessable — it is the single-currency case where an invented rate can
+    land — and seeding the headline comparisons with items chosen because a model can
+    get them right by luck is a thumb on the scale in the one place nothing may touch
+    it. The exclusion is by construction rather than by a filter at the call site.
+    """
+    by_pattern: dict[str, list[GoldItem]] = {}
+    for item in sorted(items, key=lambda i: i.item_id):
+        by_pattern.setdefault(item.pattern_key, []).append(item)
+
+    dev_only = {p.key for p in PATTERNS if p.dev_only}
+    held_out: list[GoldItem] = []
+    development: list[GoldItem] = []
+    short = {}
+
+    for key, group in sorted(by_pattern.items()):
+        if key in dev_only:
+            development.extend(group)
+            continue
+        if len(group) < HELD_OUT_PER_PATTERN:
+            short[key] = len(group)
+        held_out.extend(group[:HELD_OUT_PER_PATTERN])
+        development.extend(group[HELD_OUT_PER_PATTERN:])
+
+    if short:
+        raise SplitImbalance(
+            f"these patterns have fewer than {HELD_OUT_PER_PATTERN} items, so the "
+            f"held-out set would be unbalanced across clusters: {short}"
+        )
+    return held_out, development
 
 
 def cache_key(seed: int) -> str:
@@ -343,11 +415,17 @@ def settings_seed(seed: int | None) -> int:
 
 
 def clustering_summary(items: list[GoldItem]) -> dict:
-    """What the 50 items actually are, statistically.
+    """What the items actually are, statistically.
 
-    They are not 50 independent trials. Ten patterns contribute five items each, and
-    a systematic flaw in one pattern — a misread rule, an unlucky scope — fails all
-    five together. A Wilson interval computed as if n=50 is therefore too narrow.
+    They are not independent trials. Each pattern contributes several
+    parameterisations, and a systematic flaw in one — a misread rule, an unlucky
+    scope — fails all of its items together. A Wilson interval computed as if every
+    item were independent is therefore too narrow.
+
+    **Every number in the caveat is computed from the items in hand.** They used to be
+    written into the sentence, and they went stale the moment the set was widened: a
+    warning reading "10 clusters of 5" beside an 84-item set is a provenance line that
+    is wrong, printed with the authority of a caveat. Nothing here is typed.
 
     This is recorded rather than corrected: the honest fix is a design with more
     patterns and fewer parameterisations each, which is not what this phase builds.
@@ -356,16 +434,21 @@ def clustering_summary(items: list[GoldItem]) -> dict:
     """
     per_pattern = Counter(item.pattern_key for item in items)
     sizes = set(per_pattern.values())
+    sizes_text = (
+        f"{next(iter(sizes))} parameterisations each" if len(sizes) == 1
+        else f"{min(sizes)}-{max(sizes)} parameterisations each"
+    )
     return {
         "n_items": len(items),
         "n_clusters": len(per_pattern),
         "items_per_cluster": sizes.pop() if len(sizes) == 1 else sorted(sizes),
         "items_by_pattern": dict(sorted(per_pattern.items())),
         "caveat": (
-            "The 50 items are 10 clusters of 5 parameterisations, not 50 independent "
-            "trials. A systematic flaw in one pattern fails all five of its items "
-            "together, so an interval computed as if n=50 is narrower than the "
-            "evidence supports. Report alongside the templating disclosure."
+            f"The {len(items)} items are {len(per_pattern)} clusters of "
+            f"{sizes_text}, not {len(items)} independent trials. A systematic flaw in "
+            f"one pattern fails every item in its cluster together, so an interval "
+            f"computed as if n={len(items)} is narrower than the evidence supports. "
+            f"Report alongside the templating disclosure."
         ),
     }
 

@@ -47,9 +47,12 @@ def test_every_other_rule_spans_several_clusters(items):
 
 
 def test_coverage_lists_every_pattern(items):
+    from loopeng.gold.patterns import PATTERNS
+
     coverage = rule_coverage(items)
-    assert len(coverage["by_pattern"]) == 10
-    assert coverage["by_pattern"]["p01_product_count"]["rules"] == ["(none - the L0 floor)"]
+    assert len(coverage["by_pattern"]) == len(PATTERNS)
+    rule_free = next(p for p in PATTERNS if not p.rules)
+    assert coverage["by_pattern"][rule_free.key]["rules"] == ["(none - the L0 floor)"]
 
 
 # ---- cacheability findings --------------------------------------------------

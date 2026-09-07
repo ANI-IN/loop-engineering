@@ -89,6 +89,15 @@ jobs:
           assert s.langsmith_api_key is None, 'LANGSMITH_API_KEY leaked in from somewhere'
           print('settings load with the two model keys alone')"
 
+      - name: The gold set still matches a freshly seeded warehouse
+        # A gold set that has silently drifted from the schema poisons every number
+        # downstream, and nothing else in the build would notice. Re-executes every
+        # committed query against a fresh warehouse and checks the stored answer, plus
+        # the split, which decides what every headline number is computed over.
+        #
+        # Offline and free, like everything else in this job.
+        run: uv run python scripts/validate_gold.py
+
       - name: Offline test suite
         # No ANTHROPIC_API_KEY is set anywhere in this job, on purpose. If a test ever
         # starts needing one, this fails and that is the correct outcome.

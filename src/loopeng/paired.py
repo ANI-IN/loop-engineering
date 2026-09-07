@@ -11,10 +11,10 @@ The exact binomial form is used rather than the chi-square approximation, becaus
 discordant counts here are small and the approximation is unreliable below about 25.
 
 **It still overstates, and the report has to say so.** McNemar assumes the pairs are
-independent. Ours are not: 50 items are 10 clusters of 5 parameterisations, so a
-systematic weakness in one pattern produces up to five discordant pairs that are really
-one observation. The honest on-screen statement is directional — "this arm is worse" —
-never a specific gap.
+independent. Ours are not: the items are clusters of parameterisations over a handful of
+question patterns, so a systematic weakness in one pattern produces a whole cluster of
+discordant pairs that are really one observation. The honest on-screen statement is
+directional — "this arm is worse" — never a specific gap.
 """
 
 import math
@@ -114,12 +114,17 @@ class PairedComparison:
         }
 
 
+# Number-free on purpose. The counts used to be written into this sentence, and they
+# went stale the moment the gold set was widened — a caveat quoting "10 clusters of 5"
+# beside an 84-item set is a provenance line that is simply wrong, printed with the
+# authority of a warning. The shape is what this module knows; the counts belong to
+# whoever holds the items, and `gold.build.clustering_summary` renders those.
 CLUSTERING_CAVEAT = (
-    "McNemar assumes the pairs are independent. These are not: 50 items are 10 "
-    "clusters of 5 parameterisations, so a systematic weakness in one pattern can "
-    "produce up to five discordant pairs that are really one observation. The p-value "
-    "is therefore optimistic and the honest statement is directional only — 'this arm "
-    "is worse', never a specific gap."
+    "McNemar assumes the pairs are independent. These are not: the items are clusters "
+    "of parameterisations over a small number of question patterns, so a systematic "
+    "weakness in one pattern can produce a whole cluster of discordant pairs that are "
+    "really one observation. The p-value is therefore optimistic and the honest "
+    "statement is directional only — 'this arm is worse', never a specific gap."
 )
 
 

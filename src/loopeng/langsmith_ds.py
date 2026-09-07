@@ -132,6 +132,23 @@ def dataset_url(dataset_id: str) -> str:
     return f"https://smith.langchain.com/datasets/{dataset_id}"
 
 
+def _dataset_description(items: list) -> str:
+    """Derived from the items, never typed.
+
+    It read "50 items, 10 patterns x 5 parameterisations" for the whole life of the
+    file, including after the set was widened — a description on a shared dataset
+    stating a shape it no longer had.
+    """
+    from loopeng.gold.build import clustering_summary
+
+    shape = clustering_summary(items)
+    return (
+        f"{shape['n_items']} gold items in {shape['n_clusters']} clusters. "
+        f"Questions are phrased without rule vocabulary; the rules are supplied at "
+        f"L3 only. {shape['caveat']}"
+    )
+
+
 def upload_gold(items: list, *, dataset_name: str = DATASET_NAME) -> TraceResult:
     """Create or replace the gold dataset. Returns a TraceResult, never raises.
 
@@ -147,11 +164,7 @@ def upload_gold(items: list, *, dataset_name: str = DATASET_NAME) -> TraceResult
             client.delete_dataset(dataset_name=dataset_name)
         dataset = client.create_dataset(
             dataset_name=dataset_name,
-            description=(
-                "Phase 0 gold set: 50 items, 10 patterns x 5 parameterisations. "
-                "Questions are phrased without rule vocabulary; the rules are "
-                "supplied at L3 only."
-            ),
+            description=_dataset_description(items),
         )
         client.create_examples(
             dataset_id=dataset.id,

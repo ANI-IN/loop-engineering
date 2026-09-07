@@ -29,6 +29,7 @@ exactly 0.00% at USD grain — a USD-scoped currency item cannot discriminate at
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
+from datetime import date
 from types import MappingProxyType
 
 from loopeng.warehouse.schema import CATEGORIES, MONTHS, REGIONS, usd_factor_sql
@@ -74,12 +75,11 @@ RULES_REQUIRING_UNDISCLOSED_VALUES = CURRENCY_RULES
 # is exercised as mixing and not only as JPY's zero decimal places.
 CURRENCY_SCOPE = "o.currency IN ('EUR', 'JPY')"
 
+# Derived from MONTHS rather than listed beside it. The two were separate literals
+# and widening one raised a KeyError from the other — a second copy of the same fact,
+# which is the defect this module's own `_build` helper exists to avoid for SQL.
 _MONTH_NAMES = {
-    "2025-01-01": "January 2025",
-    "2025-02-01": "February 2025",
-    "2025-03-01": "March 2025",
-    "2025-04-01": "April 2025",
-    "2025-05-01": "May 2025",
+    month: date.fromisoformat(month).strftime("%B %Y") for month in MONTHS
 }
 
 
@@ -95,6 +95,8 @@ class Pattern:
     naive_sql_by_rule: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}))
     params: tuple[dict[str, object], ...] = ()
     rules: tuple[str, ...] = ()
+    # Kept out of the held-out set. See `_p11` and `gold.build.split_items`.
+    dev_only: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -498,4 +500,75 @@ _p10 = _build(
 )
 
 
-PATTERNS: tuple[Pattern, ...] = (_p01, _p02, _p03, _p04, _p05, _p06, _p07, _p08, _p09, _p10)
+# ---------------------------------------------------------------------------
+# Pattern 11 — gross revenue, JPY ONLY. Development split only.
+#
+# WHY IT EXISTS
+#
+# Every other currency pattern is scoped to EUR and JPY, so a correct answer needs
+# BOTH conversion factors. Measured 2026-09-07: gpt-5.6-luna, with the rules
+# withheld, invented the JPY factor EXACTLY on four of eight items and never got the
+# EUR one — and that EUR miss is the only reason those four were not scored correct
+# on a number the model made up.
+#
+# The two-currency scoping was not chosen to prevent that. The comment on
+# CURRENCY_SCOPE says why it was chosen: to exercise the multi-currency rule as
+# MIXING rather than only as JPY's zero decimal places. Protecting the score is a
+# coincidence, and a property that holds by accident looks exactly like one that
+# holds by design until the accident stops.
+#
+# So this pattern removes the accident. One factor, one guess, and a guess that
+# lands scores as `UNEARNED_CORRECT` — which makes the whole apparatus in
+# `classify._could_not_have_known` demonstrable rather than theoretical.
+#
+# WHY IT IS DEVELOPMENT-ONLY, AND THAT IS THE CAREFUL PART
+#
+# It is a pattern designed to be guessable. Putting it in the held-out set would
+# seed the headline comparisons with items chosen because a model can get them right
+# by luck, which is a thumb on the scale in a place where nothing may touch the
+# scale. The held-out set stays a set nobody designed around.
+#
+# Four parameterisations rather than eight: enough to see the effect, few enough
+# that it does not dominate the development split it lives in.
+# ---------------------------------------------------------------------------
+
+
+def _p11_sql(ignored: frozenset[str]) -> str:
+    return (
+        f"SELECT ROUND(SUM(o.amount_minor * {_factor(ignored)}), 2) {_ORDER_JOIN} "
+        "WHERE "
+        + _where(
+            "date_trunc('month', o.placed_at) = DATE '{month}'",
+            "o.currency = 'JPY'",
+            _filters(ignored),
+        )
+    )
+
+
+_p11 = _build(
+    key="p11_jpy_only_revenue",
+    question="What was gross revenue in {month_name} from our yen orders, in US dollars?",
+    sql_for=_p11_sql,
+    rules=("soft_delete", "cancelled_orders", "internal_accounts",
+           "multi_currency", "minor_units"),
+    # Four months, and NOT the first four. Measured against the seeded warehouse:
+    # in April no internal-account customer placed a JPY order, so ignoring
+    # `internal_accounts` produces exactly the gold answer and a model dropping that
+    # rule would score as correct. The other seven months exercise all five rules.
+    #
+    # Scoping to a single currency is what makes the slices thin enough for that to
+    # happen — which is the cost of the pattern's whole purpose and is worth naming
+    # rather than absorbing. `test_the_comparison_tolerance_cannot_swallow_a_naive
+    # _variant` is what found it and is what will find it again if the seed moves.
+    params=tuple(_MONTH_PARAMS[i] for i in (0, 1, 2, 4)),
+)
+_p11 = Pattern(**{**_p11.__dict__, "dev_only": True})
+
+
+PATTERNS: tuple[Pattern, ...] = (
+    _p01, _p02, _p03, _p04, _p05, _p06, _p07, _p08, _p09, _p10, _p11,
+)
+
+# The patterns the held-out set may draw from. `dev_only` patterns are excluded by
+# construction rather than by a filter somebody has to remember at the call site.
+HELD_OUT_PATTERNS = tuple(p for p in PATTERNS if not p.dev_only)

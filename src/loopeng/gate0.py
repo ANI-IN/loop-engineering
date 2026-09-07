@@ -94,13 +94,15 @@ def query_latency(items, warehouse: Path) -> dict:
     return {
         "n": len(timings),
         "p50_ms": _measured(
-            round(statistics.median(timings), 2), "wall clock around run_sql, 50 gold SQLs"
+            round(statistics.median(timings), 2),
+            f"wall clock around run_sql, {len(timings)} gold SQLs",
         ),
         "p95_ms": _measured(
             round(timings[int(len(timings) * 0.95) - 1], 2),
-            "wall clock around run_sql, 50 gold SQLs, 95th percentile",
+            f"wall clock around run_sql, {len(timings)} gold SQLs, 95th percentile",
         ),
-        "max_ms": _measured(round(timings[-1], 2), "slowest of the 50 gold SQLs"),
+        "max_ms": _measured(round(timings[-1], 2),
+                            f"slowest of the {len(timings)} gold SQLs"),
     }
 
 

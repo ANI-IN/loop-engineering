@@ -110,18 +110,34 @@ def test_the_repeat_rate_question_names_the_population_it_divides_by():
 # ---- structure --------------------------------------------------------------
 
 
-def test_ten_patterns_exist():
-    assert len(PATTERNS) == 10
-    assert len({pattern.key for pattern in PATTERNS}) == 10
+def test_the_pattern_count_matches_what_the_split_needs():
+    """Ten held-out-eligible patterns, plus one development-only diagnostic."""
+    from loopeng.gold.patterns import HELD_OUT_PATTERNS
+
+    assert len(PATTERNS) == 11
+    assert len(HELD_OUT_PATTERNS) == 10
+    assert [p.key for p in PATTERNS if p.dev_only] == ["p11_jpy_only_revenue"]
 
 
-def test_every_pattern_has_five_parameterisations():
-    for pattern in PATTERNS:
-        assert len(pattern.params) == 5, f"{pattern.key} has {len(pattern.params)}"
+def test_every_held_out_pattern_has_eight_parameterisations():
+    """Eight, because ten patterns at eight is the 80-item set that splits 6/2 into
+    60 held-out and 20 development. The diagnostic pattern has four, deliberately:
+    enough to see the effect, few enough that it cannot dominate the split it is in.
+    """
+    from loopeng.gold.patterns import HELD_OUT_PATTERNS
+
+    for pattern in HELD_OUT_PATTERNS:
+        assert len(pattern.params) == 8, pattern.key
+    assert len(_p11_params()) == 4
 
 
-def test_fifty_items_in_total():
-    assert sum(len(pattern.params) for pattern in PATTERNS) == 50
+def _p11_params():
+    return next(p for p in PATTERNS if p.dev_only).params
+
+
+def test_the_item_count_is_what_the_split_needs():
+    """84: ten patterns of eight, plus the four-item development diagnostic."""
+    assert sum(len(p.params) for p in PATTERNS) == 84
 
 
 def test_all_sql_parses_for_every_parameterisation():

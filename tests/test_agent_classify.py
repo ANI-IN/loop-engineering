@@ -116,10 +116,20 @@ def test_a_naive_match_is_attributed_to_its_rule(items, warehouse):
 
 
 def test_the_ambiguous_item_reports_both_rules_and_picks_neither(items, warehouse):
-    """p03_customers_in_region__02's variants collide. Naming one would be a coin
-    flip presented as a finding."""
-    item = next(i for i in items if i.item_id == "p03_customers_in_region__02")
-    assert item.ambiguous_rule_groups, "this item is expected to be the ambiguous one"
+    """When two rules produce the same wrong answer, naming one would be a coin flip
+    presented as a finding.
+
+    The item is FOUND rather than named. It used to be pinned by id, and the id moved
+    when the parameter space was widened — a test asserting a property of a specific
+    row rather than of the taxonomy, which then failed for a reason that had nothing
+    to do with the behaviour under test.
+    """
+    item = next(
+        (i for i in items
+         if any(len(group) > 1 for group in i.ambiguous_rule_groups)),
+        None,
+    )
+    assert item is not None, "no item has colliding rule variants to attribute"
 
     naive = item.naive_by_rule["soft_delete"]["sql"]
     client = ScriptedClient(lambda q: naive)

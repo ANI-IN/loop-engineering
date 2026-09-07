@@ -125,3 +125,18 @@ assets/*
 # ---------------------------------------------------------------------------
 *.bundle
 .hf-staging/
+
+# ---------------------------------------------------------------------------
+# The gold set is COMMITTED, under gold/. The memoised cache is not.
+#
+# The cache is a build artefact keyed on the warehouse seed plus a hash of the
+# patterns and the semantic model, so a rule edit invalidates it automatically.
+# `gold/gold.jsonl` is the contract: a reader opens it and sees the questions and
+# the answers without running anything.
+#
+# That used to be refused, with the reasoning that committing it "would ship an
+# answer key nobody re-derived". The objection was right and is now answered rather
+# than ignored — scripts/validate_gold.py re-executes every query against a freshly
+# seeded warehouse and fails on any drift, in CI, on every push.
+# ---------------------------------------------------------------------------
+!gold/
