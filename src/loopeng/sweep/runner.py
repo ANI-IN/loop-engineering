@@ -170,7 +170,8 @@ SMOKE = Profile(
     item_limit=8,
     allows_limit=True,
     note=(
-        "Two cells (L0 one-shot, L0 loop), Haiku, 8 items, a few cents. It measures "
+        "Two cells (L0 one-shot, L0 loop) on the agent model, 8 items, a few cents. "
+        "It measures "
         "nothing worth quoting — 8 items cannot separate anything — and that is not "
         "what it is for. It proves the whole pipeline on YOUR key: real calls, cells on "
         "disk, charts rendered, and the delta computed against the stored baseline. The "
@@ -276,10 +277,16 @@ class Cell:
 def build_cells(profile: Profile = DEVELOPMENT) -> tuple[Cell, ...]:
     """The cells this profile runs.
 
-    Replicates go on BOTH L0 loop cells when there are two models, not one: the models
-    have different determinism floors — Haiku is pinned to temperature=0 and Sonnet
-    cannot be — so the replicates measure two different things and neither may be
-    asserted for the other. At delivery there is one model and one replicate.
+    Replicates go on BOTH L0 loop cells when there are two models, not one.
+
+    The reason USED to be that the models had different determinism floors — one pinned
+    to temperature=0 and one that could not be. Under the current model policy neither
+    scoring model accepts a pinned temperature, so that asymmetry is gone and the
+    replicates are no longer measuring two different KINDS of residual.
+
+    They still go on both, for a weaker but sufficient reason: the floors are the same
+    in kind and not necessarily in size, and a residual measured on one model is not a
+    measurement of the other's. At delivery there is one model and one replicate.
     """
     cells = []
     for role in profile.roles:

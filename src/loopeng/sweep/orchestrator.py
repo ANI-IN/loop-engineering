@@ -6,6 +6,7 @@ it cannot, and what it already knows it cannot — with the measurement that say
 """
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import structlog
@@ -200,7 +201,11 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
         RunFingerprint.for_run(items, warehouse_seed=warehouse_seed), directory
     )
 
-    deadline = deadline or Deadline()
+    # The projection is only meaningful once `concurrency` items have landed — see
+    # `Deadline.warmup`. Carried on a copy rather than set on the caller's object: a
+    # function that mutates an argument to configure itself makes the caller's next use
+    # of it depend on whether this ran.
+    deadline = replace(deadline or Deadline(), warmup=concurrency)
     if not quiet and deadline.seconds is not None:
         print(f"DEADLINE: {deadline.seconds:.0f}s. Cells are started only while there "
               f"is time left; the one in flight stops between items and keeps what it "
@@ -293,9 +298,7 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
             stopped_at_deadline = True
             not_run = [c.key for c in cells[index + 1:]]
             if not quiet:
-                print(f"\nDEADLINE REACHED mid-cell: '{cell.label}' measured "
-                      f"{report['n_items']} of {report['n_requested']} items and "
-                      f"stopped. {len(not_run)} later cell(s) will not run.", flush=True)
+                print("\n" + mid_cell_message(cell.label, report, not_run), flush=True)
             break
 
     return {
@@ -315,6 +318,20 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEVELOPMENT,
     }
 
 
+def mid_cell_message(label: str, report: dict, not_run: list[str]) -> str:
+    """What the operator reads at the moment a cell is cut short.
+
+    A function so it can be asserted on without a live sweep. The first version ended
+    "0 later cell(s) will not run" whenever the stop landed in the final cell — a zero
+    rendered as a statement about something that did not happen, which is the one
+    sentence shape this project spends its whole time removing.
+    """
+    tail = (f" {len(not_run)} later cell(s) will not run."
+            if not_run else " It was the last cell.")
+    return (f"DEADLINE REACHED mid-cell: {label!r} measured {report['n_items']} of "
+            f"{report['n_requested']} items and stopped.{tail}")
+
+
 def describe_outcome(report: dict) -> str:
     """How a finished sweep describes itself, deadline or no deadline.
 
@@ -330,13 +347,22 @@ def describe_outcome(report: dict) -> str:
             f"STOPPED AT THE DEADLINE after {report['elapsed_seconds']:.0f}s of "
             f"{report['deadline_seconds']:.0f}s."
         )
-        lines.append(f"  measured : {len(report['cells'])} of {report['n_cells']} cells")
+        # "measured: 2 of 2 cells" was the first version, and on a run whose second
+        # cell was cut at 5 of 8 items it was the most misleading line on the screen:
+        # 2-of-2 is what a COMPLETE sweep says. A cell that ran and a cell that
+        # finished are different things, so they are counted separately and only the
+        # categories that happened are listed.
+        partial = [cell for cell in report["cells"] if cell.get("stopped_early")]
+        counts = [(len(report["cells"]) - len(partial), "complete"),
+                  (len(partial), "partial"),
+                  (len(report["cells_not_run"]), "never started")]
+        lines.append("  cells    : " + ", ".join(f"{n} {name}" for n, name in counts if n)
+                     + f" (of {report['n_cells']})")
         if report["cells_not_run"]:
             lines.append(f"  not run  : {', '.join(report['cells_not_run'])}")
-        for cell in report["cells"]:
-            if cell.get("stopped_early"):
-                lines.append(f"  partial  : {cell['label']} — {cell['n_items']} of "
-                             f"{cell['n_requested']} items")
+        for cell in partial:
+            lines.append(f"  partial  : {cell['label']} — {cell['n_items']} of "
+                         f"{cell['n_requested']} items")
         lines.append("  The charts render from what landed and carry the reduced n. "
                      "Nothing was estimated for the items that never ran.")
     else:

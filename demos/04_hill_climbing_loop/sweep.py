@@ -35,8 +35,8 @@ def main(argv: list[str] | None = None) -> int:
     # flag nobody typed.
     parser.add_argument("--profile", required=True, choices=sorted(PROFILES),
                         help="smoke: 2 cells, 8 items, a few cents — proves your key "
-                             "and the whole pipeline. delivery: Haiku only, 4 cells, "
-                             "under $1. development: both models, replicates, ablation.")
+                             "and the whole pipeline. delivery: the agent model only, "
+                             "4 cells. development: both models, replicates, ablation.")
     parser.add_argument("--cap-usd", type=float, help="Override the profile's cap.")
     parser.add_argument("--limit", type=int,
                         help="Fewer items. Accepted by the smoke and development "

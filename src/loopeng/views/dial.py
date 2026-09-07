@@ -1,13 +1,15 @@
-"""DIAL: the sweep's cells, live ones and reference ones, visibly different.
+"""DIAL: the sweep's cells as they land, every one of them computed by this run.
 
-**At delivery the live cells are Haiku and the frontier cells are reference.** That
-means the named secondary — Haiku-plus-loop against Sonnet one-shot — compares a line
-measured minutes ago against one measured weeks ago. That distinction is rendered ON
-THE CHART, in the row itself, not in a caption someone reads afterwards. A caption is
-read once; a badge is read every time the row is.
+This module used to open by explaining that the live cells and the frontier cells were
+measured weeks apart, and that the gap was badged on each row so nobody compared a line
+from minutes ago against one from a previous month. **There is no such gap any more.**
+The stored-reference path is gone: every figure this view can draw comes from a cell
+this run wrote, which is what `_refresh` says in code and what the docstring went on
+contradicting.
 
-The comparison table carries the same treatment, because the L3 comparison has exactly
-the same problem and is the one most likely to be quoted.
+The badge machinery went with it. What survives is the rule that produced it — a
+distinction a reader must hold while looking at a row belongs IN the row, because a
+caption is read once and a row is read every time.
 
 THE READINGS USED TO BE TYPED IN, AND THE LINT RULE LET THEM
 -----------------------------------------------------------
@@ -118,12 +120,20 @@ def build_dial_app(sweep_dir: Path = SWEEP_DIR) -> gr.Blocks:
         # figure this view can draw was computed by the run that is being watched.
         cells = load_all(sweep_dir)
         done = [c for c in cells if c["complete"]]
-        landed = sum(c["rate_n"] for c in done)
+        # A deadline-stopped cell is FINISHED at a smaller n, not unfinished. Counting
+        # it with the in-progress cells dropped its items out of the stamp — so the
+        # screen understated how much had actually been measured — and called it
+        # incomplete, which invites a room to wait for a row that will never move.
+        stopped = [c for c in cells if c.get("stopped_early")]
+        landed = sum(c["rate_n"] for c in done + stopped)
+        status = f"{len(done)} of {len(cells)} cells complete"
+        if stopped:
+            status += f", {len(stopped)} stopped at the deadline"
         return (
             _rows(cells),
             _comparison(cells),
             stamp(landed if landed else None),
-            f"{len(done)} of {len(cells)} cells complete",
+            status,
             cells,
         )
 

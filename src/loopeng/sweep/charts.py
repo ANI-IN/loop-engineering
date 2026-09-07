@@ -16,10 +16,11 @@ in-progress label and a hollow bar — never blank, never zero, never a guess, b
 zero on a chart reads as a measurement. On DELTA that rule bites hardest: zero is a real
 delta, so a pair with too few discordant items renders the words rather than a bar.
 
-The DIAL caption carries the comparability warning permanently: Haiku is pinned to
-temperature=0 and Sonnet cannot be, so the two models' error bars do not mean the same
-thing and cannot be compared by eye. DELTA enforces the same warning in code — a
-cross-model pair renders no p-value at all.
+The DIAL caption carries the sampling caveat permanently, DERIVED from the registry
+rather than written here — see `chart_model._sampling_caveat`. The sentence that used
+to sit in this paragraph named two models that hold no role in this project and warned
+about an asymmetry that no longer exists. DELTA enforces the surviving guardrail in
+code: a cross-model pair renders no p-value at all.
 
 WHY THIS IS MATPLOTLIB AND NOT HAND-BUILT SVG
 ---------------------------------------------

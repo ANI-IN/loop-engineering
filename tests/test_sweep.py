@@ -200,12 +200,56 @@ def test_the_shipped_charts_are_pinned_and_tier_is_not_among_them():
     assert "tier_chart" not in builders
 
 
-def test_the_dial_caption_warns_the_bars_are_not_cross_comparable():
+def test_the_dial_caption_names_the_models_it_is_actually_describing():
+    """This test used to pin the caption's WORDING — "NOT COMPARABLE ACROSS MODELS",
+    "temperature=0" — and it passed for the whole time the caption was false.
+
+    The sentence claimed one scoring model was pinned to temperature=0 and the other
+    could not be. Neither statement had been true since the model policy changed:
+    neither scoring model accepts a pinned temperature, so the asymmetry the caption
+    warned a room about did not exist, and the caption contradicted the
+    pre-registration printed by the same run. A test that restates a string cannot
+    notice that the string stopped describing anything.
+
+    So it asks the registry instead. Both sides are derived, which is what makes it
+    keep holding when the registry moves rather than becoming the next stale literal.
+    """
+    from loopeng.registry import SCORING_ROLES, spec_for
     from loopeng.sweep.charts import DIAL_CAPTION
 
-    assert "NOT COMPARABLE ACROSS MODELS" in DIAL_CAPTION
-    assert "temperature=0" in DIAL_CAPTION
+    for role in SCORING_ROLES:
+        assert spec_for(role).model_id in DIAL_CAPTION, (
+            f"the caption describes the bars without naming the {role} model"
+        )
+
+    pins_temperature = any("temperature" in spec_for(role).request_kwargs
+                           for role in SCORING_ROLES)
+    # The claim has to match the configuration, in whichever direction it currently
+    # points — so this keeps testing something if a future registry pins one again.
+    if pins_temperature:
+        assert "NOT COMPARABLE ACROSS MODELS" in DIAL_CAPTION
+    else:
+        assert "neither scoring model" in DIAL_CAPTION
+        assert "SAME class" in DIAL_CAPTION
+
     assert "clusters" in DIAL_CAPTION
+
+
+def test_the_dial_caption_cites_the_file_its_sampling_claim_rests_on():
+    """A number typed next to its own citation is the failure the caption is warning
+    the room about, so the caption cites the measurement by path and quotes none of it.
+    The path has to resolve, or it is evidence nobody can check — the same defect as
+    the pre-registration citing a noise-floor file `.gitignore` was dropping."""
+    from pathlib import Path
+
+    from loopeng.sweep.chart_model import NOISE_FLOOR_CITATION
+    from loopeng.sweep.charts import DIAL_CAPTION
+
+    assert NOISE_FLOOR_CITATION in DIAL_CAPTION
+    root = Path(__file__).resolve().parent.parent
+    assert (root / NOISE_FLOOR_CITATION).is_file(), (
+        f"{NOISE_FLOOR_CITATION} is cited on the chart and is not on disk"
+    )
 
 
 def test_the_cost_caption_keeps_the_estimated_label():

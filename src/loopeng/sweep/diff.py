@@ -16,7 +16,7 @@ FOUR FAMILIES, AND WHY EACH ONE
   level     L0 vs L3 at a fixed mode, within a model. What the rules are worth.
   live      the same cell key, computed now against the stored baseline. The cloner's
             "did I reproduce this?", which nothing could answer before.
-  secondary Haiku + loop vs Sonnet one-shot, the pre-registered NAMED SECONDARY. The
+  secondary agent + loop vs reference one-shot, the pre-registered NAMED SECONDARY. The
             only cross-model family, and therefore the only one whose p-value is
             refused. It exists precisely so that refusal is reachable: the first three
             families are within-model by construction, so a cross-model guard among
@@ -37,12 +37,17 @@ does not, the bars are the misleading pair.
 WHAT IT REFUSES TO SAY
 ----------------------
 
-**A cross-model comparison gets no p-value.** Haiku is pinned to temperature=0 and
-Sonnet 5 rejects non-default sampling, so Haiku's intervals carry sampling noise only
-while Sonnet's carry sampling noise plus run-to-run variance. That guardrail is stated
-in `orchestrator.pre_registration` and in the DIAL caption; a chart that drew a
-significance claim across it anyway would be a guardrail that exists in prose and
-nowhere else, which is the defect this project is about.
+**A cross-model comparison gets no p-value.** The reason given here used to be a
+sampling asymmetry — one model pinned to temperature=0, the other unable to be — and
+that asymmetry is gone: under the current policy neither scoring model accepts a pinned
+temperature, and both carry the same class of best-effort-seed residual.
+
+The refusal stands on the plainer ground it always really rested on. A cross-model pair
+differs in model, price and training at once, so a significance claim over it would
+attribute a confounded difference to whichever axis the chart happens to be about. The
+guardrail is stated in `orchestrator.pre_registration` and in the DIAL caption, and
+enforced here; a chart that drew the claim anyway would be a guardrail that exists in
+prose and nowhere else, which is the defect this project is about.
 
 **Below `MIN_DISCORDANT` nothing is distinguishable, structurally.** With n discordant
 pairs all falling one way the two-sided exact p is 2/2**n, so below that count no split
@@ -189,11 +194,11 @@ class Comparison:
 
         The message here used to be "no shared answered items between A and B" in both
         cases, which reads as a property of the data: these two arms answered disjoint
-        sets. For every Sonnet pair that was false. The items overlapped perfectly well
-        when they were measured; `build_reference` discards them at freeze time, so the
-        stored frontier cells carry no per-item outcomes and can never be paired with
-        anything. A diagnostic that misattributes its own cause sends a reader looking
-        at the measurement for a defect in the freeze.
+        sets. For every pair involving a FROZEN cell that was false. The items overlapped
+        perfectly well when they were measured; the freeze discarded the per-item
+        outcomes, so a stored cell could never be paired with anything. A diagnostic that
+        misattributes its own cause sends a reader looking at the measurement for a
+        defect in the freeze.
 
         Short, because it is what the DELTA chart prints in a row. `reading` adds the
         explanation; a row is a label, not a paragraph.
@@ -379,11 +384,17 @@ SECONDARY_B = ("reference", "one_shot")
 
 
 def named_secondary_deltas(cells) -> list[Comparison]:
-    """Haiku + loop vs Sonnet one-shot, at each level. Cross-model, so no p-value.
+    """The agent with loops against the frontier model bare, at each level.
 
-    `orchestrator.pre_registration` names this as the NAMED SECONDARY and says in words
-    that it is "underpowered AND carries the variance asymmetry". This is the family that
-    makes the asymmetry refusal reachable in code instead of only in prose.
+    Cross-model, so no p-value — see WHAT IT REFUSES TO SAY above. The models are named
+    nowhere in this docstring on purpose: `SECONDARY_A` and `SECONDARY_B` are role slots,
+    and the previous version spelled them out as two specific models, both of which had
+    since stopped holding the roles.
+
+    `orchestrator.pre_registration` names this as the NAMED SECONDARY. It is the family
+    that makes the cross-model refusal reachable in code instead of only in prose: the
+    other three families are within-model by construction, so a guard among them would be
+    decoration nothing could trigger.
     """
     indexed = _index(_complete(cells))
     levels = sorted({level for _role, level, _mode, _rep in indexed})

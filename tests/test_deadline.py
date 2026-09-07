@@ -13,7 +13,11 @@ from loopeng.agent.loop import TerminationReason
 from loopeng.sweep.chart_model import bar_rows, deadline_note
 from loopeng.sweep.charts import cost_chart, dial_chart
 from loopeng.sweep.deadline import Deadline, run_bounded
-from loopeng.sweep.orchestrator import describe_outcome, run_sweep
+from loopeng.sweep.orchestrator import (
+    describe_outcome,
+    mid_cell_message,
+    run_sweep,
+)
 from loopeng.sweep.runner import DEVELOPMENT, Cell, build_cells, load_cell, summarise_cell
 from tests.figures import texts
 
@@ -82,6 +86,44 @@ def test_the_projection_extrapolates_from_what_has_landed():
     clock.tick(20)
     # 10 items in 20s is 2s each; 50 items projects to 100s.
     assert deadline.projected_finish(10, 50) == pytest.approx(100)
+
+
+def test_the_projection_is_withheld_until_the_pipeline_is_full():
+    """Found by running it, not by reading it. A live sweep at concurrency 2 printed:
+
+        1/16 items · 2s of 18s · projected finish 32s · WILL OVERRUN
+        2/16 items · 2s of 18s · projected finish 17s · on track
+        4/16 items · 6s of 18s · projected finish 22s · WILL OVERRUN
+
+    `elapsed / done` divides the wall clock by the items that have FINISHED while the
+    other `concurrency - 1` are still running, so the first reading overstates per-item
+    cost by roughly the concurrency and then collapses when the wave lands. Since a
+    verdict flip is what triggers a status line, the least trustworthy phase produced
+    the most output — and an operator watching would have reached for the abort during
+    the one window where the number meant nothing.
+    """
+    clock = Clock()
+    deadline = Deadline(seconds=60, clock=clock, warmup=4)
+    clock.tick(2)
+
+    for done in range(1, 4):
+        assert deadline.projected_finish(done, 16) is None
+        assert deadline.will_overrun(done, 16) is False
+        assert "estimating" in deadline.status(done, 16)
+
+    assert deadline.projected_finish(4, 16) == pytest.approx(8)
+
+
+def test_the_orchestrator_sets_the_warmup_from_the_concurrency(tmp_path):
+    """The caller knows the concurrency; `Deadline` should not have to be told twice.
+
+    Set on a COPY: a function that mutates an argument to configure itself makes the
+    caller's next use of that object depend on whether this ran.
+    """
+    mine = Deadline(seconds=0)
+    run_sweep(ITEMS, tmp_path / "w.duckdb", profile=DEVELOPMENT, cap_usd=99.0,
+              directory=tmp_path / "sweep", quiet=True, deadline=mine, concurrency=5)
+    assert mine.warmup == 0, "the caller's deadline was mutated"
 
 
 def test_the_status_line_names_the_decision_not_just_the_clock():
@@ -305,6 +347,46 @@ def test_the_operator_is_told_which_cells_did_not_run(tmp_path, capsys):
     assert "cell(s) will not run" in out
 
 
+def test_a_stop_in_the_final_cell_does_not_report_zero_later_cells():
+    """It printed "0 later cell(s) will not run" — a zero rendered as a statement
+    about something that did not happen, which is the sentence shape this project
+    spends its whole time removing.
+
+    Measured live: the stop landed in the second of two smoke cells, so `not_run` was
+    empty and the sentence counted it anyway.
+    """
+    cut = {"n_items": 5, "n_requested": 8}
+    last = mid_cell_message("luna · L0 · loop", cut, [])
+    assert "0 later cell(s)" not in last
+    assert "It was the last cell." in last
+
+    more = mid_cell_message("luna · L0 · loop", cut, ["agent_L3_loop_r0"])
+    assert "1 later cell(s) will not run." in more
+    assert "5 of 8 items" in more
+
+
+def test_the_outcome_counts_a_partial_cell_apart_from_a_complete_one():
+    """"measured: 2 of 2 cells" was the first version, and on a run whose second cell
+    was cut at 5 of 8 items it was the most misleading line on the screen: 2-of-2 is
+    what a COMPLETE sweep says."""
+    report = {
+        "profile": "smoke", "n_cells": 2, "n_resumed": 0,
+        "spend_usd": {"value": 0.0033, "source": "estimated"}, "cap_usd": 0.05,
+        "deadline_seconds": 18.0, "elapsed_seconds": 19.0,
+        "stopped_at_deadline": True, "cells_not_run": [],
+        "cells": [
+            {"label": "a · L0 · one-shot", "stopped_early": False,
+             "n_items": 8, "n_requested": 8},
+            {"label": "a · L0 · loop", "stopped_early": True,
+             "n_items": 5, "n_requested": 8},
+        ],
+    }
+    text = describe_outcome(report)
+    assert "1 complete, 1 partial (of 2)" in text
+    assert "2 of 2 cells" not in text
+    assert "never started" not in text, "a category that did not happen is not listed"
+
+
 def test_the_outcome_description_names_the_partial_cells():
     report = {
         "profile": "development", "n_cells": 12, "n_resumed": 0,
@@ -318,6 +400,7 @@ def test_the_outcome_description_names_the_partial_cells():
     assert "STOPPED AT THE DEADLINE" in text
     assert "12 of 50 items" in text
     assert "agent_L3_loop_r0" in text
+    assert "1 never started" in text
     assert "Nothing was estimated" in text
 
 

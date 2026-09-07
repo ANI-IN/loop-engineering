@@ -78,6 +78,28 @@ class Deadline:
     clock: Callable[[], float] = time.monotonic
     started: float = field(default=None)  # type: ignore[assignment]
 
+    # How many completions before the projection is worth reporting. Set to the
+    # concurrency by the caller; 0 means project from the first item.
+    #
+    # **Measured, not anticipated.** A live run at concurrency 2 printed:
+    #
+    #     1/16 items · 2s of 18s · projected finish 32s · WILL OVERRUN
+    #     2/16 items · 2s of 18s · projected finish 17s · on track
+    #     4/16 items · 6s of 18s · projected finish 22s · WILL OVERRUN
+    #
+    # `elapsed / done` divides the wall clock by the items that have FINISHED while
+    # the other `concurrency - 1` are still running — uncounted work inside the
+    # elapsed time — so the first reading overstates per-item cost by roughly the
+    # concurrency and then collapses when the wave lands. The verdict flip is what
+    # triggers a status line, so the least trustworthy phase produced the most output,
+    # and an operator watching would have reached for the abort during the one window
+    # where the number meant nothing.
+    #
+    # A rate measured before the pipeline is full is not the pipeline's rate. It is
+    # withheld rather than smoothed: an average over a biased sample is still biased,
+    # and "estimating" is the honest thing to print for the two seconds it applies.
+    warmup: int = 0
+
     def __post_init__(self) -> None:
         if self.started is None:
             self.started = self.clock()
@@ -103,7 +125,7 @@ class Deadline:
         nothing supports — the same rule `Metric` follows for a rate with no
         denominator.
         """
-        if done <= 0 or total <= 0:
+        if done <= 0 or total <= 0 or done < self.warmup:
             return None
         return self.elapsed / done * total
 

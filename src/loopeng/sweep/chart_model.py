@@ -37,16 +37,65 @@ nothing is adjacent to anything, so this only shows up in `compare` mode, which 
 # The prose. Defined HERE and nowhere else; a test asserts neither renderer
 # redefines any of it.
 # ---------------------------------------------------------------------------
+from loopeng.registry import SCORING_ROLES, spec_for
 from loopeng.sweep.diff import ALPHA, MIN_DISCORDANT
+
+# The measurement the sampling caveat rests on, cited by path rather than quoted. Same
+# rule the pre-registration follows: a number typed next to its own citation is the
+# failure the caption is warning the room about.
+NOISE_FLOOR_CITATION = "results/noise_floor_seeded.json"
+
+def _sampling_caveat() -> str:
+    """What the error bars carry, READ OFF the registry rather than described beside it.
+
+    This was a fixed sentence and it had gone false in three separate ways at once:
+
+      "Haiku is pinned to temperature=0"  — the agent role is not Haiku and pins no
+                                            temperature; it pins `seed`.
+      "Sonnet 5 rejects non-default …"    — the reference role is not Sonnet either.
+      "…so one carries sampling noise      — THE ASYMMETRY IS GONE. Neither scoring
+       only while the other carries          model accepts a pinned temperature now,
+       sampling noise plus run-to-run"       so both bars carry the same class of
+                                             residual.
+
+    The third is the one that matters. A caption naming the wrong model is embarrassing;
+    a caption warning a room about an asymmetry that no longer exists is telling them to
+    discount a comparison for a reason that is not true — while staying silent about the
+    residual both bars DO carry. And it contradicted the pre-registration printed by the
+    same run, which has said "neither scoring model can be pinned" since the model policy
+    changed.
+
+    Derived, so the caption cannot disagree with the configuration it describes.
+    """
+    pinned = [spec_for(role) for role in SCORING_ROLES
+              if "temperature" in spec_for(role).request_kwargs]
+    named = ", ".join(spec_for(role).model_id for role in SCORING_ROLES)
+    if not pinned:
+        return (
+            f"WHAT THE INTERVALS DO NOT COVER: neither scoring model ({named}) accepts "
+            f"a pinned temperature — both reject a non-default sampling parameter — so "
+            f"both pin a seed instead, which the vendor documents as best-effort rather "
+            f"than a guarantee. Both bars therefore carry the SAME class of run-to-run "
+            f"residual, and it is measured rather than assumed away: see "
+            f"{NOISE_FLOOR_CITATION}. Across models the bars are still not a controlled "
+            f"comparison — different model, different price, different training — which "
+            f"is why a cross-model pair gets no p-value anywhere in this project."
+        )
+    unpinned = [spec_for(role) for role in SCORING_ROLES
+                if "temperature" not in spec_for(role).request_kwargs]
+    return (
+        "THE BARS ARE NOT COMPARABLE ACROSS MODELS: "
+        + ", ".join(spec.model_id for spec in pinned)
+        + " pin a temperature and "
+        + (", ".join(spec.model_id for spec in unpinned) or "no other model")
+        + " cannot, so the first carry sampling noise only while the second carry "
+          "sampling noise plus run-to-run variance. Within a model they are comparable."
+    )
+
 
 # The two caveats that travel with every interval in this project. Composed into the
 # captions below rather than restated in each, so a correction lands once.
-CROSS_MODEL_CAVEAT = (
-    "THE BARS ARE NOT COMPARABLE ACROSS MODELS: Haiku is pinned to temperature=0, "
-    "Sonnet 5 rejects non-default sampling parameters and cannot be pinned, so Haiku's "
-    "bars carry sampling noise only while Sonnet's carry sampling noise plus "
-    "run-to-run variance. Within a model they are comparable."
-)
+CROSS_MODEL_CAVEAT = _sampling_caveat()
 
 CLUSTER_CAVEAT = (
     "Items are clusters of parameterisations over a small number of question "
@@ -183,13 +232,25 @@ def cache_note(cells) -> str:
         saved += saving_usd(tokens, spec_for(cell["role"]).model_id) or 0.0
 
     if not applied:
+        # This paragraph described a vendor this project no longer calls. It said the
+        # frontier role at L3 DOES clear the minimum, quoted two token counts from the
+        # Anthropic-only design, and compared "Haiku's minimum" to "Sonnet's" — models
+        # that hold no scoring role here. It was also the opposite of the measurement
+        # that settled the question: the prefixes are SHORTER than the minimum for every
+        # role and level in this build, at every cell, which is why prompt caching was
+        # dropped from the plan rather than tuned.
+        #
+        # No token counts typed here. `chart_model` is a rendering surface and the lint
+        # is right about it — a measurement in a caption is exactly the shape that goes
+        # stale in silence, which is what happened to the sentence being replaced.
         return (
-            "PROMPT CACHING did not apply to any cell here. The prefix has to clear the "
-            "model's minimum cacheable length, and — measured, not assumed — only the "
-            "frontier role at L3 does: 1024 minimum against 1037 prefix tokens. Haiku's "
-            "minimum is four times higher than Sonnet's and its prefix is shorter, so no "
-            "Haiku cell in this project can cache at all. That asymmetry is silent: no "
-            "error, just a different cost per cell, on the cheaper model."
+            "PROMPT CACHING did not fire in any cell here, and that is measured rather "
+            "than assumed. Caching on this vendor is automatic — there is no marker to "
+            "set — but it applies only above a minimum cacheable prefix length, and "
+            "every prefix in this project is shorter than that minimum at every role "
+            "and level. So the schema-and-rules block is re-sent at full input price on "
+            "every call. Nothing here is a nil hit rate: there was no cache to hit, and "
+            "a zero would read as a measurement of one."
         )
     rate = hit_rate({"cache_read_input_tokens": read,
                      "cache_creation_input_tokens": written})
@@ -259,7 +320,11 @@ def bar_rows(cells, *, metric: str) -> list[dict]:
     any_stopped = any(cell.get("stopped_early") for cell in cells)
     rows = []
     for cell in ordered_cells(cells):
-        pending = not cell["complete"]
+        # STRICTLY still running. The pale bar means provisional — the chart's own unit
+        # line says "hollow while a cell is still running" — and a deadline-stopped cell
+        # is not provisional, it is final at a smaller n. Reading `not complete` drew it
+        # pale and told the room to wait for a bar that would never fill.
+        pending = not cell["complete"] and not cell.get("stopped_early")
         if metric == "rate":
             value = cell["rate_value"]
             lo, hi = cell["rate_ci_low"], cell["rate_ci_high"]
