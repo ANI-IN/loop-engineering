@@ -250,6 +250,7 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEV,
     completed, skipped = [], []
     not_run: list[str] = []
     stopped_at_deadline = False
+    interrupted = False
     # Sweep-wide, not per cell: the operator's question is whether the SWEEP finishes,
     # and a cell that is on track inside a sweep that is not would answer the wrong one.
     # Mutable and shared rather than closed over per cell: `items_total` shrinks when a
@@ -320,6 +321,9 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEV,
         report = run_cell(cell, items, warehouse, directory=directory,
                           concurrency=concurrency, fingerprint=fingerprint,
                           deadline=deadline, on_progress=_progress, **kwargs)
+        # Before the branches below, so an interrupted cell's spend is counted like
+        # every other cell's. It used to reach here through an exception and be
+        # skipped — see `run_cell`.
         spent += report["cost_usd"]["value"]
         completed.append(report)
         if on_cell:
@@ -327,6 +331,19 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEV,
         if not quiet:
             print(f"      {report['silent_error_rate']}  "
                   f"est. ${report['cost_usd']['value']:.4f}  {report['seconds']}s", flush=True)
+        if report["interrupted"]:
+            # Ctrl-C is an operator decision, like the deadline and unlike the spend
+            # cap, so the sweep RETURNS what it has rather than raising past it — a
+            # partial result reached through an exception is a partial result somebody
+            # drops.
+            interrupted = True
+            not_run = [c.key for c in cells[index + 1:]]
+            if not quiet:
+                print(f"\nINTERRUPTED after {deadline.elapsed:.0f}s during "
+                      f"'{cell.label}': {report['n_items']} of "
+                      f"{report['n_requested']} items measured and written. "
+                      f"{len(not_run)} later cell(s) will not run.", flush=True)
+            break
         if report["stopped_early"]:
             # The cell itself was cut. Every later cell is unreachable by definition —
             # the clock that stopped this one has not restarted.
@@ -348,6 +365,7 @@ def run_sweep(items, warehouse: Path, *, profile: Profile = DEV,
         "deadline_seconds": deadline.seconds,
         "elapsed_seconds": round(deadline.elapsed, 1),
         "stopped_at_deadline": stopped_at_deadline,
+        "interrupted": interrupted,
         "cells_not_run": not_run,
         "run_fingerprint": fingerprint.as_dict(), "cells": completed,
     }
@@ -377,7 +395,27 @@ def describe_outcome(report: dict) -> str:
     wiring.
     """
     lines = []
-    if report["stopped_at_deadline"]:
+    if report.get("interrupted"):
+        lines.append(f"INTERRUPTED after {report['elapsed_seconds']:.0f}s.")
+        lines.append("  Every item that finished is on disk, including the ones that "
+                     "were in flight when you pressed Ctrl-C.")
+        finished = [c for c in report["cells"] if c["complete"]]
+        partial = [c for c in report["cells"] if c.get("interrupted")]
+        for cell in partial:
+            lines.append(f"  partial   : {cell['label']} — {cell['n_items']} of "
+                         f"{cell['n_requested']} items")
+        if report["cells_not_run"]:
+            lines.append(f"  not run   : {', '.join(report['cells_not_run'])}")
+        # Only when there is something to resume FROM. "Re-run with --resume" said to
+        # an operator whose interrupt landed in the first cell is advice that does
+        # nothing, and advice that does nothing is how a flag gets a reputation.
+        lines.append(
+            f"  {len(finished)} cell(s) completed; --resume continues from those."
+            if finished else
+            "  No cell completed, so there is nothing to resume from — re-running "
+            "starts from the beginning."
+        )
+    elif report["stopped_at_deadline"]:
         lines.append(
             f"STOPPED AT THE DEADLINE after {report['elapsed_seconds']:.0f}s of "
             f"{report['deadline_seconds']:.0f}s."
@@ -409,8 +447,44 @@ def describe_outcome(report: dict) -> str:
 
 
 def load_all(directory: Path = SWEEP_DIR) -> list[dict]:
-    """Every cell file on disk, complete or not. Charts read this."""
+    """Every cell on disk, complete or not. Charts read this.
+
+    A summary that cannot be parsed is REBUILT from its row log rather than skipped,
+    and the rebuilt cell is stamped `recovered_from_log` so nothing downstream mistakes
+    it for one that was written normally. Skipping it silently would be the failure
+    this whole directory exists to prevent: a chart short one cell, with nothing on it
+    saying which.
+
+    If there is no log either, the exception propagates. That is corruption, not an
+    interrupted write, and a chart drawn over an unreadable directory is worse than a
+    traceback naming the file.
+    """
     directory = Path(directory)
     if not directory.is_dir():
         return []
-    return [json.loads(p.read_text()) for p in sorted(directory.glob("*.json"))]
+    cells = []
+    for path in sorted(directory.glob("*.json")):
+        try:
+            cells.append(json.loads(path.read_text()))
+            continue
+        except json.JSONDecodeError:
+            recovered = _rebuild_from_log(path)
+            if recovered is None:
+                raise
+            cells.append(recovered)
+    return cells
+
+
+def _rebuild_from_log(summary_path: Path) -> dict | None:
+    """Re-derive a cell from its append-only rows, or None if there are none."""
+    from loopeng.sweep.runner import Cell, read_rows, summarise_cell
+
+    log = summary_path.with_suffix(".jsonl")
+    rows, dropped = read_rows(log)
+    if not rows:
+        return None
+    cell = Cell.from_key(summary_path.stem)
+    rebuilt = summarise_cell(cell, rows, complete=False, seconds=0.0, interrupted=True,
+                             n_requested=len(rows) + dropped)
+    rebuilt["recovered_from_log"] = {"rows": len(rows), "dropped_partial_lines": dropped}
+    return rebuilt

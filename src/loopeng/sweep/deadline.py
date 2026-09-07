@@ -148,12 +148,14 @@ class Deadline:
 
 @dataclass
 class BoundedRun:
-    """What a deadline-bounded pass managed, and whether the clock cut it short."""
+    """What a bounded pass managed, and what stopped it if anything did."""
 
     results: list
     requested: int
     stopped_early: bool
     elapsed: float
+    # Ctrl-C, handled as a stop rather than as a crash. See `run_bounded`.
+    interrupted: bool = False
 
     @property
     def n(self) -> int:
@@ -165,6 +167,12 @@ class BoundedRun:
 
     def note(self) -> str:
         """What the cell says about its own n. Never silent about being partial."""
+        if self.interrupted:
+            return (
+                f"INTERRUPTED after {self.elapsed:.0f}s: {self.n} of {self.requested} "
+                f"items measured, and all {self.n} are on disk. The "
+                f"{self.n_not_run} that never started were not estimated."
+            )
         if not self.stopped_early:
             return f"all {self.requested} items measured"
         return (
@@ -189,6 +197,19 @@ def run_bounded(items, work: Callable, *, concurrency: int,
     `on_result` fires for every completion, including after the deadline has passed:
     an item already in flight is paid for, so its result is recorded. That is the
     difference between stopping and aborting.
+
+    CTRL-C IS A DEADLINE OF ZERO, PLUS A FLAG.
+
+    The first KeyboardInterrupt is caught here and handled exactly as the clock
+    running out: stop submitting, let what is in flight land, record all of it. An
+    operator who interrupts a sweep has decided to stop, not to destroy the last
+    thirty calls they paid for — and the alternative is worse than losing them,
+    because the exception would escape through the executor's context manager, which
+    waits for those same calls anyway and then discards their results. The old
+    behaviour was therefore "wait for the work, then throw it away".
+
+    A SECOND Ctrl-C propagates. Someone pressing it twice means now, and a drain that
+    cannot itself be interrupted is a hang with a good excuse.
     """
     deadline = deadline or Deadline()
     started = deadline.clock()
@@ -196,6 +217,7 @@ def run_bounded(items, work: Callable, *, concurrency: int,
     requested = len(items)
     workers = max(1, concurrency)
     results: list = []
+    interrupted = False
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         in_flight = set()
@@ -212,15 +234,21 @@ def run_bounded(items, work: Callable, *, concurrency: int,
             pass
 
         while in_flight:
-            done, in_flight = wait(in_flight, return_when=FIRST_COMPLETED)
-            for future in done:
-                result = future.result()
-                results.append(result)
-                if on_result:
-                    on_result(result)
+            try:
+                done, in_flight = wait(in_flight, return_when=FIRST_COMPLETED)
+                for future in done:
+                    result = future.result()
+                    results.append(result)
+                    if on_result:
+                        on_result(result)
+            except KeyboardInterrupt:
+                if interrupted:
+                    raise  # the second one means now
+                interrupted = True
+                continue
             # THE CHECK. Before refilling, never during a call, never on a result
-            # already paid for.
-            if deadline.expired():
+            # already paid for. Ctrl-C gates the same door.
+            if interrupted or deadline.expired():
                 continue
             while len(in_flight) < workers and submit_next():
                 pass
@@ -242,4 +270,5 @@ def run_bounded(items, work: Callable, *, concurrency: int,
         # `.result()` above rather than going unrecorded.
         stopped_early=len(results) < requested and deadline.expired(),
         elapsed=deadline.clock() - started,
+        interrupted=interrupted,
     )

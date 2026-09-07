@@ -19,6 +19,7 @@ chart reads as a measurement.
 """
 
 import json
+import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -303,6 +304,32 @@ class Cell:
         rep = f" (rep {self.replicate + 1})" if self.replicate else ""
         return f"{spec_for(self.role).model_id} · {self.level} · {mode}{rep}"
 
+    @classmethod
+    def from_key(cls, key: str) -> "Cell":
+        """The inverse of `.key`. Raises on anything that is not one.
+
+        Parsed from BOTH ENDS rather than by splitting on underscores, because `mode`
+        contains one: `agent_L0_one_shot_r0` splits into five pieces, not four, and a
+        naive `rsplit("_", 3)` reads the role as "agent_L0" without noticing.
+
+        `test_every_cell_key_round_trips` runs this over every key `build_cells`
+        produces for every profile, so the two halves cannot drift.
+        """
+        role, _, rest = key.partition("_")
+        level, _, rest = rest.partition("_")
+        mode, _, replicate = rest.rpartition("_")
+        if not (role and level and mode and replicate.startswith("r")):
+            raise ValueError(
+                f"{key!r} is not a cell key; expected role_level_mode_rN"
+            )
+        try:
+            return cls(role=role, level=level, mode=mode,
+                       replicate=int(replicate[1:]))
+        except ValueError as exc:
+            raise ValueError(
+                f"{key!r} is not a cell key; expected role_level_mode_rN"
+            ) from exc
+
     def projected_usd(self, n_items: int) -> float:
         inp, out = SHAPES[(self.role, self.level)]
         calls = CALLS_PER_ITEM[(self.mode, self.level)]
@@ -414,6 +441,81 @@ def cell_path(cell: Cell, directory: Path = SWEEP_DIR) -> Path:
     return Path(directory) / f"{cell.key}.json"
 
 
+def rows_path(cell: Cell, directory: Path = SWEEP_DIR) -> Path:
+    """The append-only row log for a cell. One JSON object per line, in landing order.
+
+    WHY A SECOND FILE, WHEN THE SUMMARY ALREADY HELD THE ROWS
+
+    The summary was rewritten in full after every item: `path.write_text(json.dumps(
+    whole_cell))`, sixty times for a sixty-item cell. Two problems, and the second is
+    the one that matters.
+
+    It is O(n^2) writes, which is merely wasteful. But `write_text` TRUNCATES AND THEN
+    WRITES, so between those two steps the only record of the cell on disk is an empty
+    file, and a crash or a Ctrl-C landing in that window leaves a truncated JSON
+    document. `load_all` would then raise `JSONDecodeError` for the whole directory —
+    every chart in the session, lost to an interrupt that happened to arrive during a
+    write to one cell.
+
+    An append is different in kind. Each row is one line, written and flushed at the
+    end of the file; nothing that already landed is ever rewritten, so no window exists
+    in which earlier items are unreadable. At worst an interrupt truncates the LAST
+    line, and `read_rows` drops exactly that one and says so.
+
+    The summary is still written, because it is what the charts read — but it is now
+    derived from the log and written atomically, and it can be rebuilt if it is lost.
+    """
+    return Path(directory) / f"{cell.key}.jsonl"
+
+
+def append_row(path: Path, row: dict) -> None:
+    """Append one row and flush it. The durable record of a measured item."""
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(row, default=json_default) + "\n")
+        handle.flush()
+
+
+def read_rows(path: Path) -> tuple[list[dict], int]:
+    """`(rows, dropped)` from a row log. A partial final line is DROPPED AND COUNTED.
+
+    Counted rather than tolerated silently: a run whose last line was cut off measured
+    one item it cannot account for, and the difference between "59 items" and "59 items
+    plus one we lost" is exactly the kind of thing this project refuses to round off.
+
+    Only the LAST line may be partial — an append that got part-way. A malformed line
+    anywhere else is a different fault and raises, because that is corruption rather
+    than an interrupted write.
+    """
+    if not Path(path).is_file():
+        return [], 0
+    lines = [line for line in Path(path).read_text(encoding="utf-8").splitlines() if line]
+    rows, dropped = [], 0
+    for index, line in enumerate(lines):
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            if index == len(lines) - 1:
+                dropped = 1
+                break
+            raise
+    return rows, dropped
+
+
+def write_json_atomic(path: Path, body: dict) -> None:
+    """Write a JSON document so a reader never sees it half-written.
+
+    Same file system, then `os.replace`, which is atomic on POSIX and on Windows for
+    an existing destination. The previous version truncated the real file first, so an
+    interrupt mid-write destroyed the readable copy on the way to producing the new
+    one.
+    """
+    path = Path(path)
+    temporary = path.with_name(f".{path.name}.partial")
+    temporary.write_text(json.dumps(body, indent=2, default=json_default),
+                         encoding="utf-8")
+    os.replace(temporary, path)
+
+
 def load_cell(cell: Cell, directory: Path = SWEEP_DIR,
               *, expect_items: int | None = None) -> dict | None:
     """A completed cell file for this cell, or None if it must be re-run.
@@ -467,10 +569,27 @@ def run_cell(cell: Cell, items, warehouse: Path, *, verifier=verify_governed,
     `loopeng.sweep.deadline` for why an item is never cut short and scored. A cell the
     clock stopped is written with `stopped_early`, a reduced `n_items`, and a rate
     string that says the run ended rather than that it is still going.
+
+    **A Ctrl-C RETURNS, it does not re-raise**, and the first version got that wrong in
+    a way only a live interrupt showed. Raising after writing the summary looked
+    careful — the record was safe on disk — but the report never reached the caller, so
+    `run_sweep` could not add the cell's spend to the run total. A real interrupt nine
+    seconds into a live sweep printed `spend: est. $0.0000 of $0.05` over a cell that
+    had just cost $0.0019. Money spent, reported as zero, by the project whose entire
+    argument is that a zero on a report reads as a measurement.
+
+    So an interrupt is reported the way the deadline is: a flag on the returned cell.
+    The caller checks `report["interrupted"]` beside `report["stopped_early"]` and
+    stops, and the accounting flows through the same path as every other cell.
     """
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     path = cell_path(cell, directory)
+    log = rows_path(cell, directory)
+    # A fresh run of this cell starts a fresh log. Appending to a previous attempt's
+    # rows would double-count every item it managed before it stopped, which is the one
+    # way an append-only file can lie.
+    log.unlink(missing_ok=True)
     rows: list[dict] = []
     started = time.perf_counter()
 
@@ -508,17 +627,19 @@ def run_cell(cell: Cell, items, warehouse: Path, *, verifier=verify_governed,
     items = list(items)
 
     def _landed(row: dict) -> None:
-        """Write the cell to disk on every completion, deadline or no deadline.
+        """Record one measured item, durably, before anything else happens.
 
-        This is what makes the stop clean rather than lossy: the file on disk is
-        already correct for the items that have landed, so stopping is a matter of
-        not starting more.
+        THE APPEND COMES FIRST. It is the only write here that cannot lose earlier
+        work — see `rows_path` — so an interrupt or a crash at any instant after this
+        line leaves the item recorded. The summary that follows is derived and
+        replaceable; the log is the measurement.
         """
+        append_row(log, row)
         rows.append(row)
         partial = summarise_cell(cell, rows, complete=False,
                                  seconds=time.perf_counter() - started,
                                  fingerprint=fingerprint)
-        path.write_text(json.dumps(partial, indent=2, default=json_default))
+        write_json_atomic(path, partial)
         if on_progress:
             on_progress(partial)
 
@@ -529,16 +650,23 @@ def run_cell(cell: Cell, items, warehouse: Path, *, verifier=verify_governed,
     # It stays False so `load_cell` will not resume one as if it were whole and
     # `completed_cells` does not count it — a partial cell must not be able to satisfy
     # a later full run by sitting in the directory.
-    report = summarise_cell(cell, rows, complete=not bounded.stopped_early,
-                            seconds=time.perf_counter() - started,
-                            fingerprint=fingerprint,
-                            stopped_early=bounded.stopped_early,
-                            n_requested=bounded.requested)
-    path.write_text(json.dumps(report, indent=2, default=json_default))
+    report = summarise_cell(
+        cell, rows,
+        # An interrupted cell is no more complete than a deadline-stopped one, and for
+        # the same reason: it did not run what it was asked to.
+        complete=not (bounded.stopped_early or bounded.interrupted),
+        seconds=time.perf_counter() - started,
+        fingerprint=fingerprint,
+        stopped_early=bounded.stopped_early,
+        interrupted=bounded.interrupted,
+        n_requested=bounded.requested,
+    )
+    write_json_atomic(path, report)
     return report
 
 
-def _partial_rate(metric: Metric, n_ran: int, stopped_early: bool) -> str:
+def _partial_rate(metric: Metric, n_ran: int, stopped_early: bool,
+                  interrupted: bool = False) -> str:
     """How an incomplete cell describes its own rate.
 
     "in progress, n=NN so far" is a promise that the number will move. It is true of a
@@ -546,6 +674,8 @@ def _partial_rate(metric: Metric, n_ran: int, stopped_early: bool) -> str:
     identically — so a stopped cell invited a room to keep waiting on a figure that was
     already final.
     """
+    if interrupted:
+        return f"interrupted, final at n={n_ran} — {metric.render()}"
     if stopped_early:
         return f"stopped at the deadline, final at n={n_ran} — {metric.render()}"
     return f"in progress, n={n_ran} so far — {metric.render()}"
@@ -554,6 +684,7 @@ def _partial_rate(metric: Metric, n_ran: int, stopped_early: bool) -> str:
 def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: float,
                    fingerprint: RunFingerprint | None = None,
                    stopped_early: bool = False,
+                   interrupted: bool = False,
                    n_requested: int | None = None) -> dict:
     """One cell as a dict. **Three states, not two.**
 
@@ -564,7 +695,13 @@ def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: flo
 
         complete=True                    ran every item it was asked for
         complete=False, stopped_early    the clock ended it; this n is final
+        complete=False, interrupted      Ctrl-C ended it; this n is final
         complete=False                   still running; the n is still moving
+
+    `interrupted` and `stopped_early` are both "final at a smaller n" and are kept
+    apart because they are different facts about the run: one is the design working,
+    the other is a person deciding. A reader looking at a short cell should be able to
+    tell which without asking.
     """
     ran = [r for r in rows if r["ran_and_returned"]]
     # Counted by enumeration, never derived. `silent = len(ran) - correct` swept an
@@ -584,6 +721,7 @@ def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: flo
         # existed has no key, and absence means "not deadline-stopped" — which is what
         # every cell measured before there was a deadline in fact was.
         "stopped_early": stopped_early,
+        "interrupted": interrupted,
         # How many items were ASKED FOR, as distinct from how many ran. Equal unless
         # the clock stopped it, and the pair is what the disclosure is computed from
         # rather than remembered.
@@ -599,7 +737,7 @@ def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: flo
         # Never blank, never zero, never a guess.
         "silent_error_rate": (
             metric.render() if metric and complete
-            else (_partial_rate(metric, len(ran), stopped_early) if metric
+            else (_partial_rate(metric, len(ran), stopped_early, interrupted) if metric
                   else "not yet measured")
         ),
         "rate_value": metric.value if metric else None,

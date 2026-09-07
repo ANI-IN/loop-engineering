@@ -22,6 +22,13 @@ from loopeng.sweep.runner import DEV, Cell, build_cells, load_cell, summarise_ce
 from tests.figures import texts
 
 
+@pytest.fixture(scope="module")
+def warehouse(tmp_path_factory):
+    from loopeng.warehouse.connect import ensure_warehouse
+
+    return ensure_warehouse(tmp_path_factory.mktemp("wh") / "w.duckdb", seed=20260729)
+
+
 class Clock:
     """A hand-cranked monotonic clock. `tick` is the only way time passes."""
 
@@ -595,3 +602,245 @@ def test_two_clocks_is_refused_rather_than_silently_ranked(tmp_path):
         run_sweep([], tmp_path / "w.duckdb", profile=SESSION, quiet=True,
                   directory=tmp_path / "sweep",
                   deadline_seconds=30, deadline=Deadline(seconds=60))
+
+
+# ---- item 6: the row log, and Ctrl-C as a stop rather than a crash ------------
+
+
+def test_every_cell_key_round_trips(tmp_path):
+    """`Cell.from_key` is the inverse of `.key`, and `mode` contains an underscore —
+    `agent_L0_one_shot_r0` splits into five pieces, not four, so a naive
+    `rsplit("_", 3)` reads the role as "agent_L0" without noticing. Run over every key
+    every profile produces, so the two halves cannot drift."""
+    from loopeng.sweep.runner import PROFILES, Cell, build_cells
+
+    for name, profile in PROFILES.items():
+        for cell in build_cells(profile):
+            assert Cell.from_key(cell.key) == cell, f"{name}: {cell.key}"
+
+
+@pytest.mark.parametrize("bad", ["", "agent", "agent_L0", "agent_L0_loop",
+                                 "agent_L0_loop_0", "agent_L0_loop_rX"])
+def test_a_non_key_is_refused_rather_than_guessed(bad):
+    from loopeng.sweep.runner import Cell
+
+    with pytest.raises(ValueError, match="not a cell key"):
+        Cell.from_key(bad)
+
+
+def test_a_partial_final_line_is_dropped_and_COUNTED(tmp_path):
+    """An interrupt can cut the last append mid-write. That row is lost either way;
+    what must not happen is losing it silently — "59 items" and "59 items plus one we
+    could not read" are different facts."""
+    from loopeng.sweep.runner import append_row, read_rows
+
+    log = tmp_path / "agent_L0_loop_r0.jsonl"
+    append_row(log, {"item_id": "i1"})
+    append_row(log, {"item_id": "i2"})
+    with log.open("a", encoding="utf-8") as handle:
+        handle.write('{"item_id": "i3", "cos')  # cut mid-write
+
+    rows, dropped = read_rows(log)
+    assert [r["item_id"] for r in rows] == ["i1", "i2"]
+    assert dropped == 1
+
+
+def test_a_malformed_line_in_the_middle_is_corruption_and_raises(tmp_path):
+    """Only the LAST line may be partial — that is what an interrupted append looks
+    like. Anything else is a different fault and must not be quietly skipped."""
+    import json
+
+    from loopeng.sweep.runner import read_rows
+
+    log = tmp_path / "agent_L0_loop_r0.jsonl"
+    log.write_text('{"item_id": "i1"}\nnot json at all\n{"item_id": "i3"}\n')
+    with pytest.raises(json.JSONDecodeError):
+        read_rows(log)
+
+
+def test_an_atomic_write_never_leaves_a_readable_file_truncated(tmp_path):
+    """`write_text` truncates and then writes, so between those two steps the only
+    record on disk is an empty file. This writes beside the target and renames."""
+    import json
+
+    from loopeng.sweep.runner import write_json_atomic
+
+    path = tmp_path / "cell.json"
+    write_json_atomic(path, {"n": 1})
+    write_json_atomic(path, {"n": 2})
+    assert json.loads(path.read_text())["n"] == 2
+    assert not list(tmp_path.glob(".*partial")), "the temporary file was left behind"
+
+
+def test_a_rerun_of_a_cell_starts_a_fresh_log(tmp_path, warehouse):
+    """Appending to a previous attempt's rows would double-count every item it managed
+    before it stopped — the one way an append-only file can lie."""
+    from loopeng.sweep.runner import Cell, append_row, read_rows, rows_path, run_cell
+
+    cell = Cell("agent", "L0", "loop")
+    log = rows_path(cell, tmp_path)
+    log.parent.mkdir(parents=True, exist_ok=True)
+    append_row(log, {"item_id": "from-a-previous-attempt"})
+
+    run_cell(cell, [], warehouse, directory=tmp_path)
+    rows, _ = read_rows(log)
+    assert rows == []
+
+
+def _interrupting_wait(monkeypatch, times: int):
+    """Make `wait` raise KeyboardInterrupt its first `times` calls, then behave.
+
+    Patching `wait` rather than raising inside a worker, because that is where a real
+    Ctrl-C lands: the signal is delivered to the MAIN thread, which is blocked in
+    `wait`. A first draft of these tests raised from the work function instead, which
+    surfaces at `future.result()` — a different code path that happens to be caught by
+    the same `except`, and which cannot reach the second-interrupt branch at all
+    because a worker only raises once. It passed, and it was testing something else.
+    """
+    import loopeng.sweep.deadline as module
+
+    real = module.wait
+    calls = {"n": 0}
+
+    def fake(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] <= times:
+            raise KeyboardInterrupt
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(module, "wait", fake)
+    return calls
+
+
+def test_ctrl_c_keeps_what_was_in_flight_rather_than_paying_and_discarding(monkeypatch):
+    """The old behaviour was "wait for the work, then throw it away".
+
+    A KeyboardInterrupt escaping through the executor's context manager waits for the
+    in-flight calls anyway — `shutdown(wait=True)` — and then discards their results.
+    Those calls are already paid for. So the first Ctrl-C is handled exactly like the
+    clock running out: stop submitting, let what is in flight land, record all of it.
+    """
+    _interrupting_wait(monkeypatch, times=1)
+    landed = []
+
+    result = run_bounded(range(20), lambda i: i, concurrency=4,
+                         deadline=Deadline(clock=Clock()), on_result=landed.append)
+
+    assert result.interrupted is True
+    # The four that were in flight when the interrupt arrived, all recorded.
+    assert result.n == len(landed) == 4
+    assert result.n_not_run == 16
+    assert "INTERRUPTED" in result.note()
+    assert "were not estimated" in result.note()
+
+
+def test_a_second_ctrl_c_propagates(monkeypatch):
+    """Someone pressing it twice means now. A drain that cannot itself be interrupted
+    is a hang with a good excuse."""
+    _interrupting_wait(monkeypatch, times=2)
+
+    with pytest.raises(KeyboardInterrupt):
+        run_bounded(range(20), lambda i: i, concurrency=2,
+                    deadline=Deadline(clock=Clock()))
+
+
+def test_an_interrupted_cell_is_final_and_says_which_kind_of_final():
+    """`interrupted` and `stopped_early` are both "final at a smaller n" and are
+    different facts: one is the design working, the other is a person deciding."""
+    stopped = summarise_cell(Cell("agent", "L0", "loop"), _rows(12), complete=False,
+                             seconds=4.0, stopped_early=True, n_requested=50)
+    cut = summarise_cell(Cell("agent", "L0", "loop"), _rows(12), complete=False,
+                         seconds=4.0, interrupted=True, n_requested=50)
+
+    assert "stopped at the deadline" in stopped["silent_error_rate"]
+    assert "interrupted, final at n=12" in cut["silent_error_rate"]
+    assert "in progress" not in cut["silent_error_rate"]
+    assert cut["interrupted"] is True and cut["stopped_early"] is False
+
+
+def test_a_lost_summary_is_rebuilt_from_the_log_and_stamped_as_such(tmp_path):
+    """Skipping an unreadable cell would leave a chart short one cell with nothing on
+    it saying which — the failure this directory exists to prevent."""
+    from loopeng.sweep.orchestrator import load_all
+    from loopeng.sweep.runner import Cell, append_row, cell_path, rows_path
+
+    cell = Cell("agent", "L0", "one_shot")
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    for row in _rows(3):
+        append_row(rows_path(cell, tmp_path), row)
+    cell_path(cell, tmp_path).write_text('{"key": "agent_L0_one')  # truncated
+
+    loaded = load_all(tmp_path)
+    assert len(loaded) == 1
+    assert loaded[0]["recovered_from_log"] == {"rows": 3, "dropped_partial_lines": 0}
+    assert loaded[0]["n_items"] == 3
+    assert loaded[0]["complete"] is False
+
+
+def test_an_unreadable_summary_with_no_log_raises_rather_than_vanishing(tmp_path):
+    """Corruption, not an interrupted write. A chart drawn over an unreadable
+    directory is worse than a traceback naming the file."""
+    import json
+
+    from loopeng.sweep.orchestrator import load_all
+
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    (tmp_path / "agent_L0_loop_r0.json").write_text('{"key": "agent_L0_lo')
+    with pytest.raises(json.JSONDecodeError):
+        load_all(tmp_path)
+
+
+def test_an_interrupted_cell_still_counts_toward_the_run_spend(tmp_path, monkeypatch):
+    """Found by a real interrupt, not by reading.
+
+    `run_cell` used to write the summary and then re-raise. That looked careful — the
+    record was safe on disk — but the report never reached `run_sweep`, so the cell's
+    cost was never added to the run total. A live Ctrl-C nine seconds into a sweep
+    printed `spend: est. $0.0000 of $0.05` over a cell that had just cost $0.0019.
+    Money spent, reported as zero, by the project whose whole argument is that a zero
+    on a report reads as a measurement.
+    """
+    import loopeng.sweep.orchestrator as orchestrator
+    from loopeng.sweep.runner import SMOKE, build_cells
+
+    charged = {"n": 0}
+
+    def fake_run_cell(cell, items, warehouse, **kwargs):
+        charged["n"] += 1
+        return summarise_cell(cell, _rows(3), complete=False, seconds=1.0,
+                              interrupted=True, n_requested=20)
+
+    monkeypatch.setattr(orchestrator, "run_cell", fake_run_cell)
+    report = run_sweep(ITEMS[:5], tmp_path / "w.duckdb", profile=SMOKE, cap_usd=99.0,
+                       directory=tmp_path / "sweep", quiet=True, item_limit=5)
+
+    assert report["interrupted"] is True
+    assert charged["n"] == 1, "the sweep stopped at the interrupted cell"
+    assert report["spend_usd"]["value"] > 0, "the interrupted cell's spend was dropped"
+    assert len(report["cells"]) == 1, "the interrupted cell is part of the run"
+    assert report["cells_not_run"] == [c.key for c in build_cells(SMOKE)[1:]]
+
+
+def test_the_resume_advice_is_not_given_when_there_is_nothing_to_resume():
+    """"Re-run with --resume" said to an operator whose interrupt landed in the first
+    cell is advice that does nothing, and advice that does nothing is how a flag gets
+    a reputation."""
+    base = {
+        "profile": "smoke", "n_cells": 2, "n_resumed": 0,
+        "spend_usd": {"value": 0.0019, "source": "estimated"}, "cap_usd": 0.05,
+        "deadline_seconds": 300.0, "elapsed_seconds": 10.0,
+        "stopped_at_deadline": False, "interrupted": True,
+        "cells_not_run": ["agent_L0_loop_r0"],
+    }
+    cut = {"label": "luna · L0 · one-shot", "complete": False, "interrupted": True,
+           "n_items": 9, "n_requested": 20}
+    done = {"label": "luna · L0 · one-shot", "complete": True, "interrupted": False,
+            "n_items": 20, "n_requested": 20}
+
+    nothing_done = describe_outcome({**base, "cells": [cut]})
+    assert "nothing to resume from" in nothing_done
+    assert "9 of 20 items" in nothing_done
+
+    some_done = describe_outcome({**base, "cells": [done, cut]})
+    assert "1 cell(s) completed; --resume continues from those." in some_done
+    assert "nothing to resume" not in some_done
