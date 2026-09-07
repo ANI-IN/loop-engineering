@@ -52,6 +52,11 @@ STATUS_EVERY_ITEMS = 20
 # not checkable. The file is committed now, and a test asserts every repo-relative path
 # named in this module exists on disk.
 NOISE_FLOOR_PATH = Path("results/noise_floor_seeded.json")
+
+# Cited BY NAME in the pre-registration, so it has to resolve — the same rule the noise
+# floor is held to, and the same test enforces it. The line read "written down in
+# docs/", which names a directory and commits to nothing findable.
+ENDINGS_NOTE = "docs/three-endings.md"
 NOISE_FLOOR_CITATION = str(NOISE_FLOOR_PATH)
 
 
@@ -124,9 +129,12 @@ NAMED SECONDARY
   Underpowered by construction — see below — and reported with its discordant-pair
   count so the basis of the claim is visible rather than implied.
 
-  It is PRE-COMMITTED to one of three readings, written down in docs/ before the
-  data landed: reached, approached-but-short, or no-gap-to-close. A null here is a
-  finding and will be shown as one. No subgroup will be gone looking for.
+  It is PRE-COMMITTED to one of three readings, with their criteria, in
+  {ENDINGS_NOTE}: no-gap-to-close, reached, or approached-but-short. Which one gets
+  said out loud is computed by `sweep/endings.py :: select()` rather than chosen by
+  someone reading a chart, and the criteria carry no p-value because this project
+  refuses one across models. A null here is a finding and will be shown as one. No
+  subgroup will be gone looking for.
 
 EXPLICITLY UNDERPOWERED
   Anything that turns on a handful of discordant pairs. Exact McNemar needs six

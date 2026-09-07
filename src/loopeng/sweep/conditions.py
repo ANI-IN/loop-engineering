@@ -215,7 +215,10 @@ def summarise_arm(condition: Condition, rows: list[dict]) -> dict:
 
 # The bands whose items produced an answer to compare. An abstention and a visible
 # failure are both "no answer", and neither belongs in a paired correctness test.
-_ANSWERED_BANDS = frozenset({BAND_CORRECT, BAND_UNEARNED, BAND_SILENT})
+#
+# Public, because `sweep/endings.py` needs the same definition and a second copy of
+# "what counts as answered" is exactly the drift this project keeps finding. One name.
+ANSWERED_BANDS = frozenset({BAND_CORRECT, BAND_UNEARNED, BAND_SILENT})
 
 
 def _pairable(rows: list[dict]) -> list[dict]:
@@ -236,7 +239,7 @@ def _pairable(rows: list[dict]) -> list[dict]:
         band = band_of(row["outcome"])
         stamped.append({
             **row,
-            "ran_and_returned": band in _ANSWERED_BANDS,
+            "ran_and_returned": band in ANSWERED_BANDS,
             "correct": band == BAND_CORRECT,
         })
     return stamped
