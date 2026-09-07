@@ -8,8 +8,8 @@ apart, and that you cannot tell by looking. It makes that argument about a text-
 agent. The argument is stronger made about the repository, because here the failures are
 documented, dated, and were all found the same way.
 
-**Five instruments have been caught measuring something other than what they claimed.
-Not one was found by reading the code.** All five were green.
+**Seven instruments have been caught measuring something other than what they claimed,
+and one plan has.** Not one was found by reading code. All of them were green.
 
 ## 1. The lint rule that scanned nothing
 
@@ -96,11 +96,40 @@ Freshness is a property of the computation. Correctness is a property of the
 computation *and* everything it read. The preflight now checks the second, because
 nothing else in the pipeline could tell the difference.
 
+## 6. `evaluate()` reporting a valid key as invalid
+
+Every LangSmith call in the module goes through `_client()`, which reads the credential
+from settings. `evaluate()` does not take that client unless it is handed one — it
+builds its own from the environment, and this project's key lives in `.env`, read by
+pydantic-settings and never exported to `os.environ`.
+
+So five kinds of call worked and one returned `401 Invalid token`, on an account where
+the key was perfectly valid. It was survivable — the arms had already run and written
+their results, because LangSmith is advisory — but the diagnosis points at the
+credential when the credential is right.
+
+## 7. Four of five charts specified for a session that no longer existed
+
+Not a bug in a running instrument; a bug in a plan. The thesis chart, cost-per-correct
+and paired-delta charts were all specified around **C vs D** and **A → C**, and the
+measurement killed both — A → C is a null over a mechanism that never fired, and C vs D
+has no gap because the frontier model scored 60/60 twice.
+
+Built in the specified order, the session's headline visual would have been a null and
+the paired-delta chart would have carried a significance test over a loop that never
+ran. Both would have survived to the dress rehearsal and possibly past it, because both
+would have rendered correctly. See [the re-spec](charts-respec.md).
+
+**This is the only entry found by changing the ORDER of the work rather than by running
+something.** LangSmith was moved ahead of the charts because it was the part that could
+not be validated by a test result; what it actually validated was the plan.
+
 ## What they have in common
 
-**None was found by reading code. All five were found by running the thing and looking at
-what came out.** Two were found by a measurement taken for an unrelated reason, and one
-by a measurement it had itself silently ruined.
+**None was found by reading code. Seven were found by running the thing and looking at
+what came out; the eighth by running the work in a different order.** Two were found by a
+measurement taken for an unrelated reason, and one by a measurement it had itself
+silently ruined.
 
 Each had a plausible reason to look correct:
 
@@ -111,6 +140,8 @@ Each had a plausible reason to look correct:
 | the band subtraction | the arithmetic is correct, for the category set that existed |
 | the label map | it was total when it was written |
 | the warehouse factory | its docstring argued, correctly, for the check it did have |
+| the LangSmith client | five other call sites worked, so the key was obviously fine |
+| the chart plan | every chart would have rendered correctly |
 
 The last two are the most uncomfortable, because **both were correct when written.** They
 did not decay through neglect. They decayed because a category was added somewhere else,
