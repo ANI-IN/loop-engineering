@@ -890,8 +890,18 @@ def test_evidence_cited_by_a_design_note_is_TRACKED_not_merely_present(path):
         if not token.startswith(("../results/", "results/")):
             continue
         relative = token.removeprefix("../")
-        if relative.endswith("/"):
-            continue  # a directory, not a cited artifact
+        if relative.endswith("/") or "*" in relative:
+            continue  # a directory or a glob, not a cited artifact
+        # Only files directly under `results/`. That is where the evidence records
+        # live — the noise floor, the taxonomy observation — while everything nested
+        # below it is generated output a reader is about to produce for themselves.
+        #
+        # Without this line the guard fired on the note EXPLAINING the guard, whose
+        # own prose gives `results/sweep/dial.png` as the example of a path that must
+        # NOT be required to exist. Self-referential, and the check was wrong rather
+        # than the sentence.
+        if relative.count("/") != 1:
+            continue
         assert relative in tracked, (
             f"{path.relative_to(REPO_ROOT)} cites {token} as evidence, and it is not "
             f"tracked by git. It may exist on your machine; it does not exist on a "
