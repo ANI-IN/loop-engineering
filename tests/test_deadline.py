@@ -580,8 +580,18 @@ def test_the_entry_point_cannot_express_no_clock_by_accident():
     discard the session's wall-clock protection on every run without the flag — no
     error, no warning, the guard simply absent.
 
-    So the entry point passes a NUMBER and never constructs a clock. Checked by reading
-    it, because the defect is in what the file is able to say, not in what it computes.
+    So the entry point passes a NUMBER and never constructs a clock.
+
+    THIS IS NOT A STYLE TEST, AND IT WILL LOOK LIKE ONE.
+
+    It asserts on the source text rather than on behaviour, which is normally a smell,
+    and someone will eventually read it as taste and delete it. The reason it is right
+    here is that the defect is in what this file is ABLE TO SAY, not in what it
+    currently says. Both spellings behave identically today; one of them is a single
+    edit away from silently discarding the session's wall clock, and no behavioural
+    test can distinguish a correct line from a correct line that is one keystroke from
+    being wrong. Removing the capability is what makes the guarantee, so the capability
+    is what gets asserted.
     """
     from pathlib import Path
 

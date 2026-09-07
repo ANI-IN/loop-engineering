@@ -35,13 +35,15 @@ The offline suite needs no key, makes no network call, and costs nothing. If a
 change makes it need any of those, that is the change to reconsider.
 
 **The chart step renders to a scratch directory and does not diff the pixels.**
-It used to read `render_readme_charts.py && git diff --exit-code -- assets/`,
-which cannot work and was removed from CI for that reason: matplotlib rasterises
-text through FreeType, so a Linux runner does not reproduce the bytes a macOS
-machine committed, and the step failed for a reason unrelated to the images being
-wrong. What this command checks is that rendering still *runs*. Whether the
-committed images are *current* is checked by `tests/test_readme_charts.py`, which
-compares manifest hashes rather than pixels and is therefore platform-independent.
+There are no committed images any more, and this paragraph used to be about
+keeping them current. It described a CI step comparing rendered bytes — removed
+because matplotlib rasterises text through FreeType, so a Linux runner does not
+reproduce what a macOS machine committed — and a manifest-hash test that has since
+been deleted along with `assets/` and its renderer. **Both files it named are gone.**
+
+What replaced the whole apparatus is simpler: every chart is drawn by the run that
+renders it, so there is nothing committed to drift. Running the chart entry point
+against a sweep directory is the check.
 
 ## The rules this codebase actually enforces
 

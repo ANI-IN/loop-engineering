@@ -27,20 +27,19 @@ guarantees.
 |---|---|
 | Entry points | `demos/04_hill_climbing_loop/sweep.py`, `demos/04_hill_climbing_loop/charts.py`, `demos/00_preflight/check.py`, `demos/views.py` |
 | Build and dependencies | `pyproject.toml`, `.python-version`, `uv.lock` (metadata only, not the resolved graph) |
-| Configuration | `.env.example`, `src/loopeng/settings.py`, `src/loopeng/env_guard.py`, `src/loopeng/views/live_mode.py`, `deploy/hf/app.py` |
+| Configuration | `.env.example`, `src/loopeng/settings.py`, `src/loopeng/env_guard.py`, `src/loopeng/views/live_mode.py` |
 | Core feature code | Every file under `src/loopeng/sweep/`, plus `src/loopeng/metric.py`, `src/loopeng/paired.py`, `src/loopeng/pricing.py`, `src/loopeng/registry.py`, `src/loopeng/usage.py`, `src/loopeng/caching.py` |
 | Called into per item | `src/loopeng/agent/loop.py`, `src/loopeng/agent/classify.py`, `src/loopeng/verify/loop.py` |
 | Data layer | `src/loopeng/warehouse/schema.py`, `src/loopeng/warehouse/connect.py`, `src/loopeng/gold/build.py`, the JSON files under `results/` |
-| Tests | `tests/conftest.py`, `tests/test_sweep.py`, `tests/test_diff.py`, `tests/test_caching.py`, `tests/test_exhibit.py`, `tests/test_docs.py`, `tests/test_lint_no_numbers.py`, `tests/figures.py` |
-| CI, logging, tooling | `.github/workflows/ci.yml`, `src/loopeng/logging.py`, `tools/lint_no_numbers.py`, `tools/render_readme_charts.py` |
+| Tests | `tests/conftest.py`, `tests/test_sweep.py`, `tests/test_diff.py`, `tests/test_caching.py`, `tests/test_deadline.py`, `tests/test_docs.py`, `tests/test_lint_no_numbers.py`, `tests/figures.py` |
+| CI, logging, tooling | `.github/workflows/ci.yml`, `src/loopeng/logging.py`, `tools/lint_no_numbers.py` |
 
 ### What I deliberately excluded, and why
 
 | Excluded | Why |
 |---|---|
 | `src/loopeng/queue/` (Level 3, the event driven worker) | A separate feature with its own database file and its own runbook in `demos/03_event_driven_loop/README.md`. The sweep never touches it. |
-| `src/loopeng/views/` (the six web screens) | The sweep writes files; the screens read them. They are downstream consumers, covered only where they read something this feature writes. |
-| `deploy/hf/` and `tools/sync_hf.py` | Deployment of a frozen public exhibit. No part of the sweep runs there. |
+| `src/loopeng/views/` (the web screens) | The sweep writes files; the screens read them. They are downstream consumers, covered only where they read something this feature writes. |
 | `src/loopeng/gold/patterns.py` internals | The question templates. You need to know that a gold set exists and what it contains, not how each SQL template is parameterised. |
 | The resolved dependency graph in `uv.lock` | Four hundred kilobytes of pinned transitive dependencies. I read the direct dependencies from `pyproject.toml` instead. |
 
@@ -79,9 +78,9 @@ role, metric, and the rest. The terms below are specific to Level 4.
 | **Mode, one-shot and loop** | **one-shot** means the agent gets one attempt. **loop** means the Level 2 verification loop checks the SQL against the declared rules and can send it back for another try. |
 | **Cell** | One combination of role, prompt level, mode, and replicate number, run over the whole gold set. For example `worker_L0_loop_r0`. A cell is the unit of measurement and becomes exactly one JSON file. Defined at `src/loopeng/sweep/runner.py :: Cell`. |
 | **Replicate** | A repeat of an identical cell, used to measure how much the answer moves between runs when nothing has changed. |
-| **Profile** | A named set of cells to run, with a spending cap. Four exist: `smoke`, `delivery`, `development`, `exhibit`. At `src/loopeng/sweep/runner.py :: PROFILES`. |
+| **Profile** | A named set of cells to run, with a spending cap. Three exist: `smoke`, `session`, `dev`. It also declares the item cap and the wall clock, because a ceiling that depends on someone typing a flag is not a ceiling. At `src/loopeng/sweep/runner.py :: PROFILES`. |
 | **Sweep** | One execution of a profile: run every cell it names, write every cell file. |
-| **Reference measurement** | A number measured once, stored in the repository, and cited afterwards rather than recomputed. Recomputing the expensive cells every time would cost roughly ten times the budget of a normal run. Held in `results/reference/`. |
+| **Run fingerprint** | What makes two cell files the same measurement run: the gold digest, the prompt digest, the served model versions and the run id. Recorded at write time rather than inferred from which directory a file sits in. At `src/loopeng/sweep/fingerprint.py`. |
 | **McNemar's test** | A statistical test for whether two methods differ, when both ran on the *same* items. It looks only at items where the two disagreed. At `src/loopeng/paired.py :: compare()`. |
 | **Paired comparison** | Comparing two cells item by item rather than comparing their two summary percentages. More sensitive, and the only comparison this project will report a significance value for. |
 | **Discordant pair** | An item where the two cells being compared disagreed: one right, one wrong. McNemar's test uses only these. |
@@ -117,7 +116,7 @@ orientation.
 | Path | Responsibility |
 |---|---|
 | `demos/04_hill_climbing_loop/sweep.py` | Parses flags, loads settings, builds the gold set, calls `run_sweep`, prints a summary. Contains no measurement logic. |
-| `demos/04_hill_climbing_loop/charts.py` | Parses flags, loads cells from disk, loads the stored reference set, writes four PNG files, prints a summary. Contains no numeric literals at all, enforced by a lint rule. |
+| `demos/04_hill_climbing_loop/charts.py` | Parses flags, loads cells from disk, writes every PNG, prints a summary. Contains no numeric literals at all, enforced by a lint rule. |
 
 Both files are deliberately thin. `tests/test_demo_structure.py :: MAX_DEMO_LINES` caps
 every file under `demos/` at one hundred lines, and
@@ -128,7 +127,7 @@ every file under `demos/` at one hundred lines, and
 | Path and symbol | Responsibility |
 |---|---|
 | `runner.py :: Profile` | What a sweep run is for: which roles, levels, replicates, spending cap, and whether the item limit flag is permitted. |
-| `runner.py :: PROFILES` | The four named profiles: `smoke`, `delivery`, `development`, `exhibit`. |
+| `runner.py :: PROFILES` | The three named profiles: `smoke`, `session`, `dev`. |
 | `runner.py :: Cell` | One measurement unit. Provides `key`, `label`, and `projected_usd()`. |
 | `runner.py :: build_cells()` | Expands a profile into the list of cells it will run. |
 | `runner.py :: run_cell()` | Runs every gold item through one cell using a thread pool, writing partial state after each item lands. |
@@ -139,12 +138,12 @@ every file under `demos/` at one hundred lines, and
 | `orchestrator.py :: load_all()` | Reads every cell file in a directory. |
 | `fingerprint.py :: RunFingerprint` | Which measurement run wrote a cell. |
 | `fingerprint.py :: resolve_run_id()` | Adopts the run identifier already on disk when the inputs match, so a resumed sweep stays one run. |
-| `reference.py :: build_reference()` | Freezes the expensive cells into the committed reference file. |
-| `reference.py :: build_worker_baseline()` | Freezes the cheap cells, keeping per item outcomes. |
-| `reference.py :: build_frontier_paired()` | Freezes the expensive cells' per item outcomes into a sibling file. |
-| `reference.py :: assert_same_run()` | Refuses to freeze unless every cell involved came from one measurement run. |
-| `reference.py :: load_reference()` | Loads the stored cells and reattaches their per item outcomes. |
-| `reference.py :: as_stored()` | Rewrites a stored measurement so it stops claiming it was computed just now. |
+| `deadline.py :: Deadline` | The wall clock, checked cooperatively BETWEEN items so no item is ever cut short and scored. |
+| `deadline.py :: run_bounded()` | Feeds items in rather than queueing them, which is what makes the clock and Ctrl-C enforceable rather than advisory. |
+| `runner.py :: append_row()` | Appends one measured item to the cell's row log and flushes it. The durable record. |
+| `runner.py :: read_rows()` | Reads a row log back, dropping a truncated final line AND counting it. |
+| `runner.py :: require_fresh()` | Refuses to start over completed cells. Runs by default; `--resume` opts out. |
+| `fingerprint.py :: assert_comparable()` | Refuses to draw cells whose gold set or prompt differ — they do not measure the same thing. |
 | `diff.py :: Comparison` | One difference between two cells, with everything needed to refuse to over-read it. |
 | `diff.py :: all_comparisons()` | Every comparison the supplied cells support, including the ones that cannot be tested. |
 | `diff.py :: partition()` | Splits comparisons into testable and untestable, returning both. |
@@ -215,7 +214,7 @@ flowchart TB
         ORCH["orchestrator.run_sweep<br/>pre-registration, spend cap, resume"]
         RUN["runner.run_cell<br/>one cell, written as items land"]
         FP["fingerprint<br/>run identity, stamped at write time"]
-        REF["reference<br/>freeze, verify provenance, load stored"]
+        REF["fingerprint<br/>stamp run identity, refuse mixed cells"]
         DIFF["diff<br/>what is comparable, what may be claimed"]
         CM["chart_model<br/>captions, ordering, colours, rows"]
         CH["charts<br/>matplotlib figures"]
@@ -230,7 +229,7 @@ flowchart TB
 
     subgraph disk["State on disk"]
         CELLS[("results/sweep<br/>live cells, untracked")]
-        STORED[("results/reference<br/>frozen cells, committed")]
+        STORED[("results/sweep/*.jsonl<br/>append-only row logs")]
         WH[("warehouse.duckdb<br/>seeded, read only")]
         PNG[("results/charts<br/>four PNG figures")]
     end
@@ -279,7 +278,7 @@ See `src/loopeng/sweep/orchestrator.py :: run_sweep()`.
 **The runner owns the cell file format.** It writes a partial file after every item lands,
 so a chart rendered mid-sweep shows real progress rather than nothing.
 
-**The reference module owns provenance.** Nothing else decides whether two sets of numbers
+**The fingerprint module owns provenance.** Nothing else decides whether two sets of numbers
 came from the same measurement run.
 
 **The diff module owns refusal.** It decides not only what the difference between two cells
@@ -361,7 +360,7 @@ Then, separately and in a different process:
 
 10. **`demos/04_hill_climbing_loop/charts.py :: main()`** parses its flags.
 11. **`orchestrator.load_all()`** reads every JSON file in the cell directory.
-12. **`reference.load_reference()`** loads the stored cells. The `--reference` flag
+12. **`fingerprint.assert_comparable()`** refuses to draw cells from different gold sets or prompts. The chart entry point
     decides how they sit beside the live ones; the default, `auto`, shows them only once
     this run has produced a cell of its own.
 13. **`render.comparisons_for()`** calls **`diff.all_comparisons()`**, which builds four
@@ -453,7 +452,7 @@ Command: `uv run python demos/04_hill_climbing_loop/sweep.py --profile <name>`
 
 | Flag | Type | Required | Meaning |
 |---|---|---|---|
-| `--profile` | one of `smoke`, `delivery`, `development`, `exhibit` | **yes** | Which set of cells to run. No default, deliberately. |
+| `--profile` | one of `smoke`, `session`, `dev` | **yes** | Which set of cells to run. No default, deliberately. |
 | `--cap-usd` | float | no | Override the profile's spending cap. |
 | `--limit` | integer | no | Run fewer gold items. Accepted only by `smoke` and `development`; raises `LimitNotAllowed` elsewhere. |
 | `--dir` | path | no | Where cell files are written. Defaults to `results/sweep`. |
@@ -479,16 +478,15 @@ Command: `uv run python demos/04_hill_climbing_loop/charts.py`
 |---|---|---|---|
 | `--dir` | path | no | Where cell files are read from. Defaults to `results/sweep`. |
 | `--out` | path | no | Where PNG files are written. Defaults to `results/charts`. |
-| `--reference` | one of `auto`, `hide`, `fill`, `compare` | no | How stored cells sit beside live ones. Defaults to `auto`. |
+**There is no `--reference` flag, and there is no stored set.** This table used to list
+four modes for mixing stored cells with live ones, defined in a module that has since
+been deleted along with the stored cell format, its loader and the frozen files.
 
-The four reference modes are defined at `src/loopeng/sweep/reference.py`:
-
-| Mode | Behaviour | When you want it |
-|---|---|---|
-| `auto` | `compare` once this run has a cell of its own, `hide` until then. | The default. It is what stops a machine with no measurements from rendering a full set of stored bars. |
-| `hide` | Live cells only. | You want to see only what you just measured. |
-| `fill` | Stored cells only where no live one exists. | The web screens use this. |
-| `compare` | Both, so the difference between them can be computed. | You are reproducing the stored baseline and want your run beside it. |
+The apparatus was five mechanisms guarding one capability — a hatched fill, a REFERENCE
+badge, a date on every stored row, the mode flag itself, and a test that a fresh clone
+renders nothing. Removing the capability is stronger than guarding it: a render path
+that cannot express "stored" cannot show one. Every bar these charts draw was computed
+by the run that is drawing it.
 
 ### External service call
 
@@ -593,24 +591,30 @@ Each entry in the omitted `items` array is written by `runner.run_cell()._one()`
 carries `item_id`, `pattern_key`, `sql`, `rows`, `error`, `outcome`, `ran_and_returned`,
 `correct`, `termination`, `n_attempts`, `rejections`, `cost_usd`, and `tokens`.
 
-### The committed reference files
+### The row log, which is the durable record
+
+A cell writes two files, and only one of them is the measurement.
 
 | Path | Contents | Written by |
 |---|---|---|
-| `results/reference/measurements.json` | The frozen expensive cells. This file, and only this file, is what the README images are drawn from. | `reference.build_reference()` |
-| `results/reference/worker_baseline.json` | The frozen cheap cells, each keeping a compact map of item identifier to a true or false outcome. | `reference.build_worker_baseline()` |
-| `results/reference/frontier_paired.json` | Per item outcomes for the cells in `measurements.json`. It holds no cells, only the map, keyed by cell key. | `reference.build_frontier_paired()` |
-| `results/reference/abstention_curve.json` | A frozen coverage against precision curve used by the public exhibit. | Not written by any module in this repository. See Open Questions. |
+| `<key>.jsonl` | One JSON object per measured item, appended and flushed as each lands. **This is the record.** Nothing already written is ever rewritten. | `runner.append_row()` |
+| `<key>.json` | The summary the charts read: bands, rate, interval, cost, terminations. Derived from the rows and written atomically. | `runner.summarise_cell()` + `write_json_atomic()` |
 
-The three way split is not tidiness. `tools/render_readme_charts.py` renders the committed
-images from `measurements.json` alone, so **adding anything at all to that file changes
-three committed PNG files**. The other two exist so that per item outcomes can be stored
-without redrawing the images.
+The summary used to be the only file, rewritten in full after every item. `write_text`
+truncates and then writes, so between those two steps the only record on disk was an
+empty file — and a crash or a Ctrl-C in that window left a truncated document that made
+`load_all` raise for the whole directory. An append has no such window. At worst an
+interrupt cuts the last line, which `runner.read_rows()` drops **and counts**.
 
-Every frozen cell carries `"reference": true` and a `measured_on` date, and its rendered
-sentence says `measured 2026-07-29` rather than `computed HH:MM today`. That rewrite
-happens at freeze time in `reference.as_stored()`, so no downstream renderer has to
-remember to do it.
+If a summary is ever unreadable, `orchestrator.load_all()` rebuilds it from the log and
+stamps the result `recovered_from_log` rather than skipping the cell — a chart short one
+cell with nothing saying which is the failure this directory exists to prevent.
+
+**This section previously described four committed files under `results/reference/`.**
+None of them is in the repository: the frozen-cell subsystem was removed, and
+`reference/` is to be rebuilt from a dress rehearsal under the current model policy
+rather than inherited from a build with different models, a different gold set and a
+different price table.
 
 ---
 
@@ -631,7 +635,7 @@ Only four of them affect a sweep:
 
 The two flags that behave like configuration and are easy to miss are `--profile`, which is
 required and has no default so a cheap run cannot silently inherit expensive settings, and
-`--reference`, whose default is `auto` for the reason set out in section 10.
+`--deadline`, which overrides the wall clock the profile declares.
 
 ---
 
@@ -690,13 +694,16 @@ If you have previously run a sweep on this machine, `results/sweep` will not be 
 you will see cells listed instead. That is expected; move that directory aside if you want
 to reproduce the output above exactly.
 
-**Why this matters.** Twelve finished, correctly dated measurements ship inside this
-repository. A renderer asked for them will draw them. Until recently the default flag
-value did exactly that, so a machine that had never made an API call printed a full set of
-bars and a significant p-value. Every row was correctly labelled, so nothing was a lie,
-but the promise was that a fresh checkout shows nothing finished. The default is now
-`auto`, defined at `src/loopeng/sweep/reference.py :: MODE_AUTO`, and it shows stored
-numbers only once your run has something of its own to compare them against.
+**Why this matters.** Nothing finished ships inside this repository, and the charts
+cannot express "stored" even if it did. This paragraph used to explain that twelve
+frozen measurements were committed and that the renderer's default flag had, until
+recently, drawn them on a machine that had never made an API call — every row correctly
+labelled, so nothing was a lie, while the promise was that a fresh checkout shows
+nothing finished.
+
+That whole capability is gone rather than defended. There is no stored cell format, no
+loader, no flag and no frozen files, so this property now holds by construction instead
+of by a default that someone chose correctly.
 
 **Verification steps for Part A.**
 
@@ -704,70 +711,40 @@ numbers only once your run has something of its own to compare them against.
    `not yet measured` inside it, and no bars.
 2. Confirm the word `REFERENCE` does not appear anywhere in the terminal output.
 3. Confirm the word `McNemar` does not appear anywhere in the terminal output.
-4. The automated version of this check is
-   `tests/test_exhibit.py :: test_the_chart_entry_point_renders_nothing_finished_on_a_fresh_clone`,
-   which runs the same command in a subprocess and asserts the same three things. Run it
-   on its own:
+4. The automated version is `tests/test_sweep_render.py`, which asserts the summary a
+   fresh directory produces says so in words rather than printing nothing.
+
+### Part B: the guard that stops this happening on the day
+
+Part A is the property. This is the enforcement, and it is the one to see working,
+because a checklist line is not enforcement — which is the defect this entire project
+is about.
+
+Run the sweep into a directory that already holds finished cells:
 
 ```bash
-uv run pytest "tests/test_exhibit.py::test_the_chart_entry_point_renders_nothing_finished_on_a_fresh_clone" -q
+uv run python demos/04_hill_climbing_loop/sweep.py --profile smoke --foreground --dir results/sweep
 ```
 
-**Expected output:** `1 passed`.
-
-### Part B: render the stored measurements deliberately
-
-Now ask for the stored baseline explicitly, which is what somebody reproducing the
-published result would do.
-
-```bash
-uv run python demos/04_hill_climbing_loop/charts.py compare
-```
-
-**Expected output:** twelve rows, each prefixed `REFERENCE`, each ending
-`measured 2026-07-29`, then a line reading `comparisons: 10 testable, 0 not`, then ten
-comparison blocks. The first four lines will look like this:
+**Expected output** when completed cells are present — exit code **3**, and nothing
+runs:
 
 ```
-cells on disk: 12 (12 complete)
-  wrote results/charts/dial.png
-  wrote results/charts/cost.png
-  wrote results/charts/delta.png
+REFUSING TO START
+2 completed cell(s) already in results/sweep: agent_L0_loop_r0, agent_L0_one_shot_r0.
+
+Starting here would RESUME from those files: the sweep would finish in about a second
+and render a full set of numbers that look computed and were not. Every figure would be
+correct and the sentence said over them would be false.
 ```
 
-**Verification steps for Part B.**
+**This is the default.** It used to fire only when you typed `--fresh`, which meant the
+dangerous behaviour was what you got by forgetting a flag. `--resume` is now what you
+type to opt back in, and it is the only way to reach the failure the guard exists for.
 
-1. Every measurement row says `measured 2026-07-29` and not `computed HH:MM today`. That
-   rewrite is done at freeze time by `src/loopeng/sweep/reference.py :: as_stored()`. The
-   repository wide guarantee is asserted by
-   `tests/test_sweep.py :: test_no_committed_measurement_under_results_claims_it_was_computed_today`,
-   which scans every committed JSON file under `results/`.
-2. Open `results/charts/dial.png`. Every bar is drawn as a hatched outline with no fill.
-   That convention means stored rather than computed now, and it is enforced by
-   `tests/test_sweep.py :: test_reference_bars_are_drawn_differently_from_live_ones`, which
-   inspects the drawn shapes rather than the file bytes.
-3. Open `results/charts/delta.png`. Two of the ten rows carry no bar at all and instead
-   read `no p-value — cross-model, see the caption`. Those are the two comparisons between
-   the two different models. The refusal is in code at
-   `src/loopeng/sweep/diff.py :: Comparison.p_value`, not in the caption text.
-4. Query the underlying data and confirm the chart matches it:
-
-```bash
-uv run python -c "
-import json
-from loopeng.sweep.reference import REFERENCE_PATH, frontier_paired
-cells = {c['key']: c for c in json.loads(REFERENCE_PATH.read_text())['cells']}
-side = frontier_paired()
-for key in sorted(cells):
-    c = cells[key]
-    print(f\"{key:26s} ran={c['ran_and_returned']:3d} correct={c['correct']:3d} paired={len(side[key]):3d}\")
-"
-```
-
-**Expected output:** six rows, and on every row the `paired` count equals the `ran` count.
-That equality is the check `reference.build_frontier_paired()` enforces when it freezes,
-and `tests/test_sweep.py :: test_the_committed_sidecar_covers_every_frontier_cell_and_adds_up`
-asserts it on every test run.
+The refusal never deletes. Those cell files are the outage insurance for stages 0, the
+Phase 2 probes and stage 4, and only the operator knows whether they are still needed —
+so it names the three ways out and lets you choose.
 
 ### Part C: a live sweep, which costs money
 
@@ -806,7 +783,7 @@ block, then one progress line per cell, then two summary lines beginning `comple
    because you now have cells of your own, the `auto` default brings the stored baseline
    in beside them automatically.
 4. The comparison count in the terminal output should rise, and rows of family
-   `live_vs_reference` should appear, comparing your run against the stored one.
+   every comparison is between cells this run computed; there is no stored arm to compare against.
 
 ### Fixtures and helpers you may find useful
 
@@ -814,7 +791,7 @@ block, then one progress line per cell, then two summary lines beginning `comple
 |---|---|
 | `tests/figures.py :: texts()` | Reads every string drawn on a matplotlib figure. This is how the chart tests assert on what an image says. |
 | `tests/test_sweep.py :: a_live_frontier_cell` | A pytest fixture that builds a sweep directory containing one complete cell, with no network and no key. |
-| `tests/test_sweep.py :: matching_sweep_dir` | A fixture that builds a directory whose cells match the committed reference, used to test the provenance guard. |
+| `tests/test_sweep.py` cell fixtures | Build a sweep directory with no network and no key, used to test resume, the freshness guard and the provenance guard. |
 | `tests/test_diff.py :: cell()` | A tiny cell builder for comparison tests. |
 | `results/prefix_v1/` | A committed set of measurements taken before a known defect was fixed, kept as evidence of what the defect cost. Documented in `results/prefix_v1/README.md`. |
 
@@ -907,13 +884,11 @@ something the hub's version does not. The symptom column is what you will actual
 |---|---|---|---|
 | `12 completed cell(s) already in results/sweep: ...` | Finished cells exist and `--resume` was not passed. **This is the default**, not a flag you switched on. | The message lists the first four cell keys and names all three ways out. | Decide whether you still need those files. If not, delete the directory. The guard refuses rather than deleting, because those files may be your only offline copy. From `runner.py :: require_fresh()`. |
 | `SWEEP ABORTED` followed by `aborting BEFORE '<label>'` | Projected total spend would exceed the profile cap. | Read the projected total in the message. | Do not retry into the cap. Either raise `--cap-usd` deliberately or run a smaller profile. Exit code is `2`. From `orchestrator.py :: run_sweep()`. |
-| `--limit is not accepted by the 'delivery' profile.` | You passed `--limit` to a profile that forbids it. | The message lists which profiles accept it. | Use `smoke` or `development`, or drop the flag. A cell run over fewer items is not that profile's measurement. From `runner.py :: resolve_item_limit()`. |
+| `--limit is not accepted by the 'session' profile.` | You passed `--limit` to a profile that forbids it. | The message lists which profiles accept it. | Use `smoke` or `dev`, or drop the flag. A cell run over fewer items is not that profile's measurement. From `runner.py :: resolve_item_limit()`. |
 | A cell's rate reads `not yet measured` and its bar is a dashed outline | No item in that cell both ran and returned. | Open the cell file and look at `ran_and_returned` and `termination`. | Usually a model or SQL failure affecting the whole cell. This is correct behaviour, not a bug: rendering zero would be a false measurement. |
 | `QueryTimeout: query exceeded its 30.0s budget and was interrupted` | The model wrote a query with no natural end, often an unintended cross join. | Look at the item's `sql` field in the cell file. | Nothing to fix in the harness. The timeout is the protection; one such query would otherwise stall the whole sweep. From `warehouse/connect.py :: run_sql()`. |
-| `NotTheSameRun` when freezing a reference | The directory you are freezing from is not the run the committed reference came from. | The message names the differing fields and the two cell keys. | Freeze from the directory that produced the committed cells, or not at all. From `reference.py :: assert_same_run()`. |
-| `PairedDoesNotReconcile` | Per item outcomes do not add up to the summary counts of the cell they belong to. | The message states what the map says and what the committed cell says. | The two files are inconsistent. Do not attach the map; investigate which one is wrong. From `reference.py :: build_frontier_paired()`. |
 | `UnknownModelPrice: no price entry for '<model>'` | A model identifier was used that has no row in the price table. | Read `src/loopeng/pricing.py :: PRICES`. | Add the entry. It raises rather than defaulting to zero, because a sweep that looked free would be the most misleading possible failure. |
-| The chart command prints stored bars when you expected none | Somebody passed `--reference compare`, or the working directory already contains cells. | Check the command you ran and `ls results/sweep`. | Use the default `auto`, and move `results/sweep` aside if you want a clean render. |
+| The sweep refuses to start | Completed cells are already in the directory and `--resume` was not passed. **This is the default.** | The message lists the cell keys and names three ways out. | Delete the directory to build live, pass `--resume` to continue, or use `--dir` to keep both. Do NOT reach for `--resume` to get past it: that is the flag that produces the failure the guard exists for. From `runner.py :: require_fresh()`. |
 | Charts render but the terminal says `0 testable, N not` | The cells present cannot be paired, either because per item outcomes were dropped at freeze time or because the two arms answered no items in common. | Read the row text on `delta.png`; it names which of the two applies. | If it says outcomes were not retained, that side was frozen without them. From `diff.py :: Comparison.unpairable_because()`. |
 | On Windows, the detached sweep dies when you close the terminal | `subprocess.Popen(start_new_session=True)` is a POSIX feature. | Check whether the log file stops growing after you close the window. | Use `--foreground` on Windows. `Inferred:` from the Python standard library's documented platform support for `start_new_session`, applied to `sweep/detach.py :: detach()`. |
 | On Windows, `tail -f results/sweep_run.log` is not a command | The detach helper prints a Unix command in its hint. | None needed. | Use `Get-Content results\sweep_run.log -Wait` in PowerShell. The hint text is at `sweep/detach.py :: detach()`. |
@@ -930,12 +905,12 @@ something the hub's version does not. The symptom column is what you will actual
 
 | File | Covers |
 |---|---|
-| `tests/test_sweep.py` | The largest suite. Cell construction, profiles, the spend cap, resume, the freeze and its provenance guards, run fingerprints, reference modes, and the chart writers. |
+| `tests/test_sweep.py` | The largest suite. Cell construction, profiles, the spend cap, the freshness guard and its inverted default, run fingerprints, and the chart writers. |
 | `tests/test_diff.py` | Comparison families, what may and may not be claimed, and the delta chart's refusals. |
 | `tests/test_caching.py` | Prompt cacheability, which cells and which profiles gain anything, retry backoff, and concurrency plumbing. |
-| `tests/test_exhibit.py` | That the frozen public exhibit constructs no model client, and that a fresh checkout renders nothing finished. |
+| `tests/test_deadline.py` | The wall clock, Ctrl-C as a clean stop, the append-only row log, and the profile-clock plumbing. |
 | `tests/test_metric.py`, `tests/test_paired.py` | The interval arithmetic and McNemar's test. |
-| `tests/test_readme_charts.py` | The committed README images and their manifest. |
+| `tests/test_sweep_render.py` | Which cell the abstention curve is drawn from, and what the terminal prints after a sweep. |
 | `tests/test_lint_no_numbers.py` | The numeric literal rule, including that it is not vacuous. |
 | `tests/test_docs.py` | Every markdown file in the repository: relative links resolve, documented scripts exist, diagrams carry no numbers, and duplicated diagrams stay identical. |
 | `tests/test_warehouse_readonly.py` | That the agent's connection genuinely refuses writes. |
@@ -967,9 +942,9 @@ tests create in a temporary directory. The important shared pieces are:
   property.
 - `tests/figures.py :: texts()` extracts every string drawn on a matplotlib figure. Chart
   assertions use it rather than inspecting image bytes.
-- `tests/test_exhibit.py :: constructor_spy` counts every Anthropic client ever
-  constructed, which is how "this path makes no model calls" is proven rather than
-  asserted.
+- `tests/test_deadline.py :: Clock` is a hand-cranked monotonic clock. The deadline
+  tests drive it rather than sleeping — a test that proves a two-second deadline by
+  waiting two seconds makes the suite slower every time it passes.
 - Model calls in tests are avoided by passing simple stub objects, for example the
   `_Run` and `_Judgement` classes inside
   `tests/test_sweep.py :: test_a_run_fingerprint_is_stamped_into_every_cell_file`.
@@ -1002,24 +977,25 @@ These are gaps I observed, stated as facts about what is not tested:
   parses them.
 - **Adding a new comparison family** in `src/loopeng/sweep/diff.py`, provided it goes
   through `_build()` so it inherits the cross model refusal and the provenance stamp.
-- **Adding a profile** to `src/loopeng/sweep/runner.py :: PROFILES`. Be aware that
-  `tests/test_sweep.py :: test_the_worker_baseline_covers_every_delivery_and_smoke_cell`
-  asserts every cell in `smoke` and `delivery` has a stored counterpart, so a new profile
-  that reuses those roles is safer than one that does not.
+- **Adding a profile** to `src/loopeng/sweep/runner.py :: PROFILES`. It must decide its
+  own item cap, spend cap, wall clock and whether `--limit` is permitted — a profile that
+  inherits a permissive default is a profile nobody chose the limits for, and
+  `tests/test_sweep.py` asserts the decision was made.
 
 ### Load bearing, and why
 
-- **`results/reference/measurements.json`.** `tools/render_readme_charts.py` renders three
-  committed PNG files from this file and nothing else. Adding a single cell to it changes
-  those images, and `tests/test_readme_charts.py` will notice. If you need to store more
-  per cell information, put it in a sibling file the way `frontier_paired.json` does.
 - **`src/loopeng/sweep/runner.py :: summarise_cell()`.** Its return value is the cell file
-  format, which is the contract between the sweep process and the chart process, and it is
-  also what is frozen into the committed reference files. Adding a key is safe because
-  every reader treats absence as absence. Renaming or removing a key is not: the committed
-  reference files already on disk will not have changed.
-- **`src/loopeng/sweep/reference.py :: _RUN_IDENTITY_FIELDS`.** These eight fields decide
-  whether two cell files came from the same run. Removing one weakens the guard silently.
+  format, which is the contract between the sweep process and the chart process. Adding a
+  key is safe because every reader treats absence as absence — that is how `stopped_early`
+  and `interrupted` arrived. Renaming or removing one is not.
+- **`src/loopeng/sweep/runner.py :: append_row()` and the `.jsonl` format.** The row log is
+  the durable record; the summary is derived from it and can be rebuilt. Anything that
+  rewrites the log rather than appending to it reintroduces the window in which earlier
+  items are unreadable.
+- **`src/loopeng/sweep/fingerprint.py :: COMPARABLE_FIELDS`.** The gold digest and the
+  prompt digest decide whether two cells measure the same thing. Removing one weakens the
+  guard silently, and it is deliberately narrower than the full fingerprint: a price-table
+  change moves the cost column and leaves every outcome alone.
 - **`src/loopeng/sweep/chart_model.py`.** The caption strings there are consumed by both
   chart renderers, and one of them draws the committed README images. **Changing a caption
   string changes those images.** `ABSTENTION_CAPTION` carries a comment saying it is word
@@ -1036,10 +1012,7 @@ These are gaps I observed, stated as facts about what is not tested:
 | Depends on | What it consumes |
 |---|---|
 | `src/loopeng/views/dial.py` | Cell files via `orchestrator.load_all()`, and stored cells via `reference.load_reference()` in `fill` mode. |
-| `src/loopeng/views/exhibit.py` | `reference.load_reference()` with default arguments. |
 | `src/loopeng/views/oversight.py` | Per item telemetry inside cell files, through the triage modules. |
-| `tools/render_readme_charts.py` | `results/reference/measurements.json` and the caption constants in `chart_model.py`. |
-| `results/reference/*.json` on disk | The cell file format as it was when those files were frozen. They cannot be regenerated without the original measurement run. |
 | the preflight entry point | The exact commands and flags of both entry points, checked rather than listed. |
 
 ### Pre merge checklist
@@ -1050,14 +1023,12 @@ documentation checks — is in
 Three additions for this area, all of which have caught something:
 
 1. **If you touched the cell file format, confirm the committed reference files still load**:
-   `uv run python -c "from loopeng.sweep.reference import load_reference; print(len(load_reference(mode='compare')))"`.
-   Those files were frozen against the format as it was, and they cannot be regenerated
-   without the original measurement run.
+   `uv run python demos/04_hill_climbing_loop/charts.py --dir <a sweep directory>`, which
+   reads every cell on disk and draws from what it finds.
 2. **Run the demo in section 10, Part A, and confirm the output is unchanged.** That
    property — a fresh checkout rendering nothing finished — has regressed once already.
-3. The hub's chart step is not optional here. Anything under `src/loopeng/sweep/` or
-   `results/reference/` can change a committed image, and
-   `git status --short assets/` printing anything means it did.
+3. **Run Part B and confirm the sweep still refuses.** That guard used to be behind a
+   flag, which meant the dangerous behaviour was what you got by forgetting one.
 
 ---
 
@@ -1068,13 +1039,9 @@ teammate can answer yes or no.
 
 ### Questions for the team
 
-1. **The `spliced` block has no producer in this repository.** Every cell file in
-   `results/sweep/` and every cell inside `results/reference/measurements.json` and
-   `results/reference/worker_baseline.json` carries a `spliced` object recording that ten
-   items were re-run and forty kept. Searching every `.py` and `.md` file for the string
-   `spliced` returns nothing. **Was the splice performed by a script that was never
-   committed, and if so, can it be added to `tools/`?** Without it the committed
-   measurements cannot be reproduced from this repository alone.
+1. ~~**The `spliced` block has no producer in this repository.**~~ **Closed by
+   deletion.** The block appeared only in the committed frozen cells, which are gone; no
+   cell this build writes carries one.
 
 2. **Per item `sql` and `rows` are written but never read.** `runner.run_cell()._one()`
    stores them with the comment that they make a cell self sufficient for triage, yet no
@@ -1082,15 +1049,16 @@ teammate can answer yes or no.
    the cell files currently on disk do not contain them at all. **Should the runner stop
    writing them, or should a triage consumer be built that uses them?**
 
-3. **`results/reference/abstention_curve.json` has no writer in this repository.** It is
-   read by `src/loopeng/views/exhibit.py :: _frozen_curve_table()` and by
-   `tools/render_readme_charts.py`. **Which tool produced it, and should that tool be
-   committed?**
+3. ~~**`results/reference/abstention_curve.json` has no writer in this repository.**~~
+   **Closed by deletion.** Both modules that read it have been removed. The curve is
+   computed from a live cell's per-item outcomes now, by
+   `src/loopeng/triage/abstain.py :: curve()`, and which cell it comes from is decided by
+   `src/loopeng/sweep/render.py :: curve_cell()` — which RAISES when the cell it is asked
+   for is absent, rather than substituting the largest one it can find.
 
-4. **The committed reference cells predate the run fingerprint.** Their provenance block
-   records `worker_cells_verified_by: "NOTHING..."` and lists every cell under
-   `unverifiable_for`. **Is there a plan to re-measure under a fingerprinted run, or should
-   the current disclosure stand indefinitely?**
+4. ~~**The committed reference cells predate the run fingerprint.**~~ **Closed by
+   deletion.** There are no committed cells. Every cell now carries a fingerprint stamped
+   at write time, and `assert_comparable()` refuses to draw a mixed set.
 
 5. **The environment guard checks for iCloud only.** `env_guard.py :: ICLOUD_MARKERS`
    contains two macOS specific path fragments. **Should OneDrive and Dropbox markers be

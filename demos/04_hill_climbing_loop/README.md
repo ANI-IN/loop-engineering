@@ -280,17 +280,13 @@ captured verbatim in
 | flag | default | what it does |
 |---|---|---|
 | `--dir` | `results/sweep` | Where cell files live. |
-| `--out` | `results/charts` | Where the four PNGs go. |
-| `--reference` | `auto` | `auto`, `hide`, `fill` or `compare`. **There is no `--with-reference`** — that flag never existed and the command carrying it exited 2 every time it was run. |
+| `--out` | `results/charts` | Where the PNGs go. |
 
-What each `--reference` mode does, from `src/loopeng/sweep/reference.py`:
-
-| mode | behaviour |
-|---|---|
-| `auto` | `compare` once this run has a cell of its own; `hide` until then — so a machine that has made no calls renders *not yet measured* rather than a full dial. |
-| `hide` | Live cells only. |
-| `fill` | Stored cells only where no live one exists. |
-| `compare` | Both, paired, with the difference computed between them. **This is the mode a cloner wants** once they have run anything. |
+**There is no `--reference` flag.** This table used to list four modes for mixing stored
+cells with live ones. The whole apparatus — the mode flag, the stored cell format, its
+loader, the hatched fill and the REFERENCE badge — was five mechanisms guarding one
+capability, and the capability is gone instead. A render path that cannot express
+"stored" cannot show one.
 
 Exit codes on `sweep.py`: **0** complete · **1** missing credential · **2** `SweepAborted`
 (the projected-spend cap) · **3** refused to start (completed cells found, or `--limit` on
@@ -528,11 +524,11 @@ This is the last stage. There is no next one.
 
 | you are looking for | it is in |
 |---|---|
-| profiles, cells, the projected-spend abort, `--fresh` | `src/loopeng/sweep/runner.py` |
+| profiles, cells, the projected-spend abort, the freshness guard | `src/loopeng/sweep/runner.py` |
 | the pre-registration and the resume loop | `src/loopeng/sweep/orchestrator.py` |
 | the DIAL and COST figures and their permanent captions | `src/loopeng/sweep/charts.py` |
-| the frozen reference cells and the noise floors | `src/loopeng/sweep/reference.py` |
-| the DIAL view and its live/reference badges | `src/loopeng/views/dial.py` |
+| the wall clock, Ctrl-C, and the append-only row log | `src/loopeng/sweep/deadline.py` |
+| the DIAL view | `src/loopeng/views/dial.py` |
 | abstention, escalation, triage | `src/loopeng/triage/` |
 
 > **For whoever edits the rendering code:** numeric literals are banned in the eleven

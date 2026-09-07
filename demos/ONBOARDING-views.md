@@ -25,9 +25,9 @@ can be trusted on a projector and one that cannot.
 | Entry point | `demos/views.py` |
 | Shared furniture | `src/loopeng/views/chrome.py`, in full |
 | Pure renderers | `src/loopeng/views/render.py`, in full |
-| The screens | `agent.py`, `trap.py`, `verify.py`, `dial.py`, `oversight.py`, `intervention.py`, `exhibit.py` |
+| The screens | `agent.py`, `trap.py`, `verify.py`, `dial.py`, `oversight.py`, `intervention.py`. The frozen exhibit screen is deleted and no longer in the repository. |
 | The hosted guard | `src/loopeng/views/live_mode.py`, in full |
-| Tests | `tests/test_views.py`, `tests/test_exhibit.py`, `tests/test_live_mode.py`, `tests/test_docs.py` |
+| Tests | `tests/test_views.py`, `tests/test_live_mode.py`, `tests/test_docs.py` |
 | The rule behind the rule | `tools/lint_no_numbers.py` |
 
 ### What I deliberately excluded, and why
@@ -36,7 +36,7 @@ can be trusted on a projector and one that cannot.
 |---|---|
 | Every loop level | [Preflight](00_preflight/ONBOARDING.md), [Level 1](01_agent_loop/ONBOARDING.md), [Level 2](02_verification_loop/ONBOARDING.md), [Level 3](03_event_driven_loop/ONBOARDING.md), [Level 4](04_hill_climbing_loop/ONBOARDING.md). The screens are downstream consumers. |
 | Chart rendering | `sweep/charts.py` draws figures for the sweep and the README, not for these screens. [Level 4](04_hill_climbing_loop/ONBOARDING.md). |
-| The deployment sync script | `tools/sync_hf.py` pushes the exhibit to a host. This document covers what the exhibit *is*, not how it gets there. |
+| Deployment | Nothing here publishes anything. The exhibit screen and the sync script are both deleted and no longer in the repository; see `SECURITY.md`. |
 | Gradio's own internals | Version-specific behaviour is called out only where this code had to work around it. |
 
 ---
@@ -119,7 +119,7 @@ one to point a browser at when you want the application readable without spendin
 | `src/loopeng/views/dial.py` | The cell table and the named secondary comparison. |
 | `src/loopeng/views/oversight.py` | The abstention curve, escalation, triage, and their caveats. |
 | `src/loopeng/views/intervention.py` | What the loop declined, and why. Served by `demos/02_verification_loop/abstain.py`. |
-| `src/loopeng/views/exhibit.py` | The frozen build, with the spending paths disabled. |
+| *(no exhibit screen)* | The frozen build is deleted and no longer in the repository, along with the stored-cell format it rendered. |
 | `src/loopeng/views/live_mode.py` | Whether a hosted instance may spend, and what bounds it. |
 
 ---
@@ -477,34 +477,24 @@ fills in stored reference rows, so it is never blank.
 
 ## 10. Demo
 
-### Part A: the whole application, readable, with no key and no spend
+### Part A: every screen, with no key and no spend
 
 ```bash
-uv run python -u demos/views.py --view exhibit
+uv run python -u demos/views.py --view dial
 ```
-
-`Unverified:` I did not start a server while writing this document. Every panel it composes
-*is* verified below, and `tests/test_exhibit.py` asserts the page constructs no model client
-at all.
 
 Use `-u`. Without it Python block-buffers stdout when you redirect to a file, and the URL
 never appears even though the server is fine.
 
-The banner it opens with:
+**This section used to open a frozen exhibit screen** whose banner read "Every figure
+below was measured on 2026-07-29 and is shown with its date. Nothing here is computed
+now." That screen, the stored measurements it rendered and the module holding the date
+are all deleted and no longer in the repository.
 
-```bash
-uv run python -c "from loopeng.views.exhibit import BANNER; print(BANNER)"
-```
-
-**Actual output, captured:**
-
-```
-### This is a frozen exhibit
-Every figure below was **measured on 2026-07-29** and is shown with its date. Nothing here is computed now, and nothing here calls a model. The live version runs from a laptop during the workshop, where the same views compute their numbers in front of the room and stamp them with the time.
-```
-
-The date is not typed into that string — it comes from `sweep/reference.py :: MEASURED_ON`,
-so the banner cannot claim a date the measurements do not carry.
+The property it was built to guarantee — that a reader can open the application and spend
+nothing — is now a property of every screen rather than of one special one. The views read
+cell files off disk; they do not call models. What a screen shows when no cell has landed
+is `not yet measured`, and what it shows when one has is the figure that run computed.
 
 ### Part B: the provenance markers, free
 
@@ -512,7 +502,6 @@ so the banner cannot claim a date the measurements do not carry.
 uv run python -c "
 from loopeng.views.chrome import stamp
 print(stamp(50)); print(stamp(None))
-print(live_or_reference_badge(False)); print(live_or_reference_badge(True, '2026-07-29'))
 "
 ```
 
@@ -521,14 +510,16 @@ print(live_or_reference_badge(False)); print(live_or_reference_badge(True, '2026
 ```
 <span class='stamp'>computed 02:12 today · n=50</span>
 <span class='stamp'>computed 02:12 today · not yet measured</span>
-<span class='stamp'><span class='ref-badge'>REFERENCE</span> · measured 2026-07-29 · n=50 · not computed in this session</span>
-<span class='live-badge'>LIVE</span>
-<span class='ref-badge'>REFERENCE (2026-07-29)</span>
 ```
 
 **Read the second line.** A figure with no observations renders `not yet measured`, never
 `n=0` and never a blank. A blank invites the reader to assume the number is fine and the
 label is missing.
+
+**The REFERENCE badge is gone with the capability it labelled.** This block used to print
+a third and fourth line — a `REFERENCE` badge and a `LIVE` badge — because a row could be
+either. No row can be stored now, so a badge distinguishing the two is a distinction with
+one side: every figure is computed by the run that renders it, and the stamp says when.
 
 ### Part C: DIAL's rows, exactly as a room sees them
 
@@ -806,7 +797,7 @@ and asserts the README's documented `--view` choices match the entry point's tup
 | `demos/01_agent_loop/trap.py` | `build_trap_app` |
 | `demos/02_verification_loop/abstain.py` | `build_intervention_app`, `render_declined` |
 | `deploy/hf/app.py` | The exhibit build and its environment variables |
-| `tools/sync_hf.py` | The exhibit's file set |
+| *(no sync script)* | Deleted and no longer in the repository |
 | The root `README.md` | The `--view` choices, asserted by `tests/test_docs.py` |
 | `tools/lint_no_numbers.py` | The list of eleven rendering files |
 | `question_queue.duckdb` | AGENT writes to it — see [Level 3](03_event_driven_loop/ONBOARDING.md) |

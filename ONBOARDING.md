@@ -110,10 +110,10 @@ dependencies: `pytest`, `pytest-timeout`, `ruff`.
 | `src/loopeng/triage/` | Abstention scoring, escalation, and failure classification. |
 | `src/loopeng/metric.py`, `paired.py`, `pricing.py`, `usage.py` | Numbers, statistics, prices, and token accounting. |
 | `src/loopeng/settings.py`, `env_guard.py` | Configuration, loaded once and frozen, plus a guard against an environment that breaks imports. |
-| `tools/` | The numeric literal lint rule, the README image renderer, a deployment sync script, and a resumability probe. |
+| `tools/` | The numeric-literal lint rule and a resumability probe. The README image renderer and the deployment sync script are removed — there are no committed images and nothing is published. |
 | `tests/` | The offline suite, plus `tests/live/` behind an opt in marker. |
 | `results/` | Measurements. Most of it is ignored by git; see `README.md` section 8 for what is committed and why. |
-| `assets/` | Generated README images, written only by `tools/render_readme_charts.py`. |
+| *(no `assets/`)* | There are no committed images. Every chart is drawn by the run that renders it, so there is nothing to keep current — the directory and its renderer are both removed. |
 
 ---
 
@@ -247,9 +247,9 @@ uv run pytest -q
   `addopts = "-m 'not live'"`, which excludes the five tests that hit the network and cost
   money. Opting in is an explicit act.
 - **On Linux you will also see `2 skipped`.** Two tests are platform conditional: one needs
-  a BSD only file flag function, and one only asserts image byte identity on the machine
-  that generated the images. See `tests/test_env_guard.py :: test_detects_a_hidden_pth_file`
-  and `tests/test_readme_charts.py :: test_byte_identity_with_a_fresh_render_where_that_can_hold`.
+  a BSD only file flag function. See
+  `tests/test_env_guard.py :: test_detects_a_hidden_pth_file`. The image byte-identity
+  test that used to be the other one is gone, along with the committed images it checked.
 
 If this passes, your checkout is sound and you have spent nothing.
 
@@ -486,9 +486,11 @@ Area specific questions are in each area document. These cut across everything.
    `spliced` returns nothing. **Was the splice performed by a script that was never
    committed, and can it be added to `tools/`?**
 
-2. **`results/reference/abstention_curve.json` has no writer in this repository.** It is
-   read by `src/loopeng/views/exhibit.py :: _frozen_curve_table()` and by
-   `tools/render_readme_charts.py`. **Which tool produced it?**
+2. ~~**`results/reference/abstention_curve.json` has no writer in this repository.**~~
+   **Closed by deletion.** The file was read by two modules that have since been
+   removed, so the question of which tool produced it no longer has anything
+   depending on the answer. The curve is computed from a live cell's items now, by
+   `src/loopeng/triage/abstain.py :: curve()`.
 
 3. **The environment guard checks for iCloud only.** `env_guard.py :: ICLOUD_MARKERS`
    contains two macOS specific fragments. **Should OneDrive and Dropbox markers be added for

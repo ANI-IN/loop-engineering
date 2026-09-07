@@ -8,7 +8,7 @@ apart, and that you cannot tell by looking. It makes that argument about a text-
 agent. The argument is stronger made about the repository, because here the failures are
 documented, dated, and were all found the same way.
 
-**13 instruments have been caught measuring something other than what they
+**14 instruments have been caught measuring something other than what they
 claimed, and one plan has.** Not one was found by reading code. All of them were
 green.
 
@@ -266,6 +266,42 @@ all is a claim nobody notices went missing. Nothing downstream could report it, 
 there was nothing to report on. It renders as a row with no bar now, naming the cell it
 needed.
 
+## 15. The same lesson at three depths, in one afternoon
+
+Item 6 produced three failures that are the same shape at increasing distance from
+the code, and the third is the one that should worry a reader most.
+
+**The code was wrong.** `run_cell` wrote its summary and then re-raised on Ctrl-C. That
+looked careful — the record was safe on disk — but the report never reached
+`run_sweep`, so the cell's spend was never counted. A real interrupt nine seconds into
+a live sweep printed `spend: est. $0.0000 of $0.05` over a cell that had just cost
+$0.0019. On a session that is the spend cap going blind at exactly the moment
+something has gone wrong.
+
+**The test was wrong, and green.** The first draft of the interrupt tests raised
+`KeyboardInterrupt` from the work function. A real Ctrl-C is delivered to the MAIN
+thread, which is blocked in `wait`; an exception from a worker surfaces at
+`future.result()` instead. Different path, same `except` clause, so the test passed —
+and it could not reach the second-interrupt branch at all, because a worker only
+raises once. A test pointed at the wrong code, agreeing with the right answer.
+
+**The VERIFICATION METHOD was wrong.** The first attempt to exercise the interrupt
+sent `kill -INT` to a shell background job. A non-interactive shell sets SIGINT to
+`SIG_IGN` in the child, so the signal did nothing; the sweep ran happily to
+completion. The output was a clean, complete, entirely successful run — and reading it
+as "the interrupt was handled" was one glance away.
+
+That third one is new. Every other entry here was found by running the thing and
+reading the output, which makes "run it and read the output" the method this whole
+document rests on. This is the first time the method itself was the broken instrument,
+and it failed in the direction that flatters: not a crash, not a hang, but a green run
+that looked like proof.
+
+There is no fix for that beyond the one already in use — knowing what the evidence
+should look like BEFORE producing it, and treating an unexpectedly clean result as a
+question rather than an answer. The interrupt was supposed to leave a partial cell. It
+left a complete one. That mismatch is the only thing that caught it.
+
 ## A second rule, from the same fix
 
 `named_secondary_deltas` also settled which of two **true** sentences a row should carry.
@@ -336,6 +372,9 @@ Each had a plausible reason to look correct:
 | the confidence scorer | every real row carries the field it defaulted |
 | the curve selector | it always returned a cell, and the cell was always plausible |
 | the absent comparison | every comparison it emitted was correct |
+| the interrupt accounting | the record on disk was complete and correct |
+| the interrupt test | it exercised a real path, and passed |
+| `kill -INT` on a background job | the run it produced was clean and complete |
 
 The last two are the most uncomfortable, because **both were correct when written.** They
 did not decay through neglect. They decayed because a category was added somewhere else,
@@ -377,7 +416,7 @@ list's recurring entry.
 ## The honest reading
 
 This is not a list of things that went wrong on the way to a build that is now correct.
-It is 14 data points on how instruments fail, in a repository written by someone paying
+It is 15 data points on how instruments fail, in a repository written by someone paying
 attention specifically to that failure mode, with tests for it.
 
 The claim the session should make is not "we measured this carefully". It is: *every

@@ -37,8 +37,10 @@ they prevent has happened, and the next one gets added after the next time.
 ## What was done
 
 The capability was removed. There is no stored-cell format, no loader, no flag, and no
-hatching. `sweep/reference.py`, `views/exhibit.py`, `tools/render_readme_charts.py`,
-`results/reference/`, `results/prefix_v1/` and `assets/*.png` are all gone.
+hatching. These are all deleted and no longer in the repository:
+`src/loopeng/sweep/reference.py`, `src/loopeng/views/exhibit.py`,
+`tools/render_readme_charts.py`, `results/reference/`, `results/prefix_v1/` and
+`assets/*.png`.
 
 **A render path that cannot express "stored" cannot show one.** No test is needed for a
 thing that has no code, so four of the five mechanisms deleted themselves and the fifth

@@ -727,3 +727,75 @@ def test_the_instruments_note_counts_its_own_entries():
     assert numbers == list(range(1, len(numbers) + 1)), "the entries are misnumbered"
     assert f"**{len(numbers) - 1} instruments have been caught" in body
     assert f"It is {len(numbers)} data points" in body
+
+
+# ---- a citation that resolves to nothing still reads as provenance ------------
+#
+# This has now happened three times, from two unrelated deletions:
+#
+#   `results/gate0.json`     cited by two src docstrings and two onboarding docs as the
+#                            measured evidence for a concurrency cap, after the file was
+#                            removed. One of those docs went further and said "I read the
+#                            file's PRESENCE" — a citation vouching for its own
+#                            verification, to nothing.
+#   `tests/test_exhibit.py`  cited by SECURITY.md as **the security boundary**, after the
+#                            test and the view it guarded were both deleted.
+#   `tools/render_readme_charts.py`, `tools/sync_hf.py`, `src/loopeng/sweep/reference.py`
+#                            cited across README, CONTRIBUTING and four onboarding
+#                            documents, all removed in the same clean-up.
+#
+# The link checker did not catch any of them: these are inline code spans, not markdown
+# links, and nothing looked at them.
+
+# The trees whose contents are TRACKED SOURCE. `results/` and `gold/` are deliberately
+# excluded — they hold generated output that a fresh checkout legitimately does not have,
+# so requiring those paths to exist would fire on correct documentation.
+_SOURCE_TREES = ("src/", "tests/", "tools/", "scripts/", "demos/", "docs/", ".github/")
+_SOURCE_SUFFIXES = (".py", ".yml", ".yaml", ".toml", ".md")
+
+# A document may name a file that is gone, and often should — half this repository's
+# documentation is about what was removed and why. The convention is that it must SAY SO
+# in the same paragraph. That keeps the escape hatch honest: an author who wants to cite
+# a deleted file has to tell the reader it is deleted, which is the thing a stale
+# citation fails to do.
+_ABSENT_MARKERS = ("delet", "removed", "no longer", "used to", "gone", "previously",
+                   "closed by")
+
+_CODE_SPAN = re.compile(r"`([^`\n]+)`")
+
+
+def _cited_paths(paragraph: str) -> list[str]:
+    """Repo-relative source paths named in inline code within one paragraph."""
+    found = []
+    for text in _CODE_SPAN.findall(paragraph):
+        token = text.strip().split()[0] if text.strip() else ""
+        if (token.startswith(_SOURCE_TREES) and token.endswith(_SOURCE_SUFFIXES)
+                and "*" not in token):
+            found.append(token)
+    return found
+
+
+def test_the_citation_check_finds_a_path_in_inline_code():
+    """Half of this test is the shape that slipped past the link checker."""
+    assert _cited_paths("See `tools/lint_no_numbers.py` for the rule.") == \
+        ["tools/lint_no_numbers.py"]
+    assert _cited_paths("Run `uv run pytest tests/test_docs.py -q` first.") == []
+    assert _cited_paths("A glob like `demos/02_verification_loop/*.py` is not a file.") == []
+    assert _cited_paths("`results/sweep/` is generated, so it is out of scope.") == []
+
+
+@pytest.mark.parametrize("path", MARKDOWN, ids=lambda p: str(p.relative_to(REPO_ROOT)))
+def test_every_cited_source_file_exists_or_is_marked_absent(path):
+    body = path.read_text(encoding="utf-8")
+    for paragraph in re.split(r"\n\s*\n", body):
+        marked = any(marker in paragraph.lower() for marker in _ABSENT_MARKERS)
+        for cited in _cited_paths(paragraph):
+            if (REPO_ROOT / cited).is_file() or marked:
+                continue
+            pytest.fail(
+                f"{path.relative_to(REPO_ROOT)} cites `{cited}`, which is not in the "
+                f"repository, and the paragraph does not say it is gone.\n"
+                f"Either fix the path, or say in the same paragraph that the file was "
+                f"removed — a citation that resolves to nothing still reads as "
+                f"provenance."
+            )

@@ -550,10 +550,9 @@ claim: it says the live suite is exactly the six tests that cost money.
 - **`6 deselected` is correct, not a problem.** `pyproject.toml` sets
   `addopts = "-m 'not live'"`, which excludes the six tests that hit the network and
   cost money. Opting in is an explicit act: `uv run pytest -m live`.
-- **On Linux you will also see `2 skipped`.** Two tests are platform-conditional: one
-  needs a BSD-only file-flag function, and one only asserts image byte-identity on the
-  machine that generated the images. See `tests/test_env_guard.py` and
-  `tests/test_readme_charts.py`.
+- **On Linux you may also see skips.** The platform-conditional tests need a BSD-only
+  file-flag function; see `tests/test_env_guard.py`. The image byte-identity test that
+  used to be the other one is gone, along with the committed images it checked.
 
 If that passes, your checkout is sound and you have spent nothing.
 
