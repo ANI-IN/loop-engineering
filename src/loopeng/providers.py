@@ -314,7 +314,7 @@ def triage_call_failure(
             f"for {spec.model_id}. {variable} is set but not usable — it is wrong, "
             f"revoked, or the account cannot call this model.\n"
             f"Fix: check {variable} in .env (see .env.example), then run "
-            f"`uv run python scripts/preflight.py` to confirm every role is "
+            f"`uv run python demos/00_preflight/check.py` to confirm every role is "
             f"reachable before spending anything.\n"
             f"This stopped after one call. Retrying a rejected credential bills "
             f"three times for the same refusal.\n"

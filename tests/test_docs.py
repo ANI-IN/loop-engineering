@@ -946,3 +946,32 @@ def test_the_ci_caveat_is_honest_about_what_ci_cannot_catch():
     caveat = body[body.index("## CI, and what it does not cover"):]
     assert "never calls a model" in caveat
     assert "offline contract" in caveat
+
+
+def test_every_command_a_fix_message_tells_you_to_run_exists():
+    """A path that resolves nowhere, in the sentence a stuck operator reads.
+
+    `providers.py` told anyone whose credential was rejected to run
+    `uv run python scripts/preflight.py`. There is no such script — it is
+    `demos/00_preflight/check.py` — so the one instruction given to someone who is
+    already blocked sent them to a file that does not exist.
+
+    That is the citation-to-nothing defect in its worst location: not a design note a
+    reader might skim, but the remedy line of an error, read by definition at the
+    moment nothing is working. The markdown guard cannot see it because it lives in a
+    Python string.
+
+    Narrow on purpose: only `uv run python <path>.py`, which is this repository's one
+    documented way of invoking anything, so a match is unambiguous.
+    """
+    command = re.compile(r"uv run python ([\w./-]+\.py)")
+    missing = []
+    for tree in ("src", "tools", "scripts"):
+        for path in sorted((REPO_ROOT / tree).rglob("*.py")):
+            for script in command.findall(path.read_text(encoding="utf-8")):
+                if not (REPO_ROOT / script).is_file():
+                    missing.append(f"{path.relative_to(REPO_ROOT)} -> {script}")
+    assert not missing, (
+        "these tell an operator to run something that is not here:\n  "
+        + "\n  ".join(missing)
+    )
