@@ -8,7 +8,7 @@ apart, and that you cannot tell by looking. It makes that argument about a text-
 agent. The argument is stronger made about the repository, because here the failures are
 documented, dated, and were all found the same way.
 
-**14 instruments have been caught measuring something other than what they
+**16 instruments have been caught measuring something other than what they
 claimed, and one plan has.** Not one was found by reading code. All of them were
 green.
 
@@ -302,6 +302,44 @@ should look like BEFORE producing it, and treating an unexpectedly clean result 
 question rather than an answer. The interrupt was supposed to leave a partial cell. It
 left a complete one. That mismatch is the only thing that caught it.
 
+## 16. A deleted capability came back through a file format
+
+The stored-measurement render path was removed rather than defended — no stored cell
+format, no loader, no flag, no hatching, five guards deleted along with the thing they
+guarded. `docs/guards-are-a-tell.md` is the note about it.
+
+Months later, `notebooks/` was added. A Jupyter notebook serialises its **outputs into
+the file**. A committed notebook therefore shows a reader tables and figures computed on
+somebody else's machine, on some other day, inside a document that looks live and
+carries an `In [12]:` prompt to prove it ran.
+
+That is the same defect. Not an analogue of it: the same one. Numbers on screen that
+were not computed by the run being looked at, with nothing on screen saying so — and it
+arrived without touching a line of the code that was deleted to prevent it, because the
+capability was reintroduced by a **serialisation choice** rather than by a feature.
+
+Removing a capability from the data model and the vocabulary does not remove it from
+every representation the project may later adopt. The notebooks are committed with every
+output cleared and a test asserts it, but the guard had to be written a second time, for
+a format, after the first one was thought to have settled the question.
+
+## 17. The taxonomy the sweep computed and discarded
+
+`judge` has always determined which KIND a visible failure is. `verify/batch.py` records
+it, `agent/trap.py` records it, `triage/failures.py` exists to sort failures by cause.
+`sweep/runner.py` never recorded it — so the most expensive measurement path in the
+project wrote cells that could be counted by outcome and never classified by cause.
+
+Every sweep ever run determined the kind of every visible failure, held it for the length
+of one function, and dropped it before writing the row. Same sentence as prompt caching:
+the instrument was built, the number was computed, and the caller that spends the most
+money ignored it.
+
+`VisibleKind` also had no reachability pin, while `TerminationReason` has carried one
+since the `declined` gap — and `no_attempts` was in the enum with no test producing it.
+Regenerating the record from real failures found the seventh category was a category
+nothing had ever demonstrated. See [the failure taxonomy](the-failure-taxonomy.md).
+
 ## A second rule, from the same fix
 
 `named_secondary_deltas` also settled which of two **true** sentences a row should carry.
@@ -373,6 +411,8 @@ Each had a plausible reason to look correct:
 | the curve selector | it always returned a cell, and the cell was always plausible |
 | the absent comparison | every comparison it emitted was correct |
 | the interrupt accounting | the record on disk was complete and correct |
+| notebook outputs | the capability had been deleted, so the question felt settled |
+| the failure taxonomy | seven categories, and nothing said which had been seen |
 | the interrupt test | it exercised a real path, and passed |
 | `kill -INT` on a background job | the run it produced was clean and complete |
 
@@ -416,7 +456,7 @@ list's recurring entry.
 ## The honest reading
 
 This is not a list of things that went wrong on the way to a build that is now correct.
-It is 15 data points on how instruments fail, in a repository written by someone paying
+It is 17 data points on how instruments fail, in a repository written by someone paying
 attention specifically to that failure mode, with tests for it.
 
 The claim the session should make is not "we measured this carefully". It is: *every

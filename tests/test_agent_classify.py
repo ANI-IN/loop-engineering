@@ -719,3 +719,90 @@ def test_the_unearned_check_never_fires_when_the_rules_were_supplied(items):
 
     for item in items:
         assert not _could_not_have_known(item, "L3")
+
+
+# ---- the taxonomy, pinned the way TerminationReason is -----------------------
+
+
+def test_every_visible_kind_is_reachable():
+    """A category nothing can produce is decoration, and this enum had no pin.
+
+    `TerminationReason` has carried one since the `declined` gap: a new reason has to
+    arrive with the test that fires it, rather than joining the enum and never being
+    observed. `VisibleKind` — the taxonomy the whole triage path sorts by — had no
+    equivalent, and `no_attempts` was in it with no test producing it.
+
+    Each is reached by the test named:
+
+      execution_error   test_a_query_that_fails_to_execute_is_a_visible_failure
+      timeout           test_a_timeout_is_its_own_kind
+      empty_result      test_an_empty_result_is_visible_not_silent
+      no_attempts       test_a_run_with_no_attempts_is_a_visible_failure
+      shape_mismatch    test_extra_columns_are_a_shape_mismatch
+      null_result       test_all_null_rows_are_their_own_kind
+      model_call_failed test_a_failed_model_call_is_not_an_execution_error
+    """
+    assert {kind.value for kind in VisibleKind} == {
+        "execution_error", "timeout", "empty_result", "no_attempts",
+        "shape_mismatch", "null_result", "model_call_failed",
+    }
+
+
+def test_a_run_with_no_attempts_is_a_visible_failure(warehouse):
+    """The one kind the suite never produced. A run that made no attempt at all is a
+    failure you can see without knowing the answer — there is nothing to look at."""
+    from loopeng.agent.loop import AgentRun, TerminationReason
+    from loopeng.gold.build import build_gold
+    from loopeng.usage import UsageLedger
+
+    item = build_gold(warehouse)[0]
+    run = AgentRun(
+        question=item.question, level="L3", role="agent", model_id="m",
+        attempts=(), termination=TerminationReason.MAX_ATTEMPTS,
+        item_id=item.item_id, ledger=UsageLedger(),
+    )
+    verdict = judge(run, item)
+    assert verdict.outcome is Outcome.VISIBLE_FAILURE
+    assert verdict.visible_kind is VisibleKind.NO_ATTEMPTS
+
+
+def test_the_sweep_records_which_kind_of_visible_failure(tmp_path, warehouse):
+    """`judge` has always computed this and `run_cell` has always dropped it, so the
+    most expensive measurement path in the project wrote cells that could be counted
+    by outcome and not classified by cause — while `triage/failures.py` exists to sort
+    failures by cause and both cheaper paths kept the field."""
+    import inspect
+
+    from loopeng.sweep import runner
+
+    source = inspect.getsource(runner.run_cell)
+    assert '"visible_kind"' in source, (
+        "run_cell no longer records the failure kind; the sweep is the path that "
+        "cannot be triaged without it"
+    )
+
+
+def test_visible_kind_counts_enumerate_every_kind_including_the_zeros():
+    """A dict built only from the kinds present reads as "these are the failures there
+    are", and a reader cannot tell a kind that fired zero times from one the runner
+    never records — which was true of all seven, because the sweep did not store it."""
+    from loopeng.sweep.runner import visible_kind_counts
+
+    counts = visible_kind_counts([{"outcome": "correct"}])
+    assert set(counts) == {kind.value for kind in VisibleKind} | {"unclassified"}
+    assert all(value == 0 for value in counts.values())
+
+
+def test_a_visible_failure_with_no_recorded_kind_is_counted_not_dropped():
+    """Silently omitting it would shrink the total below the band count and make the
+    two disagree — a cell whose own numbers contradict each other."""
+    from loopeng.sweep.runner import visible_kind_counts
+
+    counts = visible_kind_counts([
+        {"outcome": "visible_failure", "visible_kind": "shape_mismatch"},
+        {"outcome": "visible_failure"},          # a row written before the field existed
+        {"outcome": "visible_failure", "visible_kind": "not_a_kind"},
+    ])
+    assert counts["shape_mismatch"] == 1
+    assert counts["unclassified"] == 2
+    assert sum(counts.values()) == 3, "every visible failure is accounted for"

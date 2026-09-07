@@ -30,8 +30,11 @@ from loopeng.agent.classify import (
     BAND_CORRECT,
     BAND_SILENT,
     BAND_UNEARNED,
+    BAND_VISIBLE,
     Outcome,
+    VisibleKind,
     band_counts,
+    band_of,
     judge,
 )
 from loopeng.agent.loop import run_question
@@ -613,6 +616,19 @@ def run_cell(cell: Cell, items, warehouse: Path, *, verifier=verify_governed,
             # classifying by cause is the whole point of triage.
             "sql": run.sql, "rows": run.rows, "error": run.error,
             "outcome": str(judgement.outcome),
+            # WHICH KIND of visible failure, recorded rather than recomputed.
+            #
+            # `judge` has always worked this out and `run_cell` has always dropped it,
+            # so the sweep — the most expensive measurement path in the project — wrote
+            # cells that could be counted by outcome and not classified by cause. Both
+            # cheaper paths kept it: `verify/batch.py` and `agent/trap.py` store it, and
+            # `triage/failures.py` exists to sort failures by cause. The instrument was
+            # built, the number was computed, and the one caller that spends the most
+            # money threw it away.
+            #
+            # None for anything that is not a visible failure, which is most rows.
+            "visible_kind": (str(judgement.visible_kind)
+                             if judgement.visible_kind else None),
             "ran_and_returned": judgement.ran_and_returned,
             "correct": judgement.outcome is Outcome.CORRECT,
             # Right, and not derivable from what the model was given. Carried
@@ -663,6 +679,29 @@ def run_cell(cell: Cell, items, warehouse: Path, *, verifier=verify_governed,
     )
     write_json_atomic(path, report)
     return report
+
+
+def visible_kind_counts(rows: list[dict]) -> dict[str, int]:
+    """How many failures of each kind, over EVERY kind the enum declares.
+
+    Enumerated, not tallied from what appeared. A dict built only from the kinds present
+    reads as "these are the failures there are", and a reader cannot tell a kind that
+    fired zero times from one the runner never records — which was true of all seven
+    until this run, because the sweep did not store the field at all.
+
+    A row written before `visible_kind` existed has no key, and a visible failure with
+    no kind is counted under `unclassified` rather than dropped: an item that failed
+    visibly and cannot say how is a real state, and silently omitting it would shrink
+    the total below the band count and make the two disagree.
+    """
+    counts = {kind.value: 0 for kind in VisibleKind}
+    counts["unclassified"] = 0
+    for row in rows:
+        if band_of(row["outcome"]) != BAND_VISIBLE:
+            continue
+        kind = row.get("visible_kind")
+        counts[kind if kind in counts else "unclassified"] += 1
+    return counts
 
 
 def _partial_rate(metric: Metric, n_ran: int, stopped_early: bool,
@@ -734,6 +773,11 @@ def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: flo
         "correct": correct, "unearned_correct": unearned, "silent_errors": silent,
         # Every band, so a renderer never has to work one out for itself.
         "bands": bands,
+        # Every visible-failure kind, counted by enumeration over the enum rather than
+        # over what happened to appear. A kind with no rows is a measured zero here —
+        # no failure of that kind occurred — which is different from a band that is
+        # absent because nobody thought of it. See `visible_kind_counts`.
+        "visible_kinds": visible_kind_counts(rows),
         # Never blank, never zero, never a guess.
         "silent_error_rate": (
             metric.render() if metric and complete

@@ -819,3 +819,33 @@ def test_every_cited_source_file_exists_or_is_marked_absent(path):
                 f"removed — a citation that resolves to nothing still reads as "
                 f"provenance."
             )
+
+
+def test_the_failure_taxonomy_record_exists_and_covers_every_kind():
+    """The note cites this file by name, so it has to resolve — and it has to enumerate
+    the whole enum, because a record listing only the kinds that fired is a record a
+    reader cannot tell "never happened" from "never recorded" in.
+
+    Every sweep before this file existed determined the kind of every visible failure
+    and dropped it before writing the row, so "never recorded" was the true answer for
+    all seven.
+    """
+    import json
+
+    from loopeng.agent.classify import VisibleKind
+
+    path = REPO_ROOT / "results" / "failure_taxonomy_observed.json"
+    assert path.is_file(), "docs/the-failure-taxonomy.md cites a file that is not here"
+
+    record = json.loads(path.read_text(encoding="utf-8"))
+    for kind in VisibleKind:
+        assert kind.value in record["kinds"], f"{kind.value} is missing from the record"
+
+    # Derived both ways, so the two halves cannot drift: what the record calls never
+    # observed must be exactly the kinds whose count is zero.
+    assert set(record["never_observed"]) == {
+        kind for kind, count in record["kinds"].items()
+        if count == 0 and kind != "unclassified"
+    }
+    # What the sample covers is a field, not a caveat in prose someone can quote around.
+    assert record["covers"]["role"] and record["covers"]["level"]

@@ -546,8 +546,12 @@ def test_a_run_fingerprint_is_stamped_into_every_cell_file(tmp_path, monkeypatch
         ledger = _Ledger()
 
     class _Judgement:
+        # Every field `run_cell` reads off a judgement. A stub short of one is a stub
+        # teaching a shape that does not exist, and it fails the moment the real thing
+        # grows a field — which is how this one caught `visible_kind` being added.
         outcome, ran_and_returned = Outcome.CORRECT, True
         unearned = False
+        visible_kind = None
 
     monkeypatch.setattr(runner, "run_question", lambda *a, **k: _Run())
     monkeypatch.setattr(runner, "judge", lambda *a, **k: _Judgement())
