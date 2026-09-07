@@ -139,7 +139,19 @@ require two independent guesses, and so protects the score, is a coincidence.
 
 Which is [the guards argument](guards-are-a-tell.md) from the other direction. A property
 holding by accident looks exactly like a property holding by design, right up until the
-accident stops. One JPY-only pattern in the widened gold set removes it.
+accident stops.
+
+**State the counterfactual plainly, because it is the whole reason this outcome exists.**
+Had the warehouse been single-currency — JPY only, which is the obvious simplification and
+was very nearly the design — four of eight L0 currency items would have scored as correct
+on a rate the model invented. The bottom-left cell of the trap matrix would have read 30%
+instead of 10%. The headline gap would have compressed from 60 points to 40, in the
+direction that makes the session's central claim look weaker than it is, and **every test
+in this repository would have been green.** Nothing would have said so, because there was
+nothing that could.
+
+That gold set would not have been careless. It would have been simpler, and simpler in a
+way that looks like good taste.
 
 So the outcome exists even though it currently fires zero times. The alternative is a
 metric that will silently start scoring confabulation as knowledge the first time the

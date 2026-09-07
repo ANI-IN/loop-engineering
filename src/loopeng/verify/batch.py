@@ -12,7 +12,14 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from loopeng.agent.classify import Outcome, judge
+from loopeng.agent.classify import (
+    BAND_CORRECT,
+    BAND_SILENT,
+    BAND_UNEARNED,
+    Outcome,
+    band_counts,
+    judge,
+)
 from loopeng.agent.loop import AgentRun
 from loopeng.gold.build import GoldItem, json_default
 from loopeng.metric import Metric
@@ -97,11 +104,11 @@ def run_level2_pass(
 
     elapsed = time.perf_counter() - start
     ran = [r for r in rows if r["ran_and_returned"]]
-    correct = sum(1 for r in ran if r["correct"])
-    unearned = sum(1 for r in ran if r.get("unearned_correct"))
-    # Explicit, not `len(ran) - correct`. See sweep/runner.summarise_cell: that
-    # subtraction counts a right-but-underivable answer as a silent error.
-    silent = len(ran) - correct - unearned
+    # Enumerated, never derived. See OUTCOME_BANDS in loopeng.agent.classify.
+    bands = band_counts(r["outcome"] for r in rows)
+    correct = bands[BAND_CORRECT]
+    unearned = bands[BAND_UNEARNED]
+    silent = bands[BAND_SILENT]
     # Totals come from the per-item costs rather than holding every ledger in memory.
     total_cost = sum(r["cost_usd"] for r in rows)
 
@@ -117,6 +124,7 @@ def run_level2_pass(
         "correct": correct,
         "unearned_correct": unearned,
         "silent_errors": silent,
+        "bands": bands,
         "silent_error_rate": (
             Metric.from_counts(silent, len(ran)).render() if ran else "not yet measured"
         ),

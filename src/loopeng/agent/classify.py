@@ -93,6 +93,80 @@ class VisibleKind(StrEnum):
     MODEL_CALL_FAILED = "model_call_failed"
 
 
+# ---------------------------------------------------------------------------
+# The bands, enumerated.
+#
+# THIS EXISTS BECAUSE THE SAME BUG HAPPENED THREE TIMES.
+#
+# `silent = len(ran) - correct` is a band computed by subtracting the bands somebody
+# remembered from the total. It is correct exactly while the enumeration in the
+# author's head matches the enum, and it fails SILENTLY the moment a category is
+# added — the new outcome does not disappear, it lands in whichever band was being
+# derived. Twice that band was `silent_errors`, so a RIGHT answer was counted as a
+# wrong one on the headline metric, in two modules, with every test green.
+#
+# So the mapping is total and explicit, and `test_every_outcome_has_a_band` fails the
+# build when an `Outcome` member is added without one. Adding a category is now a
+# decision somebody has to make in a diff, rather than a default somebody inherits.
+#
+# The bands are the outcome-shift chart's four, plus `unearned`. `unearned` is its
+# own band rather than folded into `correct` or `silent` for the reason the whole
+# category exists: the number was right and the model could not have known it, and
+# both of the tidier placements state something false.
+# ---------------------------------------------------------------------------
+
+BAND_CORRECT = "correct"
+BAND_UNEARNED = "unearned"
+BAND_SILENT = "wrong_and_silent"
+BAND_VISIBLE = "wrong_and_caught"
+BAND_ABSTAINED = "abstained"
+
+OUTCOME_BANDS: dict[Outcome, str] = {
+    Outcome.CORRECT: BAND_CORRECT,
+    Outcome.UNEARNED_CORRECT: BAND_UNEARNED,
+    Outcome.SILENT_ERROR: BAND_SILENT,
+    Outcome.VISIBLE_FAILURE: BAND_VISIBLE,
+    Outcome.SIGNALLED_MISSING_INFO: BAND_ABSTAINED,
+}
+
+# The order they are drawn and reported in, worst-hidden first. Named here so the
+# chart and the summary cannot disagree about it.
+BANDS = (BAND_CORRECT, BAND_UNEARNED, BAND_SILENT, BAND_VISIBLE, BAND_ABSTAINED)
+
+
+class UnbandedOutcome(RuntimeError):
+    """An Outcome with no band. Raised rather than defaulted.
+
+    A default band is how a new category silently joins an existing one — which is
+    the failure this mapping was added to prevent, so it does not get to have it.
+    """
+
+
+def band_of(outcome) -> str:
+    """Which band this outcome belongs to. Never guesses."""
+    try:
+        return OUTCOME_BANDS[Outcome(outcome)]
+    except (KeyError, ValueError) as exc:
+        raise UnbandedOutcome(
+            f"{outcome!r} has no band in OUTCOME_BANDS. Every outcome belongs to "
+            f"exactly one band, and adding a category is a decision rather than a "
+            f"default — see the comment above OUTCOME_BANDS."
+        ) from exc
+
+
+def band_counts(outcomes) -> dict[str, int]:
+    """Count every band by enumeration, so none is derived by subtraction.
+
+    Takes outcome values — strings or `Outcome` members — because the callers are
+    split between live `Judgement` objects and rows read back off a cell file, and
+    a helper that only worked for one of them would leave the other subtracting.
+    """
+    counts = dict.fromkeys(BANDS, 0)
+    for outcome in outcomes:
+        counts[band_of(outcome)] += 1
+    return counts
+
+
 def _signals_missing_input(sql: str) -> bool:
     r"""Does this query name a value it was never given, rather than inventing one?
 
@@ -414,6 +488,7 @@ def summarise(judgements: list[Judgement]) -> dict:
     ran = [j for j in judgements if j.ran_and_returned]
     silent = [j for j in ran if j.outcome is Outcome.SILENT_ERROR]
     unearned = [j for j in ran if j.unearned]
+    bands = band_counts(j.outcome for j in judgements)
     visible = [j for j in judgements if j.outcome is Outcome.VISIBLE_FAILURE]
 
     attribution: dict[str, int] = {}
@@ -448,4 +523,7 @@ def summarise(judgements: list[Judgement]) -> dict:
         "attribution": dict(sorted(attribution.items(), key=lambda kv: -kv[1])),
         "n_unclassified": sum(1 for j in silent if j.unclassified),
         "n_ambiguous_attributions": sum(1 for j in silent if j.ambiguous),
+        # Every band, counted by enumeration. The chart reads this rather than
+        # deriving any band from the others.
+        "bands": bands,
     }

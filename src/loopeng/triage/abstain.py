@@ -123,7 +123,11 @@ def operating_point(runs: list[dict], threshold: float) -> dict:
         "threshold": threshold,
         "n_total": len(decisions),
         "n_answered": len(answered),
-        "n_declined": len(decisions) - len(answered),
+        # Counted, not subtracted. The partition here is genuinely binary, so
+        # the subtraction was correct — but it is the same SHAPE that broke the
+        # outcome bands three times, and a shape that only works while nobody
+        # adds a third case is a shape worth not having.
+        "n_declined": sum(1 for d in decisions if not d.answered),
         "n_correct_of_answered": right,
         "coverage": coverage.render() if coverage else "not yet measured",
         "precision": precision.render() if precision else "not yet measured",

@@ -565,3 +565,143 @@ def test_an_unearned_correct_is_not_swept_into_the_silent_error_band(items, ware
     assert report["n_correct"] == 0
     assert report["n_silent_errors"] == 0
     assert report["n_ran_and_returned"] == 1
+
+
+# ---- the bands are enumerated, and a new outcome must not join one silently ---
+#
+# `silent = len(ran) - correct` is a band derived by subtracting the bands somebody
+# remembered from the total. It is right exactly while the enumeration in the
+# author's head matches the enum, and it fails SILENTLY when a category is added:
+# the new outcome lands in whichever band was being derived. That happened twice, in
+# two modules, and both times the derived band was `silent_errors` — so a right
+# answer was counted as a wrong one on the headline metric with every test green.
+
+
+def test_every_outcome_has_a_band():
+    """THE guard. Adding an `Outcome` member without giving it a band fails here,
+    which turns a default somebody inherits into a decision somebody makes."""
+    from loopeng.agent.classify import OUTCOME_BANDS, Outcome
+
+    assert set(OUTCOME_BANDS) == set(Outcome), (
+        "these outcomes have no band: "
+        f"{sorted(str(o) for o in set(Outcome) - set(OUTCOME_BANDS))}"
+    )
+
+
+def test_every_band_is_reachable():
+    """The other direction. A band no outcome maps to is a column that renders empty
+    forever and reads as a measured zero."""
+    from loopeng.agent.classify import BANDS, OUTCOME_BANDS
+
+    assert set(OUTCOME_BANDS.values()) == set(BANDS)
+
+
+def test_an_unknown_outcome_raises_rather_than_defaulting():
+    """A default band is exactly how a new category silently joins an existing one."""
+    from loopeng.agent.classify import UnbandedOutcome, band_of
+
+    with pytest.raises(UnbandedOutcome):
+        band_of("something_nobody_declared")
+
+
+def test_the_bands_partition_every_judgement():
+    """Counts must sum to the total. If they do not, something was double-counted or
+    dropped, and both are invisible in a stacked bar."""
+    from loopeng.agent.classify import Outcome, band_counts
+
+    outcomes = list(Outcome) * 3
+    counts = band_counts(outcomes)
+    assert sum(counts.values()) == len(outcomes)
+
+
+def test_no_module_derives_an_outcome_band_by_subtraction():
+    """The shape, banned where it bites.
+
+    Grep-based and deliberately narrow: it looks for a subtraction assigned to a
+    band-shaped name, in the modules that summarise outcomes. A general ban on
+    subtraction would be unenforceable and would be switched off within a week.
+    """
+    import pathlib
+    import re
+
+    root = pathlib.Path(__file__).resolve().parent.parent / "src" / "loopeng"
+    banned = re.compile(
+        r"^\s*(silent|correct|unearned|visible|abstained|wrong)\w*\s*=\s*[^=\n]*\s-\s",
+        re.MULTILINE,
+    )
+    offenders = []
+    for path in root.rglob("*.py"):
+        for match in banned.finditer(path.read_text(encoding="utf-8")):
+            line = match.group(0).strip()
+            offenders.append(f"{path.relative_to(root)}: {line}")
+    assert not offenders, (
+        "an outcome band derived by subtraction — count it by enumeration instead, "
+        f"through classify.band_counts: {offenders}"
+    )
+
+
+def test_the_grep_would_catch_the_bug_it_was_written_for():
+    """A checker that silently matches nothing makes the test above vacuous and
+    green, which is the failure mode this whole repository is about."""
+    import re
+
+    banned = re.compile(
+        r"^\s*(silent|correct|unearned|visible|abstained|wrong)\w*\s*=\s*[^=\n]*\s-\s",
+        re.MULTILINE,
+    )
+    assert banned.search("    silent = len(ran) - correct\n")
+    assert banned.search("    silent = len(ran) - correct - unearned\n")
+    assert not banned.search("    silent = bands[BAND_SILENT]\n")
+
+
+def test_the_cell_report_carries_every_band(items, warehouse):
+    """So a renderer never has to work one out for itself."""
+    from loopeng.agent.classify import BANDS
+    from loopeng.sweep.runner import Cell, summarise_cell
+
+    row = {
+        "item_id": "a", "pattern_key": "p", "outcome": "silent_error",
+        "ran_and_returned": True, "correct": False, "unearned_correct": False,
+        "termination": "success", "n_attempts": 1, "rejections": 0,
+        "cost_usd": 0.01, "tokens": {"n_calls": 1},
+    }
+    report = summarise_cell(Cell("agent", "L0", "loop"), [row], complete=True,
+                            seconds=1.0)
+
+    assert set(report["bands"]) == set(BANDS)
+    assert report["bands"]["wrong_and_silent"] == 1
+    assert sum(report["bands"].values()) == 1
+
+
+# ---- _could_not_have_known stays narrow -------------------------------------
+
+
+def test_the_unearned_check_never_fires_for_an_inferable_rule(items):
+    """A broader version starts excusing genuine failures.
+
+    `deleted_at`, `status` and `is_internal` are column names in the DDL. A model
+    that filters on them at L0 has reasoned from the schema, and that earns the
+    answer. Only a value that appears NOWHERE — the conversion factors — does not.
+    """
+    from loopeng.agent.classify import _could_not_have_known
+    from loopeng.gold.patterns import RULES_REQUIRING_UNDISCLOSED_VALUES
+
+    inferable = {"soft_delete", "cancelled_orders", "internal_accounts",
+                 "refunds_net", "fan_out"}
+    assert not inferable & RULES_REQUIRING_UNDISCLOSED_VALUES
+
+    for item in items:
+        if not set(item.rules) & RULES_REQUIRING_UNDISCLOSED_VALUES:
+            assert not _could_not_have_known(item, "L0"), (
+                f"{item.pattern_key} requires only inferable rules; a correct answer "
+                f"at L0 is an answer, not a guess"
+            )
+
+
+def test_the_unearned_check_never_fires_when_the_rules_were_supplied(items):
+    """At L3 the factor was given, so matching gold is knowledge. If this fired the
+    trap would have no treatment arm."""
+    from loopeng.agent.classify import _could_not_have_known
+
+    for item in items:
+        assert not _could_not_have_known(item, "L3")

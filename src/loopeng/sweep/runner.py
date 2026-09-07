@@ -26,7 +26,14 @@ from pathlib import Path
 
 import structlog
 
-from loopeng.agent.classify import Outcome, judge
+from loopeng.agent.classify import (
+    BAND_CORRECT,
+    BAND_SILENT,
+    BAND_UNEARNED,
+    Outcome,
+    band_counts,
+    judge,
+)
 from loopeng.agent.loop import run_question
 from loopeng.gold.build import json_default, spread_across_clusters
 from loopeng.metric import Metric
@@ -442,14 +449,14 @@ def run_cell(cell: Cell, items, warehouse: Path, *, verifier=verify_governed,
 def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: float,
                    fingerprint: RunFingerprint | None = None) -> dict:
     ran = [r for r in rows if r["ran_and_returned"]]
-    correct = sum(1 for r in ran if r["correct"])
-    # `.get` because the field is additive: a cell written before it existed simply
-    # has none, and absence means "not separated out" rather than zero.
-    unearned = sum(1 for r in ran if r.get("unearned_correct"))
-    # Explicit rather than `len(ran) - correct`. That subtraction silently swept an
-    # unearned correct into the silent-error band the moment the outcome existed —
-    # a right answer counted as a wrong one, on the headline metric.
-    silent = len(ran) - correct - unearned
+    # Counted by enumeration, never derived. `silent = len(ran) - correct` swept an
+    # unearned correct into the silent-error band the moment that outcome existed —
+    # a right answer counted as a wrong one, on the headline metric, silently. See
+    # OUTCOME_BANDS in loopeng.agent.classify for why the mapping is total.
+    bands = band_counts(r["outcome"] for r in rows)
+    correct = bands[BAND_CORRECT]
+    unearned = bands[BAND_UNEARNED]
+    silent = bands[BAND_SILENT]
     metric = Metric.from_counts(silent, len(ran)) if ran else None
     return {
         "key": cell.key, "label": cell.label, "role": cell.role, "level": cell.level,
@@ -461,6 +468,8 @@ def summarise_cell(cell: Cell, rows: list[dict], *, complete: bool, seconds: flo
         "n_items": len(rows),
         "n_done": len(rows), "ran_and_returned": len(ran),
         "correct": correct, "unearned_correct": unearned, "silent_errors": silent,
+        # Every band, so a renderer never has to work one out for itself.
+        "bands": bands,
         # Never blank, never zero, never a guess.
         "silent_error_rate": (
             metric.render() if metric and complete

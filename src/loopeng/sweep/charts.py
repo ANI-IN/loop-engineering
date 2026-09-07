@@ -447,7 +447,10 @@ def abstention_chart(points: list[dict]):
          if p.get("coverage_value") is not None and p.get("precision_value") is not None),
         key=lambda p: p["coverage_value"],
     )
-    dropped = len(points) - len(usable)
+    dropped = sum(  # counted, not subtracted — see triage.abstain  # layout
+        1 for p in points
+        if p.get("coverage_value") is None or p.get("precision_value") is None
+    )
     notes = []
     if dropped:
         notes.append(
