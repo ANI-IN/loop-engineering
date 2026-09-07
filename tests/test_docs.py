@@ -849,3 +849,51 @@ def test_the_failure_taxonomy_record_exists_and_covers_every_kind():
     }
     # What the sample covers is a field, not a caveat in prose someone can quote around.
     assert record["covers"]["role"] and record["covers"]["level"]
+
+
+def _tracked_paths() -> set[str]:
+    return set(subprocess.run(
+        ["git", "ls-files"], capture_output=True, text=True, cwd=REPO_ROOT,
+    ).stdout.split())
+
+
+@pytest.mark.parametrize(
+    "path", [p for p in MARKDOWN if p.parent.name == "docs"],
+    ids=lambda p: str(p.relative_to(REPO_ROOT)),
+)
+def test_evidence_cited_by_a_design_note_is_TRACKED_not_merely_present(path):
+    """Present on the author's machine is not the same as in the repository.
+
+    `docs/the-failure-taxonomy.md` cited `results/failure_taxonomy_observed.json`, the
+    record of which failure kinds real runs have produced. The file was written,
+    committed with `git add -A`, and silently not added — `.gitignore` excludes
+    `results/*.json`. The local suite passed, because the file was sitting there
+    untracked; CI failed on the clone.
+
+    That is precisely the noise-floor defect repeating with a different filename: a
+    citation that resolves on one machine and nowhere else, printed as provenance. The
+    existing link check asks `exists()`, which is true of an untracked file, so it
+    could not see it — and what caught it was the clean checkout rather than the
+    author's laptop.
+
+    Scoped to `docs/`, deliberately. These notes cite EVIDENCE; a runbook naming
+    `results/sweep/dial.png` is describing output the reader is about to generate, and
+    requiring that to be committed would be the opposite of this repository's rule.
+    """
+    tracked = _tracked_paths()
+    body = path.read_text(encoding="utf-8")
+    cited = set(_relative_links(path)) | set(_CODE_SPAN.findall(body))
+
+    for target in cited:
+        token = target.strip().split()[0] if target.strip() else ""
+        token = token.split("#")[0]
+        if not token.startswith(("../results/", "results/")):
+            continue
+        relative = token.removeprefix("../")
+        if relative.endswith("/"):
+            continue  # a directory, not a cited artifact
+        assert relative in tracked, (
+            f"{path.relative_to(REPO_ROOT)} cites {token} as evidence, and it is not "
+            f"tracked by git. It may exist on your machine; it does not exist on a "
+            f"clone, which is where anyone checking the claim will look."
+        )

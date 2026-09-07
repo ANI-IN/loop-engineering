@@ -12,7 +12,7 @@ data lands, and findings about the build itself that no module is the right home
 |---|---|
 | [Five guards on one capability is a tell](guards-are-a-tell.md) | why the stored-measurement render path was deleted rather than defended, and what it cost |
 | [Our own instrument punished a model for being right](instrument-ranked-honesty-backwards.md) | the classifier ranked a model's honest refusal below a confabulation, silently, with every test green |
-| [Every instrument in this build has been wrong at least once](every-instrument-has-been-wrong.md) | 16 of them plus one plan, all green at the time, none found by reading code |
+| [Every instrument in this build has been wrong at least once](every-instrument-has-been-wrong.md) | 17 of them plus one plan, all green at the time, none found by reading code |
 | [The failure taxonomy, regenerated from real failures](the-failure-taxonomy.md) | which of the seven visible-failure kinds real runs have actually produced, and the sweep dropping the field that says |
 | [Re-specifying the five charts](charts-respec.md) | what the measurement did to the chart plan, and what each chart is now for |
 

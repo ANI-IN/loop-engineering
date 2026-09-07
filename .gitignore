@@ -78,46 +78,39 @@ results/*.png
 results/*.svg
 results/_resume_marker*.txt
 
-# Kept deliberately: the delivery reads reference cells for the frozen Sonnet
-# measurements, and without them the DIAL chart has nothing to cite. This is
-# also the only data tools/render_readme_charts.py is allowed to read.
-!results/reference/
-
-# Kept deliberately: the pre-fix measurements are the Stage 3 triage artifact —
-# the under-specification we found in our own gold set and what it cost.
-!results/prefix_v1/
-
-# Kept deliberately: Gate 0 evidence, cited throughout the design record.
-!results/gate0.json
-
 # Kept deliberately: the determinism floor the pre-registration cites BY NAME before
 # the first cell runs. It was ignored, so the citation resolved to nothing on every
 # clone — a provenance line pointing at a file that was not there. Committing the file
 # was the fix; a test now asserts every repo path named in sweep/ resolves on disk.
 !results/noise_floor_*.json
 
-# Kill-and-restart output, cited BY NAME in results/gate0.json as the evidence that
-# LangSmith does not resume. Kept committed and kept un-ignored, deliberately.
+# Kept deliberately, AND FOR THE SAME REASON, one file later.
 #
-# The exception is NOT removed, and that is the decision rather than an oversight. The
-# log published a LangSmith organisation UUID and two more UUIDs in a public repo, so
-# the identifiers are REDACTED IN PLACE — the finding, the date and the method survive
-# and the identifiers do not. Deleting the file instead would have left gate0.json, which
-# must not change, citing a path that no longer resolves: the same defect the lint rule
-# and the pre-registration were both just fixed for. And a file that is tracked while
-# ignored is a file whose future output silently never shows in git status.
-!results/_resume_first.log
-!results/_resume_marker.txt
+# `docs/the-failure-taxonomy.md` cites this by name as the record of which visible-
+# failure kinds real runs have actually produced. It was written, committed with
+# `git add -A`, and silently not added — because `results/*.json` above ignores it —
+# so the local suite passed with the file sitting untracked on one machine and CI
+# failed on the clone, exactly as the noise-floor citation once did.
+#
+# That is the noise-floor defect repeating with a different filename, and the thing
+# that caught it was the clean checkout rather than the author's laptop.
+!results/failure_taxonomy_observed.json
 
-# ---------------------------------------------------------------------------
-# README images.
-#
-# assets/ IS committed — the README needs it on GitHub, and every file there is
-# written by tools/render_readme_charts.py from results/reference/ and by
-# nothing else. Anything that lands here by another route is a stray.
-# ---------------------------------------------------------------------------
-assets/*
-!assets/*.png
+# Kept deliberately: the six arm summaries the experiments script writes. They are the
+# only measurement in the repository that reaches LangSmith, and a comparison view that
+# cannot be reproduced from disk is a comparison nobody can check.
+!results/experiments/
+
+# REMOVED, and the removals are recorded rather than deleted quietly: exceptions for
+# `results/reference/`, `results/prefix_v1/`, `results/gate0.json`,
+# `results/_resume_first.log` and `assets/` are gone because every one of those paths
+# is gone. An un-ignore rule for a file that does not exist is harmless the day it is
+# written and misleading afterwards — it reads as "this is committed on purpose", which
+# is a claim about a file, and there is no file.
+
+# There is no `assets/`. The committed README images, the tool that rendered them and
+# the stored measurements it rendered from were all removed — every chart is drawn by
+# the run that renders it now.
 !assets/manifest.json
 
 # ---------------------------------------------------------------------------

@@ -8,7 +8,7 @@ apart, and that you cannot tell by looking. It makes that argument about a text-
 agent. The argument is stronger made about the repository, because here the failures are
 documented, dated, and were all found the same way.
 
-**16 instruments have been caught measuring something other than what they
+**17 instruments have been caught measuring something other than what they
 claimed, and one plan has.** Not one was found by reading code. All of them were
 green.
 
@@ -340,6 +340,24 @@ since the `declined` gap — and `no_attempts` was in the enum with no test prod
 Regenerating the record from real failures found the seventh category was a category
 nothing had ever demonstrated. See [the failure taxonomy](the-failure-taxonomy.md).
 
+## 18. The taxonomy record's own citation resolved on one machine
+
+Entry 17's fix cited `results/failure_taxonomy_observed.json` by name. The file was
+written, committed with `git add -A`, and **silently not added** — `.gitignore` excludes
+`results/*.json`. The local suite passed, because the file was sitting there untracked.
+CI failed on the clone.
+
+That is the noise-floor defect repeating, three months and one filename later, in the
+commit whose subject is citations that resolve to nothing. The existing link check asks
+`exists()`, which is true of an untracked file, so it could not see it.
+
+**What caught it was the clean checkout, not the author's laptop** — the first time in
+this build that CI found something local testing structurally could not. The guard now
+asks whether evidence cited by a design note is TRACKED rather than present, and it is
+scoped to `docs/` on purpose: a runbook naming `results/sweep/dial.png` describes output
+the reader is about to generate, and requiring that to be committed would invert the
+rule this repository is built on.
+
 ## A second rule, from the same fix
 
 `named_secondary_deltas` also settled which of two **true** sentences a row should carry.
@@ -413,6 +431,7 @@ Each had a plausible reason to look correct:
 | the interrupt accounting | the record on disk was complete and correct |
 | notebook outputs | the capability had been deleted, so the question felt settled |
 | the failure taxonomy | seven categories, and nothing said which had been seen |
+| its own citation | the file was right there, on one machine |
 | the interrupt test | it exercised a real path, and passed |
 | `kill -INT` on a background job | the run it produced was clean and complete |
 
@@ -456,7 +475,7 @@ list's recurring entry.
 ## The honest reading
 
 This is not a list of things that went wrong on the way to a build that is now correct.
-It is 17 data points on how instruments fail, in a repository written by someone paying
+It is 18 data points on how instruments fail, in a repository written by someone paying
 attention specifically to that failure mode, with tests for it.
 
 The claim the session should make is not "we measured this carefully". It is: *every

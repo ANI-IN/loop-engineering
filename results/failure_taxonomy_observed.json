@@ -1,0 +1,46 @@
+{
+  "measured_on": "2026-09-08",
+  "n_cells": 2,
+  "n_items": 48,
+  "n_visible_failures": 5,
+  "covers": {
+    "role": [
+      "agent"
+    ],
+    "level": [
+      "L0"
+    ],
+    "mode": [
+      "loop",
+      "one_shot"
+    ]
+  },
+  "outcomes": {
+    "correct": 12,
+    "silent_error": 28,
+    "unearned_correct": 3,
+    "visible_failure": 5
+  },
+  "kinds": {
+    "execution_error": 1,
+    "timeout": 0,
+    "empty_result": 0,
+    "no_attempts": 0,
+    "shape_mismatch": 4,
+    "null_result": 0,
+    "model_call_failed": 0,
+    "unclassified": 0
+  },
+  "never_observed": [
+    "empty_result",
+    "model_call_failed",
+    "no_attempts",
+    "null_result",
+    "timeout"
+  ],
+  "note": "Smoke profile, agent role, L0 only, one-shot and loop, 24 items x 2 cells, run 2026-09-08. NOT a session measurement: no L3 arm, no reference role. Regenerate at the dress rehearsal, when both levels and both roles run.",
+  "cell_keys": [
+    "agent_L0_loop_r0",
+    "agent_L0_one_shot_r0"
+  ]
+}
