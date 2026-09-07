@@ -29,7 +29,18 @@ def _arm(name, **bands):
 
 
 def texts(figure):
-    return " ".join(t.get_text() for t in figure.findobj(match=lambda o: hasattr(o, "get_text")))
+    """Every string on the figure, with whitespace collapsed.
+
+    Collapsed because the caption wrapper inserts newlines at the column width, so a
+    phrase can be split mid-assertion — "measured no\nvariance" is the same content
+    and a different string. These tests are about what the figure SAYS, and coupling
+    them to where the wrap happens to land makes them fail on a rewording that
+    changed nothing.
+    """
+    raw = " ".join(
+        t.get_text() for t in figure.findobj(match=lambda o: hasattr(o, "get_text"))
+    )
+    return " ".join(raw.split())
 
 
 # ---- every band is drawn, and none is derived -------------------------------
@@ -166,6 +177,11 @@ def test_the_matrix_says_which_error_bar_is_which():
     assert "Wilson interval" in drawn
     assert "RUN-TO-RUN spread" in drawn
     assert "invisible to the other" in drawn
+    # Absent and flat mean different things, and most readers will not distinguish
+    # them unless told: no bracket is "run once", a flat one is "measured no
+    # variance". Only one of those is a claim.
+    assert "NO bracket was run once" in drawn
+    assert "measured no variance" in drawn
 
 
 def test_the_matrix_refuses_a_significance_mark_on_the_row():

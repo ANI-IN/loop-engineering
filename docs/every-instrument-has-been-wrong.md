@@ -8,8 +8,9 @@ apart, and that you cannot tell by looking. It makes that argument about a text-
 agent. The argument is stronger made about the repository, because here the failures are
 documented, dated, and were all found the same way.
 
-**Ten instruments have been caught measuring something other than what they claimed,
-and one plan has.** Not one was found by reading code. All of them were green.
+**Eleven instruments have been caught measuring something other than what they
+claimed, and one plan has.** Not one was found by reading code. All of them were
+green.
 
 ## 1. The lint rule that scanned nothing
 
@@ -165,6 +166,18 @@ The function already clamped the interval into `[0, 1]`, with a comment explaini
 that the clamp catches float error rather than a real excursion. It was right about
 the direction it checked and silent about the other one.
 
+## 11. DIAL, broken for any cell that had data
+
+Found by the boundary tests written for entry 10, not by the entry-10 fix.
+
+Removing the stored-measurement path left a dead branch in the bar renderer reading
+`row["reference"]` — a key nothing sets any more. So `dial_chart` raised `KeyError`
+for **any cell with a value**, and every existing chart test used empty or in-progress
+cells, which return before reaching it.
+
+The chart the session has had longest was the one nothing had drawn with real numbers
+in it.
+
 ## What they have in common
 
 **None was found by reading code. Seven were found by running the thing and looking at
@@ -186,6 +199,7 @@ Each had a plausible reason to look correct:
 | the termination enum | every name in it was accurate for the cases it had |
 | the lint rule, again | it was refusing something that looked exactly like the bug |
 | the Wilson interval | it clamped the direction it had thought about |
+| DIAL | every test of it used cells with no data |
 
 The last two are the most uncomfortable, because **both were correct when written.** They
 did not decay through neglect. They decayed because a category was added somewhere else,
@@ -201,6 +215,8 @@ The fix is never the interesting part. What changed is what makes the *next* one
 - every dict keyed on `Outcome` must be total, checked by walking the AST of `src/`
 - the grep that bans band-subtraction has its own test proving it matches the two lines
   it was written for
+- every site that subtracts an interval endpoint is exercised at 0 and at n, because
+  the arithmetic was wrong only there and only when subtracted
 - a warehouse that cannot represent the declared vocabulary is refused, with the fix
   named, rather than silently used
 

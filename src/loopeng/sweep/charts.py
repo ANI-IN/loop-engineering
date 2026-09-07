@@ -128,8 +128,6 @@ VALUE_SIZE = 9.0            # layout: printed value point size
 NOTE_SIZE = 8.2             # layout: warning line point size
 
 BAR_HEIGHT = 0.62           # layout: bar thickness in row units
-HATCH = "///"               # layout: the stored-measurement fill
-HATCH_WIDTH = 1.8           # layout: hatched outline width
 PENDING_ALPHA = 0.45        # layout: opacity while a cell is still running
 VALUE_COLUMN = 1.02         # layout: printed value, in axes-x fractions past the plot
 NOTE_COLUMN = 0.01          # layout: unmeasured-row note, just inside the plot
@@ -258,14 +256,12 @@ def _bar_figure(title: str, caption: str, rows: list[dict], unit: str):
                     transform=ax.get_yaxis_transform(), va="center", ha="left",
                     fontsize=VALUE_SIZE, color=MUTED, style="italic")
             continue
-        if row["reference"]:
-            # Hatched outline, never a solid bar: a stored measurement must not look
-            # like one this session produced. Same rule the README renderer follows.
-            ax.barh(position, row["value"], color="none", edgecolor=colour,
-                    linewidth=HATCH_WIDTH, hatch=HATCH, height=BAR_HEIGHT)
-        else:
-            ax.barh(position, row["value"], color=colour, height=BAR_HEIGHT,
-                    alpha=PENDING_ALPHA if row["pending"] else 1.0)
+        # There is no stored-cell branch here any more. It survived the removal of
+        # the stored-measurement path as dead code reading a key nothing sets — so
+        # `dial_chart` raised KeyError for any cell that HAD a value, and every
+        # existing chart test used empty or in-progress cells, which return above.
+        ax.barh(position, row["value"], color=colour, height=BAR_HEIGHT,
+                alpha=PENDING_ALPHA if row["pending"] else 1.0)
         if row["lo"] is not None:
             ax.errorbar(row["value"], position,
                         xerr=[[row["value"] - row["lo"]], [row["hi"] - row["value"]]],

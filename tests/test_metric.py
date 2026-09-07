@@ -133,3 +133,64 @@ def test_error_bar_arms_are_never_negative():
             metric = Metric.from_counts(successes, n)
             assert metric.value - metric.ci_low >= 0
             assert metric.ci_high - metric.value >= 0
+
+
+# ---- every consumer that subtracts, exercised at the boundary ---------------
+#
+# The Wilson defect was dormant because nothing subtracted until a chart did. Four
+# sites subtract, and three of them predate the chart that found it:
+#
+#   sweep/charts.py  _bar_figure   DIAL and COST, from a cell's rate interval
+#   sweep/charts.py  delta_chart   the paired difference
+#   sweep/charts.py  abstention    precision at each operating point
+#   sweep/charts.py  trap_matrix   accuracy per cell
+#
+# A cell with a silent-error rate of exactly 0% is ordinary — the frontier arm scored
+# 60/60 with zero silent errors — so DIAL would have refused to draw the very arm the
+# session compares against. These pin the property at the point of use rather than
+# only in the metric.
+
+
+def _cell(key, successes, n):
+    metric = Metric.from_counts(successes, n)
+    return {
+        "key": key, "label": key, "role": "agent", "level": "L3", "mode": "loop",
+        "replicate": 0, "complete": True, "rate_value": metric.value,
+        "rate_ci_low": metric.ci_low, "rate_ci_high": metric.ci_high,
+        "rate_n": n, "silent_error_rate": metric.render(),
+        "cost_usd": {"value": 0.01, "source": "estimated"}, "tokens": {},
+    }
+
+
+@pytest.mark.parametrize("successes,n", [(0, 60), (60, 60), (0, 1), (1, 1)])
+def test_the_dial_chart_draws_a_boundary_rate(successes, n):
+    """A cell where nothing was silently wrong, or everything was. Both are ordinary
+    outcomes and both sit on the boundary the interval arithmetic got wrong."""
+    from loopeng.sweep.charts import dial_chart
+
+    assert dial_chart([_cell("k", successes, n)]) is not None
+
+
+@pytest.mark.parametrize("precision", [0.0, 1.0])
+def test_the_abstention_chart_draws_a_boundary_precision(precision):
+    """At a high threshold an arm answers few questions and gets all of them right.
+    Precision of exactly 1.0 is the expected shape of that curve's right-hand end."""
+    from loopeng.sweep.charts import abstention_chart
+
+    metric = Metric.from_counts(int(precision * 10), 10)
+    point = {
+        "threshold": 0.5, "n_total": 10, "n_answered": 10,
+        "coverage_value": 1.0, "precision_value": metric.value,
+        "precision_ci_low": metric.ci_low, "precision_ci_high": metric.ci_high,
+    }
+    assert abstention_chart([point]) is not None
+
+
+@pytest.mark.parametrize("successes,n", [(0, 60), (60, 60)])
+def test_the_trap_matrix_draws_a_boundary_cell(successes, n):
+    """The cell that found the bug: the frontier model scored 60/60 twice."""
+    from loopeng.sweep.charts import trap_matrix_chart
+
+    assert trap_matrix_chart(
+        [{"model": "m", "level": "L3", "correct": successes, "n": n}]
+    ) is not None

@@ -354,7 +354,9 @@ TRAP_TWO_ERRORS_NOTE = (
     "the observed RUN-TO-RUN spread across repeat runs of the same arm on the same "
     "items. One is invisible to the other: a Wilson interval on a single run says "
     "nothing about whether a second run would land elsewhere, and the cheap L3 arm "
-    "moved by six items across five runs. A cell with no bracket was run once."
+    "moved by six items across five runs. A cell with NO bracket was run once — that "
+    "is different from a flat bracket, which would claim we ran it repeatedly and "
+    "measured no variance."
 )
 
 TRAP_NO_STAR_NOTE = (
