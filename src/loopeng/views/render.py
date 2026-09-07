@@ -48,10 +48,21 @@ from loopeng.views.chrome import NOT_MEASURED
 PENDING, LANDED = "·", "▪"
 
 # Non-emoji, deliberately. See the module docstring.
+#
+# TOTAL over `Outcome`, and a test enforces it. The lookup below is a bare `[]`, so a
+# missing entry is a KeyError raised while the reveal grid is on a projector — which
+# is louder than a silent default and worse than either. Two outcomes were added after
+# this map was written and neither was here; the test is what would have caught it.
 OUTCOME_LABELS = {
     Outcome.CORRECT: "correct",
     Outcome.SILENT_ERROR: "**SILENTLY WRONG**",
     Outcome.VISIBLE_FAILURE: "visible failure",
+    # Right answer, and the model could not have derived it. Named on the grid rather
+    # than shown as plain "correct", because the whole point of the category is that
+    # a reader cannot otherwise tell it apart from knowledge.
+    Outcome.UNEARNED_CORRECT: "**right, but could not have known**",
+    # Declined, in SQL, by naming the input it was not given. Not a failure.
+    Outcome.SIGNALLED_MISSING_INFO: "asked for what was missing",
 }
 
 WITHHELD = "_Scores are already computed. They are withheld, not deferred._"

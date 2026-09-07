@@ -383,3 +383,83 @@ def test_the_agent_view_builds_when_the_qr_is_absent(warehouse, tmp_path, monkey
     app = agent.build_agent_app(warehouse, tmp_path / "q.duckdb",
                                 share_url="https://example.gradio.live")
     assert app is not None
+
+
+def test_every_outcome_has_a_reveal_label():
+    """The grid looks it up with a bare `[]`, so a missing entry is a KeyError raised
+    while the reveal is on a projector.
+
+    Two outcomes were added after this map was written and neither was in it. The
+    grid would have crashed mid-reveal on the first currency item — louder than a
+    silent default, and worse than either."""
+    from loopeng.agent.classify import Outcome
+    from loopeng.views import render
+
+    assert set(render.OUTCOME_LABELS) == set(Outcome), (
+        "unlabelled outcomes: "
+        f"{sorted(str(o) for o in set(Outcome) - set(render.OUTCOME_LABELS))}"
+    )
+
+
+def test_no_dict_keyed_on_outcome_is_partial():
+    """The general form, because two partial maps have now been found by hand.
+
+    Walks every module under src/ for a dict literal whose keys are all `Outcome.X`
+    attributes, and asserts each one covers the whole enum. A map keyed on an enum is
+    a promise to handle every member; a partial one is a branch nobody wrote, and it
+    surfaces either as a KeyError on stage or as a category quietly dropped.
+    """
+    import ast
+    import pathlib
+
+    from loopeng.agent.classify import Outcome
+
+    members = {member.name for member in Outcome}
+    root = pathlib.Path(__file__).resolve().parent.parent / "src" / "loopeng"
+    partial = []
+
+    for path in root.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Dict) or not node.keys:
+                continue
+            names = set()
+            for key in node.keys:
+                if (isinstance(key, ast.Attribute)
+                        and isinstance(key.value, ast.Name)
+                        and key.value.id == "Outcome"):
+                    names.add(key.attr)
+                else:
+                    names = set()
+                    break
+            if names and names != members:
+                partial.append(
+                    f"{path.relative_to(root)}:{node.lineno} misses "
+                    f"{sorted(members - names)}"
+                )
+
+    assert not partial, f"partial maps over Outcome: {partial}"
+
+
+def test_the_partial_map_detector_would_have_caught_the_bug():
+    """A walker that silently finds nothing makes the test above vacuous and green,
+    which is the failure mode this repository is about."""
+    import ast
+
+    from loopeng.agent.classify import Outcome
+
+    source = (
+        "LABELS = {\n"
+        "    Outcome.CORRECT: 'correct',\n"
+        "    Outcome.SILENT_ERROR: 'wrong',\n"
+        "}\n"
+    )
+    found = [
+        node for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Dict) and node.keys
+        and all(isinstance(k, ast.Attribute) and getattr(k.value, "id", None) == "Outcome"
+                for k in node.keys)
+    ]
+    assert len(found) == 1
+    names = {key.attr for key in found[0].keys}
+    assert names != {member.name for member in Outcome}, "the detector must see a gap"

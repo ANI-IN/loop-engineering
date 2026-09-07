@@ -12,6 +12,7 @@ data lands, and findings about the build itself that no module is the right home
 |---|---|
 | [Five guards on one capability is a tell](guards-are-a-tell.md) | why the stored-measurement render path was deleted rather than defended, and what it cost |
 | [Our own instrument punished a model for being right](instrument-ranked-honesty-backwards.md) | the classifier ranked a model's honest refusal below a confabulation, silently, with every test green |
+| [Every instrument in this build has been wrong at least once](every-instrument-has-been-wrong.md) | four of them, all green at the time, none found by reading code |
 
 ## Still owed
 
