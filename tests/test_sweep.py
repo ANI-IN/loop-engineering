@@ -194,8 +194,8 @@ def test_the_shipped_charts_are_pinned_and_tier_is_not_among_them():
 
     builders = [n for n in dir(charts) if n.endswith("_chart")]
     assert sorted(builders) == [
-        "abstention_chart", "cost_chart", "delta_chart", "dial_chart",
-        "outcome_shift_chart",
+        "abstention_chart", "cost_chart", "cost_per_correct_chart", "delta_chart",
+        "dial_chart", "outcome_shift_chart", "trap_matrix_chart",
     ]
     assert "tier_chart" not in builders
 
@@ -235,7 +235,8 @@ def test_charts_write_from_a_cold_start(tmp_path):
     written = write_charts([summarise_cell(Cell("agent", "L0", "loop"), [],
                                            complete=False, seconds=0.0)], tmp_path / "c")
     assert [p.name for p in written] == [
-        "outcome_shift.png", "dial.png", "cost.png", "delta.png", "abstention.png",
+        "outcome_shift.png", "trap_matrix.png", "cost_per_correct.png",
+        "dial.png", "cost.png", "delta.png", "abstention.png",
     ]
     # PNG's magic bytes. A file that exists and is not an image is the same failure as
     # a chart that silently did not render.

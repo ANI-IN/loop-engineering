@@ -204,6 +204,29 @@ def _strip_allowlisted(text: str) -> tuple[str, int]:
     return text, hits
 
 
+def _format_spec_nodes(tree: ast.AST) -> set[int]:
+    """`id()` of every Constant inside an f-string's FORMAT SPEC.
+
+    Out of scope, and this is a fourth thing the rule got wrong. `f"{tick:.0%}"`
+    parses as a FormattedValue whose format_spec is a JoinedStr containing the
+    constant `".0%"` — which the percentage pattern matches. So the rule refused a
+    derived axis label while the whole point of the fix was to derive it.
+
+    A format spec is a formatting instruction, not a display string. It cannot carry
+    a measurement: `.0%` says "render this as a percentage with no decimals" and the
+    value it renders is the interpolated one, which is not a Constant and was always
+    allowed. Excluding it narrows the rule to what it was written for.
+    """
+    ids = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FormattedValue) or node.format_spec is None:
+            continue
+        for child in ast.walk(node.format_spec):
+            if isinstance(child, ast.Constant):
+                ids.add(id(child))
+    return ids
+
+
 def _docstring_nodes(tree: ast.AST) -> set[int]:
     """`id()` of every Constant that is a docstring.
 
@@ -258,7 +281,7 @@ def scan(path: Path) -> tuple[list[tuple[int, str]], int, int]:
     source = path.read_text(encoding="utf-8")
     tree = ast.parse(source, filename=str(path))
     exempt = _exempt_lines(source)
-    docstrings = _docstring_nodes(tree)
+    skip = _docstring_nodes(tree) | _format_spec_nodes(tree)
 
     violations: list[tuple[int, str]] = []
     n_layout = 0
@@ -290,7 +313,7 @@ def scan(path: Path) -> tuple[list[tuple[int, str]], int, int]:
         # derived number and always was allowed.
         if not isinstance(node.value, str):
             continue
-        if id(node) in docstrings:
+        if id(node) in skip:
             continue
         if node.lineno in exempt:
             n_layout += 1

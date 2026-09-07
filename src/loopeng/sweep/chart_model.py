@@ -333,3 +333,61 @@ def outcome_shift_rows(arms: list[dict]) -> list[dict]:
             "counts": [bands.get(band, 0) for band in SHIFT_BAND_ORDER],
         })
     return rows
+
+
+# ---------------------------------------------------------------------------
+# THESIS — the trap matrix. Four cells, read on the diagonal.
+# ---------------------------------------------------------------------------
+
+TRAP_CAPTION = (
+    "Read the DIAGONAL. The cheap model WITH the rules beats the frontier model "
+    "WITHOUT them, on the same items, at a fraction of the cost. Columns are the "
+    "trap; rows are the model upgrade. Every bar is one live run over the held-out "
+    "set."
+)
+
+# Most people in a room have seen exactly one kind of error bar, so the figure says
+# which is which rather than assuming the distinction is read off the styling.
+TRAP_TWO_ERRORS_NOTE = (
+    "TWO different uncertainties, drawn differently. The thin capped line is the "
+    "Wilson interval — sampling error, what this n can resolve. The open bracket is "
+    "the observed RUN-TO-RUN spread across repeat runs of the same arm on the same "
+    "items. One is invisible to the other: a Wilson interval on a single run says "
+    "nothing about whether a second run would land elsewhere, and the cheap L3 arm "
+    "moved by six items across five runs. A cell with no bracket was run once."
+)
+
+TRAP_NO_STAR_NOTE = (
+    "No significance marks on the ROW comparison: rows are cross-model, both models "
+    "carry run-to-run variance, and `loopeng.sweep.diff` refuses a p-value across "
+    "that in code. The paired test belongs to the COLUMNS and is on the DELTA chart."
+)
+
+
+def trap_matrix_rows(cells: list[dict]) -> list[dict]:
+    """Order the four cells so the grid reads model-major, level-minor.
+
+    `cells` are dicts of model, level, correct, n and an optional (lo, hi) spread.
+    Sorted explicitly: file order is not a contract, and a reordered input must not
+    silently produce a different picture of the same data.
+    """
+    return sorted(cells, key=lambda c: (c["model"], c["level"]))
+
+
+# ---------------------------------------------------------------------------
+# COST PER CORRECT ANSWER
+# ---------------------------------------------------------------------------
+
+COST_PER_CORRECT_CAPTION = (
+    "Cost per CORRECT answer, not per call. Failed calls are included — they billed. "
+    "Every figure is estimated: tokens are measured, dollars are those tokens times a "
+    "hand-entered price table, and the est. prefix never comes off. An arm that "
+    "answered nothing correctly has an undefined cost per correct answer, not an "
+    "infinite one, and renders as text rather than as a bar."
+)
+
+COST_PER_CORRECT_NOTE = (
+    "The two WITHHELD bars are what make this an argument rather than a price list. "
+    "Buying a better model without supplying the rules is the most expensive way to "
+    "be wrong on this chart."
+)

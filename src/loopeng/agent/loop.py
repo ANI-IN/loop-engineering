@@ -57,6 +57,7 @@ import structlog
 from loopeng.prompts import render_prompt
 from loopeng.providers import complete, retry_after_seconds, triage_call_failure
 from loopeng.registry import spec_for
+from loopeng.sql_shape import declares_unbound_parameter
 from loopeng.usage import CallUsage, UsageLedger
 from loopeng.warehouse.connect import QueryTimeout, run_sql
 
@@ -94,6 +95,21 @@ class TerminationReason(StrEnum):
     MAX_ATTEMPTS = "max_attempts"
     BUDGET = "budget"
     NO_PROGRESS = "no_progress"
+
+    # The model named an input it was not given rather than inventing one, in SQL,
+    # so the query cannot execute. That is a terminal state and it is not a failure.
+    #
+    # **It existed as a gap for the life of this enum, and the gap is the same one
+    # the classifier had.** A declining run fell through to `max_attempts`, which is
+    # the default terminal state — so on the reference arm at L0 the distribution read
+    # `{success: 41, max_attempts: 19}`, and those nineteen were exactly the
+    # nineteen abstentions. The vocabulary that names outcomes could not distinguish
+    # RAN OUT OF ROAD from REFUSED TO GUESS, which is the precise distinction this
+    # whole project is about.
+    #
+    # Retrying is pointless and it is not a budget guard: the missing input is missing
+    # by construction at this prompt level, and another attempt cannot supply it.
+    DECLINED = "declined"
 
     # The non-retryable branches. Separate names rather than one, because they are
     # different problems with different fixes and a run labelled `credential` when the
@@ -317,6 +333,13 @@ def run_question(
 
         if error is None:
             termination = TerminationReason.SUCCESS
+            break
+
+        # Asked before the failure is treated as something to retry. A query naming
+        # the input it was not given did not fail; it declined, and another attempt
+        # cannot supply what the prompt withheld.
+        if declares_unbound_parameter(sql):
+            termination = TerminationReason.DECLINED
             break
 
         # No progress: the same query twice, or the same complaint twice. Either way

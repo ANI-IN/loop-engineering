@@ -28,7 +28,7 @@ Source = Literal["measured", "estimated"]
 
 
 def _wilson(p: float, n: int) -> tuple[float, float]:
-    """Wilson score interval for a proportion.
+    """Wilson score interval for a proportion, guaranteed to contain the proportion.
 
     The textbook normal approximation p ± z·sqrt(p(1-p)/n) is wrong in the regime
     this workshop actually runs in: at n=10 with p=0 it returns the degenerate
@@ -40,10 +40,22 @@ def _wilson(p: float, n: int) -> tuple[float, float]:
     denominator = 1 + z2 / n
     centre = (p + z2 / (2 * n)) / denominator
     half = (Z_95 * math.sqrt(p * (1 - p) / n + z2 / (4 * n**2))) / denominator
-    # At p=0 and p=1 the endpoints land exactly on the boundary analytically, so
-    # the clamp is catching float error rather than a real excursion — but the
-    # test asserting [0, 1] runs on floats, not on the algebra.
-    return max(0.0, centre - half), min(1.0, centre + half)
+    # Two clamps, and the second one was missing for the life of this function.
+    #
+    # The first keeps the interval inside [0, 1]: at p=0 and p=1 the endpoints land
+    # on the boundary analytically, so this catches float error rather than a real
+    # excursion — but the test asserting [0, 1] runs on floats, not on the algebra.
+    #
+    # The second keeps the interval around the VALUE, and its absence was a real
+    # defect. At 60/60 the arithmetic returned ci_high = 0.9999999999999998, two
+    # ulps below the value of 1.0 — so the interval excluded its own point estimate.
+    # Invisible in rendering, because both round to the same percentage. Fatal to any
+    # consumer computing `ci_high - value`, which is the standard error-bar idiom:
+    # matplotlib raises `'yerr' must not contain negative values`, and the first
+    # chart to draw an error bar on a boundary observation was the first thing to
+    # find out.
+    low, high = max(0.0, centre - half), min(1.0, centre + half)
+    return min(low, p), max(high, p)
 
 
 def _render_time(moment: datetime) -> str:

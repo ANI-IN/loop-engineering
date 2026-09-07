@@ -127,11 +127,55 @@ def test_every_termination_reason_is_reachable():
       bad_request  test_a_malformed_request_is_not_a_credential_problem
       model_unavailable
                    test_a_model_that_does_not_resolve_stops_after_one_call
+      declined     test_a_query_naming_a_missing_input_terminates_as_declined
     """
     assert {r.value for r in TerminationReason} == {
         "success", "max_attempts", "budget", "no_progress",
-        "credential", "bad_request", "model_unavailable",
+        "credential", "bad_request", "model_unavailable", "declined",
     }
+
+
+def test_a_query_naming_a_missing_input_terminates_as_declined(warehouse):
+    """The vocabulary that names outcomes could not tell RAN OUT OF ROAD from
+    REFUSED TO GUESS, which is the precise distinction this project is about.
+
+    Measured on the reference arm at L0: the termination distribution read
+    `{success: 41, max_attempts: 19}`, and those nineteen were exactly the nineteen
+    abstentions. A declining run fell through to `max_attempts` because that is the
+    default terminal state, so the right count sat under the wrong name.
+
+    This is the same failure the classifier had — scoring a refusal as a crash — found
+    again one layer down, in the enum rather than in the judge.
+    """
+    sql = "SELECT SUM(o.amount_minor * $eur_to_usd) FROM orders o"
+    client = FakeClient([sql])
+    run = run_question("q", warehouse=warehouse, client=client, max_attempts=3)
+
+    assert run.termination is TerminationReason.DECLINED
+    assert client.calls == 1, (
+        "another attempt cannot supply what the prompt withheld, so retrying is "
+        "spend with a guaranteed zero return"
+    )
+
+
+def test_declining_and_the_classifier_agree(warehouse):
+    """Two modules, one distinction, and they must not drift apart.
+
+    `TerminationReason.DECLINED` and `Outcome.SIGNALLED_MISSING_INFO` are the same
+    fact seen from the loop and from the judge. They are computed independently — the
+    loop cannot import the classifier — so the shared predicate lives in
+    `loopeng.sql_shape` and this asserts the two answers coincide.
+    """
+    from loopeng.agent.classify import Outcome, judge
+    from loopeng.gold.build import build_gold
+
+    item = build_gold(warehouse)[0]
+    sql = "SELECT SUM(o.amount_minor * $rate) FROM orders o"
+    run = run_question(item.question, warehouse=warehouse, item_id=item.item_id,
+                       client=FakeClient([sql]), max_attempts=1)
+
+    assert run.termination is TerminationReason.DECLINED
+    assert judge(run, item).outcome is Outcome.SIGNALLED_MISSING_INFO
 
 
 # ---- Level 1 catches syntactic failure, NOT semantic -------------------------

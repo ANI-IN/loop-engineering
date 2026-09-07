@@ -8,7 +8,7 @@ apart, and that you cannot tell by looking. It makes that argument about a text-
 agent. The argument is stronger made about the repository, because here the failures are
 documented, dated, and were all found the same way.
 
-**Seven instruments have been caught measuring something other than what they claimed,
+**Ten instruments have been caught measuring something other than what they claimed,
 and one plan has.** Not one was found by reading code. All of them were green.
 
 ## 1. The lint rule that scanned nothing
@@ -124,6 +124,47 @@ would have rendered correctly. See [the re-spec](charts-respec.md).
 something.** LangSmith was moved ahead of the charts because it was the part that could
 not be validated by a test result; what it actually validated was the plan.
 
+## 8. The termination vocabulary, failing the same distinction as the classifier
+
+`TerminationReason` names why a loop stopped. It had no name for a run that
+*declined*, so a model naming the input it had not been given fell through to
+`max_attempts` — the default terminal state.
+
+On the reference arm at L0 the distribution read `{success: 41, max_attempts: 19}`,
+and those nineteen were exactly the nineteen abstentions. **The vocabulary that names
+outcomes could not distinguish RAN OUT OF ROAD from REFUSED TO GUESS**, which is the
+precise distinction the entire project is about.
+
+This is the same failure as entry 2, one layer down: the classifier scored a refusal
+as a crash, and the enum the classifier reads from could not have said otherwise. That
+it happened twice, in two modules, says the distinction is genuinely hard to hold —
+not that someone was careless once.
+
+## 9. The lint rule, reading a format spec as a display string
+
+Fourth time for this rule. `f"{tick:.0%}"` parses as a `FormattedValue` whose
+`format_spec` is a `JoinedStr` holding the constant `".0%"`, which the percentage
+pattern matches — so the rule **refused a derived axis label while the entire purpose
+of deriving it was to satisfy this rule.**
+
+A format spec is a formatting instruction. It says how to render a value; the value is
+interpolated, which was never a Constant and never in scope.
+
+## 10. The Wilson interval excluding its own point estimate
+
+At 60/60 the arithmetic returned `ci_high = 0.9999999999999998` — two ulps below a
+value of `1.0`. The interval did not contain the proportion it was an interval for.
+
+Invisible everywhere it had ever been used: both round to the same percentage, so no
+rendered string could show it. Fatal the first time something computed
+`ci_high - value`, which is the standard error-bar idiom — matplotlib refuses a
+negative error bar, and **the first chart to draw an interval on a boundary
+observation was the first thing to find out.**
+
+The function already clamped the interval into `[0, 1]`, with a comment explaining
+that the clamp catches float error rather than a real excursion. It was right about
+the direction it checked and silent about the other one.
+
 ## What they have in common
 
 **None was found by reading code. Seven were found by running the thing and looking at
@@ -142,6 +183,9 @@ Each had a plausible reason to look correct:
 | the warehouse factory | its docstring argued, correctly, for the check it did have |
 | the LangSmith client | five other call sites worked, so the key was obviously fine |
 | the chart plan | every chart would have rendered correctly |
+| the termination enum | every name in it was accurate for the cases it had |
+| the lint rule, again | it was refusing something that looked exactly like the bug |
+| the Wilson interval | it clamped the direction it had thought about |
 
 The last two are the most uncomfortable, because **both were correct when written.** They
 did not decay through neglect. They decayed because a category was added somewhere else,

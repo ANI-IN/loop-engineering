@@ -133,3 +133,101 @@ def test_labels_clear_the_projector_floor():
 @pytest.mark.parametrize("arms", [[], [_arm("x", correct=1)]])
 def test_rendering_never_raises_on_the_shapes_it_will_meet(arms):
     assert outcome_shift_chart(arms) is not None
+
+
+# ---- THESIS: the trap matrix -------------------------------------------------
+
+
+def _cell(model, level, correct, n=60, spread=None):
+    cell = {"model": model, "level": level, "correct": correct, "n": n}
+    if spread:
+        cell["spread"] = spread
+    return cell
+
+
+def test_the_matrix_draws_all_four_cells():
+    from loopeng.sweep.charts import trap_matrix_chart
+
+    figure = trap_matrix_chart([
+        _cell("luna", "L0", 7), _cell("luna", "L3", 52),
+        _cell("astra", "L0", 9), _cell("astra", "L3", 60),
+    ])
+    drawn = texts(figure)
+    for label in ("7/60", "52/60", "9/60", "60/60"):
+        assert label in drawn
+    assert len(figure.axes[0].patches) == 4
+
+
+def test_the_matrix_says_which_error_bar_is_which():
+    """Most people in a room have seen exactly one kind of error bar. A Wilson
+    interval and a run-to-run spread mean different things and one is invisible to
+    the other, so the figure names them rather than relying on styling."""
+    drawn = texts(trap_matrix_chart_fixture())
+    assert "Wilson interval" in drawn
+    assert "RUN-TO-RUN spread" in drawn
+    assert "invisible to the other" in drawn
+
+
+def test_the_matrix_refuses_a_significance_mark_on_the_row():
+    """Rows are cross-model. `diff.py` refuses a p-value across that in code, and the
+    caption says where the paired test actually lives."""
+    drawn = texts(trap_matrix_chart_fixture())
+    assert "No significance marks on the ROW" in drawn
+    assert "DELTA chart" in drawn
+
+
+def test_a_cell_run_once_gets_no_spread_bracket():
+    """A zero-height bracket would read as "we measured no variance", which is a
+    claim. A cell run once has not measured it at all."""
+    from loopeng.sweep.charts import trap_matrix_chart
+
+    one_run = trap_matrix_chart([_cell("m", "L3", 52)])
+    repeated = trap_matrix_chart([_cell("m", "L3", 52, spread=(46, 52))])
+    assert len(repeated.axes[0].lines) > len(one_run.axes[0].lines)
+
+
+def trap_matrix_chart_fixture():
+    from loopeng.sweep.charts import trap_matrix_chart
+
+    return trap_matrix_chart([_cell("luna", "L3", 52, spread=(46, 52))])
+
+
+def test_an_empty_matrix_renders_not_yet_measured():
+    from loopeng.sweep.charts import trap_matrix_chart
+
+    assert "not yet measured" in texts(trap_matrix_chart([])).lower()
+
+
+# ---- COST PER CORRECT --------------------------------------------------------
+
+
+def _arm_cost(label, level, per_correct):
+    return {"label": label, "level": level,
+            "cost_per_correct_usd": ({"value": per_correct, "source": "estimated"}
+                                     if per_correct else None)}
+
+
+def test_cost_per_correct_keeps_the_estimated_prefix():
+    from loopeng.sweep.charts import cost_per_correct_chart
+
+    drawn = texts(cost_per_correct_chart([_arm_cost("cheap", "L3", 0.00034)]))
+    assert "est. $" in drawn
+    assert "estimated" in drawn.lower()
+
+
+def test_an_arm_with_nothing_correct_says_so_rather_than_drawing_a_bar():
+    """Zero correct at any price is an undefined cost, not an unbounded one, and a
+    bar running off a log axis would state a magnitude nobody measured."""
+    from loopeng.sweep.charts import cost_per_correct_chart
+
+    figure = cost_per_correct_chart([_arm_cost("dead", "L3", None)])
+    assert "undefined" in texts(figure)
+    assert not figure.axes[0].patches
+
+
+def test_the_withheld_bars_are_what_make_it_an_argument():
+    from loopeng.sweep.charts import cost_per_correct_chart
+
+    drawn = texts(cost_per_correct_chart([_arm_cost("cheap", "L3", 0.0003)]))
+    assert "rather than a price list" in drawn
+    assert "most expensive way to be wrong" in drawn

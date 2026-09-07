@@ -52,13 +52,11 @@ import math
 from dataclasses import dataclass
 from enum import StrEnum
 
-import sqlglot
-from sqlglot import expressions as sqlglot_exp
-
 from loopeng.agent.loop import AgentRun
 from loopeng.gold.build import GoldItem
 from loopeng.gold.compare import rows_equal
 from loopeng.gold.patterns import RULES_REQUIRING_UNDISCLOSED_VALUES
+from loopeng.sql_shape import declares_unbound_parameter
 
 
 class Outcome(StrEnum):
@@ -165,37 +163,6 @@ def band_counts(outcomes) -> dict[str, int]:
     for outcome in outcomes:
         counts[band_of(outcome)] += 1
     return counts
-
-
-def _signals_missing_input(sql: str) -> bool:
-    r"""Does this query name a value it was never given, rather than inventing one?
-
-    A query carrying an unbound placeholder — `$eur_to_usd`, `:rate` — cannot execute,
-    and that is the point: the model has written down exactly which input it lacks
-    instead of guessing at it. DuckDB rejects it with "Values were not provided for
-    the following prepared statement parameters", which is how this first surfaced.
-
-    **Read off the PARSE TREE, not the error text and not a regex.** That is the same
-    lesson the verifiers teach, applied here: a regex for `\$\w+` matches inside a
-    string literal, so `SELECT '$notaparam'` would be scored as a principled
-    abstention. sqlglot puts placeholders in the tree and string contents outside it,
-    so the structural question is the answerable one.
-
-    Matching on the database's error message would be worse still — it would tie this
-    category to one engine's wording, and the category is about the model's behaviour
-    rather than about DuckDB's phrasing.
-    """
-    if not sql:
-        return False
-    try:
-        tree = sqlglot.parse_one(sql, read="duckdb")
-    except Exception:  # noqa: BLE001 - unparseable SQL is an ordinary execution failure
-        return False
-    if tree is None:
-        return False
-    return bool(
-        next(tree.find_all(sqlglot_exp.Placeholder, sqlglot_exp.Parameter), None)
-    )
 
 
 def _could_not_have_known(item: GoldItem, level: str) -> bool:
@@ -432,7 +399,7 @@ def judge(run: AgentRun, item: GoldItem) -> Judgement:
     if final.error is not None:
         # Asked BEFORE the error is classified as a crash. A query that names the input
         # it was not given did not fail; it declined, in the only vocabulary it had.
-        if _signals_missing_input(final.sql):
+        if declares_unbound_parameter(final.sql):
             return Judgement(**base, outcome=Outcome.SIGNALLED_MISSING_INFO)
         kind = (
             VisibleKind.TIMEOUT

@@ -64,11 +64,14 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt  # noqa: E402
 
+from loopeng.metric import Metric
 from loopeng.paired import PairedComparison  # noqa: E402
 from loopeng.sweep.chart_model import (
     ABSTENTION_CAPTION,
     ABSTENTION_LIVE_NOTE,
     COST_CAPTION,
+    COST_PER_CORRECT_CAPTION,
+    COST_PER_CORRECT_NOTE,
     DELTA_CAPTION,
     DIAL_CAPTION,
     NOT_MEASURED,
@@ -77,10 +80,14 @@ from loopeng.sweep.chart_model import (
     RULE_FREE_NOTE,
     SHIFT_BAND_LABELS,
     SHIFT_BAND_ORDER,
+    TRAP_CAPTION,
+    TRAP_NO_STAR_NOTE,
+    TRAP_TWO_ERRORS_NOTE,
     bar_rows,
     cache_note,
     outcome_shift_rows,  # noqa: E402
     role_colour,
+    trap_matrix_rows,
 )
 from loopeng.sweep.diff import (  # noqa: E402
     CROSS_MODEL_REFUSAL,
@@ -591,8 +598,163 @@ def outcome_shift_chart(arms: list[dict]):
     return fig
 
 
+# ---------------------------------------------------------------------------
+# THESIS — the trap matrix
+# ---------------------------------------------------------------------------
+
+TRAP_H_IN = 3.4             # layout: plot height, excluding the caption block
+TRAP_LEFT = 0.075           # layout: y-axis gutter — a percentage, not a cell label
+TRAP_RIGHT = 0.985          # layout
+TRAP_GROUP_GAP = 0.22       # layout: space between the two model groups
+TRAP_BAR_W = 0.34           # layout: bar width in category units
+TRAP_LABEL_SIZE = 14.0      # layout: axis labels — the projector floor
+TRAP_VALUE_SIZE = 13.0      # layout: the count printed above a bar
+TRAP_SPREAD_W = 0.11        # layout: half-width of the run-to-run bracket
+TRAP_SPREAD_LW = 2.2        # layout: bracket line width
+TRAP_WILSON_LW = 1.4        # layout: Wilson interval line width
+TRAP_AXIS_PAD = 1.16        # layout: headroom above the tallest bar plus its label
+TRAP_VALUE_LIFT = 0.035     # layout: value label sits just clear of the interval
+
+# Withheld is the muted one and given is the strong one, so the eye reads the
+# column difference before it reads anything else.
+TRAP_WITHHELD = "#b45309"   # layout
+TRAP_GIVEN = "#15803d"      # layout
+
+
+def trap_matrix_chart(cells: list[dict]):
+    """Four cells: two models by two prompt levels. The session's argument."""
+    rows = trap_matrix_rows(cells)
+    caption = TRAP_CAPTION
+    notes = [TRAP_TWO_ERRORS_NOTE, TRAP_NO_STAR_NOTE]
+
+    if not rows:
+        fig, ax = _frame("THESIS — the trap matrix", caption, body_h_in=MIN_BODY_H_IN,
+                         left=TRAP_LEFT, right=TRAP_RIGHT)
+        ax.text(MIDPOINT, MIDPOINT, NOT_MEASURED, ha="center", va="center",
+                color=MUTED, fontsize=LABEL_SIZE, transform=ax.transAxes)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        return fig
+
+    fig, ax = _frame("THESIS — the trap matrix: read the diagonal", caption,
+                     body_h_in=TRAP_H_IN, notes=notes,
+                     left=TRAP_LEFT, right=TRAP_RIGHT)
+
+    models = sorted({row["model"] for row in rows})
+    levels = sorted({row["level"] for row in rows})
+    by_cell = {(row["model"], row["level"]): row for row in rows}
+
+    ticks, labels = [], []
+    for index, model in enumerate(models):
+        base = index * (1 + TRAP_GROUP_GAP)
+        for offset, level in enumerate(levels):
+            cell = by_cell.get((model, level))
+            if cell is None:
+                continue
+            x = base + offset * TRAP_BAR_W
+            metric = Metric.from_counts(cell["correct"], cell["n"])
+            colour = TRAP_WITHHELD if level == levels[0] else TRAP_GIVEN
+            ax.bar(x, metric.value, width=TRAP_BAR_W, color=colour)
+
+            # Wilson: what this n can resolve.
+            ax.errorbar(x, metric.value,
+                        yerr=[[metric.value - metric.ci_low],
+                              [metric.ci_high - metric.value]],
+                        fmt="none", ecolor=INK, elinewidth=TRAP_WILSON_LW,
+                        capsize=CAP_SIZE)
+
+            # Run-to-run: an open bracket, drawn only where repeat runs exist. A cell
+            # with one run gets nothing rather than a zero-height bracket, which
+            # would read as "we measured no variance".
+            spread = cell.get("spread")
+            if spread:
+                lo, hi = (value / cell["n"] for value in spread)
+                for edge in (lo, hi):
+                    ax.plot([x - TRAP_SPREAD_W, x + TRAP_SPREAD_W], [edge, edge],
+                            color=WARNING, linewidth=TRAP_SPREAD_LW, solid_capstyle="butt")
+                ax.plot([x, x], [lo, hi], color=WARNING, linewidth=TRAP_SPREAD_LW)
+
+            # Just clear of the interval, not at a fixed height. A label parked at a
+            # constant offset from the axis floats away from short bars and collides
+            # with the top of tall ones.
+            top = max(metric.ci_high, (cell.get("spread") or (0, 0))[1] / cell["n"])
+            ax.text(x, top + TRAP_VALUE_LIFT,
+                    f"{cell['correct']}/{cell['n']}", ha="center", va="bottom",
+                    fontsize=TRAP_VALUE_SIZE, fontweight="bold", color=INK)
+            ticks.append(x)
+            labels.append(f"{model}\n{level}")
+
+    ax.set_xticks(ticks)
+    ax.set_xticklabels(labels, fontsize=TRAP_LABEL_SIZE, color=BODY)
+    ax.set_ylim(0, TRAP_AXIS_PAD)
+    ticks_y = [0, MIDPOINT, 1]
+    ax.set_yticks(ticks_y)
+    # Derived from the tick positions, not typed. The lint rule caught the literal
+    # form and it was right to: a percentage in a display string is exactly the shape
+    # a measured number wears, and an axis label is a rendered surface like any other.
+    ax.set_yticklabels([f"{tick:.0%}" for tick in ticks_y],
+                       fontsize=TRAP_LABEL_SIZE, color=MUTED)
+    ax.grid(axis="y", color=HAIRLINE, linewidth=GRID_WIDTH, alpha=GRID_ALPHA)
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# COST PER CORRECT ANSWER
+# ---------------------------------------------------------------------------
+
+CPC_ROW_H_IN = 0.62         # layout
+CPC_LEFT = 0.235            # layout: arm-label gutter
+CPC_RIGHT = 0.80            # layout: the printed dollar figure sits past the plot
+CPC_LABEL_SIZE = 14.0       # layout: the projector floor
+CPC_VALUE_SIZE = 12.0       # layout
+
+
+def cost_per_correct_chart(arms: list[dict]):
+    """Dollars per CORRECT answer, log-scaled because the spread is two orders."""
+    if not arms:
+        fig, ax = _frame("COST PER CORRECT ANSWER", COST_PER_CORRECT_CAPTION,
+                         body_h_in=MIN_BODY_H_IN, left=CPC_LEFT, right=CPC_RIGHT)
+        ax.text(MIDPOINT, MIDPOINT, NOT_MEASURED, ha="center", va="center",
+                color=MUTED, fontsize=LABEL_SIZE, transform=ax.transAxes)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        return fig
+
+    fig, ax = _frame("COST PER CORRECT ANSWER — estimated", COST_PER_CORRECT_CAPTION,
+                     body_h_in=len(arms) * CPC_ROW_H_IN,
+                     notes=[COST_PER_CORRECT_NOTE], left=CPC_LEFT, right=CPC_RIGHT)
+
+    ordered = sorted(arms, key=lambda a: (a.get("cost_per_correct_usd") or {}).get(
+        "value", float("inf")))
+    positions = range(len(ordered))
+    for index, arm in zip(positions, ordered, strict=True):
+        entry = arm.get("cost_per_correct_usd")
+        if not entry:
+            # Undefined, not infinite. Nothing correct at any price is a fact about
+            # the arm, and a bar running off the axis would state a magnitude.
+            ax.text(0, index, "  nothing correct — cost per correct is undefined",
+                    va="center", ha="left", fontsize=CPC_VALUE_SIZE, color=WARNING)
+            continue
+        value = entry["value"]
+        ax.barh(index, value, height=BAR_HEIGHT,
+                color=TRAP_GIVEN if arm.get("level") == "L3" else TRAP_WITHHELD)
+        ax.text(VALUE_COLUMN, index, f"est. ${value:.5f}", transform=ax.get_yaxis_transform(),
+                va="center", ha="left", fontsize=CPC_VALUE_SIZE, color=INK)
+
+    ax.set_yticks(list(positions))
+    ax.set_yticklabels([a["label"] for a in ordered], fontsize=CPC_LABEL_SIZE,
+                       color=BODY)
+    ax.invert_yaxis()
+    ax.set_xscale("log")
+    ax.set_xlabel("estimated USD per correct answer (log scale)", fontsize=NOTE_SIZE,
+                  color=MUTED)
+    ax.grid(axis="x", color=HAIRLINE, linewidth=GRID_WIDTH, alpha=GRID_ALPHA)
+    return fig
+
+
 def write_charts(cells: list[dict], directory: Path, *,
-                 comparisons=(), abstention_points=(), arms=()) -> list[Path]:
+                 comparisons=(), abstention_points=(), arms=(),
+                 trap_cells=()) -> list[Path]:
     """Every chart the supplied data supports.
 
     DELTA and ABSTENTION are written even when their inputs are empty: they render "not
@@ -604,6 +766,8 @@ def write_charts(cells: list[dict], directory: Path, *,
     written = []
     figures = (
         ("outcome_shift.png", outcome_shift_chart(list(arms))),
+        ("trap_matrix.png", trap_matrix_chart(list(trap_cells))),
+        ("cost_per_correct.png", cost_per_correct_chart(list(arms))),
         ("dial.png", dial_chart(cells)),
         ("cost.png", cost_chart(cells)),
         ("delta.png", delta_chart(list(comparisons))),

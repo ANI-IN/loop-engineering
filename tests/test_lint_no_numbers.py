@@ -513,3 +513,47 @@ def test_both_exemption_counts_are_printed(capsys):
     assert "marked `# layout`" in printed
     assert "method phrase(s) exempted by" in printed
     assert f"{len(METHOD_ALLOWLIST)} allowlist entries" in printed
+
+
+def test_a_format_spec_is_not_read_as_a_display_string():
+    """The fourth thing this rule got wrong, and it refused a correct fix.
+
+    `f"{tick:.0%}"` parses as a FormattedValue whose format_spec is a JoinedStr
+    holding the constant `".0%"`, which the percentage pattern matches. So the rule
+    rejected a DERIVED axis label — while the whole point of deriving it was to
+    satisfy this rule.
+
+    A format spec is a formatting instruction. It cannot carry a measurement: it says
+    how to render a value, and the value is interpolated, which was never a Constant
+    and never in scope.
+    """
+    import tempfile
+    from pathlib import Path
+
+    from tools.lint_no_numbers import scan
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "derived.py"
+        path.write_text(
+            "def labels(ticks):\n"
+            "    return [f'{tick:.0%}' for tick in ticks]\n",
+            encoding="utf-8",
+        )
+        violations, _layout, _method = scan(path)
+    assert violations == [], f"a derived percentage label was refused: {violations}"
+
+
+def test_a_percentage_typed_into_a_display_string_is_still_caught():
+    """The other half. Narrowing the rule must not switch it off — a literal
+    percentage in rendered text is the exact failure it exists for."""
+    import tempfile
+    from pathlib import Path
+
+    from tools.lint_no_numbers import scan
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "typed.py"
+        path.write_text('LABEL = "accuracy improved to 94.7%"\n', encoding="utf-8")
+        violations, _layout, _method = scan(path)
+    assert violations, "a typed percentage in a display string was not caught"
+    assert "percentage" in violations[0][1]

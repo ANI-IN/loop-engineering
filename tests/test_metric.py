@@ -98,3 +98,38 @@ def test_store_save_creates_parent_directories(tmp_path):
     store.put("a", Metric.from_counts(successes=1, n=2))
     store.save(tmp_path / "nested" / "deep" / "m.json")
     assert (tmp_path / "nested" / "deep" / "m.json").exists()
+
+
+def test_the_interval_always_contains_its_own_value():
+    """It did not, at the boundaries, and the failure was invisible until something
+    drew it.
+
+    At 60/60 the Wilson arithmetic returned ci_high = 0.9999999999999998 — two ulps
+    below a value of 1.0 — so the interval excluded its own point estimate. Both
+    round to the same percentage, so nothing that rendered a string could see it.
+    `ci_high - value` went negative, and matplotlib refuses a negative error bar, so
+    the first chart to draw one on a boundary observation was the first thing to
+    notice.
+    """
+    for n in (1, 8, 60, 137, 1000):
+        for successes in (0, 1, n - 1, n):
+            if not 0 <= successes <= n:
+                continue
+            metric = Metric.from_counts(successes, n)
+            assert metric.ci_low <= metric.value <= metric.ci_high, (
+                f"{successes}/{n}: interval "
+                f"[{metric.ci_low!r}, {metric.ci_high!r}] excludes {metric.value!r}"
+            )
+
+
+def test_error_bar_arms_are_never_negative():
+    """The consumer's form of the property above, written the way a chart writes it.
+
+    Asserting the ordering is not quite the same as asserting the subtraction, and it
+    is the subtraction that matplotlib rejects.
+    """
+    for n in (1, 12, 60, 500):
+        for successes in (0, n):
+            metric = Metric.from_counts(successes, n)
+            assert metric.value - metric.ci_low >= 0
+            assert metric.ci_high - metric.value >= 0
