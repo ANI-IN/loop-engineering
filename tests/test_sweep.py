@@ -182,16 +182,20 @@ def test_the_shipped_charts_are_pinned_and_tier_is_not_among_them():
     """TIER moved to Phase 4. Shipping it here would plot a finding that measurably
     did not reproduce.
 
-    DELTA and ABSTENTION are the two that arrived, and neither is a new figure so much
-    as a gap closed: DIAL and COST are per-cell absolute values, so nothing here showed
-    a difference at all; and ABSTENTION existed only in the README renderer, which reads
-    frozen data, so a cloner could not reproduce assets/abstention.png from their own run.
+    DELTA and ABSTENTION are gaps closed rather than new figures: DIAL and COST are
+    per-cell absolute values, so nothing showed a difference at all; and ABSTENTION
+    existed only in a renderer that read frozen data.
+
+    OUTCOME SHIFT is the headline visual and the one the session must not depend on
+    anything else for. It is pinned here so that adding a chart stays a decision
+    somebody makes rather than something that accumulates.
     """
     from loopeng.sweep import charts
 
     builders = [n for n in dir(charts) if n.endswith("_chart")]
     assert sorted(builders) == [
         "abstention_chart", "cost_chart", "delta_chart", "dial_chart",
+        "outcome_shift_chart",
     ]
     assert "tier_chart" not in builders
 
@@ -231,7 +235,7 @@ def test_charts_write_from_a_cold_start(tmp_path):
     written = write_charts([summarise_cell(Cell("agent", "L0", "loop"), [],
                                            complete=False, seconds=0.0)], tmp_path / "c")
     assert [p.name for p in written] == [
-        "dial.png", "cost.png", "delta.png", "abstention.png",
+        "outcome_shift.png", "dial.png", "cost.png", "delta.png", "abstention.png",
     ]
     # PNG's magic bytes. A file that exists and is not an image is the same failure as
     # a chart that silently did not render.

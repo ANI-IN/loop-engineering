@@ -257,3 +257,79 @@ def bar_rows(cells, *, metric: str) -> list[dict]:
             "note": note,
         })
     return rows
+
+
+# ---------------------------------------------------------------------------
+# OUTCOME SHIFT — the session's headline visual.
+#
+# It was specified as A vs C, and A vs C turned out to be a null: measured
+# 2026-09-07 on the 60 held-out items, condition A terminated `success` 60/60, so
+# retry had nothing to retry and B fired zero retries. C's verifiers rejected 2 of
+# 60. Three runs of A alone scored 46, 51 and 52 — the six-item "uplift" is inside
+# the arm's own run-to-run spread, and McNemar's p=0.031 is correct arithmetic over
+# a mechanism that never fired.
+#
+# **That is a finding rather than a disappointment, and it is the trap seen from the
+# other side.** Verification exists to catch rule violations. Supply the rules and
+# there are barely any violations left to catch. The loops have almost nothing to do
+# at L3, which is exactly what a 73-point trap gap predicts.
+#
+# So the chart is built on the arms where the bands actually separate: the same
+# model-agnostic task, the same 60 items, the same withheld-rules prompt, and two
+# models with opposite failure modes.
+# ---------------------------------------------------------------------------
+
+# Order matters and it is not alphabetical. Reading left to right the bands go from
+# "fine" through "wrong and you would not know" to "declined" — so the eye crosses
+# the silent band on the way, which is the band the session is about.
+SHIFT_BAND_ORDER = (
+    "correct",
+    "unearned",
+    "wrong_and_silent",
+    "wrong_and_caught",
+    "abstained",
+)
+
+SHIFT_BAND_LABELS = {
+    "correct": "correct",
+    "unearned": "right, could not have known",
+    "wrong_and_silent": "WRONG AND SILENT",
+    "wrong_and_caught": "wrong and visible",
+    "abstained": "declined — named what was missing",
+}
+
+OUTCOME_SHIFT_CAPTION = (
+    "Every band counted by enumeration, never derived by subtracting the others. "
+    "The two arms answer the SAME items with the SAME prompt; only the model "
+    "differs. Read the WRONG AND SILENT band: it is the one a reader of the answer "
+    "cannot detect without already knowing the answer, and it is the only band this "
+    "project treats as dangerous. `declined` is not a failure — the model named the "
+    "input it was not given rather than inventing one — and it was scored as a crash "
+    "until 2026-09-07. See docs/instrument-ranked-honesty-backwards.md."
+)
+
+# Shown on the figure rather than in a runbook, because a row that looks like a
+# broken comparison invites the wrong question from the floor.
+RULE_FREE_NOTE = (
+    "A rule-free pattern scores the same at both prompt levels by construction — it "
+    "requires no rules, so withholding them changes nothing. That is the L0 floor "
+    "doing its job: without it the withheld arm would sit at zero by construction "
+    "and the comparison would be rigged rather than measured."
+)
+
+
+def outcome_shift_rows(arms: list[dict]) -> list[dict]:
+    """One row per arm, with every band as a count. Reads `bands` and nothing else.
+
+    Takes the arm summaries `sweep.conditions.summarise_arm` produces, so the chart
+    cannot disagree with the results file about what happened — it is the same dict.
+    """
+    rows = []
+    for arm in arms:
+        bands = arm.get("bands") or {}
+        rows.append({
+            "label": arm.get("arm") or arm.get("condition", "?"),
+            "n": arm.get("n_items", sum(bands.values())),
+            "counts": [bands.get(band, 0) for band in SHIFT_BAND_ORDER],
+        })
+    return rows

@@ -65,16 +65,21 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 from loopeng.paired import PairedComparison  # noqa: E402
-from loopeng.sweep.chart_model import (  # noqa: E402
+from loopeng.sweep.chart_model import (
     ABSTENTION_CAPTION,
     ABSTENTION_LIVE_NOTE,
     COST_CAPTION,
     DELTA_CAPTION,
     DIAL_CAPTION,
     NOT_MEASURED,
+    OUTCOME_SHIFT_CAPTION,
     REFERENCE_CAPTION,
+    RULE_FREE_NOTE,
+    SHIFT_BAND_LABELS,
+    SHIFT_BAND_ORDER,
     bar_rows,
     cache_note,
+    outcome_shift_rows,  # noqa: E402
     role_colour,
 )
 from loopeng.sweep.diff import (  # noqa: E402
@@ -496,8 +501,98 @@ def abstention_chart(points: list[dict]):
     return fig
 
 
+# ---------------------------------------------------------------------------
+# OUTCOME SHIFT
+# ---------------------------------------------------------------------------
+
+SHIFT_ROW_H_IN = 1.05       # layout: a stacked bar plus its per-band counts
+SHIFT_BAR_HEIGHT = 0.52     # layout: bar thickness in row units
+SHIFT_LEFT = 0.175          # layout: arm-label gutter, widened for 14pt labels
+SHIFT_RIGHT = 0.975         # layout: the bands are labelled in a key, not a gutter
+SHIFT_LABEL_SIZE = 14.0     # layout: arm label point size. The floor for anything
+                            # layout: read off a projector after video compression —
+                            # layout: this is the headline visual and it is checked at 1080p.
+SHIFT_SEGMENT_SIZE = 13.0   # layout: the count printed inside a segment
+SHIFT_MIN_SHARE = 0.055     # layout: below this a segment cannot hold its own label
+SHIFT_KEY_SIZE = 8.4        # layout: the band key
+
+# One colour per band, and the silent band is the only red. Everything else is
+# deliberately quiet: a chart where four things shout has nothing emphasised.
+SHIFT_COLOURS = {
+    "correct": "#15803d",           # layout
+    "unearned": "#a16207",          # layout
+    "wrong_and_silent": "#b91c1c",  # layout
+    "wrong_and_caught": "#64748b",  # layout
+    "abstained": "#0369a1",         # layout
+}
+
+
+def outcome_shift_chart(arms: list[dict]):
+    """Stacked bands per arm. The session's headline visual.
+
+    Built on whichever arms it is given. It was specified as A vs C; A vs C measured
+    as a null, so the arms it is fed are the ones where the bands separate — see the
+    note above `SHIFT_BAND_ORDER` in `chart_model`.
+    """
+    rows = outcome_shift_rows(arms)
+    # The key goes INSIDE the caption rather than being drawn at a fixed offset.
+    #
+    # It was drawn at a figure fraction below the axes, which put it on top of the
+    # caption — `_frame` sizes the figure from the text it is given, so text it is
+    # not given has nowhere reserved for it. Handing it the key means the block grows
+    # to fit, which is the mechanism that already stops the caption clipping.
+    key = "  ·  ".join(SHIFT_BAND_LABELS[band] for band in SHIFT_BAND_ORDER)
+    caption = f"Bands, left to right: {key}.\n{OUTCOME_SHIFT_CAPTION}"
+
+    if not rows:
+        fig, ax = _frame("OUTCOME SHIFT", caption,
+                         body_h_in=MIN_BODY_H_IN, left=SHIFT_LEFT, right=SHIFT_RIGHT)
+        ax.text(MIDPOINT, MIDPOINT, NOT_MEASURED, ha="center", va="center",
+                color=MUTED, fontsize=LABEL_SIZE, transform=ax.transAxes)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        return fig
+
+    fig, ax = _frame(
+        "OUTCOME SHIFT — where the answers actually go",
+        caption,
+        body_h_in=len(rows) * SHIFT_ROW_H_IN,
+        notes=[RULE_FREE_NOTE],
+        left=SHIFT_LEFT, right=SHIFT_RIGHT,
+    )
+
+    positions = range(len(rows))
+    for index, row in zip(positions, rows, strict=True):
+        total = sum(row["counts"]) or 1
+        left = 0.0
+        for band, count in zip(SHIFT_BAND_ORDER, row["counts"], strict=True):
+            if not count:
+                continue
+            share = count / total
+            ax.barh(index, share, left=left, height=SHIFT_BAR_HEIGHT,
+                    color=SHIFT_COLOURS[band], edgecolor="white", linewidth=1)
+            # A count is printed inside its segment only when the segment can hold
+            # it. A label spilling over its neighbour is worse than an absent one,
+            # and the exact counts are in the results file either way.
+            if share >= SHIFT_MIN_SHARE:
+                ax.text(left + share / HALF, index, str(count), ha="center",
+                        va="center", color="white", fontsize=SHIFT_SEGMENT_SIZE,
+                        fontweight="bold")
+            left += share
+
+    ax.set_yticks(list(positions))
+    ax.set_yticklabels([f"{row['label']}\nn={row['n']}" for row in rows],
+                       fontsize=SHIFT_LABEL_SIZE, color=BODY)
+    ax.invert_yaxis()
+    ax.set_xlim(0, 1)
+    ax.set_xticks([])
+    ax.set_ylim(len(rows) - ROW_PAD, -ROW_PAD)
+
+    return fig
+
+
 def write_charts(cells: list[dict], directory: Path, *,
-                 comparisons=(), abstention_points=()) -> list[Path]:
+                 comparisons=(), abstention_points=(), arms=()) -> list[Path]:
     """Every chart the supplied data supports.
 
     DELTA and ABSTENTION are written even when their inputs are empty: they render "not
@@ -508,6 +603,7 @@ def write_charts(cells: list[dict], directory: Path, *,
     directory.mkdir(parents=True, exist_ok=True)
     written = []
     figures = (
+        ("outcome_shift.png", outcome_shift_chart(list(arms))),
         ("dial.png", dial_chart(cells)),
         ("cost.png", cost_chart(cells)),
         ("delta.png", delta_chart(list(comparisons))),
