@@ -69,6 +69,44 @@ def test_questions_are_unique():
     assert len(set(questions)) == len(questions)
 
 
+def test_the_repeat_rate_question_names_the_population_it_divides_by():
+    """A regression test for a real defect, found by measurement rather than review.
+
+    `p10_repeat_customer_rate` asked "What share of customers placed more than one
+    order in {month}?". That reads as a share of ALL customers, while its gold SQL
+    computes a share of customers who ordered THAT MONTH — 0.180974 against 0.356164
+    on the January slice.
+
+    Measured 2026-09-07: four independent models (gpt-5.6-luna, gpt-4o-mini,
+    gpt-4.1-nano, gpt-6-astra) all read it the other way, at both prompt levels, and
+    all were scored wrong. It was the only pattern of ten that every model failed
+    WITH the rules supplied — the signature that separates an ambiguous question from
+    a difficult one. Both readings discriminate against their naive form, so the
+    QUESTION was repaired rather than the gold: this module's first line says the SQL
+    is written first and the question derived from what it returns, and this question
+    had stopped describing its SQL.
+
+    **This test is deliberately about one pattern, and the first version of it was
+    worse for trying to be general.** It asked every share-or-rate question to match
+    a relative-clause regex, and immediately flagged `p09_refund_rate` — "What share
+    of apparel orders ended up with a refund?" — which names its population perfectly
+    well. A regex cannot tell an under-specified population from a compactly stated
+    one, and a check that fires on correct questions gets widened until it fires on
+    nothing. So the general form was dropped rather than loosened, and what is pinned
+    here is the specific wording that four models disagreed with.
+    """
+    questions = {
+        question for key, question in _rendered_questions()
+        if key == "p10_repeat_customer_rate"
+    }
+    assert questions, "p10_repeat_customer_rate produced no questions"
+    for question in questions:
+        assert question.lower().startswith("of the customers who placed an order in"), (
+            f"the denominator is no longer stated up front: {question!r}. See this "
+            f"test's docstring for what that cost when it was left implicit."
+        )
+
+
 # ---- structure --------------------------------------------------------------
 
 

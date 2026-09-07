@@ -445,7 +445,30 @@ def _p10_sql(ignored: frozenset[str]) -> str:
 
 _p10 = _build(
     key="p10_repeat_customer_rate",
-    question="What share of customers placed more than one order in {month_name}?",
+    # The denominator is stated, and it has to be. This asked "What share of
+    # customers placed more than one order in {month_name}?", which does not pin
+    # what it is a share OF — customers who ordered that month, or every customer
+    # on the books. The SQL above answers the first; the question reads as the
+    # second.
+    #
+    # That is not a hypothetical ambiguity. Measured 2026-09-07 against four
+    # independent models (gpt-5.6-luna, gpt-4o-mini, gpt-4.1-nano, gpt-6-astra), at
+    # BOTH prompt levels: every one of them read it the other way and every one of
+    # them was scored wrong. It was the only pattern of the ten that all four
+    # failed with the rules supplied, which is what distinguishes a bad question
+    # from a hard one.
+    #
+    # The two readings are 0.356164 and 0.180974 on the January slice. Both
+    # discriminate against their naive form, so this was a genuine choice rather
+    # than a forced one, and the QUESTION was fixed rather than the gold. The
+    # module's first line says the SQL is written first and the question derived
+    # from what it returns; this question had stopped describing its SQL. Rewriting
+    # the answer key to match what the models said would be fitting gold to model
+    # behaviour, which is the one direction this repository cannot go.
+    question=(
+        "Of the customers who placed an order in {month_name}, what share placed "
+        "more than one?"
+    ),
     sql_for=_p10_sql,
     rules=("soft_delete", "cancelled_orders", "internal_accounts"),
     params=_MONTH_PARAMS,
