@@ -18,16 +18,18 @@ dependencies = [
     "duckdb>=1.5.5",
     "gradio>=6.20.0",
     "langsmith>=0.10.11",
-    # Floor pinned to the version assets/manifest.json records the committed PNGs
-    # were rendered with. It was >=3.10, and 3.11.0 replaced matplotlib's entire text
-    # rendering stack — so the declared contract permitted a renderer the frozen
-    # images cannot survive, while `tests/test_readme_charts.py` SKIPS byte-identity
-    # rather than failing when the renderer differs. Green suite, unreproducible images.
+    # Floor kept from when committed PNGs existed: >=3.10 was the declared contract and
+    # 3.11.0 replaced matplotlib's entire text rendering stack, so the contract permitted
+    # a renderer the frozen images could not survive while the byte-identity test SKIPPED
+    # rather than failed. Green suite, unreproducible images. The images, their manifest
+    # and that test have all since been removed — every chart is drawn by the run that
+    # renders it — so nothing depends on byte identity any more. The floor stays because
+    # the charts are built against this API, not to protect files that no longer exist.
     "matplotlib>=3.11.1",
-    # Imported directly by src/loopeng/settings.py (SecretStr, ValidationError).
-    # It resolved anyway as a transitive of pydantic-settings, which is why nothing
-    # failed; deploy/hf/requirements.txt has always declared it correctly, so the
-    # deploy manifest was more accurate than the primary one.
+    # Imported directly by src/loopeng/settings.py (SecretStr, ValidationError). It
+    # resolved anyway as a transitive of pydantic-settings, which is why nothing failed
+    # and why it went undeclared for so long: a dependency that arrives by accident is
+    # indistinguishable from one that was asked for, until the accident stops.
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
     "pyyaml>=6.0.3",
@@ -36,6 +38,18 @@ dependencies = [
     "structlog>=26.1.0",
     "langchain-core>=1.6.2",
 ]
+
+# OPTIONAL, and deliberately not a default dependency.
+#
+# `notebooks/` needs a kernel to run in; nothing else in this repository does. Every
+# other path — the demos, the sweep, the views, the whole offline suite — runs without
+# it, and CI installs the default set only, so the zero-key zero-network property of
+# the offline job is not weakened by a notebook that a reader may never open.
+#
+#     uv sync --extra notebooks
+#     uv run --extra notebooks jupyter lab notebooks/
+[project.optional-dependencies]
+notebooks = ["jupyterlab>=4.5.0"]
 
 # Added at migration. The package carried no repository URL at all, so a wheel or
 # sdist built from it pointed nowhere — an artifact with no way back to its source.

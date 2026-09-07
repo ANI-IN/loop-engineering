@@ -517,18 +517,38 @@ def test_no_committed_file_carries_an_api_key_shape():
         assert not key_shaped.findall(body), f"{name} looks like it carries a credential"
 
 
-def test_ci_asserts_the_model_keys_only_journey():
-    """F4: the check whose absence let a required LANGSMITH_API_KEY ship green. It has to
+def test_ci_asserts_the_required_key_only_journey():
+    """The check whose absence let a required LANGSMITH_API_KEY ship green. It has to
     live in the OFFLINE job — the property is that no network and no real key are needed.
 
-    The set of required credentials grew from one to two with the model policy. The
-    property being defended did not: LangSmith is advisory, and a checkout that can
-    call models must start without it.
+    The required set has moved twice: one key, then two with the model policy, then back
+    to one when the judge turned out to gate nothing. The property being defended never
+    moved — **a checkout must start with the credentials the documentation says are
+    required, and no others.**
+
+    So the step is asserted by that property rather than by its own title. This test
+    pinned the phrase "only the two model keys can start", which meant it agreed with
+    the step for the whole time the step supplied a key the docs called optional.
     """
+    from loopeng.registry import PROVIDER_KEY_VARS, spec_for
+
     ci = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    assert "only the two model keys can start" in ci
-    assert "OPENAI_API_KEY: ci-dummy-not-a-real-key" in ci
-    assert "ANTHROPIC_API_KEY: ci-dummy-not-a-real-key" in ci
+    required = PROVIDER_KEY_VARS[spec_for("agent").provider]
+    assert f"{required}: ci-dummy-not-a-real-key" in ci, (
+        "the offline job must prove a checkout starts with the required key alone"
+    )
+    # Only the required credential is supplied, which is what makes this step a test of
+    # the journey a cloner takes. It set both, and so could not have caught
+    # REQUIRED_CREDENTIALS demanding a key the docs called optional.
+    from loopeng.registry import PROVIDER_KEY_VARS, spec_for
+
+    required = PROVIDER_KEY_VARS[spec_for("agent").provider]
+    assert f"{required}: ci-dummy-not-a-real-key" in ci
+    judge_key = PROVIDER_KEY_VARS[spec_for("judge").provider]
+    assert f"{judge_key}: ci-dummy" not in ci, (
+        "supplying the optional key makes this step unable to prove the checkout "
+        "starts without it"
+    )
     assert "langsmith_api_key is None" in ci
     # And it must not have introduced a secret into a job that had none.
     assert "secrets." not in ci, "the offline job must need no secret"

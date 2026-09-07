@@ -124,11 +124,28 @@ _FIXES = {
 # lives; `loopeng.providers` reads roles off the registry and comes here for the key.
 _KEY_FIELDS = {"openai": "openai_api_key", "anthropic": "anthropic_api_key"}
 
-# Every credential `load_settings()` insists on by default, in the order they are
-# reported. Both, because both are required — a run that can score but not triage
-# is half a session, and finding that out at minute forty is the failure this
-# module exists to prevent.
-REQUIRED_CREDENTIALS = ("openai_api_key", "anthropic_api_key")
+# Every credential `load_settings()` insists on by default.
+#
+# ONE, and the second one leaving this tuple is a correction rather than a relaxation.
+#
+# It read `("openai_api_key", "anthropic_api_key")`, justified as "both, because both
+# are required — a run that can score but not triage is half a session". That was true
+# of a build where both roles were Anthropic models. Under the current model policy the
+# Anthropic key buys the JUDGE, and the judge is never a blocking check anywhere in this
+# repository: every scored figure — the trap, the conditions, the sweep, every chart —
+# is produced without it.
+#
+# So the tuple contradicted README §10 and SECURITY.md, which both say the Anthropic key
+# is optional, and it contradicted them in the direction that turns away a valid
+# checkout: a cloner with a working `OPENAI_API_KEY` and no Anthropic account could not
+# start ANYTHING, including the free offline paths. That is the same defect this module's
+# own history records — a required `LANGSMITH_API_KEY` shipping green while the README
+# promised it was optional — recurring one variable over.
+#
+# The check does not disappear, it moves. `require_key` raises the same sentence at the
+# moment a judge client is constructed, so triage still fails loudly and immediately,
+# and it fails for the person who asked for triage rather than for everyone.
+REQUIRED_CREDENTIALS = ("openai_api_key",)
 
 
 def _not_set(field: str) -> str:

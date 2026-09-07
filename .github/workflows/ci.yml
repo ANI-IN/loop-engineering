@@ -71,7 +71,7 @@ jobs:
         # missing path passes while enforcing nothing.
         run: uv run python tools/lint_no_numbers.py
 
-      - name: A checkout with only the two model keys can start
+      - name: A checkout with ONLY the agent key can start
         # THE check whose absence let a required LANGSMITH_API_KEY ship green. README §10
         # promised LangSmith was optional; settings.py declared it required; every passing
         # test in tests/test_settings.py set every key, so nothing exercised the journey a
@@ -79,15 +79,21 @@ jobs:
         #
         # Dummy values, and no network. This must never need a real key — it runs in the
         # offline job on purpose, because that is where the property belongs.
+        #
+        # ONE key, not two. This set both, so it could not catch the same defect one
+        # variable over: `REQUIRED_CREDENTIALS` demanded ANTHROPIC_API_KEY while README
+        # §10 and SECURITY.md both said the judge key is optional because the judge
+        # gates nothing. A cloner with a working OpenAI key and no Anthropic account
+        # could not start anything, and this step passed.
         env:
           OPENAI_API_KEY: ci-dummy-not-a-real-key
-          ANTHROPIC_API_KEY: ci-dummy-not-a-real-key
         run: |
           uv run python -c "
           from loopeng.settings import load_settings
           s = load_settings()
+          assert s.anthropic_api_key is None, 'ANTHROPIC_API_KEY leaked in from somewhere'
           assert s.langsmith_api_key is None, 'LANGSMITH_API_KEY leaked in from somewhere'
-          print('settings load with the two model keys alone')"
+          print('settings load with the agent key alone')"
 
       - name: The gold set still matches a freshly seeded warehouse
         # A gold set that has silently drifted from the schema poisons every number

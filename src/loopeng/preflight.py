@@ -33,7 +33,12 @@ import structlog
 from loopeng.gold.build import build_gold, clustering_summary
 from loopeng.providers import build_client, complete, triage_call_failure
 from loopeng.registry import REGISTRY, key_variable_for_role, spec_for
-from loopeng.settings import MissingCredential, Settings, load_settings
+from loopeng.settings import (
+    REQUIRED_CREDENTIALS,
+    MissingCredential,
+    Settings,
+    load_settings,
+)
 from loopeng.usage import CallUsage, UsageLedger
 from loopeng.verify.probes import run_probes
 from loopeng.warehouse.connect import StaleWarehouse, ensure_warehouse
@@ -105,23 +110,48 @@ class Preflight:
         )
 
 
-def check_key(settings=None) -> Step:
-    """Are the required credentials present? Nothing live works without both.
+def _required_vars() -> str:
+    """The credentials a live run actually needs, named. One, today."""
+    return " and ".join(field.upper() for field in REQUIRED_CREDENTIALS)
 
-    `load_settings` reports EVERY missing credential rather than the first, so an
-    operator half an hour from a session fixes both keys in one pass instead of
-    fixing one, re-running, and finding the other.
+
+def _is_are() -> str:
+    """Agrees with however many credentials are required.
+
+    The step name was a fixed "X and Y are set". Deriving the list made it read
+    "OPENAI_API_KEY are set" the moment the required set became one — the sort of thing
+    that survives a green suite and is read out loud at a venue.
     """
-    listed = " and ".join(KEY_VARS)
+    return "are" if len(REQUIRED_CREDENTIALS) > 1 else "is"
+
+
+def check_key(settings=None) -> Step:
+    """Are the REQUIRED credentials present?
+
+    Required is one key, not two, and the step says so rather than listing both vendors.
+    The Anthropic key buys the judge, the judge never gates, and a preflight that fails
+    without it would turn away a checkout that can run every scored path in the session.
+    That contradiction shipped: `REQUIRED_CREDENTIALS` demanded both while README §10
+    said one, so this step refused a valid setup and blamed a key nothing needed.
+
+    `load_settings` reports EVERY missing required credential rather than the first, so
+    an operator half an hour from a session fixes them in one pass instead of fixing
+    one, re-running, and finding the next.
+    """
+    # Derived from REQUIRED_CREDENTIALS, not from the list of vendors this project
+    # calls. Those are different sets now, and the step name is what an operator reads
+    # when it fails.
+    listed = _required_vars()
     try:
         settings = settings or load_settings()
     except MissingCredential as exc:
         return Step(
-            f"{listed} are set", False, "; ".join(str(exc).splitlines()),
+            f"{listed} {_is_are()} set", False, "; ".join(str(exc).splitlines()),
             fix=f"cp .env.example .env, then fill in {listed}. "
-                f"LANGSMITH_API_KEY is optional and can stay empty.",
+                f"ANTHROPIC_API_KEY (the judge) and LANGSMITH_API_KEY are optional and "
+                f"can stay empty — neither gates a measurement.",
         )
-    return Step(f"{listed} are set", True, "present (values never printed or logged)")
+    return Step(f"{listed} {_is_are()} set", True, "present (values never printed or logged)")
 
 
 def check_model(role: str, *, client=None, ledger: UsageLedger) -> Step:
@@ -259,8 +289,7 @@ def run(*, client_for=None) -> Preflight:
     else:
         result.add(Step(
             "models reachable", False, "not attempted — there is no key to call with",
-            fix=f"Set {' and '.join(KEY_VARS)} first; the offline checks below "
-                f"still ran.",
+            fix=f"Set {_required_vars()} first; the offline checks below still ran.",
         ))
         # Read off the Settings class rather than retyped, because instantiating it is
         # what just failed. A second copy of the defaults here would drift from the

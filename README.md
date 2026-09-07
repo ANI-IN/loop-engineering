@@ -455,6 +455,8 @@ src/loopeng/
   triage/            abstention, escalation, failure triage
   views/             the Gradio views
 demos/               thin entry points and the runbooks, one folder per loop level
+notebooks/           three notebooks, thin by the same rule; the filename says whether
+                     each one spends. Needs `uv sync --extra notebooks`
 tools/               the numeric-literal rule (`tools/lint_no_numbers.py`) and the
                      LangSmith resume probe (`tools/resumability_probe.py`)
 results/             live cell output; see below

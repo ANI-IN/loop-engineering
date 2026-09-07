@@ -208,18 +208,25 @@ def test_a_whitespace_only_key_is_also_absent(tmp_path, monkeypatch):
     assert load_settings().langsmith_api_key is None
 
 
-def test_a_blank_anthropic_key_is_missing_rather_than_empty(tmp_path, monkeypatch):
-    """The same rule on the required key: a blank line must raise the message
-    naming the variable, not send an empty key to the API."""
-    from loopeng.settings import MissingCredential, load_settings
+def test_a_blank_required_key_is_missing_rather_than_empty(tmp_path, monkeypatch):
+    """The same rule on a required key: a blank line must raise the message naming the
+    variable, not send an empty key to the API.
 
-    (tmp_path / ".env").write_text("ANTHROPIC_API_KEY=\n", encoding="utf-8")
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    This used to plant a blank `ANTHROPIC_API_KEY`, which stopped being a required
+    credential when the judge turned out to gate nothing — so it would have passed for
+    the wrong reason. The required set is read from `REQUIRED_CREDENTIALS`.
+    """
+    from loopeng.settings import REQUIRED_CREDENTIALS, MissingCredential, load_settings
+
+    field = REQUIRED_CREDENTIALS[0]
+    (tmp_path / ".env").write_text(f"{field.upper()}=\n", encoding="utf-8")
+    for name in REQUIRED_CREDENTIALS:
+        monkeypatch.delenv(name.upper(), raising=False)
     monkeypatch.chdir(tmp_path)
 
     with pytest.raises(MissingCredential) as exc:
         load_settings()
-    assert "ANTHROPIC_API_KEY is not set" in str(exc.value)
+    assert f"{field.upper()} is not set" in str(exc.value)
 
 
 def test_a_real_key_still_arrives_intact(tmp_path, monkeypatch):

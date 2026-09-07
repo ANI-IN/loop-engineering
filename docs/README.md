@@ -12,8 +12,38 @@ data lands, and findings about the build itself that no module is the right home
 |---|---|
 | [Five guards on one capability is a tell](guards-are-a-tell.md) | why the stored-measurement render path was deleted rather than defended, and what it cost |
 | [Our own instrument punished a model for being right](instrument-ranked-honesty-backwards.md) | the classifier ranked a model's honest refusal below a confabulation, silently, with every test green |
-| [Every instrument in this build has been wrong at least once](every-instrument-has-been-wrong.md) | seven of them plus one plan, all green at the time, none found by reading code |
+| [Every instrument in this build has been wrong at least once](every-instrument-has-been-wrong.md) | 14 of them plus one plan, all green at the time, none found by reading code |
 | [Re-specifying the five charts](charts-respec.md) | what the measurement did to the chart plan, and what each chart is now for |
+
+## Two spec items superseded by findings
+
+Both were written before the measurement that invalidated them, and both were caught
+because the instruction was **read rather than executed**. Recording them here so the
+pattern is visible, and so the next stale instruction gets the same treatment.
+
+**`TerminationReason.DEADLINE`.** The spec asked for a `deadline` member alongside
+`budget` and `max_attempts`. Writing it made the mistake visible: that enum names why
+ONE AGENT LOOP stopped on ONE ITEM, and the deadline stops the RUNNER between items — so
+an item that never started has no run, no attempts and no reason, and the member could
+never be produced. `test_every_termination_reason_is_reachable` would have caught it as
+a dead branch. Checking the clock inside the loop instead is worse and not because it is
+harder: an item cut off after attempt 1 of 3 did not run under the condition it is
+reported under, so scoring it puts a handicapped item in the accuracy figure. An item
+runs fully or not at all.
+
+**"Cut views to agent, verify, dial."** Written when A→C was the headline and the trap
+was a supporting demo. That inverted: A→C measured as a null, and the trap — rules
+withheld against rules given, a 73-point gap — became the session's primary result.
+Cutting `trap` would have deleted the visual the whole session rests on. `oversight`
+stays too: it was to go for live-surface reasons, and it is now the only view showing
+the abstention machinery, which the 19–0 confabulate-versus-signal finding made a bigger
+part of the session than it was. Five views, and the spec is amended rather than the
+code bent to fit it.
+
+The common shape is worth naming: **a spec is a measurement of what was known when it
+was written.** Executing a stale one literally produces code that is correct against the
+instruction and wrong against the world, and the only place that gets caught is at the
+moment of writing it, by someone asking what would make the instruction true.
 
 ## Still owed
 

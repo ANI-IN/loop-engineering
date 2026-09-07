@@ -27,34 +27,40 @@ def test_missing_key_names_the_env_var_and_the_fix(tmp_path, monkeypatch):
         load_settings()
 
     message = str(exc.value)
-    assert "ANTHROPIC_API_KEY" in message
+    assert "OPENAI_API_KEY" in message
     assert ".env" in message
-    # The message must not send a cloner hunting for a credential they do not need.
+    # The message must not send a cloner hunting for a credential they do not need —
+    # which is now both of the optional ones, not just LangSmith.
     assert "LANGSMITH_API_KEY" not in message
+    assert "ANTHROPIC_API_KEY" not in message
 
 
-def test_the_two_model_keys_are_required_and_langsmith_is_not(tmp_path, monkeypatch):
-    """THE regression test for the journey. Both model keys in, settings load.
+def test_the_agent_key_alone_is_enough_to_start(tmp_path, monkeypatch):
+    """THE regression test for the journey a cloner actually takes.
 
-    Both are required because both are load-bearing in different ways: OPENAI runs
-    the agent and the reference arm, so without it nothing is measured at all;
-    ANTHROPIC runs the judge, which gates nothing but is the only thing that can say
-    WHY a failure happened. LangSmith is advisory and must stay optional — §15
-    promises it is never the system of record, and a required key would make that
-    promise false.
+    This asserted that BOTH model keys were required, matching a
+    `REQUIRED_CREDENTIALS` tuple that listed both — and contradicting README §10 and
+    SECURITY.md, which say the Anthropic key is optional because the judge gates
+    nothing. The contradiction was visible in this file's own prose: the test below
+    described the judge key as one that "gates nothing" while asserting nothing could
+    start without it.
 
-    `chdir` into an empty directory so the repo's own `.env` cannot supply the
-    LangSmith key and make this pass for the wrong reason.
+    It contradicted them in the direction that turns away a valid checkout. A cloner
+    with a working OpenAI key and no Anthropic account could not run the free offline
+    paths, let alone measure anything.
+
+    `chdir` into an empty directory so the repo's own `.env` cannot supply a key and
+    make this pass for the wrong reason.
     """
     monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-test")
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
     monkeypatch.chdir(tmp_path)
 
     settings = load_settings()
 
     assert settings.openai_api_key.get_secret_value() == "sk-openai-test"
-    assert settings.anthropic_api_key.get_secret_value() == "sk-test"
+    assert settings.anthropic_api_key is None
     assert settings.langsmith_api_key is None
 
 
@@ -111,37 +117,60 @@ def test_the_default_still_refuses_a_checkout_with_no_key(monkeypatch, tmp_path)
     assert ".env.example" in str(exc.value)
 
 
-def test_every_missing_credential_is_reported_not_just_the_first(monkeypatch, tmp_path):
-    """An operator half an hour from a session should learn about both keys in one
-    run, rather than fixing one, re-running, and discovering the other."""
-    from loopeng.settings import MissingCredential, load_settings
+def test_every_required_credential_is_reported_not_just_the_first(monkeypatch, tmp_path):
+    """An operator half an hour from a session should learn about every missing key in
+    one run, rather than fixing one, re-running, and discovering the next.
 
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    Derived from `REQUIRED_CREDENTIALS` rather than listing the variables, so it keeps
+    holding whichever credentials that tuple names — including today, when it names
+    one.
+    """
+    from loopeng.settings import REQUIRED_CREDENTIALS, MissingCredential, load_settings
+
+    for field in REQUIRED_CREDENTIALS:
+        monkeypatch.delenv(field.upper(), raising=False)
     monkeypatch.chdir(tmp_path)
 
     with pytest.raises(MissingCredential) as exc:
         load_settings()
     message = str(exc.value)
-    assert "OPENAI_API_KEY is not set" in message
-    assert "ANTHROPIC_API_KEY is not set" in message
+    for field in REQUIRED_CREDENTIALS:
+        assert f"{field.upper()} is not set" in message
 
 
 def test_each_missing_credential_says_what_it_is_for(monkeypatch, tmp_path):
-    """"Set this key" is not a reason. The agent key stops every measurement; the
-    judge key stops triage and gates nothing — different consequences, so the fix
-    text says which."""
+    """"Set this key" is not a reason. The agent key stops every measurement; the judge
+    key stops triage and gates nothing — different consequences, so the fix text says
+    which."""
     from loopeng.settings import MissingCredential, load_settings
 
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
 
     with pytest.raises(MissingCredential) as exc:
         load_settings()
-    message = str(exc.value)
-    assert "agent and the reference arm" in message
-    assert "triages failures and never gates" in message
+    assert "agent and the reference arm" in str(exc.value)
+
+
+def test_the_judge_key_is_demanded_where_it_is_USED_not_at_startup(monkeypatch, tmp_path):
+    """The check moves; it does not disappear.
+
+    Making the judge key optional up front would be a relaxation if that were the end
+    of it. It is not: `require_key` raises the same sentence at the moment a judge
+    client is constructed, so triage still fails loudly and immediately — and it fails
+    for the person who asked for triage rather than for everyone who cloned the repo.
+    """
+    from loopeng.settings import MissingCredential, load_settings, require_key
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-test")
+    monkeypatch.chdir(tmp_path)
+
+    settings = load_settings()  # starts fine
+
+    with pytest.raises(MissingCredential) as exc:
+        require_key(settings, "anthropic")
+    assert "triages failures and never gates" in str(exc.value)
 
 
 def test_opting_out_loads_settings_without_a_key(monkeypatch, tmp_path):

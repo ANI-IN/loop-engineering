@@ -64,8 +64,14 @@ def test_a_missing_key_fails_by_name(tmp_path, monkeypatch):
     step = preflight.check_key()
 
     assert not step.ok
-    assert "OPENAI_API_KEY" in step.detail
-    assert "ANTHROPIC_API_KEY" in step.detail
+    # Derived: every REQUIRED credential is named, and only those. The judge key was
+    # asserted here and is optional now — a preflight that fails without it turns away
+    # a checkout that can run every scored path in the session.
+    from loopeng.settings import REQUIRED_CREDENTIALS
+
+    for field in REQUIRED_CREDENTIALS:
+        assert field.upper() in step.detail
+    assert "ANTHROPIC_API_KEY" not in step.detail
     assert ".env" in step.fix
 
 
