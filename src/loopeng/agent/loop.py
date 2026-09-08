@@ -270,94 +270,11 @@ def run_question(
     sleeper=time.sleep,
 ) -> AgentRun:
     """Run one question to termination. Never raises on a model or SQL failure."""
-    spec = spec_for(role)
-    system = render_prompt(level)
-
-    ledger = UsageLedger()
-    attempts: list[Attempt] = []
-    seen_sql: set[str] = set()
-    seen_errors: set[str] = set()
-    termination = TerminationReason.MAX_ATTEMPTS
-    served_model: str | None = None
-
-    for n in range(1, max_attempts + 1):
-        # Checked before spending, not after: a budget enforced only in arrears is a
-        # report of what was overspent rather than a cap.
-        if ledger.cost_usd() >= budget_usd:
-            termination = TerminationReason.BUDGET
-            break
-
-        try:
-            completion = complete(
-                spec,
-                system=system,
-                messages=build_turns(question, attempts),
-                client=client,
-            )
-            usage = completion.usage
-            served_model = completion.served_model
-            sql = extract_sql(completion.text)
-        except Exception as exc:  # noqa: BLE001 - a failed call still billed
-            # Recorded, not swallowed: the tokens are gone either way, and dropping
-            # them would make the loop look cheaper than it is. That holds for the
-            # fatal branch too — a refused call still made a round trip.
-            fatal, message = triage_call_failure(exc, spec=spec)
-            usage = CallUsage(spec.model_id, "error")
-            ledger.record(usage)
-            attempts.append(Attempt(n=n, sql="", rows=None, error=message, usage=usage))
-            if fatal is not None:
-                log.error("model_call_refused", question=question[:60], attempt=n,
-                          termination=fatal, error=str(exc))
-                termination = TerminationReason(fatal)
-                break
-            log.warning("model_call_failed", question=question[:60], attempt=n,
-                        error=str(exc))
-            # Retryable, so wait before going round. Retrying a 429 immediately
-            # arrives back at the same limit and makes it last longer.
-            if n < max_attempts:
-                sleeper(backoff_delay(exc, n))
-            continue
-
-        ledger.record(usage)
-
-        rows: list[list] | None = None
-        error: str | None = None
-        try:
-            rows = [list(row) for row in run_sql(sql, warehouse, timeout_s=timeout_s)]
-        except QueryTimeout as exc:
-            error = f"QueryTimeout: {exc}"
-        except Exception as exc:  # noqa: BLE001 - any DB error is loop feedback
-            error = f"{type(exc).__name__}: {exc}"
-
-        attempts.append(Attempt(n=n, sql=sql, rows=rows, error=error, usage=usage))
-
-        if error is None:
-            termination = TerminationReason.SUCCESS
-            break
-
-        # Asked before the failure is treated as something to retry. A query naming
-        # the input it was not given did not fail; it declined, and another attempt
-        # cannot supply what the prompt withheld.
-        if declares_unbound_parameter(sql):
-            termination = TerminationReason.DECLINED
-            break
-
-        # No progress: the same query twice, or the same complaint twice. Either way
-        # the feedback is not moving the model and further attempts only spend.
-        if sql in seen_sql or error in seen_errors:
-            termination = TerminationReason.NO_PROGRESS
-            break
-        seen_sql.add(sql)
-        seen_errors.add(error)
-
-    return AgentRun(
-        question=question,
-        level=level,
-        role=role,
-        model_id=spec.model_id,
-        attempts=tuple(attempts),
-        termination=termination,
-        item_id=item_id,
-        ledger=ledger,
-        served_model=served_model,
+    raise NotImplementedError(
+        "This is the starter branch. Implement run_question until the suite is green.\n"
+        "The tests are the specification: `uv run pytest -q` names every property it "
+        "must have, and every one of them exists on `main`.\n"
+        "Nothing that MEASURES has been removed — the warehouse, the gold set, the "
+        "verifiers, the charts and every guard are intact, because telling whether "
+        "your loop works is the subject rather than a convenience."
     )

@@ -142,102 +142,11 @@ def run_verified(
     sleeper=time.sleep,
 ) -> VerifiedRun:
     """Run one question until a query both executes and passes the verifiers."""
-    spec = spec_for(role)
-    system = render_prompt(level)
-    served_model: str | None = None
-
-    ledger = UsageLedger()
-    attempts: list[VerifiedAttempt] = []
-    plain_attempts: list[Attempt] = []
-    seen_sql: set[str] = set()
-    seen_feedback: set[str] = set()
-    termination = TerminationReason.MAX_ATTEMPTS
-
-    for n in range(1, max_attempts + 1):
-        if ledger.cost_usd() >= budget_usd:
-            termination = TerminationReason.BUDGET
-            break
-
-        try:
-            completion = complete(
-                spec,
-                system=system,
-                messages=build_turns(question, plain_attempts),
-                client=client,
-            )
-            usage = completion.usage
-            served_model = completion.served_model
-            sql = extract_sql(completion.text)
-        except Exception as exc:  # noqa: BLE001 - a failed call still billed
-            # Same triage as Level 1, from the same function. This loop runs the sweep
-            # cells, so it is the one where retrying a rejected credential is most
-            # expensive: every held-out item x 3 attempts per cell, all guaranteed
-            # to fail.
-            fatal, message = triage_call_failure(exc, spec=spec)
-            usage = CallUsage(spec.model_id, "error")
-            ledger.record(usage)
-            failed = Attempt(n=n, sql="", rows=None, error=message, usage=usage)
-            plain_attempts.append(failed)
-            attempts.append(VerifiedAttempt(failed, VerifyResult(())))
-            if fatal is not None:
-                log.error("model_call_refused", attempt=n, termination=fatal,
-                          error=str(exc))
-                termination = TerminationReason(fatal)
-                break
-            # Retryable, so wait before going round. See agent.loop.
-            if n < max_attempts:
-                sleeper(backoff_delay(exc, n))
-            continue
-
-        ledger.record(usage)
-
-        rows = None
-        error = None
-        try:
-            rows = [list(row) for row in run_sql(sql, warehouse, timeout_s=timeout_s)]
-        except QueryTimeout as exc:
-            error = f"QueryTimeout: {exc}"
-        except Exception as exc:  # noqa: BLE001 - any DB error is loop feedback
-            error = f"{type(exc).__name__}: {exc}"
-
-        attempt = Attempt(n=n, sql=sql, rows=rows, error=error, usage=usage)
-        verdict = verifier(
-            build_context(
-                question=question,
-                sql=sql,
-                rules=rules,
-                attempt=n,
-                execution_rows=rows,
-                execution_error=error,
-            )
-        )
-        attempts.append(VerifiedAttempt(attempt, verdict))
-
-        if error is None and verdict.ok:
-            termination = TerminationReason.SUCCESS
-            break
-
-        # Feedback is the database error when it did not run, and the verifier's
-        # complaint when it ran but broke a rule. The model never sees the answer.
-        feedback = error or verdict.feedback()
-        if sql in seen_sql or feedback in seen_feedback:
-            termination = TerminationReason.NO_PROGRESS
-            break
-        seen_sql.add(sql)
-        seen_feedback.add(feedback)
-
-        plain_attempts.append(
-            Attempt(n=n, sql=sql, rows=rows, error=feedback, usage=usage)
-        )
-
-    return VerifiedRun(
-        question=question,
-        level=level,
-        role=role,
-        model_id=spec.model_id,
-        attempts=tuple(attempts),
-        termination=termination,
-        item_id=item_id,
-        ledger=ledger,
-        served_model=served_model,
+    raise NotImplementedError(
+        "This is the starter branch. Implement run_verified until the suite is green.\n"
+        "The tests are the specification: `uv run pytest -q` names every property it "
+        "must have, and every one of them exists on `main`.\n"
+        "Nothing that MEASURES has been removed — the warehouse, the gold set, the "
+        "verifiers, the charts and every guard are intact, because telling whether "
+        "your loop works is the subject rather than a convenience."
     )
