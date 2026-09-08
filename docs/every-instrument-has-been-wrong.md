@@ -8,9 +8,9 @@ apart, and that you cannot tell by looking. It makes that argument about a text-
 agent. The argument is stronger made about the repository, because here the failures are
 documented, dated, and were all found the same way.
 
-**17 instruments have been caught measuring something other than what they
-claimed, one plan has, and one of them is the author.** Not one was found by reading code. All of them were
-green.
+**18 instruments have been caught measuring something other than what they
+claimed, 1 is a plan, and 2 are the author.** Not one was found by reading code. All of
+them were green.
 
 *The count above is checked against the numbered entries below by
 `tests/test_docs.py`. It said "Twelve" for two entries longer than that was true — a
@@ -393,6 +393,59 @@ demonstration in this document. Every other entry can be read as "the code was w
 we found it". This one says the knowledge was complete, the attention was on it, and it
 happened anyway.
 
+## 20. Three sections vanished from the README, and every guard passed
+
+The README rewrite silently dropped **Installation**, **Environment** and **Repository
+structure**. No per-platform install instructions, no environment-variable table, no
+repository map. The full suite was green, ruff was green, the numeric lint was green,
+and eleven separate documentation guards were green.
+
+It was found by checking whether every anchor in the Contents resolved to a heading —
+four did not, and three of those were not stale links. The sections were gone.
+
+**THIS IS A NEW CATEGORY, and it took twenty entries to reach it.** Every finding above
+is *something present being wrong*: a caption describing the wrong models, a lookup
+returning the wrong cell, a count that had drifted, a test agreeing with a fixture that
+agreed with nothing. This is *something absent*, and absence is structurally invisible
+to a guard that verifies what is there.
+
+The same shape appeared once before and was not recognised as a category: the three
+headline charts rendering "not yet measured" on every run. Nothing incorrect existed —
+the problem was that nothing existed. Both are the failure a test cannot have an opinion
+about, because a test asserts over what it is given.
+
+It is also the most consequential possible version of it. A README with no install
+instructions and no environment table means a cloner cannot start, which makes
+everything else in this repository irrelevant to them. Every other defect here degrades
+a measurement; this one denies access to all of them.
+
+The guard is cheap and it only checks PRESENCE, by name — Quickstart, What you should
+expect, Installation, Environment, Repository structure. The existing guards cover
+whether what is in the document is true. Nothing covered whether the document still
+contains what it promises.
+
+## 21. `--force-with-lease` reported accurately on the wrong branch
+
+Pushing the regenerated starter branch printed no error and pushed the previous ref.
+Twice, in the same session, on the same command.
+
+The cause was three commands earlier: `git checkout -b starter` failed because a local
+branch of that name already existed, the shell chain continued, and the push therefore
+ran from a detached HEAD with `starter` still pointing at the old commit. The push then
+did exactly what it was asked and said so.
+
+**Nothing lied, and nothing was swallowed.** This is worth separating from the
+piped-exit-code entries for that reason: there, a real failure status was discarded by a
+pipeline. Here there was no error to discard. The command reported correctly on the
+state it was in, and the state it was in was not the state I believed.
+
+> **A command's self-report is the command's model of what it did. The state is a
+> different object.**
+
+Caught both times by reading `git ls-remote` instead of the push output — the same move
+that caught the deleted `results/` file: ask the system what is true rather than asking
+the last command what it thinks it did.
+
 ## A second rule, from the same fix
 
 `named_secondary_deltas` also settled which of two **true** sentences a row should carry.
@@ -481,6 +534,8 @@ Each had a plausible reason to look correct:
 | the failure taxonomy | seven categories, and nothing said which had been seen |
 | its own citation | the file was right there, on one machine |
 | the piped exit code | the command ran, and printed what you expected |
+| three missing sections | every guard verified what was there, and it was all true |
+| the wrong branch | the push reported accurately on the state it was in |
 | the interrupt test | it exercised a real path, and passed |
 | `kill -INT` on a background job | the run it produced was clean and complete |
 
@@ -524,7 +579,7 @@ list's recurring entry.
 ## The honest reading
 
 This is not a list of things that went wrong on the way to a build that is now correct.
-It is 19 data points on how instruments fail, in a repository written by someone paying
+It is 21 data points on how instruments fail, in a repository written by someone paying
 attention specifically to that failure mode, with tests for it.
 
 The claim the session should make is not "we measured this carefully". It is: *every

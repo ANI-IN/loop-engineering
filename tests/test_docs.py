@@ -745,10 +745,23 @@ def test_the_instruments_note_counts_its_own_entries():
     numbers = [int(n) for n in re.findall(r"^## (\d+)\. ", body, flags=re.M)]
 
     assert numbers == list(range(1, len(numbers) + 1)), "the entries are misnumbered"
-    # Two entries are not instruments: §7 is a PLAN, and §19 is the author. The opening
-    # line names all three categories, so the arithmetic has to as well.
-    assert f"**{len(numbers) - 2} instruments have been caught" in body
-    assert "one plan has, and one of them is the author" in body
+
+    # The opening line splits the entries into three categories — instruments, plans,
+    # and the author — and the check is that they ADD UP, rather than that any one of
+    # them matches a number typed here. A hardcoded expectation is the defect this test
+    # exists for, and it had one: `len(numbers) - 2`, which silently became wrong the
+    # moment a second author entry was added.
+    claim = re.search(
+        r"\*\*(\d+) instruments have been caught[^*]*?claimed, (\d+) is a plan, and "
+        r"(\d+) are the author\.\*\*",
+        " ".join(body.split()).replace("** ", "**").replace(" **", "**"),
+    )
+    assert claim, "the note no longer states its own breakdown in a readable form"
+    instruments, plans, author = (int(g) for g in claim.groups())
+    assert instruments + plans + author == len(numbers), (
+        f"the note claims {instruments} instruments + {plans} plan + {author} author = "
+        f"{instruments + plans + author}, and carries {len(numbers)} numbered entries"
+    )
     assert f"It is {len(numbers)} data points" in body
 
 
@@ -1072,13 +1085,83 @@ def test_the_docs_index_does_not_restate_a_count_that_can_go_stale():
     """
     import re
 
-    note = (REPO_ROOT / "docs" / "every-instrument-has-been-wrong.md").read_text(
-        encoding="utf-8")
+    note = " ".join((REPO_ROOT / "docs" / "every-instrument-has-been-wrong.md")
+                    .read_text(encoding="utf-8").split())
     index = (REPO_ROOT / "docs" / "README.md").read_text(encoding="utf-8")
-    entries = len(re.findall(r"^## (\d+)\. ", note, flags=re.M))
 
-    # Two entries are not instruments: one is a PLAN, one is the author.
-    assert f"{entries - 2} instruments" in index, (
-        f"docs/README.md restates a count the note no longer supports; the note has "
-        f"{entries} numbered entries"
+    # Read the INSTRUMENT count off the note rather than recomputing it. The first
+    # version of this test did its own arithmetic — `entries - 2`, for one plan and one
+    # author — and went wrong the moment a second author entry was added.
+    #
+    # That is the defect this test exists to prevent, appearing inside the test. A
+    # number derived twice, in two places, from two people's memory of the categories,
+    # is two numbers. `test_the_instruments_note_counts_its_own_entries` is what checks
+    # the note's own breakdown adds up; this only checks the index agrees with it.
+    stated = re.search(r"\*\*(\d+) instruments have been caught", note)
+    assert stated, "the note no longer states an instrument count"
+    assert f"{stated.group(1)} instruments" in index, (
+        f"docs/README.md restates a count the note no longer supports; the note says "
+        f"{stated.group(1)} instruments"
     )
+
+
+# The sections the README must CONTAIN. Presence only — every other guard in this module
+# checks whether what is there is true, and none of them could see three sections
+# disappear in an edit.
+#
+# Deliberately short. This is a floor, not a table of contents: each entry is a section
+# whose absence stops a reader doing something, and the first three stop them starting
+# at all.
+REQUIRED_README_SECTIONS = (
+    "Quickstart",
+    "Installation",
+    "Environment",
+    "Repository structure",
+    "What you should expect",
+)
+
+
+@pytest.mark.parametrize("section", REQUIRED_README_SECTIONS)
+def test_the_readme_still_contains_the_section(section):
+    """A rewrite dropped Installation, Environment and Repository structure, and every
+    check in this module passed.
+
+    That is a category none of them can cover. Every other guard asserts over what the
+    document CONTAINS — that a cited path resolves, that a caption names the right
+    models, that a count matches. All of those are true of a document with a section
+    missing, because a test asserts over what it is given and an absent section gives
+    it nothing.
+
+    It is also the worst version of that gap available here. No install instructions and
+    no environment table means a cloner cannot start, which makes every other figure in
+    this repository irrelevant to them. Every other defect degrades a measurement; this
+    one denies access to all of them.
+
+    Presence only. Whether the content is correct is what the rest of this module is
+    for, and adding content assertions here would make it a second, weaker copy of
+    those.
+    """
+    headings = re.findall(r"^#{2,3} (.+)$", README.read_text(encoding="utf-8"), re.M)
+    assert any(section.lower() in h.lower() for h in headings), (
+        f"README has no '{section}' section. It was found once by checking whether the "
+        f"Contents anchors resolved, after a rewrite removed three sections and every "
+        f"other guard stayed green."
+    )
+
+
+def test_every_contents_anchor_resolves_to_a_heading():
+    """How the missing sections were actually found.
+
+    The Contents table is the one part of the README that makes a promise about the
+    rest of it, so a link there pointing at nothing is the document contradicting
+    itself. Three of the four broken anchors were not stale links — the sections were
+    gone.
+    """
+    body = README.read_text(encoding="utf-8")
+    slugs = {
+        re.sub(r"[^a-z0-9 -]", "", h.lower()).replace(" ", "-")
+        for h in re.findall(r"^#{2,3} (.+)$", body, re.M)
+    }
+    broken = sorted({a for a in re.findall(r"\]\(#([a-z0-9-]+)\)", body)
+                     if a not in slugs})
+    assert not broken, f"README links to anchors that do not exist: {broken}"

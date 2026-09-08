@@ -31,7 +31,7 @@ shown:
 | note | what it records |
 |---|---|
 | [Our own instrument punished a model for being right](instrument-ranked-honesty-backwards.md) | the classifier ranked an honest refusal below a confabulation. The full write-up behind §2 of the instruments note |
-| [Every instrument in this build has been wrong at least once](every-instrument-has-been-wrong.md) | 17 instruments, one plan and one author, all green at the time, none found by reading code |
+| [Every instrument in this build has been wrong at least once](every-instrument-has-been-wrong.md) | 18 instruments, one plan and two by the author, all green at the time, none found by reading code |
 | [Three endings, committed before the run that will be shown](three-endings.md) | the named secondary's three possible readings, their criteria, and which one the pilot already selects — dated, so a different reading on the day is a visible change |
 | [Re-specifying the five charts](charts-respec.md) | what the measurement did to the chart plan — including the two charts specified for a session that stopped existing |
 
