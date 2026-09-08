@@ -32,7 +32,7 @@ The constraint is information, not capability.
 | [The trap](#the-trap-rules-withheld-against-rules-given) | the session's headline |
 | [Model policy](#model-policy) | three roles, two providers, one that gates nothing |
 | [The four conditions](#the-four-conditions) | what each arm is for |
-| [The four loops](#the-four-loops) | L1 through L4, and where to see each |
+| [The four loops, and the trap](#the-four-loops-and-the-trap) | L1 through L4, where to see each, and the measurement they are evaluated against |
 | [Notebooks](#notebooks) | three, and the loop map |
 | [Installation](#installation) | uv, per platform |
 | [Environment](#environment) | one required key |
@@ -218,7 +218,7 @@ because this project refuses one across models in code.
 
 ---
 
-## The four loops
+## The four loops, and the trap
 
 | level | what it is | where to see it |
 |---|---|---|
@@ -226,6 +226,20 @@ because this project refuses one across models in code.
 | **L2** verification loop | verifiers read a query that **ran** and reject it for breaking a declared rule | same notebook, `demos/02_verification_loop/` |
 | **L3** event-driven loop | a queue and a worker, with nobody watching | `demos/03_event_driven_loop/` — **terminal only** |
 | **L4** hill-climbing loop | the loop around the loop: a sweep across configurations | [`notebooks/03_read_a_sweep_free.ipynb`](notebooks/03_read_a_sweep_free.ipynb), `demos/04_hill_climbing_loop/` |
+| **the trap** — *not a loop* | rules withheld against rules given, within each model. **The measurement the loops are evaluated against.** | [`notebooks/01_the_rules_free.ipynb`](notebooks/01_the_rules_free.ipynb) for the two prompt levels · `demos/01_agent_loop/trap.py` to run it · [the matrix](reference/charts/trap_matrix.png) for the result |
+
+**The trap is in the table and is not a loop**, which is why it is worth saying twice:
+it is the session's headline, and a table of loops alone would leave the artifact
+everything turns on with no row and no route to it — which is what this one did until
+the heading was widened to admit it. The loops are what you
+build; the trap is what tells you whether building them was the thing that mattered.
+
+**Two numbering conventions collide in the rows above, on purpose and unavoidably.**
+`notebooks/02_one_question_live.ipynb` is numbered by **session order** and covers
+Levels 1 *and* 2; `demos/02_verification_loop/` is numbered by **loop level**. Same
+digit, two meanings, adjacent cells. The notebooks carry their own warning, but this
+table is where most people will meet it — so: a `demos/0N_` prefix is the level, a
+`notebooks/0N_` prefix is the reading order.
 
 **Level 3 has no notebook and no view, deliberately.** A notebook is a supervised
 surface — a cell you run, whose output you read, in a tab you are watching — and Level
@@ -251,7 +265,7 @@ uv run python demos/04_hill_climbing_loop/charts.py
 **Expected output** from the offline suite:
 
 ```
-1141 passed, 6 deselected
+1131 passed, 6 deselected
 ```
 
 The `passed` count moves as tests are added and is illustrative. What matters is
@@ -272,7 +286,7 @@ uv run python -u demos/views.py --view {agent,trap,verify,dial,oversight}
 ```
 
 Five screens, read-only over what a run wrote. Level 3 has none, for the reason in
-[the loop table](#the-four-loops).
+[the loop table](#the-four-loops-and-the-trap).
 
 ### Tools
 
@@ -305,6 +319,192 @@ Notebooks import from `loopeng` and contain no loop logic, and they are committe
 every output cleared — a notebook carrying stored outputs shows numbers computed on
 another machine on another day inside a document that looks live. Both are enforced by
 `tests/test_notebooks.py`.
+
+---
+
+## Repository structure
+
+```
+src/loopeng/
+  settings.py        frozen settings, fail fast, secrets never rendered
+  registry.py        role to model, with the request kwargs each model accepts
+  metric.py          Metric and MetricStore; no value without its n
+  pricing.py         the price table, dated, per model, per token class
+  usage.py           token accounting for every call including the failed ones
+  paired.py          McNemar for paired comparisons
+  prompts.py         the L0 and L3 prompts, rules rendered from config
+  contracts.py       the verifier's view of an attempt — no field for the answer
+  api_probes.py      LIVE probes of the API: rate-limit ceilings and
+                     prompt cacheability. Renamed from probes.py, which
+                     collided by name with verify/probes.py — a different
+                     thing entirely (offline rule-surface probes)
+  gate0.py           assembles the foundation evidence report
+  langsmith_ds.py    gold to LangSmith dataset, advisory and failure-tolerant
+  env_guard.py       refuses to run from a cloud-synced path that breaks imports
+  warehouse/         seeded generator, semantic model, read-only connection factory
+  gold/              patterns, build, comparison
+  agent/             level 1 loop, classification, the trap
+  verify/            level 2 loop, verifiers, governance, the OFFLINE
+                     rule-surface probes, the swap
+  queue/             level 3 queue and worker
+  sweep/             level 4 runner, profiles, deadline, charts, provenance
+  triage/            abstention, escalation, failure triage
+  views/             the Gradio views
+demos/               thin entry points and the runbooks, one folder per loop level
+notebooks/           three notebooks, thin by the same rule; the filename says whether
+                     each one spends. Needs `uv sync --extra notebooks`
+scripts/             gold build and validation, the experiment runner, the failure
+                     taxonomy observer, and the starter-branch generator
+tools/               the numeric-literal rule (`tools/lint_no_numbers.py`) and the
+                     LangSmith resume probe (`tools/resumability_probe.py`)
+results/             live cell output; see below
+tests/               the offline suite, plus tests/live/ behind the live marker
+```
+
+**What is committed under `results/`: almost nothing, and that is the design.**
+
+| path | committed | why |
+|---|---|---|
+| `results/noise_floor_seeded.json` | **yes** | the measured run-to-run floor the pre-registration cites BY NAME before the first cell runs. A citation printed as provenance has to resolve. |
+| `results/sweep/`, `results/ablation/`, `results/charts/` | **no** | live cell output. A committed cell would arrive on every clone and make the *first* live sweep on a fresh machine resume-and-complete instantly, rendering finished numbers to a room told nothing was precomputed. |
+
+**A fresh clone renders *not yet measured*, and nothing can override that any more.**
+
+This used to be defended by five mechanisms at once: a hatched fill, a REFERENCE badge
+on the row, a date beside every stored value, a four-way `--reference` mode flag with a
+carefully chosen default, and a test running the chart entry point against an empty
+directory. All five guarded the same thing — the possibility of drawing a stored cell —
+and the guarding was the tell. **Removing the capability is stronger than defending it.**
+There is no stored cell format, no loader, and no flag; a render path that cannot express
+"stored" cannot show one.
+
+**`reference/` holds one full run**, generated from the dress rehearsal by
+`scripts/build_reference.py` — the JSONL, every chart as rendered, a summary table and a
+`provenance.json` carrying the date, the served models, the profile, the n and the
+account tier. It is committed so you can see what this produces before spending
+anything.
+
+**No module under `src/loopeng/` may import it, and a test asserts that.** It is
+documentation, not a data source. That is the structural difference from the
+`results/reference/` this replaces: that directory was *loaded* by the renderer, so a
+stored measurement could reach a chart and be shown as fresh.
+
+---
+
+
+---
+
+## Installation
+
+**Prerequisites.** Two, and nothing else — no Docker, no database server, no cloud
+account, no API key to get a green test suite.
+
+| Need | Version | Check you have it | Expected |
+|---|---|---|---|
+| [uv](https://docs.astral.sh/uv/) | any recent; `0.11.20` is what this was built and locked with | `uv --version` | `uv 0.11.20` or later |
+| Python | **3.12** (`requires-python = ">=3.12"`, pinned by `.python-version`) | `uv run python -V` | `Python 3.12.x` |
+| git | any | `git --version` | any |
+
+You do **not** need to install Python yourself. `uv sync` reads `.python-version` and
+fetches 3.12 if your machine does not have it, which is why the table checks Python
+*through* uv rather than directly — a system `python3` of a different version is
+irrelevant here and checking it only causes confusion.
+
+### Install uv, per platform
+
+**macOS and Linux**
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**macOS, with Homebrew instead**
+
+```bash
+brew install uv
+```
+
+**Windows, in PowerShell**
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+If `uv --version` is not found afterwards, close and reopen the terminal so the updated
+`PATH` is picked up.
+
+### Clone, install, and prove it worked
+
+```bash
+git clone https://github.com/ANI-IN/loop-engineering.git
+cd loop-engineering
+uv sync
+uv run pytest -q
+```
+
+**Expected output** is in [Run it on your own key](#run-it-on-your-own-key), which is
+the same command and the same block. It is stated once, because two copies of a test
+count in one document are two numbers that can disagree — and this one quoted a run
+from several hundred tests ago until it was noticed.
+
+- **`6 deselected` is correct, not a problem.** `pyproject.toml` sets
+  `addopts = "-m 'not live'"`, which excludes the six tests that hit the network and
+  cost money. Opting in is an explicit act: `uv run pytest -m live`.
+- **On Linux you may also see skips.** The platform-conditional tests need a BSD-only
+  file-flag function; see `tests/test_env_guard.py`. The image byte-identity test that
+  used to be the other one is gone, along with the committed images it checked.
+
+If that passes, your checkout is sound and you have spent nothing.
+
+**Platform verification status, stated honestly:** every command in this section has
+been executed on **macOS (Darwin, arm64)**. The Linux notes come from CI, which runs the
+full offline suite on `ubuntu-latest` on every push. **The Windows instructions have not
+been executed** — they are reproduced from the uv documentation and reviewed against the
+code, and `demos/04_hill_climbing_loop/sweep.py --detach` is known not to detach on
+Windows (`subprocess`'s `start_new_session` is a no-op there). Treat Windows as
+unverified. See §16.
+
+The test suite is **offline by default**. It needs no API key, makes no network call, and
+costs nothing, so a green suite on a fresh clone tells you the checkout is sound before
+you have spent anything.
+
+**Put the checkout somewhere your cloud storage does not sync.** iCloud Drive evicts
+files it thinks are cold, and an evicted `.pth` file breaks the editable install in a way
+that looks like a mysterious import error. A guard catches this at import and says what
+happened, but moving the directory is the actual fix.
+
+---
+
+
+---
+
+## Environment
+
+Copy `.env.example` to `.env` and fill in the keys. The example file holds names only and
+is committed; `.env` holds values and is ignored.
+
+| variable | required by | notes |
+|---|---|---|
+| `OPENAI_API_KEY` | **everything that calls a model** — the agent loop, the verification loop, the Level 3 worker, the trap, the sweep, the conditions | **The one credential this repo cannot run live without.** Both scoring roles are OpenAI models. Not needed for the offline suite, the warehouse, the gold build or the rule-surface probes, all of which are free and make no network calls. |
+| `ANTHROPIC_API_KEY` | the `judge` role — triage and failure sorting only | **Optional. It gates nothing, and that is structural rather than a convention:** no LLM judge is a blocking check anywhere in this repo. Every figure in the session is produced without it. This table used to name it as the required key, which was wrong in the way most likely to turn away a valid checkout — a cloner with a working `OPENAI_API_KEY` and no Anthropic account can run the entire thing. |
+| `LANGSMITH_API_KEY` | the dataset upload and trace links | Everything works without it; traces degrade, measurements do not. |
+| `LANGSMITH_PROJECT` | the project experiments are filed under | Defaults to the workshop project rather than the SDK's shared `default` bucket. |
+| `LANGSMITH_TRACING` | — | Defaults to **false** and must stay false for the offline suite. See below. |
+| `LOOPENG_LIVE` | a *hosted* instance that may call models | **INERT.** Read by `live_mode.read_config()`, which no entry point calls. Setting it changes nothing at runtime. See SECURITY.md. |
+| `LOOPENG_LIVE_CEILING_USD` | a hosted live instance | **INERT.** Read by `live_mode.read_config()`, which no entry point calls. Setting it changes nothing at runtime. See SECURITY.md. |
+| `LOOPENG_LIVE_MAX_CALLS` | a hosted live instance | **INERT.** Read by `live_mode.read_config()`, which no entry point calls. Setting it changes nothing at runtime. See SECURITY.md. |
+
+Settings are loaded once, frozen, and fail fast. A missing key raises an error naming the
+exact variable and the exact fix, rather than failing forty minutes into a session.
+
+**Why tracing defaults off.** The LangSmith SDK enables itself from the environment, so a
+machine with the tracing flag exported would have ordinary test runs attempting
+background network sends — quietly breaking the zero-network property the offline suite
+is built on. A test asserts tracing is off outside the live marker, and the suite forces
+every known spelling of the variable to false.
+
+---
+
 
 ---
 
