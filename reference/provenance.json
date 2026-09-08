@@ -1,0 +1,23 @@
+{
+  "measured_on": "2026-09-08",
+  "models": {
+    "agent": "gpt-5.6-luna",
+    "judge": "claude-haiku-4-5",
+    "reference": "gpt-6-astra"
+  },
+  "profile": "session (sweep) + all six arms (experiments)",
+  "n_held_out": 60,
+  "account_tier": "OpenAI paid tier, single account, concurrency 6-8",
+  "note": "Dress rehearsal: all six arms plus the session sweep, run end to end on the presenting machine. Nothing here was hand-edited.",
+  "ending": "approached_but_short",
+  "arms_cost_usd": 1.8519,
+  "sweep_cost_usd": 0.102,
+  "arm_seconds": {
+    "A-baseline": 24.4,
+    "B-retry": 22.4,
+    "C-verified": 21.3,
+    "D-reference": 41.6,
+    "trap-agent-L0": 20.5,
+    "trap-reference-L0": 79.5
+  }
+}

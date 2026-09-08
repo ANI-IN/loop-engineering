@@ -1011,3 +1011,52 @@ def test_no_ci_step_pipes_a_command_whose_exit_code_is_the_gate():
         "status is the last command's and it cannot fail:\n  " + "\n  ".join(offenders)
         + "\nEither drop the pipe or `set -o pipefail`."
     )
+
+
+def test_nothing_under_src_imports_the_reference_directory():
+    """`reference/` is documentation, not a data source, and that is STRUCTURAL.
+
+    The directory it replaces — `results/reference/` — was *loaded* by the renderer, so
+    a stored measurement could reach a chart and be shown as a fresh one. Five
+    mechanisms guarded against that (a hatched fill, a badge, a date on every row, a
+    four-way mode flag, a test), and the guarding was the tell: the capability is gone
+    now instead.
+
+    This is what keeps it gone. A module that imports or opens anything under
+    `reference/` has reconnected the path that was deleted.
+    """
+    offenders = []
+    for path in sorted((REPO_ROOT / "src").rglob("*.py")):
+        body = path.read_text(encoding="utf-8")
+        for line in body.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue  # a comment may name it; only code may not reach it
+            if "reference/" in stripped and "results/reference" not in stripped:
+                offenders.append(f"{path.relative_to(REPO_ROOT)}: {stripped[:80]}")
+    assert not offenders, (
+        "these reach into reference/, which no module may:\n  " + "\n  ".join(offenders)
+    )
+
+
+def test_the_reference_run_carries_its_own_provenance():
+    """Every figure in there is one day, one account, one gold set. Somebody will read
+    it as what they should expect, so each of those travels with the numbers rather
+    than sitting in a caption."""
+    import json
+
+    provenance = json.loads(
+        (REPO_ROOT / "reference" / "provenance.json").read_text(encoding="utf-8")
+    )
+    for field in ("measured_on", "models", "profile", "n_held_out", "account_tier"):
+        assert provenance.get(field), f"reference/provenance.json is missing {field}"
+
+    from loopeng.registry import REGISTRY, spec_for
+
+    assert set(provenance["models"]) == set(REGISTRY), "every role is named"
+    for role, model in provenance["models"].items():
+        assert model == spec_for(role).model_id, (
+            f"reference/ records {role}={model}; the registry says "
+            f"{spec_for(role).model_id}. Regenerate it, or the numbers describe a "
+            f"model policy this build no longer has."
+        )
