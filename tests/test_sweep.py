@@ -892,3 +892,42 @@ def test_every_cell_the_sweep_builds_has_a_label_naming_its_own_model():
 
     for cell in build_cells(DEV):
         assert spec_for(cell.role).model_id in cell.label
+
+
+def test_no_shipped_module_carries_a_cell_key_as_a_literal():
+    """`Cell.key` is the only place a cell key is spelled.
+
+    The same literal — `worker_L0_loop_r0` — was hardcoded in THREE modules:
+    `sweep/render.py` chose which cell the abstention curve is drawn from,
+    `views/oversight.py` chose which cell that screen reads, and
+    `demos/02_verification_loop/abstain.py` defaulted its `--cell` flag. No sweep has
+    produced a `worker_*` key since the roles were renamed, so all three could never
+    match, and all three printed some variant of "run the sweep first" over a directory
+    full of cells.
+
+    Three instances of one string is not three mistakes; it is one mistake copied. This
+    is the door closed: a key belongs to `Cell`, and anything else that needs one asks
+    for it.
+
+    Comments may still QUOTE the dead key — all three modules do, recording what they
+    used to say — because the AST carries no comments and a docstring naming it would
+    be prose about history rather than a value anything reads.
+    """
+    import ast
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    shaped = re.compile(r"^[a-z_]+_L[0-9]_(one_shot|loop)_r[0-9]+$")
+    offenders = []
+    for tree_dir in ("src", "demos", "tools", "scripts"):
+        for path in sorted((root / tree_dir).rglob("*.py")):
+            for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+                if (isinstance(node, ast.Constant) and isinstance(node.value, str)
+                        and shaped.match(node.value.strip())):
+                    offenders.append(
+                        f"{path.relative_to(root)}:{node.lineno} {node.value!r}")
+    assert not offenders, (
+        "these spell a cell key rather than asking `Cell` for one, which is how the "
+        "same dead key ended up in three modules:\n  " + "\n  ".join(offenders)
+    )
