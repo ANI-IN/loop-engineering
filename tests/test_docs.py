@@ -975,3 +975,39 @@ def test_every_command_a_fix_message_tells_you_to_run_exists():
         "these tell an operator to run something that is not here:\n  "
         + "\n  ".join(missing)
     )
+
+
+def test_no_ci_step_pipes_a_command_whose_exit_code_is_the_gate():
+    """The rule that failed three times, finally made structural.
+
+    A shell pipeline's exit status is its LAST command's, so `pytest … | tail -3`
+    always succeeds. That cost a commit, then a CI step named `Confirm live tests were
+    deselected` that could not fail for the life of the file, then a push with a
+    failing test made while writing up the fix for the second.
+
+    Three occurrences with complete knowledge of the failure mode. Every other instance
+    of that gap in this repository was closed by making the rule structural rather than
+    remembered, and the workflow was the last place it was still remembered.
+
+    A pipe is allowed if the step sets `pipefail`, which is the actual fix rather than
+    a ban — `set -o pipefail` makes the pipeline's status the first failure in it.
+    """
+    import yaml
+
+    workflow = yaml.safe_load(
+        (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    )
+    offenders = []
+    for job in workflow["jobs"].values():
+        for step in job.get("steps", []):
+            command = step.get("run")
+            if not command:
+                continue
+            if "|" in command and "pipefail" not in command:
+                offenders.append(step.get("name", command.splitlines()[0]))
+
+    assert not offenders, (
+        "these CI steps pipe a command whose exit code is the gate, so the step's "
+        "status is the last command's and it cannot fail:\n  " + "\n  ".join(offenders)
+        + "\nEither drop the pipe or `set -o pipefail`."
+    )
