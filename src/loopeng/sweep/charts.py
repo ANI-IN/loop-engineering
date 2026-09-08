@@ -85,6 +85,7 @@ from loopeng.sweep.chart_model import (
     TRAP_CAPTION,
     TRAP_NO_STAR_NOTE,
     TRAP_TWO_ERRORS_NOTE,
+    arm_label,
     bar_rows,
     cache_note,
     deadline_note,
@@ -792,7 +793,7 @@ def cost_per_correct_chart(arms: list[dict]):
                 va="center", ha="left", fontsize=CPC_VALUE_SIZE, color=INK)
 
     ax.set_yticks(list(positions))
-    ax.set_yticklabels([a["label"] for a in ordered], fontsize=CPC_LABEL_SIZE,
+    ax.set_yticklabels([arm_label(a) for a in ordered], fontsize=CPC_LABEL_SIZE,
                        color=BODY)
     ax.invert_yaxis()
     ax.set_xscale("log")

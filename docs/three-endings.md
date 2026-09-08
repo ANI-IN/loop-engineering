@@ -40,7 +40,27 @@ Counting an abstention as a failure would rank a model that knew what it was mis
 below one that invented a number, which is the mistake this project spent an entire
 outcome category fixing.
 
-## What the pilot already says, recorded now so it cannot be chosen later
+## The rehearsal, run 2026-09-08
+
+The dress rehearsal ran all six arms end to end on the presenting machine, after this
+note was written. It selects the same ending, and the decomposition sharpened:
+
+- **The verdict.** The frontier model bare beat the budget model bare on 6 discordant
+  items to 0 — a gap existed — and with the loops the budget model did not catch it.
+  By accuracy over all 60 items: 53 correct against 60, a gap of 7.
+- **The decomposition.** Over the 54 items **both arms answered**, the deficit is **1
+  discordant item**, not 7. The other 6 are items the looped arm did not answer at
+  all: it declined, or failed visibly.
+
+**The pre-commitment survived a second independent run**, which is what makes it a
+pre-commitment rather than a description. The pilot's reading below was written down
+first; this one agrees with it, and the paired deficit moved from 2 to 1 while the raw
+gap moved from 8 to 7.
+
+Both are reported, with their dates. A run-to-run difference on a comparison this
+design is documented as underpowered for is exactly what the two records are for.
+
+## What the pilot said, recorded before the rehearsal so it could not be chosen later
 
 The four conditions have been run once, on the 60 held-out items, before this note. **So
 for that data this is not a pre-commitment**, and saying otherwise would be the exact
@@ -54,7 +74,7 @@ decomposition is the finding, so both get said, **in that order**:
 - **The verdict.** The frontier model bare beat the budget model bare on 8 discordant
   items to 0 — a gap existed — and with the loops the budget model did not catch it.
   By accuracy over all 60 items: 52 correct against 60, a gap of 8.
-- **The decomposition.** Over the 54 items **both arms answered**, the deficit is **2
+- **The decomposition.** Over the 54 items **both arms answered**, the deficit was **2
   discordant items**, not 8. The other 6 are items the looped arm did not answer at
   all: it declined, or failed visibly.
 - **Why that matters.** An arm wrong on 2 and visibly failing on 6 is not an arm

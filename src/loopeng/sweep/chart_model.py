@@ -418,6 +418,21 @@ RULE_FREE_NOTE = (
 )
 
 
+def arm_label(arm: dict) -> str:
+    """What a bar for this arm is called.
+
+    One function, because two charts draw arms and they must not name the same run
+    differently. `cost_per_correct_chart` read `arm["label"]` — a key no arm summary
+    has ever carried — so it raised `KeyError: 'label'` the first time it was handed
+    real data, which was today. Every test of it used an empty list, which returns
+    before this line.
+
+    That is the DIAL dead-branch defect exactly: a rendering path that only executes
+    when there is something to draw, and nothing ever drew.
+    """
+    return arm.get("arm") or arm["condition"]
+
+
 def outcome_shift_rows(arms: list[dict]) -> list[dict]:
     """One row per arm, with every band as a count. Reads `bands` and nothing else.
 
@@ -432,7 +447,7 @@ def outcome_shift_rows(arms: list[dict]) -> list[dict]:
             # preference between two fields that are both meaningful. What is gone is
             # the `"?"` third rung: every arm carries a condition, so a bar labelled
             # "?" was a state nothing could produce, and a KeyError names the caller.
-            "label": arm.get("arm") or arm["condition"],
+            "label": arm_label(arm),
             # Required, and this one was the worst of the three. `sum(bands.values())`
             # is not the same number as `n_items` — the bands count classified outcomes
             # — so a caller that omitted `n_items` got an n computed from a different

@@ -114,10 +114,16 @@ def test_every_ending_renders_its_own_basis():
             )
 
 
-def test_the_pilot_selection_matches_what_the_note_records():
-    """`docs/three-endings.md` states which ending the pilot data selects, dated, before
-    the rehearsal — so a different reading on the day is a visible change rather than a
-    quiet one. That only means anything if the note and the arithmetic agree TODAY."""
+def test_the_recorded_reading_matches_what_the_arms_on_disk_select():
+    """The note records two readings — the pilot, written before the rehearsal, and the
+    rehearsal itself. `results/experiments/` holds the LATEST run, so this checks the
+    note against that one.
+
+    It fired for real when the rehearsal landed: the note said 52 correct and 2
+    discordant, disk said 53 and 1. That is the note doing its job — a changed reading
+    became a test failure rather than a quiet edit, which is the whole reason the
+    numbers are written down before the run.
+    """
     directory = REPO_ROOT / "results" / "experiments"
     arms = {name: json.loads((directory / f"{name}.json").read_text())
             for name in ("A-baseline", "C-verified", "D-reference")}
@@ -141,7 +147,12 @@ def test_the_pilot_selection_matches_what_the_note_records():
     assert f"{selection.cheap_correct} correct against {selection.frontier_correct}" in note
     assert f"a gap of {raw_gap}" in note
     assert f"the {selection.n_paired} items **both arms answered**" in note
-    assert f"**{deficit} discordant items**, not {raw_gap}" in note
+    # Agreeing with the count, because the note is prose and "1 discordant items" is
+    # what an assertion that ignores this forces an author to write. Third time a
+    # derived string has failed to agree at n=1 in this build, after "OPENAI_API_KEY
+    # are set" and the deadline's "0 later cell(s)".
+    plural = "item" if deficit == 1 else "items"
+    assert f"**{deficit} discordant {plural}**, not {raw_gap}" in note
     assert f"other {raw_gap - deficit} are items the looped arm did not answer" in note
 
 

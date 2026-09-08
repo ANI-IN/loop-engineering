@@ -117,6 +117,32 @@ def abstention_panel(cells) -> tuple[list[dict], str | None]:
         return [], str(missing)
 
 
+def arm_panels(directory=None) -> dict:
+    """`arms` and `trap_cells` for `write_charts`, or empty when nothing has run.
+
+    The three headline charts accepted these from the day they were written and no
+    caller ever passed them, so `outcome_shift`, `trap_matrix` and `cost_per_correct`
+    rendered *not yet measured* on every run — including the runs whose headline they
+    are. See `sweep.experiments`.
+
+    Empty rather than raising on a fresh checkout: a cloner who has not run the
+    experiments should get the charts that DO have data plus three honest "not yet
+    measured" panels, which is exactly what those panels are for. The refusal is
+    narrower and lives in `experiments.trap_cells`: a PARTIAL set of arms raises,
+    because a matrix drawn from three of four cells is a different picture with no way
+    to tell.
+    """
+    from loopeng.sweep import experiments
+
+    arms = experiments.load_arms(directory or experiments.EXPERIMENTS_DIR)
+    if not experiments.available(arms):
+        return {"arms": (), "trap_cells": ()}
+    return {
+        "arms": experiments.outcome_shift_arms(arms),
+        "trap_cells": experiments.trap_cells(arms),
+    }
+
+
 def comparisons_for(cells):
     return all_comparisons(cells)
 

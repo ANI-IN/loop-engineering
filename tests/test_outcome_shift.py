@@ -204,7 +204,14 @@ def test_an_empty_matrix_renders_not_yet_measured():
 
 
 def _arm_cost(label, level, per_correct):
-    return {"label": label, "level": level,
+    """An arm as `summarise_arm` writes one.
+
+    The key was `label`, which no arm summary has ever carried — the fixture taught a
+    shape that does not exist, and that is why `cost_per_correct_chart` reading
+    `arm["label"]` passed every test and raised `KeyError` the first time it saw real
+    data. A fixture is a claim about what real data looks like.
+    """
+    return {"arm": label, "condition": label[:1].upper(), "level": level,
             "cost_per_correct_usd": ({"value": per_correct, "source": "estimated"}
                                      if per_correct else None)}
 
@@ -320,3 +327,65 @@ def test_no_chart_still_reads_a_stored_measurement_key():
             if marker in body:
                 offenders.append(f"{path.relative_to(root)}: {marker}")
     assert not offenders, f"dead reads of a removed key: {offenders}"
+
+
+# ---- the arms reaching the charts at all -------------------------------------
+
+
+def test_the_headline_charts_get_their_data_from_somewhere():
+    """`write_charts` accepted `arms` and `trap_cells` from the day it was written, and
+    the only caller passed neither — so `outcome_shift`, `trap_matrix` and
+    `cost_per_correct` rendered "not yet measured" on every run this project ever did,
+    including the ones whose headline they are.
+
+    Same shape as prompt caching and the discarded failure taxonomy: instrument built,
+    data on disk, no line connecting them. This one landed on the primary visual.
+    """
+    from pathlib import Path
+
+    entry = (Path(__file__).resolve().parent.parent
+             / "demos" / "04_hill_climbing_loop" / "charts.py").read_text(encoding="utf-8")
+    assert "arm_panels()" in entry, (
+        "the chart entry point no longer supplies arms; the three headline charts "
+        "would render empty and nothing would fail"
+    )
+
+
+def test_cost_per_correct_survives_being_given_real_arms():
+    """It read `arm["label"]`, a key no arm summary has ever carried, so it raised
+    KeyError the first time it was handed real data — which was after the dress
+    rehearsal. Every test of it used an empty list, which returns before that line.
+
+    The DIAL dead-branch defect exactly: a path that only runs when there is something
+    to draw, and nothing ever drew.
+    """
+    from loopeng.sweep.charts import cost_per_correct_chart
+
+    arms = [
+        {"arm": "A-baseline", "condition": "A", "level": "L3", "n_items": 60,
+         "bands": {"correct": 48}, "cost_per_correct_usd": {"value": 0.0004}},
+        {"arm": "D-reference", "condition": "D", "level": "L3", "n_items": 60,
+         "bands": {"correct": 60}, "cost_per_correct_usd": {"value": 0.0131}},
+    ]
+    drawn = texts(cost_per_correct_chart(arms))
+    assert "A-baseline" in drawn and "D-reference" in drawn
+
+
+def test_a_partial_set_of_trap_arms_raises_rather_than_drawing_three_cells():
+    """A matrix drawn from three of four cells is a different picture with no way to
+    tell. `run_experiments.py` writes all six arms or none."""
+    import pytest
+
+    from loopeng.sweep.experiments import MissingArm, trap_cells
+
+    with pytest.raises(MissingArm, match="all six arms or none"):
+        trap_cells({"trap-agent-L0": {"bands": {"correct": 8}, "n_items": 60}})
+
+
+def test_a_fresh_checkout_gets_empty_panels_rather_than_a_crash(tmp_path):
+    """A cloner who has not run the experiments should get the charts that DO have
+    data plus three honest "not yet measured" panels, which is what those panels are
+    for. The refusal is narrower and belongs to a PARTIAL set."""
+    from loopeng.sweep.render import arm_panels
+
+    assert arm_panels(tmp_path) == {"arms": (), "trap_cells": ()}
