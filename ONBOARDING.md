@@ -64,7 +64,7 @@ terms on top of these.
 | **Gold set, gold item** | The test questions, each paired with the SQL that answers it correctly and the rows that SQL returns. Built at `src/loopeng/gold/build.py :: build_gold()`. |
 | **Pattern** | One question template, for example "net revenue by region", parameterised into several concrete gold items. |
 | **Prompt level, L0 and L3** | How much of the semantic model goes into the model's instructions. **L0** is the bare schema with no rules. **L3** is the schema plus every rule written out. Defined at `src/loopeng/prompts.py :: LEVELS`. |
-| **Role, worker and frontier** | Which model answers. **worker** is the cheap fast model, `claude-haiku-4-5`. **frontier** is the expensive capable model, `claude-sonnet-5`. Mapped at `src/loopeng/registry.py :: REGISTRY`. |
+| **Role** | Which model answers. **agent** is the budget model, `gpt-5.6-luna`. **reference** is the frontier model, `gpt-6-astra`, called once per item as the bar being cleared. **judge** is `claude-haiku-4-5` and gates nothing. Mapped at `src/loopeng/registry.py :: REGISTRY`. |
 | **Verifier** | A function that inspects generated SQL and decides whether it broke a declared rule. Implemented at `src/loopeng/verify/verifiers.py`. |
 | **Parse tree, AST** | The structured form of a SQL statement after parsing, as opposed to its raw text. Checking a parse tree can see that a filter is inside a subquery that never runs; checking text cannot. |
 | **Termination reason** | Why a loop stopped: success, out of attempts, out of budget, or a call the loop refuses to retry. Defined at `src/loopeng/agent/loop.py :: TerminationReason`. |

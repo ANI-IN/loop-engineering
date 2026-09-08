@@ -8,6 +8,7 @@ import argparse
 from loopeng.entrypoint import run
 from loopeng.logging import configure_logging
 from loopeng.sweep.orchestrator import load_all
+from loopeng.sweep.render import PREFERRED_CURVE_CELL
 from loopeng.triage.abstain import curve
 from loopeng.views.intervention import build_intervention_app
 from loopeng.views.render import render_declined
@@ -15,7 +16,12 @@ from loopeng.views.render import render_declined
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Abstention and the intervention view.")
-    parser.add_argument("--cell", default="worker_L0_loop_r0", help="Which measured cell.")
+    # DERIVED. This defaulted to `"worker_L0_loop_r0"`, a key no sweep has produced
+    # since the roles were renamed — so the demo's default could never match and it
+    # printed "run the sweep first" over a directory full of cells. Same string, same
+    # defect, third module: `sweep/render.py` and `views/oversight.py` both had it.
+    parser.add_argument("--cell", default=PREFERRED_CURVE_CELL,
+                        help="Which measured cell.")
     parser.add_argument("--dir", default="results/sweep")
     parser.add_argument("--threshold", type=float, default=1.0)
     parser.add_argument("--headless", action="store_true", help="Print instead of serving.")

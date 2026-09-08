@@ -76,7 +76,7 @@ role, metric, and the rest. The terms below are specific to Level 4.
 | Term | Definition |
 |---|---|
 | **Mode, one-shot and loop** | **one-shot** means the agent gets one attempt. **loop** means the Level 2 verification loop checks the SQL against the declared rules and can send it back for another try. |
-| **Cell** | One combination of role, prompt level, mode, and replicate number, run over the whole gold set. For example `worker_L0_loop_r0`. A cell is the unit of measurement and becomes exactly one JSON file. Defined at `src/loopeng/sweep/runner.py :: Cell`. |
+| **Cell** | One combination of role, prompt level, mode, and replicate number, run over the whole gold set. For example `agent_L0_loop_r0`. A cell is the unit of measurement and becomes exactly one JSON file. Defined at `src/loopeng/sweep/runner.py :: Cell`. |
 | **Replicate** | A repeat of an identical cell, used to measure how much the answer moves between runs when nothing has changed. |
 | **Profile** | A named set of cells to run, with a spending cap. Three exist: `smoke`, `session`, `dev`. It also declares the item cap and the wall clock, because a ceiling that depends on someone typing a flag is not a ceiling. At `src/loopeng/sweep/runner.py :: PROFILES`. |
 | **Sweep** | One execution of a profile: run every cell it names, write every cell file. |
@@ -454,7 +454,7 @@ Command: `uv run python demos/04_hill_climbing_loop/sweep.py --profile <name>`
 |---|---|---|---|
 | `--profile` | one of `smoke`, `session`, `dev` | **yes** | Which set of cells to run. No default, deliberately. |
 | `--cap-usd` | float | no | Override the profile's spending cap. |
-| `--limit` | integer | no | Run fewer gold items. Accepted only by `smoke` and `development`; raises `LimitNotAllowed` elsewhere. |
+| `--limit` | integer | no | Run fewer gold items. Accepted only by `smoke` and `dev`; raises `LimitNotAllowed` elsewhere. |
 | `--dir` | path | no | Where cell files are written. Defaults to `results/sweep`. |
 | `--foreground` | flag | no | Block the terminal instead of detaching. |
 | `--concurrency` | integer | no | Requests in flight per model. Defaults to eight. |
@@ -536,11 +536,11 @@ it arrives through `run_sql()` and nowhere else.
 
 One JSON file per cell, written to `results/sweep/<key>.json`. Produced by
 `src/loopeng/sweep/runner.py :: summarise_cell()`. This is a real example, taken from
-`results/sweep/worker_L0_one_shot_r0.json`, with the `items` array removed:
+`results/sweep/agent_L0_one_shot_r0.json`, with the `items` array removed:
 
 ```json
 {
-  "key": "worker_L0_one_shot_r0",
+  "key": "agent_L0_one_shot_r0",
   "label": "Haiku · L0 · one-shot",
   "role": "worker",
   "level": "L0",
@@ -775,8 +775,8 @@ block, then one progress line per cell, then two summary lines beginning `comple
 
 **Verification steps for Part C.**
 
-1. `ls results/sweep` should list two files, `worker_L0_one_shot_r0.json` and
-   `worker_L0_loop_r0.json`. On Windows use `Get-ChildItem results\sweep`.
+1. `ls results/sweep` should list two files, `agent_L0_one_shot_r0.json` and
+   `agent_L0_loop_r0.json`. On Windows use `Get-ChildItem results\sweep`.
 2. Each file should have `"complete": true` and a `run_fingerprint` object containing
    `run_id`, `warehouse_seed`, `gold_sha256`, `prices_taken_on`, and `code_revision`.
 3. Re-render the charts. The two cells now appear as solid bars labelled `LIVE`, and

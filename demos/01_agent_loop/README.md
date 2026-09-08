@@ -211,7 +211,7 @@ captured verbatim in
 | flag | default | what it does |
 |---|---|---|
 | `--question` | *(unset)* | Run headless in the terminal. **Omitting it serves the AGENT view instead** — the flag chooses the mode, not just the text. |
-| `--role` | `worker` | `worker` or `frontier`. The cheap model or the expensive one. |
+| `--role` | `agent` | `agent` or `reference`. The budget model or the frontier one. |
 | `--level` | `L3` | `L0` (schema only) or `L3` (schema plus every declared rule). |
 | `--max-attempts` | `3` | The retry cap. This is the loop's whole termination policy at Level 1. |
 | `--share` | off | Expose the Gradio app on a public tunnel. |

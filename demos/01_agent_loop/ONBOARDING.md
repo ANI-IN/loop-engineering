@@ -551,7 +551,7 @@ arms: (('worker', 'L3'), ('worker', 'L0'))
 50 items, projected est. $0.21
 ```
 
-**Read the arms tuple.** Both are `worker`. The model is held constant and the prompt level
+**Read the arms tuple.** Both are `agent`. The model is held constant and the prompt level
 is the variable, which is the design decision from section 1 visible as data.
 
 The projection is deliberately pessimistic — measured average token counts, times the price

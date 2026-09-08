@@ -34,12 +34,12 @@ code rather than remembered on the day.
 |---|---|
 | **API key** | **Required by `sweep.py`**, which validates it *before* detaching — a keyless sweep used to print a pid, exit 0, and die in a log nobody had reason to open. **Not required by `charts.py`**, which only reads files. |
 | **Earlier stages** | None. The sweep builds whatever it needs. `charts.py` needs no sweep either: with nothing on disk it renders *not yet measured*, which is the correct output for a fresh clone. |
-| **Cost** | The most expensive stage, and the only one that runs unattended long enough to matter. `--profile` is **required and has no default**, so a delivery run cannot inherit development settings from a flag nobody typed. Each profile carries its own cap and the runner refuses to start a cell whose projected total would breach it. |
+| **Cost** | The most expensive stage, and the only one that runs unattended long enough to matter. `--profile` is **required and has no default**, so a session run cannot inherit `dev` settings from a flag nobody typed. Each profile carries its own cap and the runner refuses to start a cell whose projected total would breach it. |
 
 **Which commands here are free and need no key.** `charts.py` in every form, and `--help`
-on both entry points. Everything `sweep.py` does needs a key, and every profile except
-`exhibit` spends — `exhibit` declares no roles and a zero cap, so it has no cell to run,
-but it still validates the credential at the door like every other sweep invocation.
+on both entry points. Everything `sweep.py` does needs a key, and every profile spends.
+It validates the credential at the door, before doing anything else, so a keyless
+invocation fails in the process you are watching rather than later.
 
 If you have not proved your key today, run
 [`demos/00_preflight/check.py`](../00_preflight/README.md) first. It costs a fraction of a
@@ -55,7 +55,7 @@ Levels 1–3 answer a question. Level 4 asks which **configuration** answers que
 better, and measures it — a sweep across model and prompt completeness, every cell run
 under the same harness.
 
-A **cell** is one combination: a role (`worker` or `frontier`), a prompt level (`L0` or
+A **cell** is one combination: a role (`agent` or `reference`), a prompt level (`L0` or
 `L3`), a mode (`one_shot` or `loop`), and a replicate index. Each cell runs the whole gold
 set and reports a silent-error rate with its interval.
 
@@ -77,7 +77,7 @@ clustering makes the true figure worse.
 ```mermaid
 flowchart TD
     START["sweep.py --profile ..."] --> REQ{"--profile given?"}
-    REQ -->|no| NODEF(["argparse refuses.<br/><b>There is no default.</b><br/>A delivery run cannot inherit<br/>development settings by omission."])
+    REQ -->|no| NODEF(["argparse refuses.<br/><b>There is no default.</b><br/>A session run cannot inherit<br/><code>dev</code> settings by omission."])
     REQ -->|yes| PROF["<b>Profile</b> selects:<br/>roles · replicates · spend cap ·<br/>ablation on/off · prompt levels · item cap"]
 
     PROF --> FRESH{"--resume?"}
@@ -148,14 +148,24 @@ What is still true, and is why this section used to say two: a chart plotting a 
 that did not reproduce would be the same defect as reporting an unmeasured number. DELTA
 draws zero, and gives nothing untestable a bar.
 
-### One asymmetry must be said out loud every time a cross-model comparison appears
+### What must be said out loud every time a cross-model comparison appears
 
-The worker model is pinned to a fixed temperature. The frontier model **rejects that
-parameter with a 400** and cannot be pinned. So the two models' error bars do not carry
-the same thing — one is sampling noise, the other is sampling noise **plus** run-to-run
-variance. **Within a model they are comparable. Across models they are not.** The DIAL
-caption says so permanently rather than relying on anyone remembering, and the reference
-badge on each row says which side was measured live.
+**No p-value crosses models, and that refusal is in code rather than in a caption.** A
+cross-model pair differs in model, price and training at once, so a significance claim
+over it attributes a confounded difference to whichever axis the chart happens to be
+about. `loopeng.sweep.diff` refuses it.
+
+This section used to describe an ASYMMETRY: one model pinned to a fixed temperature,
+the other rejecting the parameter with a 400, so one arm's bars carried sampling noise
+and the other's carried sampling noise plus run-to-run variance. That asymmetry is gone
+— neither scoring model accepts a pinned temperature now, both pin a seed, and both
+carry the same class of residual. It is measured rather than assumed away, in
+`results/noise_floor_seeded.json`, which the pre-registration cites by name before the
+first cell runs.
+
+The DIAL caption states the surviving caveat permanently, and it is DERIVED from the
+registry — so it cannot go on describing a policy the run no longer has, which is
+exactly what the paragraph above did until it was rewritten.
 
 ---
 
@@ -167,13 +177,23 @@ Every cell runs the whole gold set, and replicated cells run it several times.
 The frontier model dominates the bill, and dominates it most where the rules are withheld,
 because thinking runs longer when the task is harder.
 
-Two budgets, tracked separately: the **grid** budget is what one delivery costs, paid fresh
-each time; **development** spend is what building it cost once.
+`--profile` is required and has no default: a session run must not inherit `dev`
+settings by omission, which is an order-of-magnitude cost difference decided by a flag
+nobody typed.
 
-`--profile` is required and has no default. `delivery` is the cheap profile that runs in
-front of a room; `development` runs both models with replicates and the ablation and was
-run once to establish the findings; `exhibit` runs nothing at all and exists so the public
-Space cannot spend.
+| profile | cells | items | spend cap | clock | what it is for |
+|---|---|---|---|---|---|
+| `smoke` | 2 | 8 | est. $0.05 | 300s | prove your key and the whole pipeline for a few cents |
+| `session` | 4 | all held out | est. $0.75 | 4200s | what runs in front of a room |
+| `dev` | 12 | all held out | est. $12.00 | none | run ONCE to establish findings, not per session |
+
+Every ceiling is a property of the profile — item count, spend cap and wall clock — not
+a flag, because a limit that depends on someone remembering to type it is not a limit.
+
+**The profile cap is not the bill for a full run.** `session` really is around a dime.
+The four conditions and the trap's reference arm come from `scripts/run_experiments.py`
+and need the frontier model, which is where the money goes — see the cost table in the
+root README.
 
 ---
 
@@ -187,11 +207,32 @@ No prior stage is required. The sweep builds whatever it needs.
 uv run python demos/04_hill_climbing_loop/sweep.py --profile session
 ```
 
-**`--detach` is the default and that is deliberate.** A sweep that holds the terminal
-cannot be started while you keep talking, which is the entire reason it exists. It prints
-a pid, a `tail -f` command, and hands the terminal straight back.
+**RUN IT IN THE FOREGROUND, IN FRONT OF THE ROOM.**
 
-**PRESS IT LIVE, AT THE TOP OF THIS STAGE.** The delivery sweep finishes fast enough to
+Detaching used to be the default, and the reason was sound at the time: a sweep that
+holds the terminal cannot be started at the top of a stage while you keep talking. That
+was a guess about the duration, and the dress rehearsal measured it.
+
+| job | measured | budget |
+|---|---|---|
+| the six arms (trap + four conditions) | 233s | must fit a lecture block |
+| the session sweep, 4 cells x 60 items | 113s | 4200s |
+
+**The sweep uses under three percent of its own clock.** The constraint that justified
+detaching does not exist, so the better session is the one where the room watches the
+pre-registration go up and then watches the cells land against it — a hypothesis stated
+before the data, and the data arriving while everyone is looking at the hypothesis. That
+is strictly better than launching into a log and revealing the result later, and it is
+available only because the numbers came in this small.
+
+`--detach` remains for the case it was built for: a machine you want to leave running.
+It is no longer how the session is delivered.
+
+**The deadline stays**, and its reason is unchanged. It never existed to trim an
+expected overrun; it bounds the tail — a rate-limited or degraded API — so the stage
+ends with a partial result carrying an honest `n` rather than eating the next one.
+
+**PRESS IT LIVE, AT THE TOP OF THIS STAGE.** The session sweep finishes fast enough to
 watch — likely before you have finished introducing what it does. That is better than
 starting it earlier and returning to a finished chart: the room sees it go from empty to
 full, and a chart that fills while you talk is much harder to disbelieve than one that was
@@ -265,11 +306,11 @@ captured verbatim in
 
 | flag | default | what it does |
 |---|---|---|
-| `--profile` | **none — required** | `smoke`, `delivery`, `development` or `exhibit`. There is deliberately no default: a delivery run must not inherit development settings by omission. |
+| `--profile` | **none — required** | `smoke`, `session` or `dev`. There is deliberately no default: a session run must not inherit `dev` settings by omission. |
 | `--cap-usd` | *(the profile's own cap)* | Override the ceiling. The runner aborts on the **projected** total before a cell runs, never on actual spend afterwards. |
-| `--limit` | *(the profile's own item cap)* | Fewer items. **Accepted by `smoke` and `development` only**, and refused elsewhere with `LimitNotAllowed` — a cell run over fewer items than its profile declares is not that profile's measurement. |
+| `--limit` | *(the profile's own item cap)* | Fewer items. **Accepted by `smoke` and `dev` only**, and refused elsewhere with `LimitNotAllowed` — a cell run over fewer items than its profile declares is not that profile's measurement. |
 | `--dir` | `results/sweep` | Where cell files live. This is also what it resumes from. |
-| `--foreground` | off (i.e. **detached**) | Block the terminal instead of detaching. Detaching is the default because a sweep that holds the terminal cannot be started while you keep talking. |
+| `--foreground` | off | Block the terminal instead of detaching. **Use it for the session.** The measured run is short enough to watch, and detaching was a workaround for a duration the rehearsal disproved. |
 | `--concurrency` | `CONCURRENCY_PER_MODEL`, from `src/loopeng/sweep/runner.py` | Requests in flight per model. **Lower it before the sweep**, not after it starts failing — the default was chosen against ceilings measured on one account, and a lower-tier account has a smaller pool than that. |
 | `--log` | `results/sweep_run.log` | Where the detached run writes. This is the file `tail -f` reads. |
 | `--resume` | off | Continue from completed cells on disk. **Without it the sweep refuses to start when it finds any** — that is the default, because resuming in front of a room finishes in a second and renders numbers that look computed and were not. The refusal never deletes: those files are the outage insurance and only the operator knows whether they are still needed. |
@@ -331,7 +372,7 @@ still watching, before the fork.
 
 ```text
 $ uv run python demos/04_hill_climbing_loop/sweep.py
-usage: sweep.py [-h] --profile {delivery,development,exhibit,smoke}
+usage: sweep.py [-h] --profile {dev,session,smoke}
                 [--cap-usd CAP_USD] [--limit LIMIT] [--dir DIR] [--foreground]
                 [--concurrency CONCURRENCY] [--log LOG] [--resume]
                 [--deadline SECONDS]
@@ -394,10 +435,10 @@ remove them yourself and re-run. **Do not reach for `--resume` to get past it** 
 and it resumed from disk. That is correct behaviour and exactly what you do not want in
 front of a room told nothing was precomputed.
 
-*If it is much slower than in development*, it is almost always the venue network. Say so.
+*If it is much slower than the figures in `reference/`*, it is almost always the venue network. Say so.
 The pre-registration is what the wait is for.
 
-*If someone compares a worker bar to a frontier bar by eye*, **stop them.** That is the
+*If someone compares an agent bar to a reference bar by eye*, **stop them.** That is the
 asymmetry in the caption, and it is the easiest mistake in the room to make.
 
 *If a rate limit appears mid-sweep*, lower the per-model concurrency with
@@ -434,12 +475,12 @@ reporting it as one is how an unreproducible number ends up on a chart.
 ran, not after. The message names what was spent, what remained, and the last completed
 cell. **Do not retry into the cap.**
 
-**The sweep detached and you cannot see anything.** That is the default and it is
+**The sweep detached and you cannot see anything.** That is what happens without `--foreground`, and it is
 deliberate. It printed a pid and a `tail -f` command; the log is `--log`, default
 `results/sweep_run.log`. Use `--foreground` if you want it to block instead.
 
 **Charts say *not yet measured*.** There are no cells in `--dir`. Captured above — that is
-correct on a fresh clone, not a fault. Run the sweep, or serve `--view exhibit`, which
+correct on a fresh clone, not a fault. Run the sweep, or read `reference/`, which
 reads the committed reference measurements instead.
 
 **The charts are full and you have not run anything.** You almost certainly passed
@@ -467,16 +508,15 @@ pick a different `--port`.
 - **The items are clustered, not independent.** Each pattern contributes several
   parameterisations, so **every interval here is narrower than the evidence strictly
   supports**. Every caption says so.
-- **Cross-model error bars are not comparable.** The worker model is pinned to a fixed
-  temperature; the frontier model rejects that parameter and cannot be pinned. One model's
-  bars carry sampling noise, the other's carry sampling noise **plus** run-to-run
-  variance. Within a model, comparable. Across models, not.
-- **At delivery the frontier cells are reference measurements, not computed live.** Any
-  cross-model comparison in a session puts a line measured minutes ago beside one measured
-  weeks ago. Both sides are badged on the row.
-- **Four of the ten comparisons are REFERENCE against REFERENCE** — two stored arms from
-  one development run. They are within-model, so the temperature asymmetry does not touch
-  them, but they are not something the session computes.
+- **Cross-model comparisons get no p-value, and that refusal is in code.** A
+  cross-model pair differs in model, price and training at once, so a significance claim
+  over it attributes a confounded difference to whichever axis the chart is about.
+  Neither scoring model accepts a pinned temperature, so both carry the same class of
+  run-to-run residual; it is measured rather than assumed away in
+  `results/noise_floor_seeded.json`.
+- **Every cell is computed by the run that draws it.** There is no stored set: no cell
+  format, no loader, no flag. A cross-model comparison in a session is two lines both
+  measured minutes ago.
 - **`smoke` measures nothing worth quoting.** Eight items cannot separate anything. It
   proves the pipeline on your key; it is not a result.
 - **The subset analysis was chosen post-hoc.** Two patterns were found, by triaging
@@ -491,8 +531,8 @@ pick a different `--port`.
 - **The hosted-live spend guard is not wired.** `src/loopeng/views/live_mode.py` implements
   and tests a three-condition opt-in and a per-process ceiling, but no view constructs a
   `LiveBudget` and `read_config()` is never called outside its own tests — so the
-  `LOOPENG_LIVE*` variables are **inert**. Read it as a design, not a control. The enforced
-  guarantee is the exhibit's, which builds no client at all.
+  `LOOPENG_LIVE*` variables are **inert**. Read it as a design, not a control, and do not
+  host a view from this repository publicly — see `SECURITY.md`.
 - **Prompt caching saves nothing on any profile you are likely to run**, and that is
   measured rather than assumed. It is switched on, and on these profiles it correctly does
   nothing. See root README §13.

@@ -290,7 +290,7 @@ captured verbatim in
 | flag | default | what it does |
 |---|---|---|
 | `--item` | *(a rule-heavy item)* | Gold item id. Omitted, it picks the first `p05_net_revenue` item, which requires several rules at once. |
-| `--role` | `worker` | `worker` or `frontier`. |
+| `--role` | `agent` | `agent` or `reference`. |
 | `--level` | `L3` | `L0` or `L3`. `L0` is the beat where the verifier is satisfied and the answers are not. |
 | `--max-attempts` | `3` | The retry cap. Unlike Level 1, `budget` and `no_progress` are genuinely reachable here. |
 
@@ -317,7 +317,7 @@ controller.
 
 | flag | default | what it does |
 |---|---|---|
-| `--cell` | `worker_L0_loop_r0` | Which measured cell to read the telemetry from. |
+| `--cell` | *(derived — the agent's L0 loop cell)* | Which measured cell to read the telemetry from. The default is built from the registry, not typed. |
 | `--dir` | `results/sweep` | Where cell files live. Point it at any directory that has one. |
 | `--threshold` | `1.0` | The abstention threshold used for the declined list in headless mode. |
 | `--headless` | off | Print the curve and the declined list instead of serving the intervention view. |
@@ -349,7 +349,7 @@ run:
 
 ```text
 $ uv run python demos/02_verification_loop/abstain.py --headless --dir <a directory with no cells>
-No cell 'worker_L0_loop_r0' in <a directory with no cells>. Run the sweep first.
+No cell 'agent_L0_loop_r0' in <a directory with no cells>. Run the sweep first.
 ```
 
 Exit code `1`. The path in the real output is whatever you passed to `--dir`; it is
@@ -418,7 +418,7 @@ when the command itself is wrong.
 `regex_swap.py` and `failure_paths.py` all print exactly this; `abstain.py` never does,
 because it needs no credential.
 
-**`No cell 'worker_L0_loop_r0' in results/sweep. Run the sweep first.`** — `abstain.py`
+**`No cell 'agent_L0_loop_r0' in results/sweep. Run the sweep first.`** — `abstain.py`
 only, captured above, exit 1. Either run stage 04's sweep, or point `--dir` at a
 directory that already has a cell file. It refuses rather than plotting an empty curve,
 because a flat line reads as a measurement.

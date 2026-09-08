@@ -52,7 +52,6 @@ There are **six** screens, served by one entry point so nothing is served two wa
 | `verify` | A gold item through the verifiers, the swap, and the rule surface | Yes, except the rule surface |
 | `dial` | Every sweep cell, live ones and stored ones, and the named secondary comparison | No |
 | `oversight` | The abstention curve, escalation, and triage | No |
-| `exhibit` | All of the above, frozen, with the spending paths disabled | **No — structurally** |
 
 Two properties shape everything in this area, and both exist because of the same constraint:
 **these numbers are shown to a room on a projector while being computed.**
@@ -86,7 +85,7 @@ specific to this area.
 | **Chrome** | The shared furniture: the stamps, the badges, the projector styling, the queue settings, and the launcher. |
 | **Pure renderer** | A function in `views/render.py` that turns data into a markdown string and composes no Gradio. Used by the terminal paths too. |
 | **Exhibit** | The frozen public build. Its guarantee is **structural**: no Anthropic client is ever constructed. |
-| **Live mode** | **NOT WIRED.** `views/live_mode.py` implements a spend ceiling for a hosted instance and is tested, but no view calls it — `LiveBudget` is never constructed and `read_config()` is never invoked outside its own tests. Read it as a design, not a control. The enforced guarantee is the exhibit's, which builds no client at all. |
+| **Live mode** | **NOT WIRED.** `views/live_mode.py` implements a spend ceiling for a hosted instance and is tested, but no view calls it — `LiveBudget` is never constructed and `read_config()` is never invoked outside its own tests. Read it as a design, not a control, and do not host a view from this repository publicly — see `SECURITY.md`. |
 | **Named secondary** | The pre-registered comparison DIAL renders: the cheap model with a loop against the expensive model one-shot. |
 
 ---
@@ -101,7 +100,7 @@ dependency specific to this area:
   missing install degrades to no QR rather than a crash.
 
 An Anthropic API key is needed for `agent`, `trap`, and the interactive halves of `verify`.
-**`dial`, `oversight`, and `exhibit` need no key and make no model calls.** `exhibit` is the
+**`dial` and `oversight` need no key and make no model calls.** They read cell files off disk. The frozen `exhibit` screen that used to be the
 one to point a browser at when you want the application readable without spending anything.
 
 ---
@@ -141,7 +140,6 @@ flowchart TB
         VE["verify"]
         DI["dial"]
         OV["oversight"]
-        EX["exhibit — spending paths disabled"]
         IN["intervention"]
     end
 
@@ -210,7 +208,7 @@ screens and the pure renderers because those are what it scans.
 It implements a spend ceiling for a hosted instance and it is tested, but no view calls
 `read_config()` and `LiveBudget` is never constructed, so it has no edge to `screens` —
 because it does not gate them. The three `LOOPENG_LIVE*` variables are inert. The
-enforced guarantee is the exhibit's: it builds no model client at all, asserted by a test
+enforced guarantee used to be the exhibit's: it built no model client at all, asserted by a test
 that spies on the constructor.
 
 **The difference between those two nodes is the whole subject of this repository.** One
@@ -307,10 +305,7 @@ gap themselves — without keeping a stored conclusion to fill it with.
 describe rather than typed, because **a caveat that names a threshold the slider no longer
 opens on is worse than no caveat: it is a disclosure that has quietly become false.**
 
-**`exhibit.py` owns a structural guarantee.** The boundary is that it makes zero model
-calls, and it is verified by spying on the `anthropic.Anthropic` constructor and asserting
-none is ever built. Required rather than nice to have: the exhibit is public, and a path
-that quietly spends would spend somebody else's money.
+**The removed exhibit screen owned a structural guarantee**, and it is recorded here because the REASONING is worth keeping even though the code is gone: a public page holding a working key means unbounded spend by strangers, so the guarantee wanted there is structural — no client is ever constructed — rather than a ceiling somebody configures. That screen, its test and the deploy tree are all deleted. Nothing in this repository publishes anything; see `SECURITY.md`.
 
 Note what survives the freeze and what does not. **VERIFY stays fully live**, and that is
 the best part — V1 and V2 are pure functions over SQL text, so the rule checks, the probe
@@ -327,20 +322,20 @@ not wired to anything.**
 >
 > The conditions below describe a design that is implemented and tested, not a
 > control that is in force. The guarantee this project actually enforces is the
-> exhibit's — no `anthropic.Anthropic` is ever constructed, asserted by a test that
+> deleted exhibit screen's — no model client was ever constructed, asserted by a test that
 > spies on the constructor. That one is structural; this one is aspirational.
 >
 > A guard documented as active and wired to nothing is the precise defect this
 > repository exists to demonstrate, so it is labelled rather than quietly left.
 
-Where the exhibit guarantees no client is ever constructed, live mode *would* allow one
+Where that deleted screen guaranteed no client was ever constructed, live mode *would* allow one
 and stop it after a fixed amount. It *would* be off unless **three** things are all
 true, because the failure mode is somebody else's money and it is silent until the bill
 arrives:
 
 1. `LOOPENG_LIVE` is set **explicitly** — not inferred from a key being present, since a key
    can arrive for a dozen reasons that are not "please spend it".
-2. `ANTHROPIC_API_KEY` is set to something real, and not the exhibit's placeholder.
+2. A model credential is set to something real. Note `live_mode` reads `ANTHROPIC_API_KEY`, which under the current policy is the JUDGE key and gates nothing — another reason the module is not wired.
 3. A spend ceiling is configured. **Live with no ceiling is not a configuration it accepts**
    — it refuses rather than defaulting to a number nobody chose.
 
@@ -357,7 +352,7 @@ same as safe. Password-gate it or keep it private; the cap is a backstop, not a 
 1. `demos/views.py` parses `--view` against a six-name tuple. It is `required`, so there is
    no default screen to inherit by accident.
 2. Settings load, the warehouse is ensured, and the gold set is built **only for the three
-   screens that need it** — `trap`, `verify`, and `exhibit`.
+   screens that need it** — `trap` and `verify`.
 3. The matching `build_*_app()` runs and returns a `gr.Blocks`.
 4. `chrome.launch()` applies the queue settings and the CSS, binds, prints the reachable
    URLs, writes a QR for the first one, and holds the thread.
@@ -393,7 +388,7 @@ not a queue that lost your question.* See [Level 3](03_event_driven_loop/ONBOARD
 ### The command line surface
 
 ```
-usage: views.py [-h] --view {agent,trap,verify,dial,oversight,exhibit}
+usage: views.py [-h] --view {agent,trap,verify,dial,oversight}
                 [--port PORT] [--share] [--queue QUEUE]
                 [--sweep-dir SWEEP_DIR] [--share-url SHARE_URL]
 ```
@@ -433,10 +428,8 @@ was overspent.
 
 | Path | Direction | Used by |
 |---|---|---|
-| `results/sweep/` | read | `dial`, `oversight`, `exhibit` |
-| `results/reference/measurements.json` | read | `dial`, `exhibit` |
-| `results/reference/abstention_curve.json` | read | `exhibit` |
-| `results/phase4_escalation.json`, `results/phase4_triage.json` | read | `oversight`, `exhibit` |
+| `results/sweep/` | read | `dial`, `oversight` |
+| `results/phase4_escalation.json`, `results/phase4_triage.json` | read | `oversight` |
 | `question_queue.duckdb` | **read and write** | `agent` |
 | `results/share_qr.png` | write | `chrome.qr_png()` |
 
@@ -531,22 +524,26 @@ print(_rows(load_reference()))
 "
 ```
 
-**Actual output, captured** (first rows; the full table is longer):
+**Actual output, captured** — from a live run, since there is nothing stored to show:
 
 ```
-| | cell | silent-error rate | cost |
-|---|---|---|---|
-| <span class='ref-badge'>REFERENCE (2026-07-29)</span> | Sonnet · L0 · loop | 42.6% (n=47, ±14.2, measured 2026-07-29) | est. $0.7240 |
-| <span class='ref-badge'>REFERENCE (2026-07-29)</span> | Sonnet · L0 · one-shot | 83.8% (n=37, ±14.9, measured 2026-07-29) | est. $0.3921 |
-| <span class='ref-badge'>REFERENCE (2026-07-29)</span> | Sonnet · L3 · one-shot | 0.0% (n=43, ±8.2, measured 2026-07-29) | est. $0.3646 |
-| <span class='ref-badge'>REFERENCE (2026-07-29)</span> | Haiku · L0 · loop | 68.3% (n=41, ±15.3, measured 2026-07-29) | est. $0.1293 |
-| <span class='ref-badge'>REFERENCE (2026-07-29)</span> | Haiku · L3 · loop | 9.3% (n=43, ±12.3, measured 2026-07-29) | est. $0.0841 |
+| cell | silent-error rate | cost |
+|---|---|---|
+| gpt-5.6-luna · L0 · one-shot | 83.1% (n=77, ±9.9, computed 11:31 today) | est. $0.0187 |
+| gpt-5.6-luna · L0 · loop | 51.3% (n=76, ±11.0, computed 11:31 today) | est. $0.0326 |
+| gpt-5.6-luna · L3 · one-shot | 10.5% (n=76, ±8.9, computed 11:32 today) | est. $0.0242 |
+| gpt-5.6-luna · L3 · loop | 5.3% (n=76, ±7.5, computed 11:32 today) | est. $0.0265 |
 ```
 
-**Every single cell carries four things**: the badge, the rate, the sample size **and** the
-interval, and the date. Not one of them is optional and not one is in a caption. The
-`0.0%` row is the clearest case for why: a bare `0.0%` is a claim of perfection, while
-`0.0% (n=43, ±8.2, measured 2026-07-29)` is a measurement with a stated uncertainty.
+**This block used to show five rows badged `REFERENCE (2026-07-29)`**, each a stored
+measurement of two models this build no longer contains, rendered with the date it was
+frozen. The badge, the stored format, the loader and the flag are all deleted — a render
+path that cannot express "stored" cannot show one — so every row above is computed by the
+run that drew it and stamped with the time.
+
+**Every cell still carries three things**: the rate, the sample size **and** the
+interval, and when it was computed. Not one is optional and not one is in a caption.
+A bare rate is a claim; a rate with its `n` and interval is a measurement.
 
 The dollar figures all say `est.` They always will — tokens are measured, dollars are a
 hand-entered price table.
@@ -685,7 +682,6 @@ Shared rows are in
 | `oversight` says `not yet measured — run the sweep first` | No cells for the key it reads. | The panel names it. | Run a [Level 4](04_hill_climbing_loop/ONBOARDING.md) sweep. |
 | A comparison row reads *awaiting measurement* | One or both cells are missing. | Check the two cell keys on that row. | Correct behaviour. The row deliberately renders without a conclusion rather than being hidden. |
 | No QR file is written | `qrcode` is not installed. | `uv run python -c "import qrcode"` | `uv sync`. The import is inside a `try`, so this degrades rather than crashing. |
-| The exhibit tries to make a model call | It cannot, and a test proves it. | `uv run pytest tests/test_exhibit.py -q` | If that test ever fails, stop and fix it before deploying. It is a security boundary. |
 | Live mode stays off with the key set | The other two conditions are not met. | Print `read_config().summary`; it names which one. | Set `LOOPENG_LIVE` **and** `LOOPENG_LIVE_CEILING_USD`. |
 | `BudgetExhausted` on a hosted instance | The per-process ceiling is spent. | The message reports both figures. | Restart the process, or raise the ceiling deliberately. |
 | `lint_no_numbers.py` fails after a view edit | A numeric literal, or a number inside a string, reached a rendering file. | The message names the file and line. | If it is genuine layout geometry, add a trailing `# layout` comment. If it is a measurement, derive it. |
@@ -695,7 +691,7 @@ Shared rows are in
 ## 13. Testing
 
 ```bash
-uv run pytest tests/test_views.py tests/test_exhibit.py tests/test_live_mode.py -q
+uv run pytest tests/test_views.py tests/test_live_mode.py -q
 ```
 
 **Actual output, captured:**
@@ -724,12 +720,8 @@ substituted clients and stored data.
 | The CSS is sized for a room | `test_the_projector_css_sizes_type_for_a_room` |
 | **The Gradio boundary holds** | `test_each_view_helper_is_defined_exactly_once`, `test_render_attempts_is_gone_as_a_name`, `test_no_ui_module_survives_outside_views`, `test_only_views_import_gradio`, `test_the_render_module_composes_nothing` |
 | Labels survive a bad font | `test_the_surviving_outcome_labels_are_not_emoji` |
-| **The exhibit constructs no model client** | `test_building_the_exhibit_constructs_no_model_client`, `test_a_sweep_under_the_exhibit_profile_cannot_spend` |
-| The exhibit is disabled, not hidden | `test_the_spending_path_is_disabled_not_hidden`, `test_the_disabled_note_explains_rather_than_apologises` |
-| VERIFY stays live in the exhibit | `test_verify_stays_fully_live_in_the_exhibit` |
-| Every frozen figure is dated, and not today | `test_every_exhibit_figure_carries_a_measured_date_not_today`, `test_the_banner_says_it_is_frozen_and_names_the_date` |
 | A fresh checkout renders nothing finished | `test_a_fresh_checkout_renders_not_yet_measured`, `test_the_chart_entry_point_renders_nothing_finished_on_a_fresh_clone` |
-| **Live mode needs all three conditions** | `test_off_by_default`, `test_a_key_alone_does_not_enable_it`, `test_the_flag_alone_does_not_enable_it`, `test_it_refuses_rather_than_defaulting_the_ceiling`, `test_the_exhibit_placeholder_key_does_not_count`, `test_all_three_together_enable_it` |
+| **Live mode needs all three conditions** | `test_off_by_default`, `test_a_key_alone_does_not_enable_it`, `test_the_flag_alone_does_not_enable_it`, `test_it_refuses_rather_than_defaulting_the_ceiling`, `test_all_three_together_enable_it` |
 | Both ceilings actually stop it | `test_the_call_ceiling_stops_it`, `test_the_spend_ceiling_stops_it`, `test_a_failed_call_still_counts_against_the_ceiling` |
 
 `test_only_views_import_gradio` and `test_the_render_module_composes_nothing` are the two
@@ -778,7 +770,9 @@ and asserts the README's documented `--view` choices match the entry point's tup
   stale — it asserted a significance claim the repository's own guardrail forbids.
 - **Building the OVERSIGHT caveats from their constants.** A caveat naming a value the code
   no longer uses is a disclosure that has quietly become false.
-- **The exhibit constructing no client.** This is a security boundary on a public page, and
+- ~~**The exhibit constructing no client.**~~ **Removed with the screen.** The reasoning
+  is kept in `SECURITY.md` for whoever adds a deployment path; nothing here publishes
+  anything now. What it said was that
   the test that proves it is not optional.
 - **`live_mode` refusing rather than defaulting a ceiling.** Picking a number nobody chose
   would look like it worked.
@@ -796,7 +790,6 @@ and asserts the README's documented `--view` choices match the entry point's tup
 | `demos/01_agent_loop/run.py` | `build_run_app`, and `render_attempt_timeline` / `render_cost` |
 | `demos/01_agent_loop/trap.py` | `build_trap_app` |
 | `demos/02_verification_loop/abstain.py` | `build_intervention_app`, `render_declined` |
-| `deploy/hf/app.py` | The exhibit build and its environment variables |
 | *(no sync script)* | Deleted and no longer in the repository |
 | The root `README.md` | The `--view` choices, asserted by `tests/test_docs.py` |
 | `tools/lint_no_numbers.py` | The list of eleven rendering files |
@@ -814,7 +807,7 @@ Five additions for this area:
    `tests/test_docs.py` compares them.
 3. If you added a figure, confirm it goes through a stamp and that an unmeasured value
    renders as `not yet measured`.
-4. If you touched anything the exhibit composes, run `uv run pytest tests/test_exhibit.py -q`
+4. If you touched anything a view composes, run `uv run pytest tests/test_views.py -q`
    before deploying. It is the only thing standing between a public page and somebody else's
    bill.
 5. If you touched `chrome.launch()`, serve a screen and confirm a URL prints **and** the page
@@ -828,18 +821,23 @@ Five additions for this area:
 
 1. **`demos/views.py` says "five views" in two places and offers six.** The module docstring
    lists `AGENT · TRAP · VERIFY · DIAL · OVERSIGHT` and the argparse description reads
-   *"Serve one of the five views"*, while `VIEWS` has six entries — `exhibit` was added and
+   *"Serve one of the five views"*, and `VIEWS` has five entries. It briefly had six —
+   a frozen exhibit screen, since deleted — and
    the prose was not. It is visible in `--help`, quoted in section 7. **Should the count be
    derived from `len(VIEWS)`, the way the OVERSIGHT caveats are derived from their
    constants?**
 
-2. **`build_exhibit_app` imports `build_dial_app` and never calls it**, with a
+2. ~~**`build_exhibit_app` imports `build_dial_app` and never calls it**~~ — **closed by
+   deletion**, the screen is gone. It had a
    `# noqa: F401 (kept for parity)` comment. **Is that a placeholder for embedding the real
    DIAL screen, or should it go?**
 
-3. **The exhibit reads `results/reference/abstention_curve.json`, which has no writer in this
-   repository.** The same open question appears in the
-   [Level 4 document](04_hill_climbing_loop/ONBOARDING.md). **Which tool produced it?**
+3. ~~**The exhibit reads `results/reference/abstention_curve.json`, which has no writer
+   in this repository.**~~ **Closed by deletion.** Both the screen and the file are
+   gone. The curve is computed from a live cell's per-item outcomes now, by
+   `src/loopeng/triage/abstain.py :: curve()`, and which cell it comes from is decided
+   by `src/loopeng/sweep/render.py :: curve_cell()` — which RAISES when the named cell
+   is absent rather than substituting the largest one it can find.
 
 4. **`build_intervention_app` takes a `warehouse` parameter it never uses.** **Left over, or
    reserved for the answer-submission path the module says was deliberately not built?**
@@ -859,7 +857,7 @@ Five additions for this area:
 | The live screens' output shapes in section 10 Part F. | Read off the `build_*_app` functions and the renderers they call. Parts B through E exercise those same renderers with real data. |
 | `qrcode` degrades rather than crashing when absent. | The import is inside a `try` returning `None`. I did not uninstall it to confirm. |
 | The projector CSS is applied at launch in the installed Gradio. | `test_the_projector_css_is_actually_applied_not_merely_defined` passes here, which is the assertion rather than my reading. |
-| The exhibit is the only screen that cannot spend. | `dial` and `oversight` also make no model calls, but only the exhibit's guarantee is *structural* and tested by constructor spying. |
+| No screen here can spend without a key. | `dial` and `oversight` make no model calls at all; `agent`, `trap` and `verify` do. The one screen whose guarantee was *structural* — a constructor spy proving no client was ever built — has been deleted, so that guarantee no longer exists for anything. Do not host a view publicly. |
 
 ### Things I verified by executing them
 

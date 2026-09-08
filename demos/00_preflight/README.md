@@ -46,10 +46,14 @@ to use it, not a degraded one.
 The cheapest possible answer to "will this work on my key?". Five checks, in order,
 pass/fail per line:
 
-1. `ANTHROPIC_API_KEY` is set — named, never printed.
+1. `OPENAI_API_KEY` is set — named, never printed. It is the only REQUIRED
+   credential; `ANTHROPIC_API_KEY` buys the judge, which gates nothing.
 2. Each role in the registry is called once, **with the request kwargs the registry
-   declares**. That is the point: `temperature=0` is legal on Haiku and a 400 on
-   Sonnet 5, so a simplified probe call could pass on an account where the sweep fails.
+   declares** — except a role whose key is optional and absent, which is SKIPPED
+   rather than called. That is the point: neither scoring model accepts a pinned
+   temperature, both answer a non-default sampling parameter with a 400, and the judge
+   is the only role that pins `temperature=0`. A probe that sent one shape for all
+   three could pass on an account where the sweep fails.
 3. The warehouse builds from its seed.
 4. The gold set builds, reporting items and clusters.
 5. The rule surface runs offline and reports both columns — what the verifier rejects

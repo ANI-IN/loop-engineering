@@ -27,7 +27,7 @@ here than in ordinary use.
 | **gold item** | One question, its correct SQL, its correct answer, and the wrong answers you get by ignoring each rule. Written SQL-first: the query comes first and the question is derived from what it returned. |
 | **naive answer** | What you get ignoring every rule at once. If an item's gold answer equals its naive answer, that item cannot tell a good configuration from a bad one and the build refuses it. |
 | **L0 / L3** | Prompt completeness. **L0** gives the model the schema only. **L3** gives it the schema *plus* every declared business rule. The gap between them is the whole experiment. |
-| **worker / frontier** | Model roles. `worker` is the cheap model, pinned to a fixed temperature. `frontier` is the expensive one, which rejects that parameter and cannot be pinned. |
+| **agent / reference** | Model roles. `agent` is the budget model that produces every figure. `reference` is the expensive one, which rejects that parameter and cannot be pinned. |
 | **verifier** | A function that reads a query and returns the rules it broke. It never receives the gold answer — not by convention, but because the context type has no field for it and the function that builds one takes no such argument. |
 | **rule-surface probe** | A pair of queries per rule: one that breaks it and must be rejected, one that is *correct but unusual* and must be accepted. This is how you test a measuring instrument — against inputs whose answer you already know, not by admiring the numbers it produces. |
 | **termination reason** | Why a loop stopped, recorded by name. A policy branch nobody counts is a branch nobody knows fires. |

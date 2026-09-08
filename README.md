@@ -1,17 +1,409 @@
 # Loop Engineering
 
-A workshop application about the gap between a rule you declared and a rule something
-actually enforces.
+**A text-to-SQL agent that is wrong in two different ways, and only one of them is
+visible.**
 
-It runs a text-to-SQL agent against a seeded warehouse whose business rules live in one
-config file, and builds four nested loops around that agent: retrying on failure,
-verifying what the retry cannot see, running with nobody watching, and measuring which
-configuration is better. Every figure it renders carries the time it was computed and
-the number of observations behind it, because a number on a projector with neither is
-indistinguishable from a number somebody typed.
+A *visible failure* is detectably wrong without knowing the answer: invalid SQL, a
+timeout, three columns where one was asked for. A retry loop can see those.
 
-**The application is the argument.** There is no slide claiming that measurement matters
-without something on screen doing the measuring.
+A *silent error* ran cleanly, returned one plausible number, and is wrong. Nothing in
+the output distinguishes it from a correct answer, and detecting it requires the answer
+— which in production you do not have.
+
+This repository is four nested loops around one agent, built to show that the second
+category is the one that matters and that **verification does not mainly make an agent
+right; it makes it stop being confidently wrong.** Those move independently, and only
+one of them is what a reader of the answer is exposed to.
+
+It also turned out to be an argument about something else. Every figure here is
+produced by a budget model. The frontier model appears exactly once, as the bar being
+cleared — and with the business rules withheld, both models land on the *same floor*.
+The constraint is information, not capability.
+
+---
+
+## Contents
+
+| | |
+|---|---|
+| [Quickstart](#quickstart) | prove your checkout for a fraction of a cent |
+| [What it costs](#what-it-costs) | the split, because the profile cap is not the bill |
+| [What you should expect](#what-you-should-expect) | one full run, committed |
+| [The trap](#the-trap-rules-withheld-against-rules-given) | the session's headline |
+| [Model policy](#model-policy) | three roles, two providers, one that gates nothing |
+| [The four conditions](#the-four-conditions) | what each arm is for |
+| [The four loops](#the-four-loops) | L1 through L4, and where to see each |
+| [Notebooks](#notebooks) | three, and the loop map |
+| [Installation](#installation) | uv, per platform |
+| [Environment](#environment) | one required key |
+| [Running the session](#running-the-session) | live, in front of the room |
+| [Repository structure](#repository-structure) | what is where |
+| [Testing](#14--testing) · [Design decisions](#15--design-decisions) | |
+| [Limitations](#16--limitations) · [CI caveats](#ci-and-what-it-does-not-cover) | |
+| [Troubleshooting](#18--troubleshooting) · [FAQ](#19--faq) · [Glossary](#glossary) | |
+
+---
+
+## Quickstart
+
+**One credential. `OPENAI_API_KEY`, and nothing else.** The Anthropic key buys the
+judge, the judge never gates a result, and every figure in a session is produced
+without it.
+
+```bash
+git clone https://github.com/ANI-IN/loop-engineering.git
+cd loop-engineering
+uv sync
+cp .env.example .env          # add OPENAI_API_KEY only
+
+uv run pytest -q                                  # offline, free, ~90s
+uv run python demos/00_preflight/check.py         # 2 calls, a fraction of a cent
+uv run python demos/04_hill_climbing_loop/sweep.py --profile smoke --foreground
+uv run python demos/04_hill_climbing_loop/charts.py
+```
+
+**What the preflight prints on a good checkout** — note the `[SKIP]`, which is a skip
+and not a pass, because "we did not call it" and "we called it and it worked" are
+different facts:
+
+```
+[PASS] OPENAI_API_KEY is set — present (values never printed or logged)
+[PASS] agent model reachable (gpt-5.6-luna) — answered with the registry's own kwargs
+[SKIP] judge model reachable (claude-haiku-4-5) — not called — ANTHROPIC_API_KEY is
+       not set, and this role gates nothing
+[PASS] reference model reachable (gpt-6-astra) — answered with the registry's own kwargs
+[PASS] warehouse matches the declared schema
+[PASS] gold set builds — 84 items in 11 clusters
+[PASS] rule surface (offline, free) — rejects 6/6 rule-breaking queries, accepts 6/6
+```
+
+**Expected cost of the quickstart**, measured rather than estimated in advance:
+
+| step | calls | cost |
+|---|---|---|
+| offline suite | 0 | free |
+| preflight | 2 | est. $0.0005 |
+| `smoke` sweep | ~16 | est. $0.0047 |
+| charts | 0 | free |
+
+---
+
+## What it costs
+
+**The profile cap is not the bill.** Someone re-running this will look at `session`'s
+cap and assume that is the number; it is not, because the two comparisons that need a
+frontier model are not in that profile.
+
+| what | how | cost |
+|---|---|---|
+| `smoke` sweep | 2 cells, 8 items | est. $0.005 |
+| `session` sweep | 4 cells, 60 items, both prompt levels | est. $0.10 |
+| the four conditions + the trap | six arms, 60 items each | est. $1.85 |
+| — of which the two **frontier** arms | `D-reference`, `trap-reference-L0` | est. $1.79 |
+| **a full run, everything** | | **est. $1.95** |
+
+The frontier arms are the overwhelming majority of the bill and they are only two of
+the six. They exist because the named secondary and the trap's reference row both need
+a frontier measurement, and there is no way to have those without paying for them.
+
+---
+
+## What you should expect
+
+**This is an expectation, not a guarantee.** One run, on one account, on one day,
+against one gold set. Committed in [`reference/`](reference/) so you can see what this
+produces before spending anything.
+
+Measured 2026-09-08 · agent `gpt-5.6-luna` · reference
+`gpt-6-astra` · n=60 held out · OpenAI paid tier, single account, concurrency 6-8
+
+| arm | model | level | loops | n | correct | silent | visible | abstained | unearned | est. cost |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `trap-agent-L0` | gpt-5.6-luna | L0 | none — single shot | 60 | 8 | 42 | 6 | 0 | 4 | est. $0.0134 |
+| `A-baseline` | gpt-5.6-luna | L3 | none — single shot | 60 | 48 | 6 | 6 | 0 | 0 | est. $0.0174 |
+| `B-retry` | gpt-5.6-luna | L3 | L1 only | 60 | 47 | 7 | 6 | 0 | 0 | est. $0.0174 |
+| `C-verified` | gpt-5.6-luna | L3 | L1 + L2 | 60 | 53 | 1 | 6 | 0 | 0 | est. $0.0186 |
+| `D-reference` | gpt-6-astra | L3 | none — single shot | 60 | 60 | 0 | 0 | 0 | 0 | est. $0.7887 |
+| `trap-reference-L0` | gpt-6-astra | L0 | none — single shot | 60 | 8 | 28 | 6 | 18 | 0 | est. $0.9965 |
+
+**Both models sit on the same floor with the rules withheld.** Eight of sixty each.
+They diverge entirely on whether the specification is supplied, which is the cleanest
+statement available that the constraint is information rather than capability — and it
+removes the "you just used a weak model" objection, because at L0 the frontier model is
+no better.
+
+**Your numbers will differ, and that difference is a finding rather than a fault.**
+Neither scoring model accepts a pinned temperature; both pin a seed, which the vendor
+documents as best-effort. The run-to-run floor is measured, not assumed away — see
+[`results/noise_floor_seeded.json`](results/noise_floor_seeded.json), which the
+pre-registration cites by name before the first cell runs. Between two runs of this
+build, one arm moved by two items and `B-retry` crossed *below* the arm it normally sits
+above. That is why A→B carries no claim: the honest reading is that retry's mechanism
+did not fire, not that retry hurt.
+
+### The figures
+
+Every one of these was drawn by the run that produced the table above. There is no
+stored set: the render path cannot express "stored", which is why it cannot show one.
+
+![The trap matrix](reference/charts/trap_matrix.png)
+
+![Outcome shift by arm](reference/charts/outcome_shift.png)
+
+![Cost per correct answer](reference/charts/cost_per_correct.png)
+
+![Paired deltas](reference/charts/delta.png)
+
+---
+
+## The trap: rules withheld against rules given
+
+The session's primary result, and it is *within* each model — the same model, the same
+items, the same loop, with only the presence of the business rules changing. Nothing
+about the models' relative capability enters it.
+
+| model | rules withheld (L0) | rules given (L3) |
+|---|---|---|
+| `gpt-5.6-luna` (agent) | 8/60 | 48/60 |
+| `gpt-6-astra` (reference) | 8/60 | 60/60 |
+
+Read the diagonal: **the budget model *with* the rules beats the frontier model
+*without* them, on the same items, at a fraction of the cost.** Columns are the trap;
+rows are the model upgrade.
+
+At L0 the two models fail differently, and that difference is the second beat. The
+budget model invented conversion factors it had not been given. The frontier model named
+the input it was missing, in SQL, and declined — eighteen times. Our own classifier
+originally scored the refusal as a crash and the confabulation as a near miss; see
+[the instrument note](docs/instrument-ranked-honesty-backwards.md).
+
+---
+
+## Model policy
+
+Three roles, two providers, and the split matters:
+
+| role | model | provider | what it does | gates a result? |
+|---|---|---|---|---|
+| `agent` | `gpt-5.6-luna` | OpenAI | everything the agent does, in every loop | yes |
+| `reference` | `gpt-6-astra` | OpenAI | the bar being cleared, one call per item, never inside a loop | yes |
+| `judge` | `claude-haiku-4-5` | Anthropic | triage and failure sorting | **no, structurally** |
+
+**No LLM judge is a blocking check anywhere in this repository.** Correctness is decided
+by executing SQL against a seeded warehouse and comparing rows to a frozen answer. That
+is why the Anthropic key is optional, and why a checkout without one runs every scored
+path.
+
+The roles do not share request kwargs. Neither scoring model accepts a pinned
+temperature — both answer a non-default sampling parameter with a `400` — so they pin a
+seed instead, while the judge is the only role that pins `temperature=0`. The preflight
+calls each role with the registry's own kwargs for exactly this reason: a probe that
+simplified them into one shape could pass on an account where the sweep fails.
+
+---
+
+## The four conditions
+
+| id | name | model | loops | what it is for |
+|---|---|---|---|---|
+| A | baseline | agent | none — single shot | the floor everything else is measured against |
+| B | retry | agent | L1 only | what retry ALONE buys: execution errors, and very little semantic correctness |
+| C | verified | agent | L1 + L2 | the only arm that can send back a query that ran cleanly |
+| D | reference | reference | none — single shot | cheap-plus-loops against frontier-bare |
+
+**C vs D is pre-committed to one of three readings**, with criteria, in
+[`docs/three-endings.md`](docs/three-endings.md) — written before the run and selected
+by `sweep/endings.py`, not by someone reading a chart. The criteria carry no p-value,
+because this project refuses one across models in code.
+
+---
+
+## The four loops
+
+| level | what it is | where to see it |
+|---|---|---|
+| **L1** agent loop | ask, run the SQL, retry when it **fails to execute**. Sees crashes only. | [`notebooks/02_one_question_live.ipynb`](notebooks/02_one_question_live.ipynb), `demos/01_agent_loop/` |
+| **L2** verification loop | verifiers read a query that **ran** and reject it for breaking a declared rule | same notebook, `demos/02_verification_loop/` |
+| **L3** event-driven loop | a queue and a worker, with nobody watching | `demos/03_event_driven_loop/` — **terminal only** |
+| **L4** hill-climbing loop | the loop around the loop: a sweep across configurations | [`notebooks/03_read_a_sweep_free.ipynb`](notebooks/03_read_a_sweep_free.ipynb), `demos/04_hill_climbing_loop/` |
+
+**Level 3 has no notebook and no view, deliberately.** A notebook is a supervised
+surface — a cell you run, whose output you read, in a tab you are watching — and Level
+3's whole claim is that nobody is watching. Demonstrating unsupervised operation under
+supervision teaches the wrong thing.
+
+---
+
+## Run it on your own key
+
+Everything in [Running the session](#running-the-session) is written for delivering a
+workshop. This part is for someone who just cloned, and it is the whole journey:
+
+```bash
+cp .env.example .env          # add OPENAI_API_KEY only; Anthropic and LangSmith are optional
+uv sync && uv run pytest -q   # offline, free, proves the checkout
+
+uv run python demos/00_preflight/check.py                      # a fraction of a cent
+uv run python demos/04_hill_climbing_loop/sweep.py --profile smoke --foreground
+uv run python demos/04_hill_climbing_loop/charts.py
+```
+
+**Expected output** from the offline suite:
+
+```
+1141 passed, 6 deselected
+```
+
+The `passed` count moves as tests are added and is illustrative. What matters is
+`passed` with **no failures**, and `deselected` rather than `skipped` for the live
+tests — `6 deselected` is pinned by a test, because that number is a claim: it says the
+live suite is exactly the six tests that cost money. Opting in is explicit:
+`uv run pytest -m live`.
+
+**No chart in this repo can be produced without live model calls.** That is
+unconditional and structural: there is no stored cell format, no loader and no flag, so
+a render path that cannot express "stored" cannot show one. A fresh clone renders *not
+yet measured* until you run something.
+
+### The views
+
+```bash
+uv run python -u demos/views.py --view {agent,trap,verify,dial,oversight}
+```
+
+Five screens, read-only over what a run wrote. Level 3 has none, for the reason in
+[the loop table](#the-four-loops).
+
+### Tools
+
+| tool | what it does |
+|---|---|
+| `tools/lint_no_numbers.py` | bans typed numbers in the modules that render to a projector, and fails when a declared target does not resolve |
+| `tools/resumability_probe.py` | measures whether LangSmith resumes an interrupted run, which is why `results/` is the system of record |
+
+---
+
+## Notebooks
+
+```bash
+uv sync --extra notebooks
+uv run --extra notebooks jupyter lab notebooks/
+```
+
+| notebook | cost | what it is for |
+|---|---|---|
+| [`01_the_rules_free`](notebooks/01_the_rules_free.ipynb) | free | the declared rules, both prompt levels, the rule-surface probes, the gold set |
+| [`02_one_question_live`](notebooks/02_one_question_live.ipynb) | a fraction of a cent | one question through L1 and L2, with the attempt timeline and the cost |
+| [`03_read_a_sweep_free`](notebooks/03_read_a_sweep_free.ipynb) | free | the pre-registration, every cell, the figures, the comparisons |
+
+**The numbers are session order, not loop levels.** `02` covers Levels 1 *and* 2; `03`
+covers Level 4. `demos/` used to number by level and readers carried the convention
+across, which is why the map above is explicit. See
+[`notebooks/README.md`](notebooks/README.md).
+
+Notebooks import from `loopeng` and contain no loop logic, and they are committed with
+every output cleared — a notebook carrying stored outputs shows numbers computed on
+another machine on another day inside a document that looks live. Both are enforced by
+`tests/test_notebooks.py`.
+
+---
+
+## Running the session
+
+**Everything runs live, in front of the room.** That is a change, and the measurement
+is the reason for it.
+
+The sweep and the trap were originally launched detached, at the top of a stage, and
+revealed later — because a job that holds the terminal cannot be started while you keep
+talking. The dress rehearsal measured what those jobs actually take:
+
+| job | measured | budget |
+|---|---|---|
+| the six arms — the trap plus the four conditions | 233s | must fit a lecture block |
+| the session sweep — 4 cells, 60 items, both levels | 113s | 4200s |
+
+Under three percent of the sweep's own clock. **So the room watches the
+pre-registration go up, and then watches the cells land against it** — a hypothesis
+stated before the data, with the data arriving while everyone is still looking at the
+hypothesis. That is a better session than a log file and a reveal, and it is available
+only because the numbers came in this small.
+
+The deadline stays. It never existed to trim an expected overrun; it bounds the tail —
+a rate-limited or degraded API — so a stage ends with a partial result carrying an
+honest `n` rather than eating the next one.
+
+### Stage 0 — ground truth, offline and free
+
+```bash
+uv run python demos/00_preflight/check.py
+uv run python -c "from loopeng.prompts import render_rules; print(render_rules())"
+uv run python -c "
+from loopeng.verify.probes import run_probes
+r = run_probes()
+print(f\"{r['n_sound']}/{r['n_rules']} rules sound, "
+      f\"{r['n_missed_violations']} missed, {r['n_false_rejections']} false rejections\")"
+```
+
+### Stage 1 — the agent loop, and the trap
+
+```bash
+uv run python demos/01_agent_loop/run.py            # one question, attempts and cost ticking
+uv run python -u demos/01_agent_loop/trap.py        # every gold question at both levels
+```
+
+The trap is the headline. Run it in the foreground and let the room watch both models
+sit on the same floor with the rules withheld.
+
+### Stage 2 — verification
+
+```bash
+uv run python demos/02_verification_loop/run.py
+uv run python demos/02_verification_loop/regex_swap.py            # a worse verifier
+uv run python demos/02_verification_loop/regex_swap.py --level L0 # the beat that matters
+uv run python demos/02_verification_loop/failure_paths.py
+```
+
+The `--level L0` swap is the one to spend time on: a verifier that is satisfied while
+almost nothing is right.
+
+### Stage 3 — event driven
+
+Two commands, and you are meant to be able to walk away between them. Nobody is
+watching, which is the point, and why this stage has no view and no notebook.
+
+```bash
+uv run python demos/03_event_driven_loop/enqueue.py "your question here"
+uv run python demos/03_event_driven_loop/worker.py --drain
+```
+
+### Stage 4 — hill climbing
+
+```bash
+# the pre-registration prints BEFORE the first cell. Read it out.
+uv run python demos/04_hill_climbing_loop/sweep.py --profile session --foreground
+
+# render every chart from whatever exists so far; safe to run repeatedly mid-sweep
+uv run python demos/04_hill_climbing_loop/charts.py
+```
+
+`--foreground` is deliberate. `--detach` still exists for a machine you want to leave
+running; it is no longer how the session is delivered. `--deadline SECONDS` overrides
+the profile's clock for a rehearsal on a shorter budget — a cell stops BETWEEN items,
+never mid-item, so no item is ever scored having run under less than its condition.
+
+The four conditions and the trap's reference arm come from a separate runner, because
+they need the frontier model and the sweep profile does not:
+
+```bash
+uv run python scripts/run_experiments.py
+```
+
+---
+
+## The system, in one diagram
+
+Four loops, nested, around one agent. The inner one asks whether the query executed;
+each outer one asks a question the inner one structurally cannot see.
 
 ```mermaid
 flowchart TB
@@ -38,179 +430,6 @@ flowchart TB
     classDef ground fill:#f6f7f9,stroke:#94a3b8,color:#0b1220;
     class SM,WH ground;
 ```
-
-**How to read this.** The boxes are **nested, not sequential** — that is the single most
-important thing about the picture. Level 1 sits *inside* Level 2, which sits inside
-Level 3, which sits inside Level 4. Each level does not replace the one below it; it
-wraps it and adds a question the inner loop cannot ask.
-
-Read from the inside out:
-
-- **Level 1** asks *did it execute?* A model writes SQL, the query runs read-only against
-  the warehouse, and a failure triggers a retry. This loop only ever learns that
-  something **crashed**.
-- **Level 2** asks *did it break a declared rule?* It takes a query that **ran** — no
-  crash, a clean plausible number — and checks it against the rules, handing back the
-  name of the rule that was broken. This is the level that can see a wrong answer, which
-  is why the whole project exists at this layer.
-- **Level 3** asks *what happens when nobody is watching?* The question arrives on a
-  queue and a worker claims it, runs Level 2, and writes the answer back with no human in
-  the loop. Nothing new is verified here; what changes is that no one is looking.
-- **Level 4** asks *which configuration is better?* It runs the whole thing repeatedly
-  across models and prompt completeness, under a pre-registered hypothesis and a
-  projected-spend cap, and measures the difference.
-
-**The two grey boxes are not loops — they are the ground truth everything else stands
-on.** `semantic_model.yaml` is the one file where the business rules are declared, and
-the dotted arrows show it feeding **both** the prompt the model sees *and* the verifier
-that judges it. That is deliberate: a rule cannot exist in one and not the other. The
-seeded DuckDB warehouse is read-only to the agent and rebuilt deterministically from a
-seed, so the answer key is reproducible rather than remembered.
-
-**If you take one thing from the diagram:** the arrows from `semantic_model.yaml` are
-what make a rule *enforced* rather than merely *declared*. Everything this project has to
-say is about how easily that second arrow goes missing without anything failing.
-
----
-
-## 1. Contents
-
-| Section | What it covers |
-|---|---|
-| [2 · The session](#2--the-session) | duration, audience, format |
-| [3 · The problem](#3--the-problem) | a clean, plausible, wrong number |
-| [4 · Why this is needed](#4--why-this-is-needed) | declared versus enforced |
-| [5 · What loop engineering is](#5--what-loop-engineering-is) | the four-loop framing and where it comes from |
-| [6 · Architecture](#6--architecture) | the nesting, and each loop's control flow |
-| [7 · Technologies](#7--technologies) | what each dependency does here |
-| [8 · Repository structure](#8--repository-structure) | every module and what it owns, annotated |
-| [9 · Installation](#9--installation) | prerequisites with the command to check each one, and uv per platform |
-| [10 · Environment setup](#10--environment-setup) | every variable, and why tracing defaults off |
-| [11 · Running each demo](#11--running-each-demo) | **step by step — start here** |
-| [12 · Expected outputs](#12--expected-outputs) | the result images |
-| [13 · Profiles and cost](#13--profiles-and-cost) | delivery, development, exhibit — and why prompt caching saves nothing |
-| [14 · Testing](#14--testing) | the offline/live split, and the numeric-literal rule |
-| [15 · Design decisions](#15--design-decisions) | each with what was given up |
-| [16 · Limitations](#16--limitations) | templated questions, a single-writer queue, and measurements that predate a verifier fix |
-| [17 · Future improvements](#17--future-improvements) | queue backoff and dead-lettering, and a second provider for judging |
-| [18 · Troubleshooting](#18--troubleshooting) | real failures with the symptom each one presents as |
-| [19 · FAQ](#19--faq) | why not LangChain, why no LLM judge, why the frontier model is unpinned |
-| [20 · Attribution and licence](#20--attribution-and-licence) | what is borrowed, what is original, MIT |
-| [Glossary](#glossary) | every domain term and acronym, defined — reference, at the end |
-
----
-
-## 2 · The session
-
-**Duration:** three to three and a half hours.
-
-**Audience:** engineers and data people who are already building with agents, or about
-to. No prior agent framework experience is assumed; SQL is assumed.
-
-**Format: opt-in floater.** People arrive mid-session and leave mid-session, and the
-stage that runs is whichever one the room has arrived for. That is a constraint on the
-code, not just on the schedule:
-
-> **Every stage cold-starts.** No demo may depend on another having run. Every entry
-> point generates or loads what it needs — the warehouse is created on first use, the
-> gold set is rebuilt from its patterns, the queue table is created on connect. A test
-> runs each entry point from an empty working directory, so *"it worked when I ran them
-> in order"* cannot pass for working.
-
-The stages map one-to-one onto the loop levels, and each stage's runbook lives beside
-its code in [`demos/`](demos/). There is deliberately no separate runbook document: one
-kept apart from its code drifts, and a runbook that lies at minute forty of a live
-session is the thing this cannot afford.
-
----
-
-## 3 · The problem
-
-An agent writes a SQL query. The query parses. It runs. It returns a single, clean,
-plausible number, formatted exactly like the right answer.
-
-And it is wrong.
-
-It is wrong because it counted orders that were soft-deleted, or summed euros and yen as
-though they were the same unit, or double-counted revenue by aggregating order totals
-after joining the line items. Every one of those produces a number that looks like every
-other number.
-
-**You cannot tell by looking.** That is the whole difficulty:
-
-| | you can detect it without the answer | example |
-|---|---|---|
-| **visible failure** | **yes** | invalid SQL, a timeout, an empty result, three columns where one was asked for |
-| **silent error** | **no** | it ran, returned one plausible number, and is wrong |
-
-A retry loop catches the first column. Nothing about a retry loop touches the second,
-because a retry loop only ever learns that something *crashed* — and a wrong answer does
-not crash.
-
-The uncomfortable part is that every mitigation people reach for first has the same
-shape. A more capable model produces a more plausible wrong number. A larger context
-window produces a more plausible wrong number. An LLM judge from the same model family
-agrees with the wrong number.
-
----
-
-## 4 · Why this is needed
-
-Ask where the business rules live and you will be shown a config file, a semantic layer,
-a dbt model, a wiki page. The rules are written down. Everyone can point at them.
-
-Then ask: **what enforces them?**
-
-Often the honest answer is *the prompt* — the rules are pasted into a system message and
-the model is trusted to apply them. That is not enforcement. It is a request.
-
-Sometimes the answer is *a check* — and the check is a regular expression looking for the
-right words in the query text, which passes a query that mentions `deleted_at IS NULL`
-inside a comment, inside a subquery that never filters, or negated.
-
-Sometimes the rule is enforced only as a side effect of another rule's check, which is
-indistinguishable — from the config's point of view — from not being enforced at all.
-
-**A rule written in a config that nothing checks is not a rule.** It is a comment with
-ambitions.
-
-This project makes that gap concrete and then closes it, in one narrow place, with
-machinery you can read in an afternoon:
-
-- the rules are declared **once**, in `semantic_model.yaml`, and rendered into prompts
-  from that one place, so a rule cannot exist in the prompt and not in the model
-- a governance verifier reads its rule set **from the config** and **fails the build**
-  when a declared rule has no check
-- each rule has **two probes** — a query that breaks it and must be rejected, and one
-  that is correct but unusual and must be accepted — because a verifier that rejects
-  everything scores perfectly without the second
-- and the project points the same lens at itself: three things in this build were
-  declared and never enforced, and all three passed code review
-
----
-
-## 5 · What loop engineering is
-
-The framing is not ours. LangChain's [**The Art of Loop
-Engineering**](https://www.langchain.com/blog/the-art-of-loop-engineering) describes four
-loops that stack on one another — the agent loop, a verification loop, an event-driven
-loop, and a hill-climbing loop — and credits swyx's [**Loopcraft: the art of stacking
-loops**](https://www.latent.space/p/loopcraft) for the idea
-that loops can be stacked and extended to build more effective agents.
-
-We take the taxonomy and disagree with nothing in it. What this repository adds is the
-part a blog post cannot: **a running system where each level's claim is checked**, and
-where the levels are built so you can see exactly what each one buys and exactly what it
-still cannot see.
-
-> All diagrams here are drawn from our own control flow. No images are reproduced from
-> either source.
-
-The shift the term names is this. **Prompt engineering** asks what to put in the context
-window. **Loop engineering** asks what happens after the model answers: what checks it,
-what feeds back, what stops, and how you know any of it is working. The interesting part
-of a loop is never the repetition — it is always the termination condition, and whether
-anything counts how often each one fires.
 
 ---
 
@@ -374,7 +593,7 @@ running as in progress with their current interval — never as blank or zero.
 ```mermaid
 flowchart TD
     START["sweep.py --profile ..."] --> REQ{"--profile given?"}
-    REQ -->|no| NODEF(["argparse refuses.<br/><b>There is no default.</b><br/>A delivery run cannot inherit<br/>development settings by omission."])
+    REQ -->|no| NODEF(["argparse refuses.<br/><b>There is no default.</b><br/>A session run cannot inherit<br/><code>dev</code> settings by omission."])
     REQ -->|yes| PROF["<b>Profile</b> selects:<br/>roles · replicates · spend cap ·<br/>ablation on/off · prompt levels · item cap"]
 
     PROF --> FRESH{"--resume?"}
@@ -405,462 +624,6 @@ Runbook: [`demos/04_hill_climbing_loop/README.md`](demos/04_hill_climbing_loop/R
 
 ---
 
-## 7 · Technologies
-
-| technology | what it does **here** |
-|---|---|
-| **Python 3.12** | Pinned by `.python-version` and `requires-python`. `StrEnum`, `Self` and PEP 604 unions are used throughout. |
-| **uv** | Dependency resolution, the lock file, and the virtualenv. Every command in this README runs through `uv run`, which resolves to the project's own interpreter rather than whatever is first on `PATH`. |
-| **DuckDB** | The seeded warehouse, and separately the question queue. Opened **read-only** for the agent, enforced by the database rather than by convention. Chosen over a hosted database so the workshop has no network dependency it does not need. |
-| **Gradio** | The five views. Chosen because a view is a function plus a layout, and the alternative was a frontend build step at a venue. |
-| **sqlglot** | Parses model-written SQL into an AST so rule checks can ask whether a column is actually constrained, rather than whether the query text mentions it. Also detects whether the outer query carries an `ORDER BY`, which decides whether result comparison is order-sensitive. |
-| **matplotlib** | **A runtime dependency.** Draws the live charts in Stage 4 (`src/loopeng/sweep/charts.py`). Every figure it produces is computed by the run that renders it; there is no stored set and no separate README renderer. |
-| **LangSmith** | Traces and the gold dataset upload. **Advisory only** — `results/*.json` is the system of record, and a test runs a cell with the client stubbed to raise and asserts the results file is still complete and correct. |
-| **pydantic-settings** | Loads settings once, frozen, with `SecretStr` so a key cannot be printed by accident. A missing credential raises an error naming the exact variable and the exact fix. |
-| **structlog** | Console-rendered logs, not JSON: these are read live, on a projector, by a room of people, not shipped to an aggregator. |
-| **ruff** | Lint and import sorting, run in CI on every push. |
-| **pytest** | The offline suite, plus a `live` marker that is deselected by default so the default run needs no key and no network. |
-| **OpenAI API** | The provider for both **scoring** roles: `agent` (`gpt-5.6-luna`, the budget model everything the agent does runs on) and `reference` (`gpt-6-astra`, the frontier bar, called once per item and never inside a loop). |
-| **Anthropic API** | The provider for the `judge` role (`claude-haiku-4-5`) only — triage and failure sorting. **It gates nothing**, by design: no LLM judge is a blocking check anywhere in this repo, so a checkout with no Anthropic key runs every scoring path and every number in the session. |
-| **`providers.py`** | One `complete()` across two vendor SDKs, because the roles no longer share a provider. It also absorbs the two vendors' **opposite cached-token conventions** — Anthropic's `input_tokens` excludes cached tokens, OpenAI's `prompt_tokens` includes them as a subset — and raises rather than guessing if a response ever reports more cached tokens than prompt tokens. |
-
----
-
-## 8 · Repository structure
-
-```
-src/loopeng/
-  settings.py        frozen settings, fail fast, secrets never rendered
-  registry.py        role to model, with the request kwargs each model accepts
-  metric.py          Metric and MetricStore; no value without its n
-  pricing.py         the price table, dated, per model, per token class
-  usage.py           token accounting for every call including the failed ones
-  paired.py          McNemar for paired comparisons
-  prompts.py         the L0 and L3 prompts, rules rendered from config
-  contracts.py       the verifier's view of an attempt — no field for the answer
-  api_probes.py      LIVE probes of the API: rate-limit ceilings and
-                     prompt cacheability. Renamed from probes.py, which
-                     collided by name with verify/probes.py — a different
-                     thing entirely (offline rule-surface probes)
-  gate0.py           assembles the foundation evidence report
-  langsmith_ds.py    gold to LangSmith dataset, advisory and failure-tolerant
-  env_guard.py       refuses to run from a cloud-synced path that breaks imports
-  warehouse/         seeded generator, semantic model, read-only connection factory
-  gold/              patterns, build, comparison
-  agent/             level 1 loop, classification, the trap
-  verify/            level 2 loop, verifiers, governance, the OFFLINE
-                     rule-surface probes, the swap
-  queue/             level 3 queue and worker
-  sweep/             level 4 runner, profiles, deadline, charts, provenance
-  triage/            abstention, escalation, failure triage
-  views/             the Gradio views
-demos/               thin entry points and the runbooks, one folder per loop level
-notebooks/           three notebooks, thin by the same rule; the filename says whether
-                     each one spends. Needs `uv sync --extra notebooks`
-scripts/             gold build and validation, the experiment runner, the failure
-                     taxonomy observer, and the starter-branch generator
-tools/               the numeric-literal rule (`tools/lint_no_numbers.py`) and the
-                     LangSmith resume probe (`tools/resumability_probe.py`)
-results/             live cell output; see below
-tests/               the offline suite, plus tests/live/ behind the live marker
-```
-
-**What is committed under `results/`: almost nothing, and that is the design.**
-
-| path | committed | why |
-|---|---|---|
-| `results/noise_floor_seeded.json` | **yes** | the measured run-to-run floor the pre-registration cites BY NAME before the first cell runs. A citation printed as provenance has to resolve. |
-| `results/sweep/`, `results/ablation/`, `results/charts/` | **no** | live cell output. A committed cell would arrive on every clone and make the *first* live sweep on a fresh machine resume-and-complete instantly, rendering finished numbers to a room told nothing was precomputed. |
-
-**A fresh clone renders *not yet measured*, and nothing can override that any more.**
-
-This used to be defended by five mechanisms at once: a hatched fill, a REFERENCE badge
-on the row, a date beside every stored value, a four-way `--reference` mode flag with a
-carefully chosen default, and a test running the chart entry point against an empty
-directory. All five guarded the same thing — the possibility of drawing a stored cell —
-and the guarding was the tell. **Removing the capability is stronger than defending it.**
-There is no stored cell format, no loader, and no flag; a render path that cannot express
-"stored" cannot show one.
-
-**`reference/` is not in the tree.** This section used to describe it as holding one full
-session run, committed so a cloner knows what to expect. The directory does not exist: it
-was removed along with the stored-cell path, and it is to be rebuilt from a dress
-rehearsal under the current model policy rather than inherited from a build with different
-models, a different gold set and a different price table. Until it lands there is nothing
-to point a cloner at except a `smoke` run on their own key, which §11.0 covers and which
-is better evidence anyway — it is theirs.
-
----
-
-## 9 · Installation
-
-**Prerequisites.** Two, and nothing else — no Docker, no database server, no cloud
-account, no API key to get a green test suite.
-
-| Need | Version | Check you have it | Expected |
-|---|---|---|---|
-| [uv](https://docs.astral.sh/uv/) | any recent; `0.11.20` is what this was built and locked with | `uv --version` | `uv 0.11.20` or later |
-| Python | **3.12** (`requires-python = ">=3.12"`, pinned by `.python-version`) | `uv run python -V` | `Python 3.12.x` |
-| git | any | `git --version` | any |
-
-You do **not** need to install Python yourself. `uv sync` reads `.python-version` and
-fetches 3.12 if your machine does not have it, which is why the table checks Python
-*through* uv rather than directly — a system `python3` of a different version is
-irrelevant here and checking it only causes confusion.
-
-### Install uv, per platform
-
-**macOS and Linux**
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-**macOS, with Homebrew instead**
-
-```bash
-brew install uv
-```
-
-**Windows, in PowerShell**
-
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-If `uv --version` is not found afterwards, close and reopen the terminal so the updated
-`PATH` is picked up.
-
-### Clone, install, and prove it worked
-
-```bash
-git clone https://github.com/ANI-IN/loop-engineering.git
-cd loop-engineering
-uv sync
-uv run pytest -q
-```
-
-**Expected output** from the last command:
-
-```
-949 passed, 6 deselected
-```
-
-The `passed` count moves as tests are added and the number above is illustrative —
-what matters is `passed` with **no failures**, and `deselected` rather than `skipped`
-for the live tests. The `6 deselected` is pinned by a test, because that number is a
-claim: it says the live suite is exactly the six tests that cost money.
-
-- **`6 deselected` is correct, not a problem.** `pyproject.toml` sets
-  `addopts = "-m 'not live'"`, which excludes the six tests that hit the network and
-  cost money. Opting in is an explicit act: `uv run pytest -m live`.
-- **On Linux you may also see skips.** The platform-conditional tests need a BSD-only
-  file-flag function; see `tests/test_env_guard.py`. The image byte-identity test that
-  used to be the other one is gone, along with the committed images it checked.
-
-If that passes, your checkout is sound and you have spent nothing.
-
-**Platform verification status, stated honestly:** every command in this section has
-been executed on **macOS (Darwin, arm64)**. The Linux notes come from CI, which runs the
-full offline suite on `ubuntu-latest` on every push. **The Windows instructions have not
-been executed** — they are reproduced from the uv documentation and reviewed against the
-code, and `demos/04_hill_climbing_loop/sweep.py --detach` is known not to detach on
-Windows (`subprocess`'s `start_new_session` is a no-op there). Treat Windows as
-unverified. See §16.
-
-The test suite is **offline by default**. It needs no API key, makes no network call, and
-costs nothing, so a green suite on a fresh clone tells you the checkout is sound before
-you have spent anything.
-
-**Put the checkout somewhere your cloud storage does not sync.** iCloud Drive evicts
-files it thinks are cold, and an evicted `.pth` file breaks the editable install in a way
-that looks like a mysterious import error. A guard catches this at import and says what
-happened, but moving the directory is the actual fix.
-
----
-
-## 10 · Environment setup
-
-Copy `.env.example` to `.env` and fill in the keys. The example file holds names only and
-is committed; `.env` holds values and is ignored.
-
-| variable | required by | notes |
-|---|---|---|
-| `OPENAI_API_KEY` | **everything that calls a model** — the agent loop, the verification loop, the Level 3 worker, the trap, the sweep, the conditions | **The one credential this repo cannot run live without.** Both scoring roles are OpenAI models. Not needed for the offline suite, the warehouse, the gold build or the rule-surface probes, all of which are free and make no network calls. |
-| `ANTHROPIC_API_KEY` | the `judge` role — triage and failure sorting only | **Optional. It gates nothing, and that is structural rather than a convention:** no LLM judge is a blocking check anywhere in this repo. Every figure in the session is produced without it. This table used to name it as the required key, which was wrong in the way most likely to turn away a valid checkout — a cloner with a working `OPENAI_API_KEY` and no Anthropic account can run the entire thing. |
-| `LANGSMITH_API_KEY` | the dataset upload and trace links | Everything works without it; traces degrade, measurements do not. |
-| `LANGSMITH_PROJECT` | the project experiments are filed under | Defaults to the workshop project rather than the SDK's shared `default` bucket. |
-| `LANGSMITH_TRACING` | — | Defaults to **false** and must stay false for the offline suite. See below. |
-| `LOOPENG_LIVE` | a *hosted* instance that may call models | **INERT.** Read by `live_mode.read_config()`, which no entry point calls. Setting it changes nothing at runtime. See SECURITY.md. |
-| `LOOPENG_LIVE_CEILING_USD` | a hosted live instance | **INERT.** Read by `live_mode.read_config()`, which no entry point calls. Setting it changes nothing at runtime. See SECURITY.md. |
-| `LOOPENG_LIVE_MAX_CALLS` | a hosted live instance | **INERT.** Read by `live_mode.read_config()`, which no entry point calls. Setting it changes nothing at runtime. See SECURITY.md. |
-
-Settings are loaded once, frozen, and fail fast. A missing key raises an error naming the
-exact variable and the exact fix, rather than failing forty minutes into a session.
-
-**Why tracing defaults off.** The LangSmith SDK enables itself from the environment, so a
-machine with the tracing flag exported would have ordinary test runs attempting
-background network sends — quietly breaking the zero-network property the offline suite
-is built on. A test asserts tracing is off outside the live marker, and the suite forces
-every known spelling of the variable to false.
-
----
-
-## 11 · Running each demo
-
-### 11.0 · Run it on your own key
-
-Everything below §11.0 is written for the author delivering a workshop. This part is for
-someone who just cloned.
-
-```bash
-cp .env.example .env          # add OPENAI_API_KEY only; Anthropic and LangSmith are optional
-uv sync && uv run pytest -q   # offline, free, proves the checkout
-
-uv run python demos/00_preflight/check.py                      # a fraction of a cent
-uv run python demos/04_hill_climbing_loop/sweep.py --profile smoke --foreground
-uv run python demos/04_hill_climbing_loop/charts.py
-```
-
-The preflight is the cheap one to run first. One call per scoring role, **with the request
-kwargs the registry declares** — which is the point: the roles do not accept the same
-request. Neither scoring model accepts a pinned `temperature` (both answer a non-default
-sampling parameter with a `400`), so they pin `seed` instead and the agent additionally
-sends `reasoning_effort` and `max_completion_tokens`; the judge is the only role that
-pins `temperature=0`, and it uses `max_tokens`. A probe that simplified those kwargs into
-one shape could pass on an account where the sweep fails. The preflight also builds the
-warehouse and the gold set and runs the rule-surface probes, and those three are offline,
-so a bad key still tells you the rest of the checkout is sound.
-
-What each profile projects, from the repo's own `project_remaining`:
-
-| profile | cells | items | projected |
-|---|---|---|---|
-| `smoke` | 2 | 8 | est. $0.01 |
-| `delivery` | 4 | 50 | est. $0.09 |
-| `development` | 12 | 50 | est. $9.38 |
-
-`smoke` measures nothing worth quoting — eight items cannot separate anything, and it does
-not pretend to. It proves the whole pipeline on your key: real calls, cells on disk, and
-charts rendered from them.
-
-The `development` figure is dominated by one role. The reference model is a frontier
-model, and it is ~50x the agent's cost per item; the twelve cells are eight cheap ones
-and four expensive ones. That ratio is not an accident to be optimised away — it is the
-comparison the session exists to make.
-
-**No chart in this repo can be produced without live model calls.** That is unconditional
-now. It used to carry two exceptions — cells badged as stored measurements, and a frozen
-exhibit view — and both are gone along with the code that could render them. If a figure
-is on your screen, your key paid for it.
-
-If your key is wrong you will find out in **one** call, not three. The loops stop on a
-`401`, `403` or `400` rather than retrying, and the message names the variable and the fix.
-Nothing anywhere will tell you the database said it.
-
----
-
-**This is the section to actually use.** Each stage below is self-contained: it
-cold-starts, it needs no earlier stage, and it says what to look at rather than only what
-to type. Full detail — including what to say when the expected shape does not appear —
-is in each stage's runbook.
-
-Everything runs through `uv run`. Use `python -u` for anything that serves a browser:
-without it Python block-buffers stdout when you redirect to a file and the URL never
-appears even though the server is fine.
-
-### Stage 0 — ground truth
-
-```bash
-# the rules, declared once
-cat src/loopeng/warehouse/semantic_model.yaml
-
-# the rule surface: two probes per rule, offline and free
-uv run python -c "
-from loopeng.verify.probes import run_probes
-import json; print(json.dumps(run_probes(), indent=2))"
-```
-
-**On screen:** the seven rules as configuration, then — for six of them — whether the
-verifier caught a violating query *and* accepted a correct-but-unusual one.
-
-**Six, not seven, and the report says so.** `minor_units` and `multi_currency` are one
-SQL change (the declared `usd_factor` against a naive `/100`) and share a single check,
-so one probe pair covers both; a second pair would measure the same code twice and report
-it as two. The exemption is named in `probes.py` as `UNPROBED_BY_DESIGN`, the report
-carries `n_declared_rules` alongside `n_rules`, and a rule that arrives unprobed *and*
-unlisted fails the suite. This is worth reading twice: the output used to say `6/6`, a
-fraction whose denominator was itself the thing that had drifted.
-
-**What to observe:** both columns. A verifier that rejects everything scores perfectly on
-the first alone.
-
-**The question to sit with:** *how would you know your own rule checks are not just
-rejecting everything?*
-
-### Stage 1 — the agent loop, and the trap
-
-```bash
-# one question, live, with the attempt timeline and cost ticking
-uv run python demos/01_agent_loop/run.py \
-  --question "What was gross revenue in March 2025 from our euro and yen orders, in US dollars?"
-
-# the trap: every gold question at both spec levels, then the reveal
-uv run python -u demos/01_agent_loop/trap.py
-```
-
-**On screen:** for `run.py`, one block per attempt — the SQL, and either the rows or the
-database error. For `trap.py`, a grid filling in, with **every landed cell rendering
-identically** until you press reveal.
-
-**What to observe:** while the trap fills, the two columns look the same. That is
-deliberate — a cell reading "failed" would hand the room a free answer key for that row.
-After the reveal, the split into correct, **silently wrong**, and visible failure.
-
-**The question to sit with:** *of the cells that are wrong, how many could you have
-spotted without the answer key?*
-
-→ [full runbook](demos/01_agent_loop/README.md)
-
-### Stage 2 — verification
-
-```bash
-# one question through the verifiers, showing the attempt diffs
-uv run python demos/02_verification_loop/run.py
-
-# swap the parse-tree verifier for the regex one
-uv run python demos/02_verification_loop/regex_swap.py
-
-# the beat that matters most: a satisfied verifier and almost nothing right
-uv run python demos/02_verification_loop/regex_swap.py --level L0
-
-# the three ways a run ends without succeeding
-uv run python demos/02_verification_loop/failure_paths.py
-```
-
-**On screen:** a query that **ran cleanly, returned rows, and was still sent back** with a
-named rule. Then the swap's two arms side by side — acceptance rate, actual correctness,
-rejections, cost, and probe surface.
-
-**What to observe:** the acceptance rate rising while the probe surface degrades. Three of
-those four numbers look like an improvement on a dashboard.
-
-**The question to sit with:** *which of those numbers would have told you the instrument
-got worse — and would it have been on your dashboard?*
-
-→ [full runbook](demos/02_verification_loop/README.md)
-
-### Stage 3 — event driven
-
-**One terminal, two commands, in this order.**
-
-```bash
-# 1 — submit a question. Opens the queue, writes a row, exits.
-uv run python demos/03_event_driven_loop/enqueue.py \
-  --question "What share of beauty orders ended up with a refund?"
-
-# 2 — the worker claims it, runs Level 2, writes the answer back, and stops
-#     once the queue is empty
-uv run python demos/03_event_driven_loop/worker.py --drain
-```
-
-> **Why not two terminals.** This runbook used to say "two terminals, make both
-> visible before you start" — a worker polling in one while you submit from the
-> other. It cannot work. **DuckDB takes an exclusive write lock per file**, and the
-> worker holds its connection open for its whole life, sleeping between polls, so
-> the second terminal fails at connect with `IOException: Could not set lock on
-> file … Conflicting lock is held`. The demo is single-writer, and the commands
-> above are the shape that is honest about it. See §16 for why that is a non-goal
-> rather than a bug.
-
-The room can also submit from the enqueue box in the AGENT view, which opens and
-releases the queue per action rather than holding it — so it works whenever a
-worker is *not* polling, and hits the same lock when one is.
-
-**On screen:** command 1 prints the row id and the queue counts. Command 2, with
-nobody typing into it, prints `claimed`, then the loop running, then `done` or
-`failed`, then exits.
-
-**What to observe:** nobody typed anything into terminal 1.
-
-**The question to sit with:** *the verifiers just decided, alone, whether that answer was
-good enough to write back. Would you have shipped what they accepted?*
-
-→ [full runbook](demos/03_event_driven_loop/README.md)
-
-### Stage 4 — hill climbing
-
-```bash
-# start the sweep — detaches and hands the terminal straight back.
-# --deadline SECONDS stops it cleanly when the slot ends: cells are started only while
-# there is time left, the one in flight stops BETWEEN items (never mid-item, so no item
-# is scored having run under less than its condition), and the reduced n reaches every
-# figure it produces. Without it the stage overruns into the next one.
-uv run python demos/04_hill_climbing_loop/sweep.py --profile session
-
-# render every chart from whatever exists so far; safe to run repeatedly mid-sweep
-uv run python demos/04_hill_climbing_loop/charts.py
-```
-
-**On screen:** the pre-registration, printed **before the first cell** — the headline
-comparison, what the design is underpowered for, what it already knows it cannot detect,
-and the detectable effect size at this `n`, computed rather than asserted.
-
-**What to observe:** run `charts.py` twice a minute apart. The intervals narrow as more
-items land. That narrowing is the session's argument about measurement happening live
-rather than being asserted.
-
-**The question to sit with:** *the pre-registration named an effect size this design can
-detect. Is the gap you are looking at bigger than that?*
-
-→ [full runbook](demos/04_hill_climbing_loop/README.md)
-
-### The views
-
-```bash
-uv run python -u demos/views.py --view {agent,trap,verify,dial,oversight}
-```
-
-Each launch prints a local URL, the LAN address a phone on the same wifi needs, and writes
-a QR code — because nobody types a URL off a projector. Add `--share` for a public tunnel
-when the venue wifi isolates clients. `--port` lets you run several at once, which is how
-the workshop uses them: one tab per stage.
-
-**The event-driven loop is deliberately not a view.** The point of that stage is that
-nobody is watching, and a browser tab implies a person supervising it.
-
----
-
-## 12 · Expected outputs
-
-**There are no committed figures in this README, and that is the change.**
-
-Every chart this repository can draw is drawn from cells computed by the run that is
-drawing them. There is no stored set to fall back on, no hatched bar, and no
-`--reference` flag — the whole apparatus is gone, along with the three PNGs that used
-to sit in this section and the tool that rendered them.
-
-The reason is not tidiness. A stored figure that could pass for a fresh one breaks the
-session's central claim quietly, and the previous design defended against that with
-badges, hatching, dates on rows, a four-way mode flag and a test asserting a fresh
-clone renders nothing — five mechanisms guarding a capability that did not need to
-exist. Removing the capability is stronger than guarding it: a render path that cannot
-express "stored" cannot show one.
-
-**`reference/` is not in the tree yet, and this section used to say it was.** The plan is
-one full session run — the JSONL, the rendered PNGs and a summary table — committed where
-**nothing under `src/loopeng/` may import it**, so a cloner knows what to expect before
-spending anything and no render path can reach it. It has to be rebuilt from a dress
-rehearsal under the current model policy rather than carried over: the models, the gold
-set and the price table have all changed, and a stored run from the previous build would
-be a reference to a system that no longer exists — which is the failure this whole section
-is about, arriving through the door marked "documentation".
-
-Until then, the cheapest honest answer to "what should I expect?" is
-[§11.0](#110--run-it-on-your-own-key): a `smoke` run on your own key for a few cents. It
-is better evidence than a committed one anyway, because it is yours.
-
-See [§13](#13--profiles-and-cost) for what a run costs.
 
 ---
 
@@ -934,6 +697,9 @@ design is indistinguishable at a glance from one that is red by accident.
 
 ---
 
+
+---
+
 ## 14 · Testing
 
 ```bash
@@ -987,6 +753,9 @@ determinism-floor file that `.gitignore` dropped, so on every clone it cited a p
 did not exist. The file is committed, the figure is read out of it rather than restated
 beside it, and a test asserts every repo path named in `sweep/orchestrator.py` and
 `sweep/reference.py` exists on disk.
+
+---
+
 
 ---
 
@@ -1057,6 +826,9 @@ worse one, and only the operator knows whether those files are still needed.
 
 ---
 
+
+---
+
 ## 16 · Limitations
 
 Stated here rather than left in prose, because a limitation that only appears next to the
@@ -1113,6 +885,7 @@ key runs every scored path.
 *This paragraph read "Both roles are Anthropic models" until 2026-09-08 — true of the
 build it was written for, and a limitation section that names the wrong vendor is worse
 than one that names none, because it invites a reader to discount the wrong thing.*
+
 
 ## CI, and what it does not cover
 
@@ -1184,6 +957,9 @@ the deployment target is the machine already on the table.
 
 ---
 
+
+---
+
 ## 17 · Future improvements
 
 Specific, and each one is a thing this build does not do rather than a direction to
@@ -1219,6 +995,9 @@ module and its section of this README come out.
 onto the value, because computing one needs the spread of the samples and the constructor
 is handed a single number. Recording the sample vector would let latency carry a genuine
 interval instead of an honest refusal to invent one.
+
+---
+
 
 ---
 
@@ -1268,6 +1047,9 @@ best live demonstration in the repository if you have the nerve.
 
 ---
 
+
+---
+
 ## 19 · FAQ
 
 **Why not LangChain — and why is `langchain-core` in `pyproject.toml`?** Both are true and
@@ -1310,6 +1092,9 @@ pairing away — besides being a poor proxy for significance even on unpaired da
 uses only the discordant pairs. It still overstates here, because the items are clustered,
 so the on-screen statement is directional and never a specific gap.
 
+
+
+---
 
 
 ---
@@ -1364,6 +1149,9 @@ It replaced a hand-written checklist. A checklist is a list of things a person h
 remember to do, which is the shape of control this project spends twenty sections
 arguing against — every item on it that mattered is now a check that runs and fails,
 and every item that could not be made to run was not load-bearing.
+
+---
+
 
 ---
 
@@ -1422,7 +1210,7 @@ this project uses them, which is occasionally narrower than the general meaning.
 |---|---|
 | **Cell** | One measured configuration: role × level × mode × replicate. Keyed `agent_L0_loop_r0`. Its label is **derived from the registry**, not typed, so a bar cannot be captioned with a model the run did not call. |
 | **Sweep** | A run over all the cells a profile defines. Resumable, self-aborting on **projected** spend. |
-| **Profile** | What a sweep run is *for*: `delivery` (runs in front of a room), `development` (run once to establish findings), `smoke` (a few cents, proves your key works), `exhibit` (runs nothing). The item cap is a property of the profile rather than a flag, because a ceiling that depends on someone typing `--limit` is not a ceiling. |
+| **Profile** | What a sweep run is *for*: `smoke` (a few cents, proves your key works), `session` (runs in front of a room), `dev` (run once to establish findings). The item cap is a property of the profile rather than a flag, because a ceiling that depends on someone typing `--limit` is not a ceiling. |
 | **Role** | One of three, resolved through `registry.spec_for`: `agent` (the budget model everything the agent does runs on), `reference` (the frontier model, called once per item as the bar being cleared, never inside a loop), and `judge` (triage and failure sorting, **never a blocking check**). |
 | **Level, as a prompt spec** | `L0` = rules withheld; `L3` = rules given. The difference between them is the experiment. |
 | **Mode** | `one_shot` (no retry) or `loop` (the full loop). |

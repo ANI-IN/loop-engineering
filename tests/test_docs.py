@@ -1060,3 +1060,25 @@ def test_the_reference_run_carries_its_own_provenance():
             f"{spec_for(role).model_id}. Regenerate it, or the numbers describe a "
             f"model policy this build no longer has."
         )
+
+
+def test_the_docs_index_does_not_restate_a_count_that_can_go_stale():
+    """A typed count has gone stale nine times in this build, including inside the note
+    about typed things going stale — and then again in the INDEX that summarises it,
+    which is a restatement of a restatement.
+
+    Both places are derived from the entry headings now, so there is one number and one
+    place it comes from.
+    """
+    import re
+
+    note = (REPO_ROOT / "docs" / "every-instrument-has-been-wrong.md").read_text(
+        encoding="utf-8")
+    index = (REPO_ROOT / "docs" / "README.md").read_text(encoding="utf-8")
+    entries = len(re.findall(r"^## (\d+)\. ", note, flags=re.M))
+
+    # Two entries are not instruments: one is a PLAN, one is the author.
+    assert f"{entries - 2} instruments" in index, (
+        f"docs/README.md restates a count the note no longer supports; the note has "
+        f"{entries} numbered entries"
+    )

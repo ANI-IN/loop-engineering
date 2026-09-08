@@ -198,11 +198,14 @@ The order below is the call order in `preflight.py :: run()`.
    `.env.example`. On success the detail says `present (value never printed or logged)` —
    and a test asserts the key's value does not appear anywhere in the rendered output.
 
-2. **If the key resolved**, an `anthropic.Anthropic` client is constructed and
-   **`check_model(role)`** runs once per registry role, in sorted order, so `frontier`
-   comes before `worker`. Each call sends `PROBE_PROMPT` — `"Reply with the single word:
-   ok"` — with `spec.request_kwargs` splatted in unchanged, except that the worker role's
-   `max_tokens` is replaced with `PROBE_MAX_TOKENS`.
+2. **If the required key resolved**, a client is built per role from that role's own
+   provider — the three roles no longer share a vendor, so one client cannot serve
+   them all — and **`check_model(role)`** runs once per registry role in sorted order,
+   so `agent` comes before `judge` and `reference`. A role whose key is OPTIONAL and
+   absent is skipped rather than called, which is why a checkout with only
+   `OPENAI_API_KEY` passes. Each call sends `PROBE_PROMPT` — `"Reply with the single
+   word: ok"` — with `spec.request_kwargs` splatted in unchanged, except that the
+   output cap is replaced with `PROBE_MAX_TOKENS`.
 
 3. **If the key did not resolve**, one combined failing step is added saying the models
    were *not attempted*, and the warehouse path and seed are read off the settings class.
@@ -579,7 +582,7 @@ Two additions for this area:
 |---|---|
 | The full command's output shape is as described in section 10 Part B. | Read off `preflight.py :: render()` and the assertions in `tests/test_preflight.py`. Not executed, because it bills — marked `Unverified:` at that point. |
 | The absence of logging is deliberate. | The docstring of `src/loopeng/logging.py`, plus the fact that the module-level logger here is created and never used, matching the same pattern in the sweep. |
-| Sorted registry order puts `frontier` before `worker`. | `run()` iterates `sorted(REGISTRY)`, and those are the two keys. |
+| Sorted registry order puts `agent` first. | `run()` iterates `sorted(REGISTRY)`, and those are the three keys. |
 
 ### Things I verified by executing them
 
