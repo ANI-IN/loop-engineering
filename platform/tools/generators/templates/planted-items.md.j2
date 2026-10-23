@@ -1,0 +1,37 @@
+# Planted items
+
+{{ note }}
+
+Every demo shows its teaching moment because something guarantees it, and this page lists what.
+Each item is off by default, so the default path is the fixed, honest system. When an item is on,
+the console's status line shows a chip for it. The items write Structured Query Language (SQL),
+JavaScript Object Notation (JSON), and Coordinated Universal Time (UTC) by their short forms.
+
+> **Terms on this page**
+>
+> - **Planted bug**: A defect switched on by a flag so a demo shows its failure every time.
+> - **Harness weakness**: Part of the starting configuration that a later loop fixes.
+> - **Data condition**: A property of the seeded data that changes a naive answer.
+> - **Demo aid**: A labelled setting that makes a live run easier to watch, never its result.
+{% for title, items in groups %}
+
+## {{ title }}
+{% for item in items %}
+
+### {{ item.name[0] | upper }}{{ item.name[1:] }}
+
+- **Identifier**: `{{ item.id }}`
+- **Section**: {{ sections[item.section].title }}
+- **Where**: `{{ item.location }}`
+- **Trigger**: {{ item.trigger }}
+- **Symptom**: {{ item.symptom }}
+- **Fix**: {{ item.fix }}
+{% if item.demos %}
+- **Demos**: {% for d in item.demos %}{{ demos[d].title }} (`{{ d }}`){{ "; " if not loop.last }}{% endfor %}
+
+{% endif %}
+{% if item.optional %}
+- **Optional**: shown only when the section runs ahead of time
+{% endif %}
+{% endfor %}
+{% endfor %}

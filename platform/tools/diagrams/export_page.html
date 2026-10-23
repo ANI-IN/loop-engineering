@@ -1,0 +1,96 @@
+<!doctype html>
+<!--
+  The diagram export page (authoring time only). export_diagrams.py opens it in headless Chromium
+  through Playwright for Python. It loads one pinned Excalidraw build from jsDelivr and exposes
+  three calls on window.diagrams: ready (a promise), measure, and render.
+  The version below must equal EXCALIDRAW_VERSION in export_diagrams.py; the script checks it.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Diagram export</title>
+<script>
+  window.EXCALIDRAW_VERSION = "0.18.1";
+  // Fonts load from the same pinned package, never from a moving default.
+  window.EXCALIDRAW_ASSET_PATH =
+    "https://cdn.jsdelivr.net/npm/@excalidraw/excalidraw@" + window.EXCALIDRAW_VERSION + "/dist/prod/";
+</script>
+</head>
+<body>
+<script type="module">
+  const url = "https://cdn.jsdelivr.net/npm/@excalidraw/excalidraw@" + window.EXCALIDRAW_VERSION + "/+esm";
+  const fontNames = { 5: "Excalifont", 6: "Nunito", 8: "Comic Shanns", 1: "Virgil", 2: "Helvetica", 3: "Cascadia" };
+
+  async function boot() {
+    const lib = await import(url);
+    // A first export registers and loads the fonts the scene uses, so measure() sees real metrics.
+    const warm = [{
+      type: "text", id: "warm", x: 0, y: 0, width: 10, height: 10, text: "Warm up 0123",
+      originalText: "Warm up 0123", fontSize: 20, fontFamily: 5, textAlign: "left",
+      verticalAlign: "top", lineHeight: 1.25, strokeColor: "#000000", backgroundColor: "transparent",
+      fillStyle: "solid", strokeWidth: 1, strokeStyle: "solid", roughness: 0, opacity: 100, angle: 0,
+      seed: 1, version: 1, versionNonce: 1, isDeleted: false, groupIds: [], frameId: null,
+      boundElements: null, updated: 1, link: null, locked: false, containerId: null, autoResize: true,
+      roundness: null, index: "a0",
+    }];
+    await lib.exportToSvg({ elements: warm, appState: { exportBackground: false }, files: {} });
+    await document.fonts.ready;
+    return lib;
+  }
+
+  const ready = boot();
+
+  // Width and height of each label, measured with the loaded font, the way Excalidraw lays out
+  // text: the widest line, and lines times font size times line height.
+  async function measure(items) {
+    await ready;
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    return items.map((item) => {
+      const family = fontNames[item.fontFamily] || "Excalifont";
+      context.font = `${item.fontSize}px ${family}`;
+      const lines = item.text.split("\n");
+      const width = Math.max(...lines.map((line) => context.measureText(line).width));
+      return { width, height: lines.length * item.fontSize * item.lineHeight };
+    });
+  }
+
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // One scene in, the SVG text (fonts embedded) and the PNG at scale 2 (base64) out.
+  async function render(scene) {
+    const lib = await ready;
+    const elements = scene.elements.filter((element) => !element.isDeleted);
+    const appState = {
+      ...(scene.appState || {}),
+      exportBackground: false,
+      exportWithDarkMode: false,
+      exportEmbedScene: false,
+    };
+    const files = scene.files || {};
+    const svg = await lib.exportToSvg({ elements, appState, files, exportPadding: 0 });
+    const blob = await lib.exportToBlob({
+      elements,
+      appState: { ...appState, exportScale: 2 },
+      files,
+      exportPadding: 0,
+      mimeType: "image/png",
+    });
+    return {
+      svg: svg.outerHTML,
+      png: await blobToBase64(blob),
+      embeddedFonts: (svg.outerHTML.match(/@font-face/g) || []).length,
+    };
+  }
+
+  window.diagrams = { ready: ready.then(() => window.EXCALIDRAW_VERSION), measure, render };
+</script>
+</body>
+</html>

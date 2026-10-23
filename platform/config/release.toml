@@ -1,0 +1,51 @@
+# The public release: only the paths in `include` ship, built from the private repository.
+# Add every new public folder here. platform/tests/test_release_list.py fails when a top-level
+# folder is in neither list, or when the style checker or the prose lint does not scan it.
+include = [
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "compose.yaml",
+    ".gitattributes",
+    ".dockerignore",
+    "Makefile",
+    "pyproject.toml",
+    "uv.lock",
+    ".python-version",
+    ".env.example",
+    ".gitignore",
+    ".github/",
+    "setup/",
+    "section-*/",
+    "final-project/",
+    "slides/",
+    "use-in-your-repo/",
+    "guide/",
+    "docs/",
+    "platform/",
+]
+# Private tooling and its tests never ship. A test that names a private path writes it as a
+# string literal, so the release build can find and drop that test too.
+exclude = [
+    "instructor/",
+    "course-template/",
+    ".claude/",
+    ".dev/",
+    # Runtime output (gitignored): calibration's raw results and run log, seed files.
+    ".runs/",
+    "research/",
+    # Published separately, at the start of the Thursday review (docs/release-checklist.md).
+    "section-*/assignment/solution/",
+]
+# Internal files that may sit anywhere in the tree (a nested copy too) and never ship.
+internal_files = ["PLAN.md", "DECISIONS.md", "CLAUDE.md"]
+# Build tooling for this machine's agents, never shipped (it names the build machine's checkout).
+build_only = ["platform/scripts/wsl_make.sh"]
+# Host-path patterns in public files that are documented examples, not real paths: a placeholder
+# name, the fake user `x` in tests, and the container's own user.
+host_path_examples = ['<[a-z]+>', '/Users/x(/|$)', '/home/datapilot/']
+# The public repository's .gitignore also ignores these, so a learner's copy of the Thursday
+# solutions is never committed by accident.
+public_gitignore = ["section-*/assignment/solution/"]
+# Public folders whose Markdown pages are course text: the checkers must scan each one.
+pages = ["setup", "section-*", "final-project", "use-in-your-repo", "guide", "docs"]

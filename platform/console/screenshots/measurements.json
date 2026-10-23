@@ -1,0 +1,94 @@
+{
+  "1280x720": {
+    "kill switch disarmed": {
+      "viewport_height": 720,
+      "status_line": [
+        144,
+        254
+      ],
+      "lanes_end": 583,
+      "off_board_end": 715,
+      "page_scroll_y": 0,
+      "lanes_scrolling_inside": 1,
+      "fits": true
+    },
+    "kill switch armed": {
+      "viewport_height": 720,
+      "status_line": [
+        144,
+        305
+      ],
+      "lanes_end": 582,
+      "off_board_end": 715,
+      "page_scroll_y": 0,
+      "lanes_scrolling_inside": 2,
+      "fits": true
+    }
+  },
+  "1280x600": {
+    "kill switch disarmed": {
+      "viewport_height": 600,
+      "status_line": [
+        144,
+        254
+      ],
+      "lanes_end": 463,
+      "off_board_end": 595,
+      "page_scroll_y": 0,
+      "lanes_scrolling_inside": 2,
+      "fits": true
+    },
+    "kill switch armed": {
+      "viewport_height": 600,
+      "status_line": [
+        144,
+        305
+      ],
+      "lanes_end": 462,
+      "off_board_end": 595,
+      "page_scroll_y": 0,
+      "lanes_scrolling_inside": 3,
+      "fits": true
+    }
+  },
+  "67 percent zoom (1910x1075)": {
+    "viewport_height": 1075,
+    "status_line": [
+      144,
+      254
+    ],
+    "lanes_end": 568,
+    "off_board_end": 701,
+    "page_scroll_y": 0,
+    "lanes_scrolling_inside": 0,
+    "fits": true
+  },
+  "1280x720, kill switch engaged": {
+    "viewport_height": 720,
+    "status_line": [
+      144,
+      299
+    ],
+    "lanes_end": 582,
+    "off_board_end": 715,
+    "page_scroll_y": 0,
+    "lanes_scrolling_inside": 2,
+    "fits": true
+  },
+  "15 seconds of updates": {
+    "mounts": {
+      "status_line": 1,
+      "run_board": 1
+    },
+    "calls": {
+      "status_line": 1,
+      "run_board": 16
+    },
+    "same_nodes": true,
+    "min_opacity": 1,
+    "fragment_runs": 16,
+    "slowest_fragment_seconds": 0.021,
+    "median_fragment_seconds": 0.0151,
+    "console_errors": []
+  }
+}

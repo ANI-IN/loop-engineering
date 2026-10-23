@@ -1,0 +1,108 @@
+[project]
+name = "datapilot"
+version = "0.1.0"
+description = "Module: Loop Engineering. DataPilot, a production-safe, self-improving analytics agent built as four loops."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "ANI-IN" }]
+requires-python = ">=3.12"
+dependencies = [
+    "altair==6.3.0",
+    "apscheduler==3.11.3",
+    "fastapi==0.143.0",
+    "httpx==0.28.1",
+    "jinja2==3.1.6",
+    "langchain==1.4.4",
+    "langchain-core==1.6.9",
+    "langchain-openai==1.7.0",
+    "langgraph==1.2.14",
+    "langgraph-checkpoint-postgres==3.1.2",
+    "langsmith==0.14.5",
+    "pandas==3.0.6",
+    "psycopg[binary]==3.3.6",
+    "psycopg-pool==3.3.3",
+    "pydantic==2.14.0",
+    "pydantic-settings==2.15.0",
+    "pyyaml==6.0.3",
+    "sqlglot==30.21.0",
+    "streamlit==1.65.0",
+    "structlog==26.1.0",
+    "typer==0.27.3",
+    "uvicorn==0.54.0",
+]
+
+[project.scripts]
+datapilot = "datapilot.cli:app"
+
+[dependency-groups]
+dev = [
+    "import-linter==2.15",
+    "playwright==1.63.0",
+    "pytest==9.1.1",
+    "pytest-xdist==3.8.0",
+    "python-pptx==1.0.2",
+    "ruff==0.16.10",
+]
+
+[build-system]
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "datapilot"
+module-root = "platform/src"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".claude", "research", "platform/scripts/kit", "guide/source"]
+
+[tool.ruff.format]
+exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# Slide text and speaker notes are prose held as string data; their length is checked by build.py.
+"slides/source/*.py" = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["datapilot"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "typer.Option", "typer.Argument"]
+
+[tool.pytest.ini_options]
+testpaths = ["platform/tests", "slides/tests"]
+addopts = "-ra"
+markers = [
+    "integration: needs the Compose Postgres (zero model calls)",
+    "live: calls OpenAI or LangSmith; never runs in CI",
+    "slow: takes more than a few seconds",
+]
+
+[tool.importlinter]
+root_package = "datapilot"
+
+[[tool.importlinter.contracts]]
+name = "Every loop depends on contracts, never the other way"
+type = "forbidden"
+source_modules = ["datapilot.contracts"]
+forbidden_modules = [
+    "datapilot.loop1_agent",
+    "datapilot.loop2_verification",
+    "datapilot.loop3_events",
+    "datapilot.loop4_hill_climbing",
+]
+
+[[tool.importlinter.contracts]]
+name = "The agent and verification loops do not import the event or hill-climbing loops"
+type = "forbidden"
+source_modules = ["datapilot.loop1_agent", "datapilot.loop2_verification"]
+forbidden_modules = ["datapilot.loop3_events", "datapilot.loop4_hill_climbing"]
+
+# The contract that demo paths never import test doubles is an AST check covering the package and
+# the console: platform/tests/unit/test_live_only.py (import-linter cannot forbid subpackages of
+# external packages).

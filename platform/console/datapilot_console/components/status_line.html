@@ -1,0 +1,23 @@
+<section class="dp sl" aria-label="Console status">
+  <div class="row">
+    <span class="name b">DataPilot</span>
+    <span class="field"><span class="k">Autonomy</span> <span class="b" data-f="autonomy"></span></span>
+    <span class="field fam"><span class="k">Unattended clearance</span> <span data-f="families"></span></span>
+  </div>
+  <div class="row">
+    <span data-f="session"></span>
+    <span data-f="business"></span>
+    <span class="field gauge"><span class="k">Tokens today</span>
+      <span class="bar" aria-hidden="true"><span class="fill"></span></span>
+      <span class="mono" data-f="tokens"></span> <span class="gauge-word" data-f="gauge"></span></span>
+    <span class="spacer"></span>
+    <button type="button" class="kill" aria-describedby="kill-help"></button>
+  </div>
+  <div class="row">
+    <span class="chips" data-f="chips"></span>
+    <span class="spacer"></span>
+    <span class="k" data-f="tz"></span>
+  </div>
+  <p class="msg" id="kill-help" role="status" aria-live="polite"></p>
+  <p class="notice" role="alert"></p>
+</section>

@@ -1,0 +1,225 @@
+# The module's settings. platform/scripts/check_style.py and lint_prose.py read this
+# file; nothing specific to one module lives in the scripts.
+
+[module]
+# No number: the module's place in the program is not fixed yet (it comes after the Harness
+# Engineering module). Titles read "Module: Loop Engineering"; any numbered module reference fails.
+title = "Loop Engineering"
+# Used in the concepts heading 'How <project> does it'.
+project = "DataPilot"
+# The folder in each demo/ that holds the real files the demo uses. Empty: DataPilot's demo files
+# (the knowledge versions and the system prompt) live in platform/packs/, and each demo README
+# links them, so no section has a demo/files/ folder.
+demo_files = ""
+# More agent files (regex, relative to the repository root), and banned phrases.
+agent_paths = []
+banned_phrases = {}
+
+[[sections]]
+number = 1
+name = "Agent loop"
+slug = "agent-loop"
+
+[[sections]]
+number = 2
+name = "Verification loop"
+slug = "verification-loop"
+
+[[sections]]
+number = 3
+name = "Event loop"
+slug = "event-loop"
+
+[[sections]]
+number = 4
+name = "Hill-climbing loop"
+slug = "hill-climbing-loop"
+
+# Codes that must never appear bare in prose: letter -> kind.
+[codes]
+S = "Section"
+A = "Assignment"
+
+# Other named kinds, written '<Kind> N: <name>' on first mention, for example:
+# [names.Feature]
+# 1 = "Name of the first feature"
+
+# Ids that belong only in the evidence pages (regex).
+[ids]
+run = '\b(?:ab|r)-\d{8}-\d{6}-[0-9a-f]{6}\b'
+finding = '\bF-[ab]-\d+\b'
+
+# Exact source titles that may contain a banned word.
+[prose]
+allowed_titles = []
+
+# The source register: each source a page may cite, with the URL a link to it must use.
+# [[sources]]
+# name = "Publisher, short title"
+# mention = '\bShort title\b'
+# url = 'https://example\.org/the-article'
+
+# The naming rule: short forms that never appear in prose, outside code spans and fenced code.
+# platform/scripts/short_forms.py reads this list. check_style.py reports them as SC31 (the S and A
+# codes stay SC21, from [codes]); short_forms.py applies every entry to commit messages, slide
+# text, and console labels. A short form is an error everywhere.
+[[short_forms]]
+pattern = '(?<![-\w./])S[1-4](?![\w]|-[a-z]|:\w)'
+write = "the section's full name, such as 'Section 1: Agent loop'"
+covered_by_codes = true
+
+[[short_forms]]
+pattern = '(?<![-\w./])A[1-4](?![\w]|-[a-z]|:\w)'
+write = "the assignment's full name, such as 'Assignment 2: Verification loop'"
+covered_by_codes = true
+
+[[short_forms]]
+pattern = '(?<![-\w./])D[1-4]\.[1-9]b?(?![\w])'
+write = "the demo's name, such as 'the confident wrong answer'"
+
+[[short_forms]]
+pattern = '(?<![-\w./])L[1-3](?![-\w])'
+write = "'report-only level', 'assisted level', or 'unattended level'"
+
+[[short_forms]]
+pattern = '(?<![-\w./])FY ?\d{2,4}(?!\w)'
+write = "'fiscal year 2025'"
+
+[[short_forms]]
+pattern = '(?<![-\w./])[EP][SD]?T(?![-\w])'
+write = "'Eastern time' or 'Pacific time'"
+
+[[short_forms]]
+pattern = '(?<![-\w./])PII(?![-\w])'
+write = "'personal data'"
+
+[[short_forms]]
+pattern = '(?<![-\w./])MRR(?![-\w])'
+write = "'monthly recurring revenue'"
+
+[[short_forms]]
+pattern = '(?<![-\w./])HITL(?![-\w])'
+write = "'human approval'"
+
+[[short_forms]]
+pattern = '(?<![-\w])s[1-4]\.md\b'
+write = "the evidence page's full name, such as 'section-1-agent-loop.md'"
+
+[[short_forms]]
+pattern = '(?<![-\w])Module [0-9]+(?![\w])'
+write = "the module by name: 'Module: Loop Engineering', or 'the Harness Engineering module'"
+
+# The naming rule, part 2: shorthand words that never appear in prose (docs/STYLE.md, "Names").
+# `match` is the word as a regex; short_forms.py wraps it so that it only matches a whole word with
+# no '/', '.', '-', '_', '$', or '@' joined to it. So paths (docs/STYLE.md), file names (.env,
+# config.toml), identifiers (max_retries), and make targets (docs-check) never match, and longer
+# words (Maximum, environment) never match either. Code spans, fenced code, HTML comments, front
+# matter, link targets, and URLs are not read. `ignore_case = false` keeps a word case-sensitive
+# (so "VS Code" and the log level "INFO" are not shorthand).
+# check_style.py reports a match as "Shorthand in prose" (check SC32): a warning in the default
+# run, an error with --strict. In a commit message it is an error at once.
+[[shorthand]]
+word = "e.g."
+match = 'e\.\s?g\.?'
+write = "'for example' or 'such as'"
+
+[[shorthand]]
+word = "i.e."
+match = 'i\.\s?e\.?'
+write = "'that is'"
+
+[[shorthand]]
+word = "etc."
+match = 'etc\.?'
+write = "'and so on', or name every item"
+
+[[shorthand]]
+word = "repo"
+match = 'repos?'
+write = "'repository' (plural 'repositories')"
+
+[[shorthand]]
+word = "DB"
+match = 'dbs?'
+write = "'database'"
+
+[[shorthand]]
+word = "env"
+match = 'envs?'
+write = "'environment', or name the file: '.env' in a code span"
+
+[[shorthand]]
+word = "config"
+match = 'configs?'
+write = "'configuration' or 'settings'"
+
+[[shorthand]]
+word = "info"
+match = '[Ii]nfo'
+ignore_case = false
+write = "'information'"
+
+[[shorthand]]
+word = "docs"
+match = 'docs'
+write = "'documentation', or name the page"
+
+[[shorthand]]
+word = "max"
+match = 'max(?!\()'
+write = "'maximum' or 'at most'"
+
+[[shorthand]]
+word = "min"
+match = 'mins?(?!\()'
+write = "'minimum', 'at least', or 'minutes'"
+
+[[shorthand]]
+word = "approx"
+match = 'approx\.?'
+write = "'about' or 'approximately'"
+
+[[shorthand]]
+word = "vs"
+match = '[Vv]s\.?'
+ignore_case = false
+write = "'versus' or 'compared with'"
+
+# Technical terms that are fine as words but are spelled out on their first use on every page, in
+# either order: "Structured Query Language (SQL)" or "SQL (Structured Query Language)". The first
+# use is the first time the term (or its plural, such as APIs) appears in prose on the page; code
+# spans, fenced code, comments, front matter, link targets, URLs, paths, and identifiers (such as
+# OPENAI_API_KEY) are not prose. The expansion matches without regard to case. check_style.py
+# reports a first use without it as "Term not spelled out on first use" (check SC33): a warning in
+# the default run, an error with --strict. Commit messages are not held to this part of the rule.
+[[technical_terms]]
+term = "SQL"
+expansion = "Structured Query Language"
+
+[[technical_terms]]
+term = "API"
+expansion = "application programming interface"
+
+[[technical_terms]]
+term = "JSON"
+expansion = "JavaScript Object Notation"
+
+[[technical_terms]]
+term = "CSV"
+expansion = "comma-separated values"
+
+[[technical_terms]]
+term = "LLM"
+expansion = "large language model"
+
+[[technical_terms]]
+term = "HTTP"
+expansion = "Hypertext Transfer Protocol"
+
+[[technical_terms]]
+term = "URL"
+expansion = "Uniform Resource Locator"
+
+[[technical_terms]]
+term = "UTC"
+expansion = "Coordinated Universal Time"

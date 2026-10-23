@@ -1,0 +1,36 @@
+p { margin: 0 0 8px; }
+.ledger.collapsed { display: none; }
+.stamps { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin-bottom: 8px; }
+.stamps .stamp { font-size: 1em; }
+.row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 11em 11em 12em 4em;
+  align-items: center; gap: 0 12px;
+}
+.single .row { grid-template-columns: minmax(0, 1fr) 13em 4em; }
+.single .ch, .single .chh, .single .cand, .single .chg { display: none; }
+.head { padding: 0 14px 4px 20px; font-weight: 700; border-bottom: 2px solid var(--ink); }
+.rows { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+.r {
+  background: var(--strip); border: 2px solid var(--ink); border-left-width: 8px;
+  min-height: 44px; padding: 0 12px 0 10px; position: relative;
+}
+.r.fixed { border-left-color: var(--green); }
+.r.regression { border-color: var(--red); }
+.r.regression::before {
+  content: ""; position: absolute; left: -8px; top: 50%; width: 8px; height: 2px;
+  background: var(--strip); transform: rotate(-60deg);
+}
+.cell { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.cell .runs { color: var(--graphite); font-size: 0.889em; }
+.cell.pass { color: var(--green-text); }
+.cell.fail { color: var(--red-text); }
+.cell.pending { color: var(--graphite); }
+.chg.fixed { color: var(--green-text); font-weight: 700; }
+.chg.regression { color: var(--red-text); font-weight: 700; }
+.chg.same { color: var(--graphite); }
+.q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nobase {
+  background: var(--strip); border: 2px solid var(--ink); border-left: 6px solid var(--ink);
+  padding: 10px 14px;
+}
+.start { background: var(--accent); color: #FFFFFF; border: 2px solid var(--accent); }

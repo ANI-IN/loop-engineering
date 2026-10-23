@@ -1,0 +1,78 @@
+version: v4
+rules:
+- id: money-in-cents
+  title: Money in cents
+  rule_text: Money columns hold whole cents. Report money in dollars, divided by 100
+    and rounded to two decimals.
+  applies_when: a question asks for an amount of money
+  sql_guidance: round(sum(<cents column>) / 100.0, 2)
+- id: eligible-external-orders
+  title: Eligible order population
+  rule_text: For order-based business metrics, exclude orders from internal customers
+    and exclude status-5 orders. Do not treat status 4 as the definition of an eligible
+    order.
+  applies_when: calculating order counts, revenue, units, customer activity, or rankings
+    based on orders
+  sql_guidance: customer_is_internal = false AND status <> 5
+- id: new-york-business-dates
+  title: Use New York local time for business dates
+  rule_text: Interpret order timestamps, date boundaries, weekday calculations, and
+    date groupings in New York local time rather than UTC.
+  applies_when: a question filters or groups orders by a date, day, month, year, or
+    time period
+  sql_guidance: convert timestamp to America/New_York; use half-open ranges
+- id: february-start-fiscal-calendar
+  title: February-start fiscal calendar
+  rule_text: 'A fiscal year labeled Y begins on February 1 of Y−1 and ends before
+    February 1 of Y. Fiscal quarters are consecutive three-month periods: February–April,
+    May–July, August–October, and November–January.'
+  applies_when: a question requests a fiscal year or fiscal quarter
+  sql_guidance: 'FY Y: [Feb 1 of Y−1, Feb 1 of Y); shift quarter boundaries from February'
+- id: top-level-category-hierarchy
+  title: Resolve top-level categories through the hierarchy
+  rule_text: For top-level category reporting, classify a product by the root category
+    reached through its category's parent hierarchy, not solely by the directly assigned
+    category label.
+  applies_when: filtering or grouping products by a top-level category
+  sql_guidance: follow parent links to the root category
+- id: business-days-exclude-christmas
+  title: Business-day calendar excludes Christmas
+  rule_text: Business days exclude weekends and Christmas Day; weekdays alone are
+    not sufficient to identify business days.
+  applies_when: a question asks for business-day order counts or business-day analysis
+  sql_guidance: exclude weekends and local date December 25
+- id: net-revenue-components
+  title: Calculate average order value from net revenue
+  rule_text: For average order value, use net revenue calculated as order subtotal
+    minus discount rather than a stored total amount.
+  applies_when: calculating average order value
+  sql_guidance: For each eligible order, use subtotal_cents - discount_cents; average
+    that amount across orders.
+- id: active-customer-count
+  title: Count active customers distinctly
+  rule_text: Count active customers as distinct external customers with at least one
+    eligible order during the requested period.
+  applies_when: counting active customers for a time period
+  sql_guidance: count(distinct customer_id) over eligible orders
+- id: new-customer-first-eligible-order
+  title: Define new customers by first eligible order
+  rule_text: Determine each external customer's first eligible order across their
+    available order history, then count the customer as new in the period containing
+    that order.
+  applies_when: counting new customers by a reporting period
+  sql_guidance: min(local_order_timestamp) per external customer over eligible orders
+- id: signed-revenue-growth
+  title: Preserve the sign of revenue growth
+  rule_text: Calculate percentage growth as (current-period revenue minus prior-period
+    revenue) divided by prior-period revenue; do not take the absolute value.
+  applies_when: calculating percentage growth between revenue periods
+  sql_guidance: (current - prior) / prior * 100
+- id: product-unit-ranking-tiebreak
+  title: Use product ID to break unit-ranking ties
+  rule_text: When ranking products by units and totals are tied, use product ID as
+    the secondary ordering key.
+  applies_when: ranking products by units sold, especially when limiting the result
+    to a fixed number of products
+  sql_guidance: ORDER BY units DESC, product_id ASC
+notes: Analyzer team draft from 20 failed dev items over v1.
+

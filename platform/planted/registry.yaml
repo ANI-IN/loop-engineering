@@ -1,0 +1,273 @@
+# The single source for every planted item: code bugs, harness weaknesses, data conditions, and
+# demo aids. `make docs` generates docs/planted-items.md from it; the console shows a chip for each
+# active item. Every item is off by default: the default path is the fixed, honest system.
+# Code bugs are switched on only through datapilot.planted.planted("BUG_..."); they never fake
+# model output. Schema: platform/src/datapilot/contracts/registries.py.
+# `location` names the module that holds the planted branch; tracks fill exact lines when built.
+
+# --- Code bugs -------------------------------------------------------------------------------
+- id: BUG_UNBOUNDED_ROWS
+  name: the unbounded rows bug
+  chip: Unbounded rows
+  kind: code_bug
+  section: agent-loop
+  location: platform/src/datapilot/loop1_agent/tools.py
+  trigger: "BUG_UNBOUNDED_ROWS=1, then Agent > Run large query"
+  symptom: run_query returns every row; a 10,000-row result reaches the model and tokens spike.
+  fix: Cap rows at limits.row_cap, return the total row count and a truncation notice.
+  demos: [agent-unbounded-rows]
+
+- id: BUG_NAMES_ONLY_SCHEMA
+  name: the names-only schema
+  chip: Names-only schema
+  kind: code_bug
+  section: agent-loop
+  location: platform/src/datapilot/loop1_agent/tools.py
+  trigger: "BUG_NAMES_ONLY_SCHEMA=1, then Agent > Ask"
+  symptom: describe_table returns column names only, so the analyst misreads columns.
+  fix: Return types, nullability, neutral comments, 3 sample rows, and distinct values for low-cardinality columns.
+  demos: [agent-texas-last-quarter]
+  optional: true
+
+- id: BUG_NAIVE_GUARD
+  name: the naive guard
+  chip: Naive guard
+  kind: code_bug
+  section: verification-loop
+  location: platform/src/datapilot/loop2_verification/graders/statement_policy.py
+  trigger: "BUG_NAIVE_GUARD=1, then Verify > Send malicious SQL"
+  symptom: A prefix check (the text starts with select or with) passes "SELECT 1; DELETE FROM orders" and a data-modifying CTE; only the read-only role stops them.
+  fix: Syntax-tree guard - one statement, a SELECT or set-operation root, no write node anywhere, a function denylist, warehouse schema only.
+  demos: [verify-malicious-sql]
+
+- id: BUG_NO_COST_GUARD
+  name: the missing cost guard
+  chip: No cost guard
+  kind: code_bug
+  section: verification-loop
+  location: platform/src/datapilot/loop2_verification/graders/cost.py
+  trigger: "BUG_NO_COST_GUARD=1, then Verify > Send cartesian query"
+  symptom: A cartesian join runs until the statement timeout.
+  fix: EXPLAIN (FORMAT JSON) cost and row thresholds from pack.yaml reject it at once with feedback.
+  demos: [verify-cost-guard]
+  optional: true
+
+- id: BUG_NO_RETRY_CAP
+  name: the missing retry cap
+  chip: No retry cap
+  kind: code_bug
+  section: verification-loop
+  location: platform/src/datapilot/loop2_verification/limits.py
+  trigger: "BUG_NO_RETRY_CAP=1, then Verify > Inject failing grader"
+  symptom: The run loops on a failing grader and its cost keeps climbing.
+  fix: Cap retries at limits.max_retries, then end the run escalated with the reasons.
+  demos: [verify-retry-cap]
+
+- id: BUG_NO_IDEMPOTENCY
+  name: the missing idempotency
+  chip: No idempotency
+  kind: code_bug
+  section: event-loop
+  location: platform/src/datapilot/loop3_events/api/events.py
+  trigger: "BUG_NO_IDEMPOTENCY=1, then Events > Send the same event three times"
+  symptom: The same event three times gives three answers in the channel.
+  fix: INSERT ... ON CONFLICT (event_id) DO NOTHING; one answer and "2 duplicates ignored".
+  demos: [events-duplicate-events]
+
+- id: BUG_RANDOM_DIGEST_ID
+  name: the random digest id
+  chip: Random digest id
+  kind: code_bug
+  section: event-loop
+  location: platform/src/datapilot/loop3_events/scheduler.py
+  trigger: "BUG_RANDOM_DIGEST_ID=1, then Events > Run digest now twice"
+  symptom: Firing the digest twice posts two digests.
+  fix: The deterministic event id digest:YYYY-MM-DD.
+  demos: [events-duplicate-events]
+
+- id: BUG_MEMORY_CHECKPOINTER
+  name: the in-memory checkpointer
+  chip: In-memory checkpointer
+  kind: code_bug
+  section: event-loop
+  location: platform/src/datapilot/loop3_events/approvals.py
+  trigger: "BUG_MEMORY_CHECKPOINTER=1, then Events > Request California export, then Restart worker"
+  symptom: The pending approval is lost when the worker restarts.
+  fix: AsyncPostgresSaver in schema lg with thread_id = run_id; resume with Command(resume=...).
+  demos: [events-approval-survives-restart]
+
+- id: BUG_KILLSWITCH_AT_CLAIM_ONLY
+  name: the kill switch at claim only
+  chip: Kill switch checked at claim only
+  kind: code_bug
+  section: event-loop
+  location: platform/src/datapilot/loop3_events/killswitch.py
+  trigger: "BUG_KILLSWITCH_AT_CLAIM_ONLY=1 and DEMO_PACING=1, then engage the kill switch during a run"
+  symptom: An in-flight run keeps going after the kill switch is engaged.
+  fix: Check before every model call (jump to end) and every tool call (short-circuit).
+  demos: [events-kill-switch-in-flight]
+
+- id: BUG_LOCK_DURING_LLM
+  name: the lock held during the model call
+  chip: Lock held during the model call
+  kind: code_bug
+  section: event-loop
+  location: platform/src/datapilot/loop3_events/worker.py
+  trigger: "BUG_LOCK_DURING_LLM=1, then kill the worker during a run"
+  symptom: The claim transaction stays open through the model call; killing the worker leaves a stuck job.
+  fix: Short claim transaction with a lease, heartbeats, and a reaper that requeues expired leases.
+  demos: []
+  optional: true
+
+- id: BUG_SQL_TEXT_EVAL
+  name: the SQL text evaluator
+  chip: SQL text evaluator
+  kind: code_bug
+  section: hill-climbing-loop
+  location: platform/src/datapilot/loop4_hill_climbing/evaluator.py
+  trigger: "BUG_SQL_TEXT_EVAL=1, then Improve > Run experiment on the active version"
+  symptom: Comparing SQL text marks correct answers wrong.
+  fix: Execution match on both warehouse and warehouse_alt, with normalized results.
+  demos: [improve-baseline-experiment]
+
+- id: BUG_NAIVE_ANALYZER
+  name: the naive analyzer
+  chip: Naive analyzer
+  kind: code_bug
+  section: hill-climbing-loop
+  location: platform/src/datapilot/loop4_hill_climbing/analyzer.py
+  trigger: "BUG_NAIVE_ANALYZER=1, then Improve > Run analyzer"
+  symptom: The naive analyzer quotes each failed dev question in a rule of its own; the analyzer applies no overfit guard, and the gate blocks the version because the guard rejects its rules.
+  fix: The analyzer team with the critic, then the deterministic overfit guard.
+  demos: [improve-naive-analyzer-blocked]
+
+# --- Harness weaknesses (the honest starting configuration) ------------------------------------
+- id: knowledge-v1-empty
+  name: the near-empty knowledge version v1
+  chip: Starting knowledge
+  kind: harness_weakness
+  section: agent-loop
+  location: platform/packs/datapilot_us/knowledge/v1.yaml
+  trigger: Active by default until a candidate version is promoted.
+  symptom: The analyst has no business rules, so every trap question is answered from the schema alone.
+  fix: Promote a gated version from the hill-climbing loop.
+  demos: [agent-confident-wrong-answer, verify-graders-pass-still-wrong, improve-baseline-experiment]
+
+- id: v1-prompt-without-guidance
+  name: the system prompt without business guidance
+  chip: Prompt without business guidance
+  kind: harness_weakness
+  section: agent-loop
+  location: platform/src/datapilot/loop1_agent/prompts.py
+  trigger: Always; business guidance only arrives through knowledge versions.
+  symptom: The prompt states the role, method, and output contract, and nothing about the business.
+  fix: Knowledge versions injected by the dynamic prompt middleware.
+  demos: [agent-confident-wrong-answer]
+
+- id: total-cents-column
+  name: the tempting total_cents column
+  chip: Tempting total column
+  kind: harness_weakness
+  section: agent-loop
+  location: platform/ops/sql/warehouse_schema.sql
+  trigger: Always present in warehouse.orders.
+  symptom: Revenue questions sum total_cents, which includes tax and shipping.
+  fix: Business rule 3 in a knowledge version - net revenue is subtotal minus discount.
+  demos: [agent-confident-wrong-answer]
+
+- id: undocumented-status
+  name: the undocumented order status codes
+  chip: Undocumented status codes
+  kind: harness_weakness
+  section: agent-loop
+  location: platform/ops/sql/warehouse_schema.sql
+  trigger: Always; status is a smallint with neutral comments and no lookup table.
+  symptom: Cancelled orders (status 5) stay in revenue, counts, and averages.
+  fix: Business rule 4 in a knowledge version.
+  demos: [agent-confident-wrong-answer]
+
+# --- Data conditions ---------------------------------------------------------------------------
+- id: data-traps
+  name: the five traps in the seeded data
+  chip: Five traps in the data
+  kind: data_condition
+  section: agent-loop
+  location: platform/packs/datapilot_us/data_generator/
+  trigger: Always; seeded deterministically.
+  symptom: Fiscal year, net revenue, cancelled orders, Eastern time, and internal accounts each change a naive answer.
+  fix: Business rules in a knowledge version; trap sensitivity is proven by tests.
+  demos: [agent-confident-wrong-answer, verify-graders-pass-still-wrong, improve-baseline-experiment]
+
+- id: utc-boundary-orders
+  name: the evening orders that cross the UTC date
+  chip: Evening orders across the UTC date
+  kind: data_condition
+  section: agent-loop
+  location: platform/packs/datapilot_us/data_generator/
+  trigger: Always; 10 to 15 percent of orders, including around both daylight saving changes.
+  symptom: Grouping by UTC date moves evening Eastern time orders to the next day.
+  fix: AT TIME ZONE 'America/New_York' before truncating to a date.
+
+- id: internal-accounts-top-spenders
+  name: the internal accounts among the top spenders
+  chip: Internal accounts among top spenders
+  kind: data_condition
+  section: agent-loop
+  location: platform/packs/datapilot_us/data_generator/
+  trigger: Always; about 0.5 percent of customers, identified only by the email domain @harborpine.com.
+  symptom: Revenue is inflated by 2 to 3 percent and a top-N customer answer changes.
+  fix: Business rule 6 in a knowledge version.
+
+- id: prompt-injection-product-names
+  name: the product names carrying prompt-injection text
+  chip: Prompt-injection product names
+  kind: data_condition
+  section: verification-loop
+  location: platform/packs/datapilot_us/data_generator/
+  trigger: Always; a few product names.
+  symptom: Sample rows show instructions to the agent, such as a request to delete data.
+  fix: The read-only role and the syntax-tree guard make them harmless; the security suite proves no write.
+
+- id: near-duplicate-product-names
+  name: the two near-identical product names
+  chip: Near-duplicate product names
+  kind: data_condition
+  section: agent-loop
+  location: platform/packs/datapilot_us/data_generator/
+  trigger: Always.
+  symptom: A question naming one product is ambiguous.
+  fix: The analyst returns needs_clarification with a clarifying question.
+
+# --- Demo aids (live, labelled on the console) -------------------------------------------------
+- id: DEMO_PACING
+  name: demo pacing
+  chip: Demo pacing on
+  kind: demo_aid
+  section: event-loop
+  location: platform/src/datapilot/loop3_events/pacing.py
+  trigger: "DEMO_PACING=1 (pause DEMO_PACING_SECONDS between lifecycle stages)"
+  symptom: Runs move visibly across lanes, so the kill switch can catch one in flight. Results never change.
+  fix: Not a defect; off outside demos.
+  demos: [events-kill-switch-in-flight]
+
+- id: failing-grader-injection
+  name: the injected failing grader
+  chip: Injected failing grader
+  kind: demo_aid
+  section: verification-loop
+  location: platform/src/datapilot/loop2_verification/graders/injected.py
+  trigger: Verify > Inject failing grader (one run only).
+  symptom: A grader that always fails, to show the retry cap.
+  fix: Not a defect; applies only to the run it is injected into.
+  demos: [verify-retry-cap]
+
+- id: knowledge-v2-overbroad
+  name: the over-broad rule
+  chip: Over-broad rule
+  kind: demo_aid
+  section: hill-climbing-loop
+  location: platform/packs/datapilot_us/knowledge/v2-overbroad.yaml
+  trigger: Improve > Add the over-broad rule to the active version (after a promotion).
+  symptom: One plausible but over-broad rule, "exclude discounted orders from revenue", added to the active version; it breaks revenue items that pass under it. Against the starting version it cannot regress, because no revenue item passes there.
+  fix: Not a defect; the promotion gate blocks it.
+  demos: [improve-overbroad-rule-blocked]

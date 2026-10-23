@@ -1,0 +1,73 @@
+version: v6
+rules:
+- id: money-in-cents
+  title: Money in cents
+  rule_text: Money columns hold whole cents. Report money in dollars, divided by 100
+    and rounded to two decimals.
+  applies_when: a question asks for an amount of money
+  sql_guidance: round(sum(<cents column>) / 100.0, 2)
+- id: sales-order-population-exclusions
+  title: Exclude internal customers and status-5 orders
+  rule_text: For business sales and order metrics, exclude orders associated with
+    internal-company customers and exclude orders with status 5. Do not replace this
+    exclusion with a restriction to status 4.
+  applies_when: A metric is based on business sales or orders.
+  sql_guidance: customer_is_internal = false AND order_status <> 5
+- id: business-dates-new-york
+  title: Use New York local dates
+  rule_text: Interpret timestamps as New York local dates before filtering by date,
+    assigning fiscal periods, or grouping by business day.
+  applies_when: A question depends on a business date, calendar date, fiscal period,
+    or day-level grouping.
+  sql_guidance: convert timestamp to America/New_York before date operations
+- id: february-fiscal-calendar
+  title: Use the February-to-January fiscal calendar
+  rule_text: A fiscal year labeled N runs from February 1 of year N−1 through January
+    31 of year N. Its quarters are February–April, May–July, August–October, and November–January.
+  applies_when: A question specifies a fiscal year or fiscal quarter.
+  sql_guidance: filter local dates with a half-open fiscal-period range
+- id: category-rollup-parent
+  title: Use the top-level product category
+  rule_text: When a product metric is requested by category or for a category, classify
+    the product using its top-level parent category rather than matching only its
+    directly assigned category.
+  applies_when: A product measure is grouped or filtered by category.
+  sql_guidance: join category hierarchy to the top-level parent
+- id: net-revenue-subtotal-less-discount
+  title: Calculate net revenue from subtotal less discount
+  rule_text: Calculate net revenue as order subtotal minus discount, using the stored
+    monetary units; do not substitute an order total field for this measure.
+  applies_when: A question asks for net revenue or a measure defined from net revenue.
+  sql_guidance: SUM(subtotal - discount)
+- id: business-day-definition
+  title: Count business days using local weekdays and Christmas
+  rule_text: For business-day counts, use New York local dates, count Monday through
+    Friday, and exclude December 25.
+  applies_when: A question asks for business-day counts or orders on business days.
+  sql_guidance: weekday(local_date) AND local_date <> DATE '<year>-12-25'
+- id: black-friday-local-date
+  title: Resolve Black Friday from the U.S. Thanksgiving calendar
+  rule_text: Treat Black Friday as the Friday immediately following U.S. Thanksgiving,
+    using its New York local calendar date.
+  applies_when: A question identifies a reporting date by Black Friday.
+  sql_guidance: filter on the derived New York local event date
+- id: new-customer-first-qualifying-order
+  title: Find new customers from qualifying orders
+  rule_text: Determine each customer's earliest order from the included order population,
+    then assign that order to a reporting period using its New York local date.
+  applies_when: A question counts new customers for a date range or fiscal period.
+  sql_guidance: MIN(local_order_date) over qualifying orders per customer
+- id: average-order-value-definition
+  title: Define average order value over the same eligible scope
+  rule_text: Calculate average order value as net revenue divided by the count of
+    qualifying orders, using the same date range and order population for both parts.
+  applies_when: A question asks for average order value.
+  sql_guidance: SUM(net_revenue) / NULLIF(COUNT(qualifying_orders), 0)
+- id: preserve-signed-revenue-growth
+  title: Preserve the direction of revenue change
+  rule_text: For revenue growth or change comparisons, retain the sign of the change;
+    do not apply an absolute value that turns a decline into a positive result.
+  applies_when: A question compares net revenue across periods.
+  sql_guidance: current_period_value - comparison_period_value
+notes: Analyzer team draft from 20 failed dev items over v1.
+

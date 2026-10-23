@@ -1,0 +1,9 @@
+{% set core = demos | selectattr("tier.value", "equalto", "core") | list %}
+{% set optional = demos | selectattr("tier.value", "equalto", "optional") | list %}
+# Written by `make docs` from platform/demos/registry.yaml: edit the registry, not these lines.
+SECTION="{{ section.slug }}"
+CORE_DEMOS=({% for demo in core %}{{ demo.id }}{{ " " if not loop.last }}{% endfor %})
+OPTIONAL_DEMOS=({% for demo in optional %}{{ demo.id }}{{ " " if not loop.last }}{% endfor %})
+# The class plan's target minutes, not measured times.
+CORE_TARGET_MINUTES={{ core | sum(attribute="target_minutes") | round | int }}
+OPTIONAL_TARGET_MINUTES={{ optional | sum(attribute="target_minutes") | round | int }}

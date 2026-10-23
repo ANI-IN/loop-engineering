@@ -1,0 +1,15 @@
+# Keep secrets, local state, and course text out of every image build context.
+.env
+.env.*
+!.env.example
+.git
+.venv
+.dev
+.claude
+research
+section-*
+slides
+guide
+docs
+**/__pycache__
+*.sqlite*

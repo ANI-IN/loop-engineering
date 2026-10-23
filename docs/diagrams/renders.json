@@ -1,0 +1,46 @@
+{
+  "about": "SHA-256 of each diagram source and of the renders made from it, written by platform/tools/diagrams/export_diagrams.py; do not edit by hand.",
+  "excalidraw": "0.18.1",
+  "renders": {
+    "four-loops": {
+      "source": "6c6d88659ddea79592b94bd5c2cd4b76465150e6a1456f8ce015952aa5e0644c",
+      "svg": "2cfd60166eecab60fe2554d85a3d58ac6795fd0ff3c94dee587914fcb0960f93",
+      "png": "aadd7f4bf6247d35fc73031272cc115b369516c9c3b1a1ecdb2a1a9f5fed442c"
+    },
+    "four-loops-step-1": {
+      "source": "86bc31a107ca39136cb24adaa672e57be5b4e7d165666a564fc0b91816096a22",
+      "svg": "1ce19e39407770e5b6e4f1694f7e6fba0054df49728c862ab99ef763dae0551b",
+      "png": "5fbec09fe657f3c624066ed51131ebcf395c0c857a3497ebb9a13051b9f23b05"
+    },
+    "four-loops-step-2": {
+      "source": "acbf9b2833d88e5aaf0b431850407ed615a361860f46e9a3d4a52bc2c396f883",
+      "svg": "0ae8573eafbe367c5a1632d24e24885c4159626bba3ee8cb0836d029de7cd92b",
+      "png": "2025dbec9b21ccab109059d2a47209224ef37480f762f548e596ece036916a81"
+    },
+    "four-loops-step-3": {
+      "source": "9947854bb3c6d6db1811fc72986cf3b67d147242fab76009fba14b903e287718",
+      "svg": "4ceb30460f93083056656f5fb5cb3c117b81ce5a79857dec3ce30eb138645c31",
+      "png": "afd2ccf981f8d86319a4f78d5db0f40978c5e6be610e135b90acde906fde2b9c"
+    },
+    "four-loops-step-4": {
+      "source": "6c6d88659ddea79592b94bd5c2cd4b76465150e6a1456f8ce015952aa5e0644c",
+      "svg": "2cfd60166eecab60fe2554d85a3d58ac6795fd0ff3c94dee587914fcb0960f93",
+      "png": "aadd7f4bf6247d35fc73031272cc115b369516c9c3b1a1ecdb2a1a9f5fed442c"
+    },
+    "run-lifecycle": {
+      "source": "b6e3f684f6164acdf17be2a409e337a3cec17cdd260521e926033f76fa8341c3",
+      "svg": "e86b1eaa85b4eceb1712e07d60249061ecb1a3a60d0e44cc8353145d99c105e3",
+      "png": "7f7b99f7488cfba6c052cad0da503e8bfe373036e3fe7be8f50c1384213a29dd"
+    },
+    "system-architecture": {
+      "source": "ec19855b5f79b87996d765355fbd9c04dacb7b51b36135f4f6ad5689bb09f432",
+      "svg": "0e114a995f4b208879d1001a8dcc10bfd9b7613d945d1002919e579e183e45f3",
+      "png": "51c29b84f18ae10f70a83cfad0aebcdd0c319a85c3b0cfe9545e3766528a13b5"
+    },
+    "warehouse-data-model": {
+      "source": "de823e910d5829463b849a011881bc1d98cf176e7280d9ee03990219fe77fa02",
+      "svg": "33dc7b19de0a0103ba397388698b86dce0b820a3534f8d9fcc33634af8657a43",
+      "png": "d15302e2caf1c7883de408a71db0fafb8a3866765d000918d2c1d2d979815d5e"
+    }
+  }
+}

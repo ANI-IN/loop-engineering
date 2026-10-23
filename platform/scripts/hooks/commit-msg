@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Checks the message of the commit being made against the naming rule (short forms and shorthand),
+# the same check the verification gate runs over the history. The gate runs before a commit and so
+# cannot see the new message; this hook can. Installed by copying it to .git/hooks/commit-msg.
+# It finds the checker from its own location (platform/scripts/hooks/ or .git/hooks/) and runs no git.
+set -euo pipefail
+
+message_file="$1"
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+checker=""
+for candidate in "$here/../short_forms.py" "$here/../../platform/scripts/short_forms.py"; do
+  if [ -f "$candidate" ]; then checker="$candidate"; break; fi
+done
+if [ -z "$checker" ]; then
+  echo "commit-msg: cannot find platform/scripts/short_forms.py next to this hook" >&2
+  exit 1
+fi
+for interpreter in python3 python py; do
+  if command -v "$interpreter" >/dev/null 2>&1; then
+    exec "$interpreter" "$checker" --commit-messages "$message_file"
+  fi
+done
+echo "commit-msg: no Python found to check the commit message; install Python 3.12" >&2
+exit 1

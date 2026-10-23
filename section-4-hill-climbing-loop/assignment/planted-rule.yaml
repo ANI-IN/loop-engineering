@@ -1,0 +1,12 @@
+# The planted over-broad rule (Assignment 4: Hill-climbing loop). The live check adds it to the rule
+# writer's proposals, so the critic judges it beside the live ones. It claims to fix one
+# repeat-customer item, and it would change every answer that counts, lists, or averages customers.
+id: leave-out-one-time-buyers
+title: Leave one-time buyers out of customer metrics
+rule_text: >-
+  Customers who ordered only once are noise. Leave them out of every customer count, customer list,
+  and customer average.
+applies_when: a question counts, lists, or averages customers
+sql_guidance: HAVING count(*) >= 2 on each customer's orders
+evidence_example_ids: [repeat-rate-fy2025]
+expected_effect: fixes the repeat-customer rate in fiscal year 2025

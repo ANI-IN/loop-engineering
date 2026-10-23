@@ -1,0 +1,9 @@
+# What `make check-data` expects after `make seed`: row counts and one content hash per warehouse,
+# read back from the database (seed.fingerprint). Regenerate only when the generator changes on
+# purpose, and say so in the commit message.
+warehouse:
+  counts: {categories: 26, products: 487, customers: 50000, orders: 405738, order_items: 1020321}
+  content_hash: 9e54cf033b2647a6e5427ecda9c98f0b4c29d6c6d7cabf251bdc398fbfdc5684
+warehouse_alt:
+  counts: {categories: 26, products: 487, customers: 30000, orders: 245293, order_items: 618823}
+  content_hash: 68babcf3da0b1aec0c9ba30b9c77cbad6d4ef22e00402da302cb28d42832db93

@@ -1,0 +1,85 @@
+# Template benchmark, dev split: 6 items. The analyzer team may read these; it never reads the
+# holdout. Schema: datapilot.contracts.evaluation.BenchmarkItem. Gold SQL follows
+# business_rules.md; each naive_sql is what a model without the rules writes, and it must give a
+# different result than gold on both databases.
+# Traps: refunds, test_payments, pacific_time.
+
+- id: plan-count
+  question: How many subscription plans do we offer?
+  split: dev
+  category: simple_aggregates
+  difficulty: 1
+  metric_family: plans
+  gold_sql: SELECT count(*) FROM club.plans
+
+- id: members-north
+  question: How many members live in the north region?
+  split: dev
+  category: simple_aggregates
+  difficulty: 1
+  metric_family: members
+  gold_sql: SELECT count(*) FROM club.members WHERE region = 'north'
+
+- id: members-joined-2024
+  question: How many members joined during 2024?
+  split: dev
+  category: simple_aggregates
+  difficulty: 1
+  metric_family: members
+  gold_sql: |
+    SELECT count(*) FROM club.members
+    WHERE joined_on >= DATE '2024-01-01' AND joined_on < DATE '2025-01-01'
+
+- id: net-revenue-march-2025
+  question: What was our net revenue in March 2025, in dollars?
+  split: dev
+  category: simple_aggregates
+  difficulty: 2
+  metric_family: revenue
+  traps: [refunds, test_payments, pacific_time]
+  gold_sql: |
+    SELECT round(sum(CASE p.kind WHEN 1 THEN p.amount_cents WHEN 2 THEN -p.amount_cents
+                              ELSE 0 END) / 100.0, 2) AS net_revenue
+    FROM club.payments p
+    WHERE (p.paid_ts AT TIME ZONE 'America/Los_Angeles') >= DATE '2025-03-01'
+      AND (p.paid_ts AT TIME ZONE 'America/Los_Angeles') < DATE '2025-04-01'
+  naive_sql: |
+    SELECT round(sum(amount_cents) / 100.0, 2)
+    FROM club.payments
+    WHERE paid_ts >= '2025-03-01' AND paid_ts < '2025-04-01'
+
+- id: charges-june-2025
+  question: How many charges did members pay in June 2025?
+  split: dev
+  category: simple_aggregates
+  difficulty: 2
+  metric_family: payments
+  traps: [test_payments, pacific_time]
+  gold_sql: |
+    SELECT count(*)
+    FROM club.payments p
+    WHERE p.kind = 1
+      AND (p.paid_ts AT TIME ZONE 'America/Los_Angeles') >= DATE '2025-06-01'
+      AND (p.paid_ts AT TIME ZONE 'America/Los_Angeles') < DATE '2025-07-01'
+  naive_sql: |
+    SELECT count(*)
+    FROM club.payments
+    WHERE paid_ts >= '2025-06-01' AND paid_ts < '2025-07-01' AND kind <> 2
+
+- id: net-revenue-q2-2025
+  question: What was our net revenue for April to June 2025, in dollars?
+  split: dev
+  category: simple_aggregates
+  difficulty: 2
+  metric_family: revenue
+  traps: [refunds, test_payments, pacific_time]
+  gold_sql: |
+    SELECT round(sum(CASE p.kind WHEN 1 THEN p.amount_cents WHEN 2 THEN -p.amount_cents
+                              ELSE 0 END) / 100.0, 2) AS net_revenue
+    FROM club.payments p
+    WHERE (p.paid_ts AT TIME ZONE 'America/Los_Angeles') >= DATE '2025-04-01'
+      AND (p.paid_ts AT TIME ZONE 'America/Los_Angeles') < DATE '2025-07-01'
+  naive_sql: |
+    SELECT round(sum(amount_cents) / 100.0, 2)
+    FROM club.payments
+    WHERE paid_ts >= '2025-04-01' AND paid_ts < '2025-07-01'

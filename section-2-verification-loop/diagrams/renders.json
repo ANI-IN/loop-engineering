@@ -1,0 +1,36 @@
+{
+  "about": "SHA-256 of each diagram source and of the renders made from it, written by platform/tools/diagrams/export_diagrams.py; do not edit by hand.",
+  "excalidraw": "0.18.1",
+  "renders": {
+    "verification-layers": {
+      "source": "b11bd500f08fcc69ce4186982801bd258e462c7b105bfb219d97511e69c15a12",
+      "svg": "5dadbffe5a227390fdeabcf493fe309a4839efde73a65156f4a2d44ea5bc9bab",
+      "png": "221e7789d7219c4c820abb3dcce800db32570c5027cf92372b3d753e37a93026"
+    },
+    "verification-layers-step-1": {
+      "source": "41415fe38ab1d40cd73bc3e22a6d23bb476cad5854eddba344e25803328f69e0",
+      "svg": "f70198fb295424240bed48c0a77da5d9423163a44fef0b269d592a0cf307632d",
+      "png": "a11c83f0c7df11ef767d3da43a7406aa6f8d65ad35b8558f2c074dd93e962942"
+    },
+    "verification-layers-step-2": {
+      "source": "c7454cadfdfbab462d4e3806b5aa405f5a5afae6bfca5d97597c7c8e9bc2a085",
+      "svg": "4f57b08fcd5c7c4b5b89da4a7da2192cc583e77586bc9f3a93a0cde2a22d8369",
+      "png": "9654e3a7e0d8375d49e10df1de025dd8ac3ad2acc90c7c9fc1892b65a1d3cfb2"
+    },
+    "verification-layers-step-3": {
+      "source": "2b2dee895f64787423d0a4dae104925f0363aadb85e8cfbd4cd328e18d07b800",
+      "svg": "9c1309d1dc41fc8f33d15f895cbaee7ce58e297bd7b4d7f65a1ed927ccd539b7",
+      "png": "71a2d8ab2e681533972c015b8998782bb354bcaa83a926d36c0d2762f6d7243d"
+    },
+    "verification-layers-step-4": {
+      "source": "c68cbef9e431aae87272c86e93e69ac4a4cd7812d9aa1b70cfbb4e4f090d54b3",
+      "svg": "a9ac8b8e3eaa2d165cd6f93f99805ead835fd18ba0d899662cb1af938e465a5a",
+      "png": "1b5617f059f2c788ffb2a202b5183d7fdd3e4337452e0d9ac7ce6e9f6bdd13ac"
+    },
+    "verification-layers-step-5": {
+      "source": "b11bd500f08fcc69ce4186982801bd258e462c7b105bfb219d97511e69c15a12",
+      "svg": "5dadbffe5a227390fdeabcf493fe309a4839efde73a65156f4a2d44ea5bc9bab",
+      "png": "221e7789d7219c4c820abb3dcce800db32570c5027cf92372b3d753e37a93026"
+    }
+  }
+}

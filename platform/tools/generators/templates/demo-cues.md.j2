@@ -1,0 +1,13 @@
+{# The DEMO slide cues for one section, in the format of slides/outline.md and the instructor guide.
+   Not wired into render.py yet. #}
+{% for demo in demos if demo.tier.value == "core" %}
+Demo: {{ demo.title }}. Trigger: {{ demo.trigger.console }}, or `{{ demo.trigger.make }}`.
+Point at: {{ demo.expected_outcome }} Then the live stamp on the result: its start time and trace link.
+Say: {{ demo.guaranteed_moment }}
+Can vary: {{ demo.can_vary | join(", ") }}.
+If it stalls: reset and run it again, `make reset NAME={{ section.slug }}`, then the same trigger.
+{% endfor %}
+{% set optional = demos | selectattr("tier.value", "equalto", "optional") | list %}
+{% if optional %}
+Optional, cut first: {% for demo in optional %}{{ demo.title }} (`{{ demo.trigger.make }}`){% if not loop.last %}; {% endif %}{% endfor %}.
+{% endif %}

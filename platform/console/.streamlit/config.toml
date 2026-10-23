@@ -1,0 +1,91 @@
+# DataPilot console theme: the flight-deck direction. Every value is a token from
+# platform/console/DESIGN.md ("Tokens"); change the token there first, then here.
+# Run Streamlit from platform/console so this file applies.
+
+[server]
+headless = true
+# Serves platform/console/static/ at app/static/, for the self-hosted fonts below.
+enableStaticServing = true
+
+[client]
+toolbarMode = "viewer"
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+
+# Ground and ink
+backgroundColor = "#EDF1F3"            # chart-paper
+secondaryBackgroundColor = "#FBFCFC"   # strip-white
+textColor = "#17283A"                  # ink
+borderColor = "#7D8B97"                # rule (3.07:1 on chart-paper, the UI-component minimum)
+showWidgetBorder = true
+linkColor = "#9E2F6E"                  # airspace-magenta
+linkUnderline = true
+codeTextColor = "#17283A"              # ink
+codeBackgroundColor = "#FBFCFC"        # strip-white
+
+# The only accent: focus, selection, primary action
+primaryColor = "#9E2F6E"               # airspace-magenta
+
+# Status palette (always with a word and a shape, never colour alone)
+greenColor = "#2E7A57"                 # cleared-green
+greenTextColor = "#2E7A57"
+greenBackgroundColor = "#E9F3EE"       # cleared-tint
+yellowColor = "#B7791F"                # holding-amber (fill only)
+yellowTextColor = "#8A5A12"            # holding-amber-text
+yellowBackgroundColor = "#F7EFE1"      # holding-tint
+orangeColor = "#B7791F"
+orangeTextColor = "#8A5A12"
+orangeBackgroundColor = "#F7EFE1"
+redColor = "#B13A30"                   # fault-red
+redTextColor = "#B13A30"
+redBackgroundColor = "#F9EAE8"         # fault-tint
+blueColor = "#3D5A73"                  # info-slate
+blueTextColor = "#3D5A73"
+blueBackgroundColor = "#EAF0F5"        # info-tint
+violetColor = "#9E2F6E"
+violetTextColor = "#9E2F6E"
+violetBackgroundColor = "#F7EAF1"      # magenta-tint
+grayColor = "#5B6B79"                  # graphite
+grayTextColor = "#5B6B79"
+grayBackgroundColor = "#E8ECEF"        # gray-tint
+
+# Shape: 2 px on controls; the custom components draw square strips and no shadows
+baseRadius = "2px"
+buttonRadius = "2px"
+
+# Type, sized for a 1280x720 share
+font = "Atkinson Hyperlegible Next, sans-serif"
+headingFont = "Atkinson Hyperlegible Next, sans-serif"
+codeFont = "Atkinson Hyperlegible Mono, monospace"
+baseFontSize = 18
+baseFontWeight = 400
+headingFontSizes = ["26px", "20px", "18px", "18px", "18px", "18px"]
+headingFontWeights = [700, 700, 700, 700, 700, 700]
+codeFontSize = "16px"
+
+# Tables and charts
+dataframeBorderColor = "#C9D1D7"           # hairline
+dataframeHeaderBackgroundColor = "#EDF1F3" # chart-paper
+chartCategoricalColors = ["#17283A", "#9E2F6E", "#2D6E7E", "#5B6B79"]
+
+[[theme.fontFaces]]
+family = "Atkinson Hyperlegible Next"
+url = "app/static/fonts/atkinson-hyperlegible-next-latin-400-normal.woff2"
+weight = 400
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Atkinson Hyperlegible Next"
+url = "app/static/fonts/atkinson-hyperlegible-next-latin-700-normal.woff2"
+weight = 700
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Atkinson Hyperlegible Mono"
+url = "app/static/fonts/atkinson-hyperlegible-mono-latin-400-normal.woff2"
+weight = 400
+style = "normal"

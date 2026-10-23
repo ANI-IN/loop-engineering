@@ -1,0 +1,62 @@
+name: ci
+
+# Zero-token suites only. Live tests (OpenAI, LangSmith) never run in CI: no API keys are stored as
+# secrets; run them locally with the live make targets.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # the naming-rule check reads every commit message
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.1"
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run lint-imports
+      - run: uv run python platform/scripts/lint_prose.py
+      - name: course style check (switch to --strict once every page is written)
+        run: uv run python platform/scripts/check_style.py
+      - name: repository guards (config allow-list, sole author, no co-author lines, no tracked .env)
+        run: uv run python platform/scripts/check_repo_guards.py
+      - name: naming rule on the course pages (shorthand and first use warn until --strict)
+        run: uv run python platform/scripts/check_style.py --names-only
+      - name: naming rule on the slide outline
+        run: uv run python platform/scripts/short_forms.py slides/outline.md
+      - name: naming rule on commit messages (short forms and shorthand fail)
+        run: git log --format=%B | uv run python platform/scripts/short_forms.py --commit-messages -
+      - run: uv run python platform/tools/generators/render.py --check
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.1"
+      - run: uv sync --frozen
+      - run: uv run pytest -q -m "not integration and not live"
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.1"
+      - run: uv sync --frozen
+      # The tests' own database (Compose project datapilot-tests, port 55432), as make test-integration
+      - run: POSTGRES_PORT=55432 docker compose -p datapilot-tests up --detach --wait postgres
+      - run: DATAPILOT_TEST_POSTGRES_PORT=55432 uv run python platform/scripts/prepare_tests_database.py
+      - run: DATAPILOT_TEST_POSTGRES_PORT=55432 uv run pytest -q -m integration

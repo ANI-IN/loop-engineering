@@ -1,0 +1,199 @@
+# DataPilot pack for Harbor & Pine Outfitters. Every threshold, limit, price, and model setting the
+# code uses comes from here or from .env; nothing is hard-coded.
+
+name: datapilot_us
+display_name: Harbor & Pine Outfitters
+
+databases:
+  # Environment variable names, never URLs or passwords.
+  agent: DATABASE_URL_AGENT
+  agent_alt: DATABASE_URL_AGENT_ALT
+  owner: DATABASE_URL_OWNER
+  app: DATABASE_URL_APP
+  allowed_schema: warehouse
+
+# Model settings. The model ids come from .env (OPENAI_MODEL, OPENAI_ANALYZER_MODEL); these are the
+# call settings. Every call uses the Responses API and an explicit reasoning effort; temperature is
+# never passed. The class model is gpt-6-luna for every agent, an alias with no dated snapshot, so
+# make preflight runs the drift canary before every class.
+# max_output_tokens caps one call's output, reasoning tokens included; it is sent to the Responses
+# API as max_output_tokens. Normal calls use a few hundred to a few thousand output tokens, so a
+# cap is many times that; a response cut off at its cap ends the run escalated, with the reason.
+models:
+  use_responses_api: true
+  analyst: {reasoning_effort: low, max_output_tokens: 16000}
+  schema_scout: {reasoning_effort: low, max_output_tokens: 8000}
+  reviewer: {reasoning_effort: low, max_output_tokens: 8000}
+  analyzer_team: {reasoning_effort: medium, max_output_tokens: 32000}
+
+agents:
+  schema_scout: {enabled: true}
+  reviewer: {enabled: true}
+
+# US dollars per 1M tokens, Standard tier, prompts of 272,000 input tokens or fewer, from
+# https://developers.openai.com/api/docs/pricing (read 2026-10-23).
+# The spend ledger and every cost shown on the console use this table.
+# Cache writes are billed above plain input: 1.25 times it for the default 30-minute lifetime
+# and 2.5 times it for the 12-hour lifetime (the model page and the prompt caching guide).
+prices:
+  gpt-6-luna:
+    {input: 0.10, cached_input: 0.01, cache_write_30m: 0.125, cache_write_12h: 0.25, output: 0.50}
+
+limits:
+  row_cap: 50
+  max_retries: 3
+  model_call_limit: 12   # model calls per run
+  tool_call_limit: 16    # tool calls per run
+  statement_timeout_ms: 5000
+  idle_in_transaction_timeout_ms: 10000   # the agent role's session settings (roles.sql)
+  temp_file_limit_kb: 102400
+
+# Token budgets sized for gpt-6-luna (reasoning tokens included). Calibration confirms them.
+budgets:
+  tokens_per_run: 60000
+  tokens_per_day: 2000000
+
+# The live assignment checks (make check-assignment). Each check stops at its own spend cap in US
+# dollars, counted from the spend ledger's rows of that check alone, so it holds with the build
+# budget on or off: it starts no new run once the runs already under way could take it past the
+# cap, and then stops cleanly (docs/costs.md, "Assignments").
+assignments:
+  check_cap_usd: 1.00
+
+# The whole build's OpenAI budget in US dollars, enforced by the spend ledger (make spend).
+build_budget:
+  # The lines, the warning, and the stop line below bind only the build: its .env sets this
+  # variable to 1. Off (a learner's machine), every call is still recorded in the ledger, and the
+  # learner's own OpenAI project limit is the only limit, besides each assignment check's own spend
+  # cap (assignments.check_cap_usd). The session limit holds whenever its
+  # session is named.
+  enabled_variable: DATAPILOT_BUILD_BUDGET
+  total_usd: 10.00   # an absolute maximum
+  warn_usd: 6.00
+  stop_usd: 10.00    # all live work stops here
+  # Every ledger activity counts under exactly one line, by its name: the line's own name, the line
+  # name followed by "-" and a step (calibration-traps), or one of the line's other names. A call
+  # under any other activity name is refused. A line that is used up stops its activity with a
+  # message naming the line and what is left; it never spills into the reserve on its own.
+  lines:
+    development live checks:
+      cap_usd: 1.50
+      # preflight during development and the capability check; "development" is the stack's default
+      names: [development, preflight-development]
+    calibration:
+      cap_usd: 2.20   # 0.30 moved to assignment verification by the owner, 23 October 2026
+    assignment verification:
+      cap_usd: 2.80   # 0.30 moved from calibration by the owner, 23 October 2026
+      names: [assignment]   # the reference solutions' live done-when checks during the build
+    rehearsal:
+      cap_usd: 2.50
+      # every screenshot, and preflight for a rehearsal, the class, and the Thursday review
+      names: [screenshots, preflight-rehearsal, preflight-class, preflight-thursday-review]
+    reserve:
+      cap_usd: 1.00   # the lines add up to exactly the 10-dollar total
+      # used only with the owner's approval: DATAPILOT_USE_RESERVE=1 lets a used-up line go on into
+      # the reserve until the reserve is used up too
+      approval_variable: DATAPILOT_USE_RESERVE
+  # The lines are ceilings; the total stop above still holds when they add up to more.
+  # A second, explicit limit for one unattended session, checked before every call in addition to
+  # the lines: it applies only while DATAPILOT_SESSION_SINCE names the session's start (a UTC time)
+  # and counts only the spend since then. A line not listed here gets nothing this session.
+  session:
+    since_variable: DATAPILOT_SESSION_SINCE
+    total_usd: 2.35
+    lines:
+      development live checks: 0.30
+      calibration: 0.95
+      assignment verification: 1.10
+
+cost_guard:
+  max_plan_cost: 500000
+  max_plan_rows: 5000000
+
+personal_data:
+  # Columns tagged as personal data route a query to human approval.
+  columns:
+    - warehouse.customers.email
+    - warehouse.customers.phone
+    - warehouse.customers.first_name
+    - warehouse.customers.last_name
+  marketing_view: warehouse.customers_marketable
+
+autonomy:
+  # The router's keyword table: a question's metric family is the first family whose pattern (a
+  # regular expression, case ignored) it matches, unless the event names the family itself.
+  family_keywords:
+    - {family: aov, pattern: 'average order value|\baov\b|basket size'}
+    - {family: revenue, pattern: 'revenue|sales|income'}
+    - {family: orders, pattern: '\border(s|ed)?\b'}
+    - {family: customers, pattern: 'customer|buyer|shopper'}
+    - {family: products, pattern: 'product|item|sku|category'}
+  default_level: report_only
+  # Assignment 4: Hill-climbing loop adds the repeat-customer family and the rule that a family
+  # needs at least three holdout questions before the unattended level; neither is in class code.
+  metric_families: [revenue, orders, aov, customers, products]
+  demote_after_consecutive_escalations: 3
+
+evaluation:
+  holdout_repeats: 3
+  holdout_pass_threshold: 2
+  # An apparent dev regression (passed under the active version, fails under the candidate) is
+  # re-run this many times under each version, and counts only when the candidate fails at least
+  # dev_regression_threshold of its re-runs and the active version passes at least that many of
+  # its own: an item unstable under both versions is not a regression.
+  dev_regression_reruns: 2
+  dev_regression_threshold: 2
+  # An apparent holdout regression is re-run this many times under the candidate and counts only
+  # when at least this many of the re-runs fail again.
+  holdout_regression_reruns: 3
+  holdout_regression_fail_threshold: 2
+  # Calibration's stability filter: each holdout item runs this many times under one version and
+  # stays only if it passes at least the first number of runs or at most the second.
+  stability_runs: 5
+  stability_keep_passes_at_least: 4
+  stability_keep_passes_at_most: 1
+  concurrency: 8
+  # The overfit guard rejects a rule that shares this many consecutive words with a benchmark
+  # question, or this many consecutive SQL tokens with a gold query.
+  overfit_question_words: 6
+  overfit_sql_tokens: 20
+
+# LangSmith tracing (the owner's decision of 23 October 2026). Every demo run and every assignment
+# check run is traced in full. A benchmark run inside an experiment (the hill-climbing runner's
+# experiments and re-runs, calibration, and the benchmark inside Assignment 4's check) is traced
+# only as this sample, decided per run by LangSmith's own sampling rule on the run id, so one
+# learner's demos and checks stay well inside the free plan's 5,000 traces a month (docs/costs.md,
+# "LangSmith traces"). Every run is still scored locally; the holdout ledger is the record.
+tracing:
+  experiment_sample_rate: 0.2   # about 1 benchmark run in 5 is traced
+
+# The analyzer team writes this many candidate rule sets from the same failed dev items, each by
+# its own run of the failure analyst, the rule writer, and the critic, through the overfit guard.
+# Each candidate runs on the dev split only, every item once, and the runner keeps one: fewer dev
+# regressions against the session's baseline, then more dev passes, then fewer rules. The holdout
+# split never takes part in the choice; only the kept candidate goes to the candidate experiment and
+# the gate. A pack without this setting writes one candidate.
+analyzer:
+  candidates: 2
+
+# The question the daily digest job asks; {day} is the business day it covers.
+digest:
+  question: >-
+    Give the daily KPI digest for {day}: net revenue, number of orders, and average order value,
+    in one short paragraph.
+
+channel: analytics
+
+console:
+  kill_switch_disarm_seconds: 5   # an armed kill switch disarms after this; rehearsal may raise it
+  strips_per_lane: 2              # then "N more"
+  poll_seconds: 1                 # the live fragment interval; never faster
+
+# The checks of make preflight. data_check: a table in allowed_schema whose rows the agent's role
+# must see on the agent's database. canary: three easy items that must pass and two trap items that
+# must still fail under the starting knowledge, by their ids in benchmark/*.yaml.
+preflight:
+  data_check: {table: warehouse.orders, rows_are: orders}
+  canary:
+    easy: [product-count, camping-subcategories, marketable-customers-california]
+    traps: [net-revenue-fiscal-2025, average-order-value-fiscal-2025]

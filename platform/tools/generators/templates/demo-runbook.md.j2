@@ -1,0 +1,19 @@
+{# One runbook entry per demo of a section, in registry order, for its demo/README.md. #}
+{% for demo in demos %}
+### {{ demo.title }}
+
+- **Tier**: {{ demo.tier.value }}{% if demo.tier.value == "optional" %}, cut first when the section runs late{% endif %}
+
+- **Start it**: {{ demo.trigger.console }} in the console, or `{{ demo.trigger.make }}`
+{% if demo.planted %}
+- **Guaranteed by**: {% for id in demo.planted %}{% set item = planted[id] %}{{ item.name }}{% if item.kind.value in ("code_bug", "demo_aid") and id.isupper() %} (`{{ id }}`){% endif %}{{ "; " if not loop.last }}{% endfor %}
+
+{% endif %}
+- **What appears**: {{ demo.guaranteed_moment | quoted }}
+- **Expected live outcome**: {{ demo.expected_outcome | quoted }}
+- **What can vary**: {{ demo.can_vary | join("; ") | quoted }}
+- **Recovery**: `{{ demo.reset }}`, then the same trigger again
+{% if not loop.last %}
+
+{% endif %}
+{% endfor %}

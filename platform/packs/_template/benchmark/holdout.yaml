@@ -1,0 +1,67 @@
+# Template benchmark, holdout split: 4 items, worded away from dev. The analyzer team never reads
+# these; the promotion gate scores them 3 times per version and an item passes on 2 of 3.
+
+- id: mean-plan-price
+  question: What is the average monthly price of our plans, in dollars?
+  split: holdout
+  category: simple_aggregates
+  difficulty: 1
+  metric_family: plans
+  gold_sql: SELECT round(avg(monthly_price_cents) / 100.0, 2) FROM club.plans
+
+- id: net-revenue-september-2025
+  question: How much net revenue did the club earn in September 2025, in dollars?
+  split: holdout
+  category: simple_aggregates
+  difficulty: 2
+  metric_family: revenue
+  traps: [refunds, test_payments, pacific_time]
+  gold_sql: |
+    SELECT round(sum(CASE p.kind WHEN 1 THEN p.amount_cents WHEN 2 THEN -p.amount_cents
+                              ELSE 0 END) / 100.0, 2) AS net_revenue
+    FROM club.payments p
+    WHERE (p.paid_ts AT TIME ZONE 'America/Los_Angeles') >= DATE '2025-09-01'
+      AND (p.paid_ts AT TIME ZONE 'America/Los_Angeles') < DATE '2025-10-01'
+  naive_sql: |
+    SELECT round(sum(amount_cents) / 100.0, 2)
+    FROM club.payments
+    WHERE paid_ts >= '2025-09-01' AND paid_ts < '2025-10-01'
+
+- id: charges-december-2025
+  question: What number of member charges came in during December 2025?
+  split: holdout
+  category: simple_aggregates
+  difficulty: 2
+  metric_family: payments
+  traps: [test_payments, pacific_time]
+  gold_sql: |
+    SELECT count(*)
+    FROM club.payments p
+    WHERE p.kind = 1
+      AND (p.paid_ts AT TIME ZONE 'America/Los_Angeles') >= DATE '2025-12-01'
+      AND (p.paid_ts AT TIME ZONE 'America/Los_Angeles') < DATE '2026-01-01'
+  naive_sql: |
+    SELECT count(*)
+    FROM club.payments
+    WHERE paid_ts >= '2025-12-01' AND paid_ts < '2026-01-01' AND kind <> 2
+
+- id: net-revenue-south-2025
+  question: For the whole of 2025, what net revenue came from members in the south region, in dollars?
+  split: holdout
+  category: joins_and_hierarchy
+  difficulty: 3
+  metric_family: revenue
+  traps: [refunds, test_payments, pacific_time]
+  gold_sql: |
+    SELECT round(sum(CASE p.kind WHEN 1 THEN p.amount_cents WHEN 2 THEN -p.amount_cents
+                              ELSE 0 END) / 100.0, 2) AS net_revenue
+    FROM club.payments p
+    JOIN club.members m ON m.member_id = p.member_id
+    WHERE m.region = 'south'
+      AND (p.paid_ts AT TIME ZONE 'America/Los_Angeles') >= DATE '2025-01-01'
+      AND (p.paid_ts AT TIME ZONE 'America/Los_Angeles') < DATE '2026-01-01'
+  naive_sql: |
+    SELECT round(sum(p.amount_cents) / 100.0, 2)
+    FROM club.payments p
+    JOIN club.members m ON m.member_id = p.member_id
+    WHERE m.region = 'south' AND p.paid_ts >= '2025-01-01' AND p.paid_ts < '2026-01-01'

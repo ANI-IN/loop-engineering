@@ -1,0 +1,22 @@
+{
+  "title": "<COURSE>",
+  "subtitle": "Live Demo Guide",
+  "short": "<COURSE> · Live Demo Guide",
+  "date": "<DATE>",
+  "cover_tag": "<REPO> · <APP>",
+  "cover_blurb": "Every command, every screen and every result of the live demos, step by step, with what to say in class.",
+  "cover_foot": "<screens 1 to N> · <terminal 1 and terminal 2>",
+  "output": "<COURSE> Demo Guide.pdf",
+  "images": "~/guide-work/images",
+  "palette": {"accent": "#4f8fd6", "accent-2": "#d98c3a"},
+  "parts": [
+    ["source/intro.md", "intro"],
+    ["part0.md", "part0"],
+    ["chapters/1-*.md", "ch1"],
+    ["chapters/2-*.md", "ch2"],
+    ["chapters/3-*.md", "ch3"],
+    ["chapters/4-*.md", "ch4"],
+    ["chapters/5-*.md", "ch5"],
+    ["appendix.md", "appendix"]
+  ]
+}

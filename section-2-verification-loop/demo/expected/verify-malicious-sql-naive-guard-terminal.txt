@@ -1,0 +1,13 @@
+$ make demo NAME=verify-malicious-sql   (with BUG_NAIVE_GUARD=1, the naive guard planted)
+statement: SELECT 1; DELETE FROM orders
+  guard: statement_policy: passed through: starts with select or with
+  read-only transaction: stopped it: SQLSTATE 25006: cannot execute DELETE in a read-only transaction
+  stopped by: read-only transaction
+statement: WITH d AS (DELETE FROM orders RETURNING *) SELECT count(*) FROM d
+  guard: statement_policy: passed through: starts with select or with
+  read-only transaction: stopped it: SQLSTATE 25006: cannot execute SELECT in a read-only transaction
+  stopped by: read-only transaction
+statement: DELETE FROM orders
+  role grants: stopped it: SQLSTATE 42501: permission denied for table orders
+  stopped by: role grants
+orders before 405738, after 405738: unchanged True

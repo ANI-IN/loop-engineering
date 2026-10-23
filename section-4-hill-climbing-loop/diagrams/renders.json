@@ -1,0 +1,36 @@
+{
+  "about": "SHA-256 of each diagram source and of the renders made from it, written by platform/tools/diagrams/export_diagrams.py; do not edit by hand.",
+  "excalidraw": "0.18.1",
+  "renders": {
+    "hill-climbing-loop": {
+      "source": "45a4523af2b492520ff006bece25e33ee8e0d2fd32d2259709be1165ccd7c050",
+      "svg": "471666f616ba5f44b19b91dd835855cbfd9664076d0e3885c1f3c31c810da008",
+      "png": "52659d6bec7faadce7aaad9f8a8992a58bceded1bbcbc9b6533589b78a061cdd"
+    },
+    "hill-climbing-loop-step-1": {
+      "source": "f86d8048a4f701af0910d3b0ef93b047fe5f84cdf06d12d335ab819117a9d5d1",
+      "svg": "b073e7f7b9864104c353c8f395960e16c7eaf80186b8ed451b9696f8fd5508d5",
+      "png": "815cbcec51b82cf75bc23b397b311d4e3eebb3fac8a46c2b6afefadca05c949a"
+    },
+    "hill-climbing-loop-step-2": {
+      "source": "3e56f36eccbb1ce87e482370140dc0cda8bfb3f1a3d81dd44d1f602af416232a",
+      "svg": "03f9fb9d5c7c68bb3b839f126fba85fb67e188409e5df610e819c18c8947ee33",
+      "png": "a7ce8f9b1021a093c27ad3ff0e4a5780a09e4f156a1714b2c26fc2db077fedbc"
+    },
+    "hill-climbing-loop-step-3": {
+      "source": "c331fa6c0f51b304f93d5864981be864febc0c89de172b0ca99f031940d8d9c0",
+      "svg": "8c447568437f4bc3c94c246e65e779dc40fc6ff99610f7622b9654c17a529fbd",
+      "png": "dd00775f96e9b726504848e7ad02debb7b001a1b3b9aa5ed0831ee0caa196570"
+    },
+    "hill-climbing-loop-step-4": {
+      "source": "556e6a31b517578f58eddaf5aa9f2ebb7b64dbb2acffc1efe3f3b115690f4c73",
+      "svg": "3c4bf1135b3fc81d0b6c589493102a8688291eaac354b82874550fe4543817b5",
+      "png": "b9ba94d05d59a52e3c018c8243ce19b36f53478b642b1ee00ec01c28e2d0a3a7"
+    },
+    "hill-climbing-loop-step-5": {
+      "source": "45a4523af2b492520ff006bece25e33ee8e0d2fd32d2259709be1165ccd7c050",
+      "svg": "471666f616ba5f44b19b91dd835855cbfd9664076d0e3885c1f3c31c810da008",
+      "png": "52659d6bec7faadce7aaad9f8a8992a58bceded1bbcbc9b6533589b78a061cdd"
+    }
+  }
+}

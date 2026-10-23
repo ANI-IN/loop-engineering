@@ -1,0 +1,36 @@
+# The measures of each section, written down before the first comparison run and never
+# changed after it. The demo's headline is the headline measure; every other result is
+# labelled secondary. A measure applied wrongly may be re-judged from stored data (no new
+# runs), and the re-judging is disclosed on the evidence page.
+
+[[sections]]
+number = 1
+name = "Agent loop"
+headline = ""
+secondary = []
+# The time bar for the live demo, in minutes, from launch.
+time_bar_minutes = 0
+
+[[sections]]
+number = 2
+name = "Verification loop"
+headline = ""
+secondary = []
+# The time bar for the live demo, in minutes, from launch.
+time_bar_minutes = 0
+
+[[sections]]
+number = 3
+name = "Event loop"
+headline = ""
+secondary = []
+# The time bar for the live demo, in minutes, from launch.
+time_bar_minutes = 0
+
+[[sections]]
+number = 4
+name = "Hill-climbing loop"
+headline = ""
+secondary = []
+# The time bar for the live demo, in minutes, from launch.
+time_bar_minutes = 0

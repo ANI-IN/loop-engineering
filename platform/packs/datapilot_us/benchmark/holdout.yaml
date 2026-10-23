@@ -1,0 +1,347 @@
+# Benchmark, holdout split: 15 items, paraphrased away from dev (a test keeps every holdout
+# question below the similarity threshold to every dev question). The analyzer team never reads
+# these; the promotion gate scores them 3 times per version and an item passes on 2 of 3.
+
+- id: average-list-price-active
+  question: What is the mean list price of the products we currently sell, in dollars?
+  split: holdout
+  category: simple_aggregates
+  difficulty: 1
+  metric_family: products
+  gold_sql: |
+    SELECT round(avg(list_price_cents) / 100.0, 2) FROM warehouse.products WHERE is_active
+
+- id: web-orders-calendar-2024
+  question: Across the whole of calendar year 2024, what number of website orders came in?
+  split: holdout
+  category: simple_aggregates
+  difficulty: 2
+  metric_family: orders
+  traps: [cancelled_orders, internal_accounts, eastern_time]
+  paraphrase_group: channel-orders-calendar-year
+  gold_sql: |
+    SELECT count(*)
+    FROM warehouse.orders o
+    JOIN warehouse.customers c ON c.customer_id = o.customer_id
+    WHERE o.channel = 'web'
+      AND o.status <> 5
+      AND lower(c.email) NOT LIKE '%@harborpine.com'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') >= DATE '2024-01-01'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') < DATE '2025-01-01'
+  naive_sql: |
+    SELECT count(*)
+    FROM warehouse.orders
+    WHERE channel = 'web' AND extract(year FROM order_ts) = 2024
+
+- id: all-products-by-category
+  question: >-
+    Counting discontinued items as well, how big is the assortment of each top-level category?
+    Show category name and product total.
+  split: holdout
+  category: joins_and_hierarchy
+  difficulty: 2
+  metric_family: products
+  paraphrase_group: products-by-category
+  gold_sql: |
+    SELECT top.name AS category, count(*) AS products
+    FROM warehouse.products p
+    JOIN warehouse.categories sub ON sub.category_id = p.category_id
+    JOIN warehouse.categories top ON top.category_id = sub.parent_id
+    GROUP BY top.name
+
+- id: units-by-category-fiscal-2024
+  question: Break down the quantity sold during fiscal year 2024 by top-level category.
+  split: holdout
+  category: joins_and_hierarchy
+  difficulty: 3
+  metric_family: products
+  traps: [fiscal_year, cancelled_orders, internal_accounts]
+  paraphrase_group: units-by-category
+  gold_sql: |
+    SELECT top.name AS category, sum(oi.quantity) AS units
+    FROM warehouse.order_items oi
+    JOIN warehouse.orders o ON o.order_id = oi.order_id
+    JOIN warehouse.customers c ON c.customer_id = o.customer_id
+    JOIN warehouse.products p ON p.product_id = oi.product_id
+    JOIN warehouse.categories sub ON sub.category_id = p.category_id
+    JOIN warehouse.categories top ON top.category_id = sub.parent_id
+    WHERE o.status <> 5
+      AND lower(c.email) NOT LIKE '%@harborpine.com'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') >= DATE '2023-02-01'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') < DATE '2024-02-01'
+    GROUP BY top.name
+  naive_sql: |
+    SELECT top.name, sum(oi.quantity)
+    FROM warehouse.order_items oi
+    JOIN warehouse.orders o ON o.order_id = oi.order_id
+    JOIN warehouse.products p ON p.product_id = oi.product_id
+    JOIN warehouse.categories sub ON sub.category_id = p.category_id
+    JOIN warehouse.categories top ON top.category_id = sub.parent_id
+    WHERE extract(year FROM o.order_ts) = 2024
+    GROUP BY top.name
+
+- id: net-revenue-fiscal-2026
+  question: Report the total net revenue for fiscal year 2026 in dollars.
+  split: holdout
+  category: fiscal_periods
+  difficulty: 2
+  metric_family: revenue
+  traps: [fiscal_year, net_revenue, cancelled_orders, internal_accounts, eastern_time]
+  paraphrase_group: net-revenue-fiscal-year
+  gold_sql: |
+    SELECT round(sum(o.subtotal_cents - o.discount_cents) / 100.0, 2) AS net_revenue
+    FROM warehouse.orders o
+    JOIN warehouse.customers c ON c.customer_id = o.customer_id
+    WHERE o.status <> 5
+      AND lower(c.email) NOT LIKE '%@harborpine.com'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') >= DATE '2025-02-01'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') < DATE '2026-02-01'
+  naive_sql: |
+    SELECT round(sum(total_cents) / 100.0, 2)
+    FROM warehouse.orders
+    WHERE extract(year FROM order_ts) = 2026
+
+- id: orders-by-quarter-fiscal-2026
+  question: >-
+    Give me the order count for every quarter of fiscal year 2026, listed from the first
+    quarter to the last.
+  split: holdout
+  category: fiscal_periods
+  difficulty: 3
+  metric_family: orders
+  order_matters: true
+  traps: [fiscal_year, cancelled_orders, internal_accounts, eastern_time]
+  paraphrase_group: by-fiscal-quarter
+  gold_sql: |
+    SELECT (extract(month FROM (o.order_ts AT TIME ZONE 'America/New_York') - interval '1 month')::int - 1) / 3 + 1 AS fiscal_quarter,
+           count(*) AS orders
+    FROM warehouse.orders o
+    JOIN warehouse.customers c ON c.customer_id = o.customer_id
+    WHERE o.status <> 5
+      AND lower(c.email) NOT LIKE '%@harborpine.com'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') >= DATE '2025-02-01'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') < DATE '2026-02-01'
+    GROUP BY fiscal_quarter
+    ORDER BY fiscal_quarter
+  naive_sql: |
+    SELECT extract(quarter FROM order_ts) AS quarter, count(*)
+    FROM warehouse.orders
+    WHERE extract(year FROM order_ts) = 2026
+    GROUP BY quarter
+    ORDER BY quarter
+
+- id: buyers-first-quarter-fiscal-2026
+  question: During the first quarter of fiscal year 2026, how many different shoppers bought something?
+  split: holdout
+  category: fiscal_periods
+  difficulty: 3
+  metric_family: customers
+  traps: [fiscal_year, cancelled_orders, internal_accounts, eastern_time]
+  paraphrase_group: distinct-buyers
+  gold_sql: |
+    SELECT count(DISTINCT o.customer_id)
+    FROM warehouse.orders o
+    JOIN warehouse.customers c ON c.customer_id = o.customer_id
+    WHERE o.status <> 5
+      AND lower(c.email) NOT LIKE '%@harborpine.com'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') >= DATE '2025-02-01'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') < DATE '2025-05-01'
+  naive_sql: |
+    SELECT count(DISTINCT customer_id)
+    FROM warehouse.orders
+    WHERE order_ts >= '2026-01-01' AND order_ts < '2026-04-01'
+
+- id: business-day-orders-november-2025
+  question: Counting only working days, what was the order volume in November 2025?
+  split: holdout
+  category: eastern_business_days
+  difficulty: 3
+  metric_family: orders
+  traps: [eastern_time, cancelled_orders, internal_accounts]
+  paraphrase_group: business-day-orders
+  gold_sql: |
+    SELECT count(*)
+    FROM warehouse.orders o
+    JOIN warehouse.customers c ON c.customer_id = o.customer_id
+    WHERE o.status <> 5
+      AND lower(c.email) NOT LIKE '%@harborpine.com'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') >= DATE '2025-11-01'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') < DATE '2025-12-01'
+      AND extract(isodow FROM (o.order_ts AT TIME ZONE 'America/New_York')) < 6
+      AND (o.order_ts AT TIME ZONE 'America/New_York')::date <> DATE '2025-11-27'
+  naive_sql: |
+    SELECT count(*)
+    FROM warehouse.orders
+    WHERE order_ts >= '2025-11-01' AND order_ts < '2025-12-01'
+      AND extract(isodow FROM order_ts) < 6
+
+- id: net-revenue-cyber-monday-2025
+  question: How much net revenue, in dollars, did Cyber Monday 2025 (December 1, 2025) bring in?
+  split: holdout
+  category: eastern_business_days
+  difficulty: 2
+  metric_family: revenue
+  traps: [eastern_time, net_revenue, cancelled_orders, internal_accounts]
+  paraphrase_group: promotion-day-revenue
+  gold_sql: |
+    SELECT round(sum(o.subtotal_cents - o.discount_cents) / 100.0, 2) AS net_revenue
+    FROM warehouse.orders o
+    JOIN warehouse.customers c ON c.customer_id = o.customer_id
+    WHERE o.status <> 5
+      AND lower(c.email) NOT LIKE '%@harborpine.com'
+      AND (o.order_ts AT TIME ZONE 'America/New_York')::date = DATE '2025-12-01'
+  naive_sql: |
+    SELECT round(sum(total_cents) / 100.0, 2)
+    FROM warehouse.orders
+    WHERE order_ts::date = DATE '2025-12-01'
+
+- id: orders-black-friday-2025
+  question: What number of orders arrived on Black Friday 2025, which fell on November 28, 2025?
+  split: holdout
+  category: eastern_business_days
+  difficulty: 2
+  metric_family: orders
+  traps: [eastern_time, cancelled_orders, internal_accounts]
+  gold_sql: |
+    SELECT count(*)
+    FROM warehouse.orders o
+    JOIN warehouse.customers c ON c.customer_id = o.customer_id
+    WHERE o.status <> 5
+      AND lower(c.email) NOT LIKE '%@harborpine.com'
+      AND (o.order_ts AT TIME ZONE 'America/New_York')::date = DATE '2025-11-28'
+  naive_sql: |
+    SELECT count(*) FROM warehouse.orders WHERE order_ts::date = DATE '2025-11-28'
+
+- id: new-customers-fiscal-2026
+  question: How many shoppers made their very first purchase with us during fiscal year 2026?
+  split: holdout
+  category: customer_segments
+  difficulty: 3
+  metric_family: customers
+  traps: [fiscal_year, cancelled_orders, internal_accounts, eastern_time]
+  paraphrase_group: first-order-customers
+  gold_sql: |
+    WITH firsts AS (
+        SELECT o.customer_id, min(o.order_ts AT TIME ZONE 'America/New_York') AS first_order
+        FROM warehouse.orders o
+        JOIN warehouse.customers c ON c.customer_id = o.customer_id
+        WHERE o.status <> 5
+          AND lower(c.email) NOT LIKE '%@harborpine.com'
+        GROUP BY o.customer_id
+    )
+    SELECT count(*)
+    FROM firsts
+    WHERE first_order >= DATE '2025-02-01' AND first_order < DATE '2026-02-01'
+  naive_sql: |
+    SELECT count(*)
+    FROM (SELECT customer_id, min(order_ts) AS first_order
+          FROM warehouse.orders GROUP BY customer_id) f
+    WHERE extract(year FROM first_order) = 2026
+
+- id: top-customers-fiscal-2026
+  question: >-
+    List the ten biggest-spending shoppers of fiscal year 2026 by customer id, with what each
+    spent in net revenue dollars, from the top down.
+  split: holdout
+  category: ranking
+  difficulty: 3
+  metric_family: customers
+  order_matters: true
+  traps: [fiscal_year, net_revenue, cancelled_orders, internal_accounts]
+  paraphrase_group: top-customers
+  gold_sql: |
+    SELECT o.customer_id, round(sum(o.subtotal_cents - o.discount_cents) / 100.0, 2) AS net_revenue
+    FROM warehouse.orders o
+    JOIN warehouse.customers c ON c.customer_id = o.customer_id
+    WHERE o.status <> 5
+      AND lower(c.email) NOT LIKE '%@harborpine.com'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') >= DATE '2025-02-01'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') < DATE '2026-02-01'
+    GROUP BY o.customer_id
+    ORDER BY net_revenue DESC, o.customer_id
+    LIMIT 10
+  naive_sql: |
+    SELECT customer_id, round(sum(total_cents) / 100.0, 2) AS revenue
+    FROM warehouse.orders
+    WHERE extract(year FROM order_ts) = 2026
+    GROUP BY customer_id
+    ORDER BY revenue DESC, customer_id
+    LIMIT 10
+
+- id: bottom-states-net-revenue-fiscal-2026
+  question: >-
+    Name the three destination states that generated the least net revenue in fiscal year 2026,
+    with the dollar amounts, smallest first.
+  split: holdout
+  category: ranking
+  difficulty: 3
+  metric_family: revenue
+  order_matters: true
+  traps: [fiscal_year, net_revenue, cancelled_orders]
+  paraphrase_group: states-by-revenue
+  gold_sql: |
+    SELECT o.ship_state, round(sum(o.subtotal_cents - o.discount_cents) / 100.0, 2) AS net_revenue
+    FROM warehouse.orders o
+    JOIN warehouse.customers c ON c.customer_id = o.customer_id
+    WHERE o.status <> 5
+      AND lower(c.email) NOT LIKE '%@harborpine.com'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') >= DATE '2025-02-01'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') < DATE '2026-02-01'
+    GROUP BY o.ship_state
+    ORDER BY net_revenue, o.ship_state
+    LIMIT 3
+  naive_sql: |
+    SELECT ship_state, round(sum(total_cents) / 100.0, 2) AS revenue
+    FROM warehouse.orders
+    WHERE extract(year FROM order_ts) = 2026
+    GROUP BY ship_state
+    ORDER BY revenue, ship_state
+    LIMIT 3
+
+- id: app-average-order-value-fiscal-2026
+  question: >-
+    For purchases made in our app this fiscal year, what was the typical basket in dollars,
+    measured as average order value?
+  split: holdout
+  category: ratios
+  difficulty: 2
+  metric_family: aov
+  traps: [fiscal_year, net_revenue, cancelled_orders, internal_accounts]
+  paraphrase_group: average-order-value
+  gold_sql: |
+    SELECT round(sum(o.subtotal_cents - o.discount_cents) / 100.0 / count(*), 2) AS average_order_value
+    FROM warehouse.orders o
+    JOIN warehouse.customers c ON c.customer_id = o.customer_id
+    WHERE o.channel = 'app'
+      AND o.status <> 5
+      AND lower(c.email) NOT LIKE '%@harborpine.com'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') >= DATE '2025-02-01'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') < DATE '2026-02-01'
+  naive_sql: |
+    SELECT round(avg(total_cents) / 100.0, 2)
+    FROM warehouse.orders
+    WHERE channel = 'app' AND extract(year FROM order_ts) = 2026
+
+- id: app-share-net-revenue-fiscal-2026
+  question: >-
+    What share of fiscal year 2026 net revenue came from the app channel? Give a percentage to
+    one decimal place.
+  split: holdout
+  category: ratios
+  difficulty: 3
+  metric_family: revenue
+  numeric_tolerance: 0.1
+  traps: [fiscal_year, net_revenue, cancelled_orders, internal_accounts]
+  gold_sql: |
+    SELECT round(100.0 * sum(o.subtotal_cents - o.discount_cents) FILTER (WHERE o.channel = 'app')
+                 / sum(o.subtotal_cents - o.discount_cents), 1) AS app_share_percent
+    FROM warehouse.orders o
+    JOIN warehouse.customers c ON c.customer_id = o.customer_id
+    WHERE o.status <> 5
+      AND lower(c.email) NOT LIKE '%@harborpine.com'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') >= DATE '2025-02-01'
+      AND (o.order_ts AT TIME ZONE 'America/New_York') < DATE '2026-02-01'
+  naive_sql: |
+    SELECT round(100.0 * sum(total_cents) FILTER (WHERE channel = 'app') / sum(total_cents), 1)
+    FROM warehouse.orders
+    WHERE extract(year FROM order_ts) = 2026

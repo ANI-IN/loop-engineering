@@ -1,0 +1,36 @@
+{
+  "about": "SHA-256 of each diagram source and of the renders made from it, written by platform/tools/diagrams/export_diagrams.py; do not edit by hand.",
+  "excalidraw": "0.18.1",
+  "renders": {
+    "agent-loop": {
+      "source": "dc049b22ece0b9bc101efa57ec388961a09fc20056838d6b468ecf30902f8307",
+      "svg": "c504aed0dabb9ab1468f2a6cb6a81483d8c96d8f74c8591f324b4830be8e0f93",
+      "png": "cd18a2f6c90776a0278739db3b07876a16d5c9d25b7eb7b47a11a3ad298d6a9a"
+    },
+    "agent-loop-step-1": {
+      "source": "0634c54998bc7bbf75a1d36fee86b182b21257047571eb94a4a37c1977edd71e",
+      "svg": "def900ae16a2e613d262a77741c9ebc5ea0c1b0aac9f1f14f0358349a67b7cf5",
+      "png": "940195a7b473cd33145b64fe2e6246c36bfd850d09067c55a5903792570f127a"
+    },
+    "agent-loop-step-2": {
+      "source": "3e003c660e3aaa16fb7d633c90cea725a37b435c1a9292d09cb64d0b29cc61d4",
+      "svg": "e6215e28f1a3d656d151aa5b5ad17b376317d1734cf4588955069944a62e8970",
+      "png": "7eb4a462e24d472b6132f1838255b9568632d9c29980709c1e879aff752f9b9b"
+    },
+    "agent-loop-step-3": {
+      "source": "3ed7dc03e89019fe99d2d2dcaacb6f40c008851329ba52f9cdd8f3c8a330eabf",
+      "svg": "b037dd5f995a7378a6e12f5d7a80b537fc872607e1e3b3b55f42e0845bd919dc",
+      "png": "2c754600465e1e21146fa6c388225f6f6049c9eee94147ee8630931755f912d8"
+    },
+    "agent-loop-step-4": {
+      "source": "f97650f99c058b550aa1dbf017d130e588542554c16712fdbab1bbf40f239f8c",
+      "svg": "9129b5241675e2fc80e0cf9f8aa93fa2484f43bfc59c260e3e5a71a5cd2e18f6",
+      "png": "2cd2c1813a4229ccc4040e2418a8df46e6a60dc275158e848519f36790e358c0"
+    },
+    "agent-loop-step-5": {
+      "source": "dc049b22ece0b9bc101efa57ec388961a09fc20056838d6b468ecf30902f8307",
+      "svg": "c504aed0dabb9ab1468f2a6cb6a81483d8c96d8f74c8591f324b4830be8e0f93",
+      "png": "cd18a2f6c90776a0278739db3b07876a16d5c9d25b7eb7b47a11a3ad298d6a9a"
+    }
+  }
+}

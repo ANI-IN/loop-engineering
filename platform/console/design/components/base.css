@@ -1,0 +1,52 @@
+:host { display: block; }
+* { box-sizing: border-box; }
+.dp {
+  --ink: var(--st-text-color);
+  --paper: var(--st-background-color);
+  --strip: var(--st-secondary-background-color);
+  --rule: var(--st-border-color);
+  --hairline: var(--st-dataframe-border-color, #C9D1D7);
+  --accent: var(--st-primary-color);
+  --graphite: var(--st-gray-text-color);
+  --green: var(--st-green-color);
+  --green-text: var(--st-green-text-color);
+  --green-tint: var(--st-green-background-color);
+  --amber: var(--st-yellow-color);
+  --amber-text: var(--st-yellow-text-color);
+  --amber-tint: var(--st-yellow-background-color);
+  --red: var(--st-red-color);
+  --red-text: var(--st-red-text-color);
+  --red-tint: var(--st-red-background-color);
+  --accent-tint: var(--st-violet-background-color);
+  font-family: var(--st-font);
+  font-size: var(--st-base-font-size, 18px);
+  line-height: 1.35;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.mono { font-family: var(--st-code-font); font-size: 0.889em; }
+.k { color: var(--graphite); }
+.b { font-weight: 700; }
+button {
+  font: inherit; font-weight: 700; cursor: pointer; border-radius: var(--st-button-radius, 2px);
+  min-height: 40px; padding: 6px 14px;
+}
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+a.trace {
+  color: var(--st-link-color, var(--accent)); font-weight: 700;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+a.trace:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.stamp { font-size: 0.889em; white-space: nowrap; }
+[hidden] { display: none !important; }
+.mark { display: inline-block; width: 12px; height: 12px; vertical-align: -1px; flex: none; }
+.mark.filled { background: currentColor; }
+.mark.hollow { border: 2px solid currentColor; }
+.mark.cross { border: 2px solid currentColor; position: relative; }
+.mark.cross::after {
+  content: ""; position: absolute; left: -2px; right: -2px; top: 3px; height: 2px;
+  background: currentColor; transform: rotate(45deg);
+}
+@keyframes dp-changed { from { background-color: var(--accent-tint); } to { background-color: transparent; } }
+.changed { animation: dp-changed 900ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .changed { animation: none; } }

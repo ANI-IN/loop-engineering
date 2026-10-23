@@ -1,0 +1,385 @@
+# The single source for every live demo. `make docs` generates the demo tables and runbooks in
+# section-*/demo/README.md, the cues in docs/instructor-guide.md, and the DEMO slide notes from it;
+# `make demo NAME=<id>` and the console controls read it at run time.
+# Schema: platform/src/datapilot/contracts/registries.py. Recovery for every demo is
+# `make reset NAME=<section>`, then the same trigger again.
+# `code` (files and lines shown in class) is filled in by each track once the code exists.
+
+# --- Section 1: Agent loop -------------------------------------------------------------------
+- id: agent-simple-question
+  section: agent-loop
+  title: The simple question
+  tier: core
+  trigger:
+    console: "Agent > Ask"
+    make: "make demo NAME=agent-simple-question"
+    api: "POST /events (question.asked)"
+  planted: []
+  guaranteed_moment: >-
+    The analyst lists tables, describes one, runs one query, and returns an answer envelope with
+    the SQL and the result; the tool timeline shows each call with its duration.
+  expected_outcome: "A correct count with its SQL, tokens, cost, and a LangSmith link."
+  can_vary: ["the analyst's wording", "number of tool calls", "latency", "tokens"]
+  target_minutes: 3
+  code:
+    - {path: platform/src/datapilot/loop1_agent/analyst.py, lines: "72-86"}
+
+- id: agent-texas-last-quarter
+  section: agent-loop
+  title: Texas last quarter
+  tier: optional
+  trigger:
+    console: "Agent > Ask"
+    make: "make demo NAME=agent-texas-last-quarter"
+    api: "POST /events (question.asked)"
+  planted: []
+  guaranteed_moment: >-
+    A multi-join question across orders, order items, products, and categories for customers in
+    Texas over the last completed fiscal quarter (August to October 2025, against the business
+    date of 31 January 2026), with the join path visible in the SQL.
+  expected_outcome: "An answer whose SQL joins four tables; the gold check shows pass or the trap hit."
+  can_vary: ["join order", "whether the fiscal-quarter trap is hit", "latency"]
+  target_minutes: 4
+  code:
+    - {path: platform/src/datapilot/loop1_agent/analyst.py, lines: "72-86"}
+
+- id: agent-confident-wrong-answer
+  section: agent-loop
+  title: The confident wrong answer
+  tier: core
+  trigger:
+    console: "Agent > Ask the spine question"
+    make: "make demo NAME=agent-confident-wrong-answer"
+    api: "POST /events (question.asked)"
+  planted: [knowledge-v1-empty, total-cents-column, undocumented-status, data-traps]
+  guaranteed_moment: >-
+    Under knowledge version v1, the spine question "What was our net revenue in fiscal year 2025?"
+    gets a confident, wrong answer; the answer-versus-gold ledger shows the mismatch and the
+    annotated SQL names each trap behind the wrong fragments.
+  expected_outcome: "A mismatch against gold with at least one trap annotation on the SQL."
+  can_vary: ["which traps the SQL hits", "the wrong value", "wording"]
+  target_minutes: 5
+  code:
+    - {path: platform/src/datapilot/loop1_agent/analyst.py, lines: "56-58"}
+
+- id: agent-unbounded-rows
+  section: agent-loop
+  title: Unbounded rows
+  tier: core
+  trigger:
+    console: "Agent > Run large query"
+    make: "make demo NAME=agent-unbounded-rows"
+    api: "POST /demo/large-query"
+  planted: [BUG_UNBOUNDED_ROWS]
+  guaranteed_moment: >-
+    With the unbounded rows bug on, a 10,000-row SELECT goes through run_query and a list question
+    follows; the token counter spikes. With it off, the same steps return at most the row cap, the
+    total count, and a truncation notice.
+  expected_outcome: "Tokens per run jump with the bug on and drop back with it off."
+  can_vary: ["exact token counts", "the list question's wording"]
+  target_minutes: 4
+  code:
+    - {path: platform/src/datapilot/loop1_agent/tools.py, lines: "33-54"}
+
+# --- Section 2: Verification loop ------------------------------------------------------------
+- id: verify-malicious-sql
+  section: verification-loop
+  title: Malicious SQL
+  tier: core
+  trigger:
+    console: "Verify > Send malicious SQL"
+    make: "make demo NAME=verify-malicious-sql"
+    api: "POST /demo/malicious-sql"
+  planted: [BUG_NAIVE_GUARD]
+  guaranteed_moment: >-
+    With the naive guard, "SELECT 1; DELETE FROM orders" and a data-modifying CTE pass the guard and
+    the read-only role refuses them (SQLSTATE 25006); with the syntax-tree guard, layer 2 rejects
+    them before execution. A raw DELETE as the agent role is refused by the role.
+  expected_outcome: "The defense-layer panel shows which layer stopped each statement; no warehouse row changes."
+  can_vary: ["nothing in the outcome; timings only"]
+  target_minutes: 4
+  code:
+    - {path: platform/src/datapilot/loop2_verification/checker.py, lines: "85-101"}
+    - {path: platform/src/datapilot/loop2_verification/graders/statement_policy.py, lines: "84-95"}
+
+- id: verify-cost-guard
+  section: verification-loop
+  title: The cost guard
+  tier: optional
+  trigger:
+    console: "Verify > Send cartesian query"
+    make: "make demo NAME=verify-cost-guard"
+    api: "POST /demo/cartesian-query"
+  planted: [BUG_NO_COST_GUARD]
+  guaranteed_moment: >-
+    With the missing cost guard, a cartesian join runs until the statement timeout; with the cost
+    grader, EXPLAIN rejects it at once with feedback for the agent.
+  expected_outcome: "A timeout with the bug on; an instant rejection with its reason with it off."
+  can_vary: ["the EXPLAIN cost figure", "timings"]
+  target_minutes: 3
+  code:
+    - {path: platform/src/datapilot/loop2_verification/checker.py, lines: "85-101"}
+
+- id: verify-retry-cap
+  section: verification-loop
+  title: The retry cap
+  tier: core
+  trigger:
+    console: "Verify > Inject failing grader"
+    make: "make demo NAME=verify-retry-cap"
+    api: "POST /demo/failing-grader"
+  planted: [BUG_NO_RETRY_CAP, failing-grader-injection]
+  guaranteed_moment: >-
+    An injected grader that always fails sends the run back to the agent; with the missing retry
+    cap the run keeps looping and the cost counter climbs; with the cap it stops after 3 attempts
+    and ends escalated with the reasons.
+  expected_outcome: "The cost counter stops at the cap and the run shows escalated."
+  can_vary: ["cost per attempt", "the agent's retries' SQL"]
+  target_minutes: 4
+  code:
+    - {path: platform/src/datapilot/loop2_verification/loop.py, lines: "364-369"}
+
+- id: verify-graders-pass-still-wrong
+  section: verification-loop
+  title: Every grader passes, still wrong
+  tier: core
+  trigger:
+    console: "Verify > Ask the spine question"
+    make: "make demo NAME=verify-graders-pass-still-wrong"
+    api: "POST /events (question.asked)"
+  planted: [knowledge-v1-empty, data-traps]
+  guaranteed_moment: >-
+    Under knowledge version v1, the spine question passes every deterministic grader and the
+    checklist turns all green, while the gold check on both databases fails. The reviewer's
+    verdict is shown beside it, whichever way it goes.
+  expected_outcome: "An all-green checklist beside a failed gold check."
+  can_vary: ["the reviewer's verdict", "the wrong value"]
+  target_minutes: 4
+  code:
+    - {path: platform/src/datapilot/loop2_verification/checker.py, lines: "85-101"}
+
+# --- Section 3: Event loop -------------------------------------------------------------------
+- id: events-webhook-question
+  section: event-loop
+  title: The webhook question
+  tier: core
+  trigger:
+    console: "Events > Send webhook question"
+    make: "make demo NAME=events-webhook-question"
+    api: "POST /events (question.asked)"
+  planted: []
+  guaranteed_moment: >-
+    A question arrives as a webhook, becomes an event and a job, moves across the run board lanes,
+    and is posted to the channel labelled unverified at the report-only level.
+  expected_outcome: "One strip moves Queued to Done; one post labelled unverified."
+  can_vary: ["time in each lane", "the answer's wording"]
+  target_minutes: 3
+  code:
+    - {path: platform/src/datapilot/loop3_events/api/events.py, lines: "35-44"}
+    - {path: platform/src/datapilot/loop3_events/worker.py, lines: "70-81"}
+
+- id: events-digest-now
+  section: event-loop
+  title: The digest now
+  tier: optional
+  trigger:
+    console: "Events > Run digest now"
+    make: "make demo NAME=events-digest-now"
+    api: "POST /events (digest.requested)"
+  planted: []
+  guaranteed_moment: >-
+    The 8 a.m. Eastern time KPI digest runs on demand with its deterministic id and posts one
+    digest to the channel.
+  expected_outcome: "One digest post with the previous business day's KPIs."
+  can_vary: ["the digest wording"]
+  target_minutes: 3
+  code:
+    - {path: platform/src/datapilot/loop3_events/worker.py, lines: "70-81"}
+
+- id: events-approval-survives-restart
+  section: event-loop
+  title: The approval that survives a restart
+  tier: core
+  trigger:
+    console: "Events > Request California export"
+    make: "make demo NAME=events-approval-survives-restart"
+    api: "POST /events (export.requested)"
+  planted: [BUG_MEMORY_CHECKPOINTER]
+  guaranteed_moment: >-
+    A California marketing export touches personal data, so the run holds for human approval and
+    the dialog states the exact SQL and row count. The worker is restarted; with the Postgres
+    checkpointer the pending approval survives and approving resumes the run. With the in-memory
+    checkpointer the pending approval is lost.
+  expected_outcome: "The strip stays in Holding for approval across the restart, then moves to Done."
+  can_vary: ["row count wording", "restart time"]
+  target_minutes: 5
+  code:
+    - {path: platform/src/datapilot/loop3_events/approvals.py, lines: "44-47"}
+
+- id: events-duplicate-events
+  section: event-loop
+  title: Duplicate events
+  tier: core
+  trigger:
+    console: "Events > Send the same event three times"
+    make: "make demo NAME=events-duplicate-events"
+    api: "POST /events (same event_id three times)"
+  planted: [BUG_NO_IDEMPOTENCY, BUG_RANDOM_DIGEST_ID]
+  guaranteed_moment: >-
+    The same event is sent three times. With the missing idempotency, three answers are posted;
+    with idempotency, one answer and "2 duplicates ignored". Firing the digest twice shows the same
+    with the random digest id.
+  expected_outcome: "One post and two absorbed duplicates on the board."
+  can_vary: ["timing of the duplicates"]
+  target_minutes: 3
+  code:
+    - {path: platform/src/datapilot/loop3_events/api/events.py, lines: "35-44"}
+
+- id: events-kill-switch-in-flight
+  section: event-loop
+  title: The kill switch in flight
+  tier: core
+  trigger:
+    console: "Status line > Kill switch (arm, then stop)"
+    make: "make demo NAME=events-kill-switch-in-flight"
+    api: "POST /control/kill-switch"
+  planted: [BUG_KILLSWITCH_AT_CLAIM_ONLY, DEMO_PACING]
+  guaranteed_moment: >-
+    With demo pacing on, a run is in flight when the kill switch is engaged. With the kill switch
+    at claim only, the run keeps going; with the check before every model and tool call, it stops
+    at its next step as blocked by kill switch and the system drops to the report-only level.
+  expected_outcome: "The in-flight strip moves to Blocked by kill switch; the status line shows the report-only level."
+  can_vary: ["which step the run stops at"]
+  target_minutes: 4
+  code:
+    - {path: platform/src/datapilot/loop3_events/killswitch.py, lines: "89-95"}
+
+# --- Section 4: Hill-climbing loop -----------------------------------------------------------
+- id: improve-baseline-experiment
+  section: hill-climbing-loop
+  title: The baseline experiment
+  tier: core
+  trigger:
+    console: "Improve > Run experiment on the active version"
+    make: "make demo NAME=improve-baseline-experiment"
+    api: "POST /experiments/run"
+  planted: [knowledge-v1-empty, data-traps]
+  guaranteed_moment: >-
+    Started at the poll, the experiment runs the 40 benchmark items under knowledge version v1;
+    the trap items fail and the holdout ledger fills in locally, each row stamped with its run's
+    start time and linked to its LangSmith trace when the trace sample took one of its runs (about
+    1 run in 5), otherwise marked "Not traced". This run is the session's baseline.
+  expected_outcome: "A holdout pass count for v1 with the trap items failed."
+  can_vary: ["which non-trap items pass", "wall time"]
+  target_minutes: 3
+  code:
+    - {path: platform/src/datapilot/loop4_hill_climbing/experiment.py, lines: "192-194"}
+
+- id: improve-naive-analyzer-blocked
+  section: hill-climbing-loop
+  title: The naive analyzer, blocked
+  tier: core
+  trigger:
+    console: "Improve > Run analyzer"
+    make: "make demo NAME=improve-naive-analyzer-blocked"
+    api: "POST /analyzer/run"
+  planted: [BUG_NAIVE_ANALYZER]
+  guaranteed_moment: >-
+    The naive analyzer, with no model call, writes one rule per failed dev question, quoting it word
+    for word with the analyst's query that failed, and never reads a reference query. It skips the
+    critic and applies no overfit guard: the guard flags every rule and the Improve page says so,
+    yet the knowledge diff keeps them all. Then the candidate experiment runs, and the gate blocks
+    the version because the overfit guard rejects its rules, whatever its holdout count.
+  expected_outcome: >-
+    The overfit guard flags every rule, not applied by the analyzer; the gate verdict reads
+    blocked, naming the rules the overfit guard rejects.
+  can_vary: ["how many dev items failed", "the dev count", "the holdout count"]
+  target_minutes: 4
+  code:
+    - {path: platform/src/datapilot/loop4_hill_climbing/analyzer.py, lines: "206-210"}
+    - {path: platform/src/datapilot/loop4_hill_climbing/gate.py, lines: "117-135"}
+
+- id: improve-overbroad-rule-blocked
+  section: hill-climbing-loop
+  title: The over-broad rule, blocked
+  tier: optional
+  trigger:
+    console: "Improve > Add the over-broad rule to the active version"
+    make: "make demo NAME=improve-overbroad-rule-blocked"
+    api: "POST /experiments/run (the active version plus the over-broad rule)"
+  planted: [knowledge-v2-overbroad]
+  guaranteed_moment: >-
+    Run only after a candidate has been promoted. The active version plus one pre-authored rule,
+    "exclude discounted orders from revenue", breaks revenue items that pass under the active
+    version; the ledger marks the regressions and the gate blocks it.
+  expected_outcome: "Regressions marked on the ledger and a blocked verdict."
+  can_vary: ["which items regress"]
+  target_minutes: 4
+  code:
+    - {path: platform/src/datapilot/loop4_hill_climbing/gate.py, lines: "117-135"}
+
+- id: improve-analyzer-team-approve
+  section: hill-climbing-loop
+  title: The analyzer team and approval
+  tier: core
+  trigger:
+    console: "Improve > Run analyzer"
+    make: "make demo NAME=improve-analyzer-team-approve"
+    api: "POST /analyzer/run"
+  planted: []
+  guaranteed_moment: >-
+    The failure analyst diagnoses the failed dev items, the rule writer proposes general rules, the
+    critic keeps, narrows, or drops each one, a rule whose SQL guidance does not run over the schema
+    is dropped, and the overfit guard passes the rest. The team writes two candidates this way, each
+    runs on the dev split only, and the Improve page names the one kept by its dev results; the
+    knowledge diff shows it for human approval.
+  expected_outcome: "A candidate version with general rules in the diff viewer, and the line naming both candidates and the one kept."
+  can_vary: ["rule wording", "number of rules", "which candidate is kept"]
+  target_minutes: 4
+  code:
+    - {path: platform/src/datapilot/loop4_hill_climbing/analyzer.py, lines: "242-245"}
+
+- id: improve-candidate-experiment
+  section: hill-climbing-loop
+  title: The candidate experiment
+  tier: core
+  trigger:
+    console: "Improve > Run experiment on the candidate"
+    make: "make demo NAME=improve-candidate-experiment"
+    api: "POST /experiments/run"
+  planted: []
+  guaranteed_moment: >-
+    The candidate version flips a clear majority of holdout trap items with zero regressions on
+    either split. The live holdout ledger in the console, scored locally against this session's
+    baseline, marks the flips; then the LangSmith trace list of datapilot-experiments, filtered by
+    knowledge version, shows the candidate's traced runs, a sample of about 1 run in 5. The gate
+    passes once approved.
+  expected_outcome: "Holdout flips marked against this session's baseline, no regressions, gate verdict passed."
+  can_vary: ["which items flip", "wall time"]
+  target_minutes: 5
+  code:
+    - {path: platform/src/datapilot/loop4_hill_climbing/experiment.py, lines: "192-194"}
+    - {path: platform/src/datapilot/loop4_hill_climbing/gate.py, lines: "117-135"}
+
+- id: improve-cleared-unattended
+  section: hill-climbing-loop
+  title: Cleared for the unattended level
+  tier: core
+  trigger:
+    console: "Events > Send webhook question"
+    make: "make demo NAME=improve-cleared-unattended"
+    api: "POST /events (question.asked)"
+  planted: []
+  guaranteed_moment: >-
+    The correct answer, posted at the level its family has earned. The spine question arrives as a
+    webhook and is answered correctly under the new active version; it posts at the unattended
+    level when the promotion cleared its metric family on the gate's own confirmed standard (every
+    holdout item at 2 of 3 runs, an item that fell short passing 2 of 3 more runs), and at the
+    assisted level when the family fell short.
+  expected_outcome: >-
+    A correct answer, posted at the unattended level if its family cleared on the confirmed
+    standard, and at the assisted level if it did not.
+  can_vary: ["wording", "latency", "the level: assisted or unattended; the answer is correct either way"]
+  target_minutes: 3
+  code:
+    - {path: platform/src/datapilot/loop4_hill_climbing/eligibility.py, lines: "72-80"}

@@ -1,0 +1,12 @@
+$ make demo NAME=agent-simple-question   (triggered from the console: Agent > Ask)
+question: How many orders have been placed in total?
+run id: 3246b3e9-5797-4365-8376-59d05054d28b
+session: e8682a40-0570-443b-8edf-a275d9f7730c
+started (UTC): 2026-10-22T21:33:37Z
+status: posted
+tool calls: list_tables, describe_table, run_query
+final SQL: SELECT COUNT(*) AS total_orders FROM orders;
+answer: There have been 405738 orders placed in total.
+tokens: 3083 in, 58 out; cost $0.0003
+model: gpt-6-luna; knowledge version: v1
+trace: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/7ce7a82b-8edc-4fb1-b6bc-d13fe6070f5e/r/3246b3e9-5797-4365-8376-59d05054d28b?poll=true

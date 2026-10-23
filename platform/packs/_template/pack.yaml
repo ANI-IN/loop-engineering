@@ -1,0 +1,187 @@
+# The template domain pack, with Lantern Coffee Club as its worked example. Copy this folder to
+# platform/packs/<your_pack>/ and change what the comments marked YOURS say; keep every other key,
+# because the platform reads each one. use-in-your-repo/check_pack.py checks the copy.
+# The values that are not marked YOURS are the values of platform/packs/datapilot_us/pack.yaml.
+
+name: _template                        # YOURS: the folder name of your pack
+display_name: Lantern Coffee Club      # YOURS: the business the warehouse belongs to
+
+databases:
+  # Environment variable names, never URLs or passwords.
+  agent: DATABASE_URL_AGENT
+  agent_alt: DATABASE_URL_AGENT_ALT
+  owner: DATABASE_URL_OWNER
+  app: DATABASE_URL_APP
+  allowed_schema: club                 # YOURS: the one schema the agent may read
+
+# Model settings. The model ids come from .env (OPENAI_MODEL, OPENAI_ANALYZER_MODEL); these are the
+# call settings. Every call uses the Responses API and an explicit reasoning effort; temperature is
+# never passed. The class model is gpt-6-luna for every agent, an alias with no dated snapshot, so
+# make preflight runs the drift canary before every class.
+# max_output_tokens caps one call's output, reasoning tokens included; it is sent to the Responses
+# API as max_output_tokens. Normal calls use a few hundred to a few thousand output tokens, so a
+# cap is many times that; a response cut off at its cap ends the run escalated, with the reason.
+models:
+  use_responses_api: true
+  analyst: {reasoning_effort: low, max_output_tokens: 16000}
+  schema_scout: {reasoning_effort: low, max_output_tokens: 8000}
+  reviewer: {reasoning_effort: low, max_output_tokens: 8000}
+  analyzer_team: {reasoning_effort: medium, max_output_tokens: 32000}
+
+agents:
+  schema_scout: {enabled: true}
+  reviewer: {enabled: true}
+
+# US dollars per 1M tokens, Standard tier, prompts of 272,000 input tokens or fewer, from
+# https://developers.openai.com/api/docs/pricing (read 2026-10-23).
+# The spend ledger and every cost shown on the console use this table.
+# Cache writes are billed above plain input: 1.25 times it for the default 30-minute lifetime
+# and 2.5 times it for the 12-hour lifetime (the model page and the prompt caching guide).
+prices:
+  gpt-6-luna:
+    {input: 0.10, cached_input: 0.01, cache_write_30m: 0.125, cache_write_12h: 0.25, output: 0.50}
+
+limits:
+  row_cap: 50
+  max_retries: 3
+  model_call_limit: 12   # model calls per run
+  tool_call_limit: 16    # tool calls per run
+  statement_timeout_ms: 5000
+  idle_in_transaction_timeout_ms: 10000   # the agent role's session settings (roles.sql)
+  temp_file_limit_kb: 102400
+
+# Token budgets sized for gpt-6-luna (reasoning tokens included). Calibration confirms them.
+budgets:
+  tokens_per_run: 60000
+  tokens_per_day: 2000000
+
+# The live assignment checks (make check-assignment). Each check stops at its own spend cap in US
+# dollars, counted from the spend ledger's rows of that check alone, with the build budget on or off.
+assignments:
+  check_cap_usd: 1.00
+
+# The whole build's OpenAI budget in US dollars, enforced by the spend ledger (make spend).
+build_budget:
+  # The lines, the warning, and the stop line below bind only the build: its .env sets this
+  # variable to 1. Off (a learner's machine), every call is still recorded in the ledger, and the
+  # learner's own OpenAI project limit is the only limit, besides each assignment check's own spend
+  # cap (assignments.check_cap_usd). The session limit holds whenever its
+  # session is named.
+  enabled_variable: DATAPILOT_BUILD_BUDGET
+  total_usd: 10.00   # an absolute maximum
+  warn_usd: 6.00
+  stop_usd: 10.00    # all live work stops here
+  # Every ledger activity counts under exactly one line, by its name: the line's own name, the line
+  # name followed by "-" and a step (calibration-traps), or one of the line's other names. A call
+  # under any other activity name is refused. A line that is used up stops its activity with a
+  # message naming the line and what is left; it never spills into the reserve on its own.
+  lines:
+    development live checks:
+      cap_usd: 1.50
+      # preflight during development and the capability check; "development" is the stack's default
+      names: [development, preflight-development]
+    calibration:
+      cap_usd: 2.50
+    assignment verification:
+      cap_usd: 2.50
+      names: [assignment]   # the reference solutions' live done-when checks during the build
+    rehearsal:
+      cap_usd: 2.50
+      # every screenshot, and preflight for a rehearsal, the class, and the Thursday review
+      names: [screenshots, preflight-rehearsal, preflight-class, preflight-thursday-review]
+    reserve:
+      cap_usd: 1.50
+      # used only with the owner's approval: DATAPILOT_USE_RESERVE=1 lets a used-up line go on into
+      # the reserve until the reserve is used up too
+      approval_variable: DATAPILOT_USE_RESERVE
+  # The lines are ceilings; the total stop above still holds when they add up to more.
+  # A second, explicit limit for one unattended session, checked before every call in addition to
+  # the lines: it applies only while DATAPILOT_SESSION_SINCE names the session's start (a UTC time)
+  # and counts only the spend since then. A line not listed here gets nothing this session.
+  session:
+    since_variable: DATAPILOT_SESSION_SINCE
+    total_usd: 2.50
+    lines:
+      development live checks: 0.40
+      calibration: 1.00
+      assignment verification: 1.50
+
+cost_guard:
+  max_plan_cost: 500000
+  max_plan_rows: 5000000
+
+personal_data:
+  # YOURS: columns tagged as personal data route a query to human approval, as schema.table.column
+  # inside allowed_schema; the marketing view, also inside allowed_schema, holds none of them.
+  columns:
+    - club.members.email
+  marketing_view: club.members_marketable
+
+autonomy:
+  default_level: report_only
+  # YOURS: every metric_family used in benchmark/*.yaml, and nothing else
+  metric_families: [revenue, payments, members, plans]
+  # YOURS: the router's keyword table. A question's metric family is the first family whose pattern
+  # (a regular expression, case ignored) it matches, unless the event names the family itself.
+  family_keywords:
+    - {family: revenue, pattern: 'revenue|sales|income'}
+    - {family: payments, pattern: '\bcharges?\b|payment'}
+    - {family: members, pattern: '\bmembers?\b'}
+    - {family: plans, pattern: '\bplans?\b'}
+  demote_after_consecutive_escalations: 3
+
+evaluation:
+  holdout_repeats: 3
+  holdout_pass_threshold: 2
+  # An apparent dev regression (passed under the active version, fails under the candidate) is
+  # re-run this many times under each version, and counts only when the candidate fails at least
+  # dev_regression_threshold of its re-runs and the active version passes at least that many of
+  # its own: an item unstable under both versions is not a regression.
+  dev_regression_reruns: 2
+  dev_regression_threshold: 2
+  # An apparent holdout regression is re-run this many times under the candidate and counts only
+  # when at least this many of the re-runs fail again.
+  holdout_regression_reruns: 3
+  holdout_regression_fail_threshold: 2
+  # Calibration's stability filter: each holdout item runs this many times under one version and
+  # stays only if it passes at least the first number of runs or at most the second.
+  stability_runs: 5
+  stability_keep_passes_at_least: 4
+  stability_keep_passes_at_most: 1
+  concurrency: 8
+  # The overfit guard rejects a rule that shares this many consecutive words with a benchmark
+  # question, or this many consecutive SQL tokens with a gold query.
+  overfit_question_words: 6
+  overfit_sql_tokens: 20
+
+# LangSmith tracing: demo and check runs are traced in full; a benchmark run inside an experiment
+# only as this sample, so experiments stay inside the free plan's monthly traces.
+tracing:
+  experiment_sample_rate: 0.2
+
+# The analyzer team writes this many candidate rule sets from the same failed dev items; each runs
+# on the dev split only, and the one with fewer dev regressions, then more dev passes, then fewer
+# rules is kept. The holdout split never takes part in the choice.
+analyzer:
+  candidates: 2
+
+channel: analytics
+
+# YOURS: the question the daily digest job asks; {day} is the business day it covers.
+digest:
+  question: >-
+    Give the daily digest for {day}: net revenue and the number of charges, in one short paragraph.
+
+# YOURS: the checks of make preflight. data_check: a table in allowed_schema whose rows the agent's
+# role must see on the agent's database. canary: three easy items that must pass and two trap items
+# that must still fail under the starting knowledge, by their ids in benchmark/*.yaml.
+preflight:
+  data_check: {table: club.payments, rows_are: payments}
+  canary:
+    easy: [plan-count, members-north, members-joined-2024]
+    traps: [net-revenue-march-2025, charges-june-2025]
+
+console:
+  kill_switch_disarm_seconds: 5   # an armed kill switch disarms after this; rehearsal may raise it
+  strips_per_lane: 2              # then "N more"
+  poll_seconds: 1                 # the live fragment interval; never faster
