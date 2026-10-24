@@ -1,6 +1,6 @@
 """Scan a git repository for keys and host paths: the tracked tree and the full history.
 
-    uv run python tools/scan/scan_secrets.py [--repo .] [--paths]
+    uv run python platform/scripts/kit/scan/scan_secrets.py [--repo .] [--paths]
 
 Key patterns use word boundaries (`sk-` inside `task-...` is not a key). Host paths are user
 home folders on Linux, macOS, WSL, and Windows. The output is booleans per check plus, for keys,

@@ -52,4 +52,4 @@ echo "== live: five canary runs, then a baseline experiment of $RUNS runs, with 
 make up
 make preflight PURPOSE=development
 make demo NAME=improve-baseline-experiment
-echo "baseline experiment started: read the holdout ledger on the Improve page (make hill-climbing-runner serves it)"
+echo "baseline experiment started: read the holdout ledger on the Improve page (the hill-climbing-runner service serves it)"

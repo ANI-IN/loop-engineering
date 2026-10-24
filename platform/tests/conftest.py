@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import re
+import socket
 import subprocess
 import tomllib
 from collections.abc import Callable, Iterator
@@ -32,6 +33,59 @@ def _no_budget_switches_from_env_file(tmp_path_factory, monkeypatch) -> None:
     from datapilot.observability import spend
 
     monkeypatch.setattr(spend, "ENV_FILE", tmp_path_factory.mktemp("env") / ".env")
+
+
+@pytest.fixture(autouse=True)
+def _no_planted_flags_from_the_shell(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A planted-item flag or demo pacing exported in the shell (to rehearse a demo) never reaches
+    a test: the suite checks the fixed paths, and a test that needs a flag sets it itself."""
+    from datapilot.contracts import registries
+
+    for flag in [*registries.planted().flags, "DEMO_PACING"]:
+        monkeypatch.delenv(flag, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _plain_terminal_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Command output in a test is plain text in every shell: under continuous integration
+    (GITHUB_ACTIONS, FORCE_COLOR) Typer forces a terminal, and Rich would split an option such as
+    --purpose with escape codes. A dumb terminal has no colour system, so Rich writes no codes."""
+    monkeypatch.setenv("TERM", "dumb")
+    monkeypatch.setenv("NO_COLOR", "1")
+
+
+# No test reaches OpenAI or LangSmith unless it carries the `live` marker, which `make test`, the
+# verification gate, and continuous integration deselect: the name lookup of either service fails
+# in every other test, and the test fails even when the code under test swallows the error (the
+# tracing client does, on its background thread). Tests use local stand-ins instead.
+MODEL_AND_TRACING_HOSTS = re.compile(r"(^|\.)(openai\.com|langchain\.com|langsmith\.com)\.?$", re.I)
+reached_hosts: list[tuple[str, str]] = []  # (test id, host name), cleared after each test
+_running = {"test": "outside a test", "live": False}
+_real_getaddrinfo = socket.getaddrinfo
+
+
+def _guarded_getaddrinfo(host, *args, **kwargs):
+    name = host.decode() if isinstance(host, bytes) else str(host or "")
+    if MODEL_AND_TRACING_HOSTS.search(name) and not _running["live"]:
+        reached_hosts.append((str(_running["test"]), name))
+        raise OSError(f"{name}: a test without the live marker never reaches OpenAI or LangSmith")
+    return _real_getaddrinfo(host, *args, **kwargs)
+
+
+socket.getaddrinfo = _guarded_getaddrinfo
+
+
+@pytest.fixture(autouse=True)
+def _no_model_or_tracing_calls(request: pytest.FixtureRequest) -> Iterator[None]:
+    _running["test"] = request.node.nodeid
+    _running["live"] = request.node.get_closest_marker("live") is not None
+    start = len(reached_hosts)
+    yield
+    reached = sorted({host for _, host in reached_hosts[start:]})
+    del reached_hosts[start:]
+    _running["test"], _running["live"] = "outside a test", False
+    if reached:
+        pytest.fail(f"the test reached {', '.join(reached)}; mark it live or use a stand-in")
 
 
 @pytest.fixture
@@ -78,6 +132,10 @@ SKIPPED_FILES = {
 def _files(paths: tuple[str, ...]) -> Iterator[Path]:
     for rel in paths:
         start = REPO / rel
+        if not start.exists():
+            # os.walk over a missing folder yields nothing, so a renamed folder would turn every
+            # scan of it into a check that passes having read nothing.
+            raise FileNotFoundError(f"a scan names {rel}, which does not exist")
         if start.is_file():
             yield start
             continue

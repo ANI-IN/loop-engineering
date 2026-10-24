@@ -182,13 +182,20 @@ def test_a_promotion_clears_families_on_the_confirmed_standard_and_records_the_r
         wall_seconds=1.0,
     )
     with db.connect(db.Role.APP) as conn:
+        previous = versions.active_name(conn)
         try:
             store.save_experiment(conn, candidate, holdout_repeats=3, concurrency=1)
             script = {"clear-r2": [True, False, True], "clear-a1": [False, True, False]}
             asked: list[tuple[str, int]] = []
+            seen_by_others: list[str] = []
 
             def rerun(benchmark_item: BenchmarkItem, times: int) -> list[bool]:
                 asked.append((benchmark_item.id, times))
+                # Review round 1 (F012): the activation is committed before the re-runs, which
+                # call the model, so no transaction (and no row lock) is held through them.
+                assert conn.info.transaction_status.name == "IDLE"
+                with db.connect(db.Role.APP) as other:
+                    seen_by_others.append(versions.active_name(other))
                 return script[benchmark_item.id]
 
             clearance = activate(
@@ -209,7 +216,13 @@ def test_a_promotion_clears_families_on_the_confirmed_standard_and_records_the_r
             recorded = {e["item_id"]: e.get("clearance_rerun") for e in examples}
             assert recorded["clear-r2"] == {"runs": 3, "passes": 2, "reruns": [True, False, True]}
             assert recorded["clear-a1"]["passes"] == 1 and recorded["clear-r1"] is None
+            assert seen_by_others == ["stream-test", "stream-test"]
         finally:
-            conn.rollback()  # every row the clearance wrote, and the activation, go back
+            # The activation and the clearances are committed (they no longer roll back with the
+            # test, as they did when this test pinned one transaction): undo them by hand.
+            conn.rollback()
+            conn.execute("DELETE FROM ops.autonomy_policy WHERE knowledge_version = 'stream-test'")
+            conn.execute("DELETE FROM ops.experiments WHERE knowledge_version = 'stream-test'")
+            versions.activate(conn, previous)
             conn.execute("DELETE FROM ops.knowledge_versions WHERE version = 'stream-test'")
             conn.commit()

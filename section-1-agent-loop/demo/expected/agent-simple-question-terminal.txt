@@ -1,4 +1,12 @@
-$ make demo NAME=agent-simple-question   (triggered from the console: Agent > Ask)
+# The run's detail for run 3246b3e9, sent from the console (Agent > Ask) on 22 October 2026, as
+# the Agent page and its trace show it. This is not what the terminal prints: the make target
+# only queues the run and prints its id, and the answer is read on the console. A later run of
+# the same demo printed:
+#
+#   $ make demo NAME=agent-simple-question
+#   uv run datapilot demo agent-simple-question
+#   agent-simple-question: runs ['e5938d1a-70dd-4888-a105-99cd879b88f4']; requests -
+#
 question: How many orders have been placed in total?
 run id: 3246b3e9-5797-4365-8376-59d05054d28b
 session: e8682a40-0570-443b-8edf-a275d9f7730c
@@ -9,4 +17,4 @@ final SQL: SELECT COUNT(*) AS total_orders FROM orders;
 answer: There have been 405738 orders placed in total.
 tokens: 3083 in, 58 out; cost $0.0003
 model: gpt-6-luna; knowledge version: v1
-trace: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/7ce7a82b-8edc-4fb1-b6bc-d13fe6070f5e/r/3246b3e9-5797-4365-8376-59d05054d28b?poll=true
+trace: run 3246b3e9 (the build's traces are private)

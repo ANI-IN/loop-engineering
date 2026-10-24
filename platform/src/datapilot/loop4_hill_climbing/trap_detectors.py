@@ -20,17 +20,48 @@ LABELS = {
     "missing_internal_filter": "internal_accounts",
 }
 _YEAR_PART = re.compile(r"^(year|yyyy|y)$", re.IGNORECASE)
+_MONTH_PART = re.compile(r"^(month|mon|mm|m)$", re.IGNORECASE)
 _CALENDAR_BOUND = re.compile(r"^\d{4}-(01-01|12-31)")
+# A bound on 1 February or 31 January: the edges of the fiscal year itself.
+_FISCAL_BOUND = re.compile(r"^\d{4}-(02-01|01-31)")
+
+
+def _part(node: exp.Expression) -> tuple[str, exp.Expression | None]:
+    """(the date part a function reads, the expression it reads it from)."""
+    if isinstance(node, exp.Extract):
+        return node.this.name, node.expression
+    unit = node.args.get("unit")
+    source = node.this if isinstance(node.this, exp.Expression) else None
+    return (unit.name if unit is not None else ""), source
+
+
+def _shifted(source: exp.Expression | None) -> bool:
+    """The date is moved by an interval first, so the year read from it is a fiscal year."""
+    return source is not None and any(True for _ in source.find_all(exp.Interval))
+
+
+def _fiscal_year(tree: exp.Expression, parts: list[tuple[str, exp.Expression | None]]) -> bool:
+    """The query reads the fiscal year: the year of a shifted date, the year read beside the
+    month, or a bound on the fiscal year's own edges (1 February, 31 January)."""
+    years = [source for part, source in parts if _YEAR_PART.match(part)]
+    if any(_shifted(source) for source in years):
+        return True
+    if years and any(_MONTH_PART.match(part) for part, _ in parts):
+        return True
+    return any(_FISCAL_BOUND.match(lit.this) for lit in tree.find_all(exp.Literal) if lit.is_string)
 
 
 def _calendar_year(tree: exp.Expression) -> bool:
-    for node in tree.find_all(exp.Extract):
-        if _YEAR_PART.match(node.this.name):
-            return True
-    for node in tree.find_all(exp.Anonymous, exp.TimestampTrunc, exp.DateTrunc):
-        unit = node.args.get("unit")
-        if unit is not None and _YEAR_PART.match(unit.name):
-            return True
+    """A calendar-year range: the year of the unshifted date, or a 1 January or 31 December
+    bound, in a query that shows no sign of the fiscal year."""
+    parts = [
+        _part(node)
+        for node in tree.find_all(exp.Extract, exp.Anonymous, exp.TimestampTrunc, exp.DateTrunc)
+    ]
+    if _fiscal_year(tree, parts):
+        return False
+    if any(_YEAR_PART.match(part) for part, _ in parts):
+        return True
     if any(isinstance(n, exp.Year) for n in tree.walk()):
         return True
     return any(

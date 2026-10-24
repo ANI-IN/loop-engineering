@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Awaitable, Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Any
 
@@ -18,6 +18,7 @@ from langchain.agents.middleware import AgentMiddleware, hook_config
 from langchain_core.messages import AIMessage, ToolMessage
 
 from datapilot.contracts import RunEventKind
+from datapilot.observability import spend
 
 
 class StopReason(StrEnum):
@@ -26,6 +27,7 @@ class StopReason(StrEnum):
     TOKEN_LIMIT = "token_limit"
     REFUSED_WRITE = "refused_write"  # the database refused a write: never a retry
     OUTPUT_LIMIT = "output_limit"  # a response was cut off at its max_output_tokens
+    LOST_LEASE = "lost_lease"  # the worker no longer holds the job: another may run it
 
 
 def _never() -> StopReason | None:
@@ -39,7 +41,8 @@ Emit = Callable[[RunEventKind, dict[str, Any]], None]
 class RunGuard:
     tokens_per_run: int
     external_stop: Callable[[], StopReason | None] = _never
-    on_usage: Callable[[int, int], None] | None = None
+    # Each call's usage as the ledger prices it: cache reads and writes kept apart from plain input.
+    on_usage: Callable[[spend.Usage], None] | None = None
     tokens_in: int = 0
     tokens_out: int = 0
     model_calls: int = 0
@@ -65,7 +68,8 @@ class RunGuard:
         self.tokens_in += tokens_in
         self.tokens_out += tokens_out
         if self.on_usage:
-            self.on_usage(tokens_in, tokens_out)
+            usage = spend.usage_from_message(message)
+            self.on_usage(replace(usage, input_tokens=tokens_in, output_tokens=tokens_out))
 
 
 def output_limit_reached(message: AIMessage) -> bool:
@@ -87,12 +91,25 @@ def reported_output_tokens(message: AIMessage) -> int | None:
     return int(count) if count is not None else None
 
 
-def cut_off_detail(message: AIMessage) -> str:
-    stopped = "a model response was cut off at its output-token cap"
+def cut_off_count(message: AIMessage) -> int | None:
+    """The output tokens a cut-off reply used, or None when it reports none. A reply that reached
+    its cap used tokens, so a reported 0 is a missing count: live, a call cut off after an earlier
+    list_tables call reported 0 input and 0 output tokens (runs d9f0ab0e and 730953ea)."""
     used = reported_output_tokens(message)
-    if used is None:
-        return f"{stopped}; it reported no output-token count"
-    return f"{stopped} after {used} tokens"
+    return used if used else None
+
+
+def cut_off_detail(message: AIMessage, run_output_tokens: int = 0) -> str:
+    """The stop reason of a cut-off reply. When the reply has no count, the output tokens the run's
+    calls reported so far are named instead, the run's total in the spend ledger."""
+    stopped = "a model response was cut off at its output-token cap"
+    used = cut_off_count(message)
+    if used is not None:
+        return f"{stopped} after {used} tokens"
+    detail = f"{stopped}; it reported no output-token count"
+    if run_output_tokens:
+        detail += f", and the run's model calls so far reported {run_output_tokens} output tokens"
+    return detail
 
 
 def latest_reply(messages: Sequence[Any]) -> AIMessage | None:
@@ -130,7 +147,7 @@ class GuardMiddleware(AgentMiddleware):
             return None
         self.guard.record(last)
         if output_limit_reached(last):  # a cut-off reply is never acted on: the run ends here
-            self.guard.stop(StopReason.OUTPUT_LIMIT, cut_off_detail(last))
+            self.guard.stop(StopReason.OUTPUT_LIMIT, cut_off_detail(last, self.guard.tokens_out))
             return {"jump_to": "end"}
         return None
 

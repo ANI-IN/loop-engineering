@@ -21,7 +21,7 @@ tightens two places where it is still too easy to pass.
 > - **Hill-climbing loop**: Experiments find failures, an analyzer team proposes rules, and a gate decides.
 > - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 > - **Promotion gate**: The check that a new knowledge version must pass before it becomes active.
-> - **Regression**: An item that passed under the active version and fails under the candidate.
+> - **Regression**: An item that passed under the active version and fails under the candidate, confirmed by re-runs.
 > - **Gold query**: The Structured Query Language (SQL) query an analyst wrote by hand
 >   that gives the right answer.
 > - **Live check**: The command that runs the done-when scenario against the real stack and the
@@ -64,23 +64,42 @@ apart from the rest. One experiment is 82 analyst runs (28 dev items once, 18 ho
 each), and every apparent regression is confirmed by re-runs. The first check in a live session
 runs the baseline experiment and the candidate experiment, 164 runs; every later check in the same
 session shares that session's baseline, as the class gate does, and runs only the candidate, 82
-runs. The analyzer team adds 3 calls. The check prints its own estimate before the first model call
-and the actual tokens and cost at the end. Measured on gpt-6-luna in the build's verification on 23
-October 2026, from 08:27 Coordinated Universal Time (UTC): the first check of a live session, with
-the baseline, cost 30.66 cents (2,026 model calls); each later check in the session cost 10.69 to
-20.56 cents (five checks, 757 to 1,267 model calls), about 15 cents typically. At the caps, with
-every run using its whole token budget at the output price, the runs of a first check would come to
-501 cents and those of a later one to 255 cents, with re-runs on top, but the check stops cleanly
+runs. As in class, the analyzer team writes two candidates, 3 calls each, and each candidate runs on
+the 28 dev items once, 56 analyst runs, before one is kept. The check prints its own estimate before
+the first model call and the actual tokens and cost at the end. Measured on gpt-6-luna in the
+build's verification on 23 October 2026 with two candidates, each later check in a live session
+cost about 14 to 24 cents (13.58 and 23.95 cents, two checks); a first check, with the baseline,
+is about 38 cents (30.66 cents measured when the check wrote one candidate, plus about 7 cents for
+the second candidate's dev runs). The measured checks are in the costs table linked below. At the
+caps, with every run using its whole token budget at the output price, the runs of
+a first check would come to 678 cents and those of a later one to 432 cents, with re-runs on top,
+but the check stops cleanly
 at its own spend cap of 1.00 dollar, so one check costs at most 100 cents. A check stopped at the
 cap puts back the active knowledge version, as a normal end does
 ([costs](../../docs/costs.md#assignments)).
 
+**How often a correct solution passes.** Requirement 10 depends on the rule set the model writes
+in that check. In the build's verification and the checks of 23 October, with one candidate per
+check, it passed in 6 of 10 checks of correct solutions. Three were blocked by one confirmed dev
+regression: a rule the model wrote made one dev item fail under the candidate. The third of them,
+measured with the current re-runs of both versions, passed that item in both re-runs under v1 and
+failed it in both under the candidate, so it was a real regression of that rule set, not noise in
+v1. The fourth candidate was no better than v1 on holdout. The check now writes two candidates and
+keeps the one with fewer dev regressions, then more dev passes, as the class does, which targets
+the first cause. Measured on 23 October 2026 with two candidates, the reference passed 2 of 2
+checks (13.58 and 23.95 cents, 15 and 22 minutes); two checks are a small sample, so a correct
+solution may still read FAIL on requirement 10 now and then: run the check again, and the FAIL line
+says when the cause is the model's rule set rather than your files. A starter, and a solution that
+leaves out a family item or lets `aov` reach the unattended level, still fail it every time.
+
 ## Step by step
 
-1. With the stack up and seeded and your OpenAI key in `.env` ([setup](../../setup/README.md)),
-   run the live check on the unchanged starter: `make check-assignment NAME=hill-climbing-loop`.
-   Check: requirements 1, 2, and 5 to 7 read FAIL, and the live requirements did not run, so the
-   starter spends nothing.
+1. With your OpenAI key in `.env` ([setup](../../setup/README.md)), run the live check on the
+   unchanged starter: `make check-assignment NAME=hill-climbing-loop`. The check builds, starts, and
+   seeds a stack of its own, the Compose project `datapilot-assignments`, so it needs no `make up`
+   (that is the class stack, for the demos).
+   Check: requirements 1 to 7 read FAIL, each naming its extension point or the item it needs, and
+   the live requirements did not run, so the starter spends nothing.
 2. Read [starter/README.md](starter/README.md) and one existing benchmark item with its gold and
    naive SQL in `platform/packs/datapilot_us/benchmark/dev.yaml`. Check: you can say which split
    each existing item belongs to, and which traps it touches.

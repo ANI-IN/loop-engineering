@@ -21,6 +21,24 @@ def test_the_app_role_reads_the_control_row() -> None:
     assert row == {"kill_switch": "released", "autonomy_level": "report_only"}
 
 
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "DELETE FROM ops.schema_migrations",
+        "UPDATE ops.schema_migrations SET applied_at = now()",
+        "INSERT INTO ops.schema_migrations (name) VALUES ('999_never_applied.sql')",
+    ],
+)
+def test_the_app_role_cannot_rewrite_the_migration_record(statement: str) -> None:
+    """Review round 1 (F070): migration 001 granted the app role writes on every ops table, the
+    migration record included; migration 018 takes them back. It may still read it."""
+    db.migrate()
+    with db.connect(db.Role.APP) as conn:
+        assert conn.execute("SELECT count(*) AS n FROM ops.schema_migrations").fetchone()["n"]
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            conn.execute(statement)
+
+
 def test_the_agent_role_cannot_read_ops() -> None:
     with db.connect(db.Role.AGENT) as conn, pytest.raises(psycopg.errors.InsufficientPrivilege):
         conn.execute("SELECT * FROM ops.control")

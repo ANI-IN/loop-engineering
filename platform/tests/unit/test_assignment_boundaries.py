@@ -106,12 +106,16 @@ def test_each_solution_applies_onto_the_starter(slug: str, variant: str, tmp_pat
         assert done.returncode == 0, done.stderr
 
 
+@pytest.mark.parametrize("slug", SLUGS)
+def test_each_assignment_has_its_check(slug: str) -> None:
+    # check.py is the file a learner runs: it ships in every copy, the public one included.
+    assert (assignment(slug).folder / "check.py").is_file()
+
+
 @pytest.mark.skipif(solutions_withheld(), reason=WITHHELD_REASON)
 @pytest.mark.parametrize("slug", SLUGS)
-def test_each_assignment_has_its_check_and_captured_folder(slug: str) -> None:
-    folder = assignment(slug).folder
-    assert (folder / "check.py").is_file()
-    assert (folder / "solution" / "captured" / "README.md").is_file()
+def test_each_assignment_has_its_captured_folder(slug: str) -> None:
+    assert (assignment(slug).folder / "solution" / "captured" / "README.md").is_file()
 
 
 # --- live only ------------------------------------------------------------------------------------
@@ -173,3 +177,32 @@ def test_the_planted_rule_is_a_valid_proposal() -> None:
     folder = assignment("hill-climbing-loop").folder
     rule = ProposedRule.model_validate(yaml.safe_load((folder / "planted-rule.yaml").read_text()))
     assert rule.evidence_example_ids
+
+
+# --- the skips of a public copy -------------------------------------------------------------------
+def _withheld_skip_reasons(path: Path) -> list[tuple[int, str]]:
+    """Every skipif(solutions_withheld(), ...) in a test file, with its reason as written."""
+    found = []
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if not (isinstance(node, ast.Call) and ast.unparse(node.func).endswith("skipif")):
+            continue
+        if not node.args or "solutions_withheld" not in ast.unparse(node.args[0]):
+            continue
+        reason = next((k.value for k in node.keywords if k.arg == "reason"), None)
+        found.append((node.lineno, ast.unparse(reason) if reason is not None else ""))
+    return found
+
+
+def test_every_withheld_solution_skip_gives_the_one_reason_the_release_accepts() -> None:
+    """The release build accepts a skip in a public copy only with WITHHELD_REASON
+    (build_release.py), so a skip with its own wording would fail the release, which make verify
+    never runs."""
+    tests = PLATFORM / "tests"
+    found = {
+        f"{path.relative_to(tests)}:{line}": reason
+        for path in sorted(tests.rglob("test_*.py"))
+        for line, reason in _withheld_skip_reasons(path)
+    }
+    assert len(found) >= 5, "the scan finds the withheld-solution skips"
+    other = {where: reason for where, reason in found.items() if reason != "WITHHELD_REASON"}
+    assert not other, other

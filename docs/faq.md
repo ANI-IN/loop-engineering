@@ -55,8 +55,8 @@ clone onwards are the same as on Linux.
 
 ### Why do I need Docker?
 
-`make up` runs five services with Docker Compose: Postgres, the api, the worker, the scheduler, and
-the console (`compose.yaml`). The event loop needs real processes and a real database: a job
+`make up` runs six services with Docker Compose: Postgres, the api, the worker, the scheduler, the
+hill-climbing runner, and the console (`compose.yaml`). The event loop needs real processes and a real database: a job
 survives a worker restart only because it lives in Postgres.
 
 ## Running the demos
@@ -92,9 +92,9 @@ can still miss a failure on a question it does not ask.
 ### Why did a trap question pass under the starting knowledge?
 
 The model sometimes guesses a rule from the data it sees. The drift canary checks two trap
-questions before every session for exactly this reason, and the calibration report records how
-often each trap passed unaided.
-<!-- provisional: the trap counts come from the calibration report -->
+questions before every session for exactly this reason. In calibration no trap passed unaided:
+0 of 99 trap runs under the starting knowledge, in the
+[calibration report](calibration-report.md).
 
 ## Assignments and help
 
@@ -103,7 +103,7 @@ often each trap passed unaided.
 You run its live check while you work: `make check-assignment NAME=<slug>`. It brings up the real
 stack, prints a cost estimate, runs the done-when scenario with your key, and prints `PASS` or
 `FAIL` per requirement, with a trace link for each live step. There is no hidden grader and no
-submission. <!-- provisional: lands with the assignments merge -->
+submission.
 
 ### Where are the solutions?
 

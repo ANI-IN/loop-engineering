@@ -15,18 +15,18 @@ Next month's questions are still wrong, and one question that used to be right n
 > - **Dev split**: The benchmark questions the analyzer team may learn from.
 > - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 > - **Promotion gate**: The check that a new knowledge version must pass before it becomes active.
-> - **Regression**: An item that passed under the active version and fails under the candidate.
+> - **Regression**: An item that passed under the active version and fails under the candidate, confirmed by re-runs.
 >
 > All terms: [glossary](../docs/glossary.md).
 
 ## Why it happens
 
 - Rules written from failures do not reliably transfer.
-  [MAGIC](https://arxiv.org/html/2406.12692) turns training failures into a self-correction
+  [MAGIC](https://arxiv.org/abs/2406.12692) turns training failures into a self-correction
   guideline; a [table agents survey](https://arxiv.org/html/2507.10281) re-ran it and found small
   gains, and drops with one large language model (LLM).
 - Knowledge given to the model is evidence, and evidence can be missing or wrong
-  ([SEED](https://arxiv.org/html/2506.07423)).
+  ([SEED](https://arxiv.org/abs/2506.07423)).
 - Comparing Structured Query Language (SQL) text, or results on one database, marks answers wrong or right by accident
   ([Semantic Evaluation for Text-to-SQL with Distilled Test Suites](https://arxiv.org/abs/2010.02840)).
 
@@ -46,7 +46,7 @@ A promoted version clears a metric family for the unattended level on the gate's
 standard: every holdout item of the family passes 2 of 3 runs, and an item that falls short counts
 only if it passes 2 of 3 more runs. The pieces exist in other
 systems; their combination is one we have not seen documented. What the course measured is on the
-[evidence page](../docs/evidence/section-4-hill-climbing-loop.md). <!-- provisional: results come from the calibration and class runs -->
+[evidence page](../docs/evidence/section-4-hill-climbing-loop.md).
 
 ## How to work through this section
 
@@ -60,7 +60,8 @@ systems; their combination is one we have not seen documented. What the course m
 | [session-notes.md](session-notes.md) | What class showed, questions, what to try next | After class |
 
 In class, every demo result on the console shows a live stamp: its run's start time in the
-viewer's local time and its LangSmith trace link. The `demo/expected/` folder is for you
+viewer's local time and its LangSmith trace link. Experiment runs are traced as a sample, about
+1 in 5, so a holdout ledger row may read "Not traced". The `demo/expected/` folder is for you
 after class; it is never opened in class.
 
 The baseline experiment starts at the poll before the second break, so it finishes during it.
@@ -76,7 +77,7 @@ The baseline experiment starts at the poll before the second break, so it finish
 
 ## Sources
 
-- Source 1: MAGIC: Generating Self-Correction Guideline for In-Context Text-to-SQL, <https://arxiv.org/html/2406.12692>, Askari et al., 2024
+- Source 1: MAGIC: Generating Self-Correction Guideline for In-Context Text-to-SQL, <https://arxiv.org/abs/2406.12692>, Arian Askari et al., 2024-06-18
 - Source 2: Toward Real-World Table Agents: Capabilities, Workflows, and Design Principles for LLM-based Table Intelligence, <https://arxiv.org/html/2507.10281>, Jiaming Tian et al., 2025-07-14
-- Source 3: SEED: Enhancing Text-to-SQL Performance and Practical Usability Through Automatic Evidence Generation, <https://arxiv.org/html/2506.07423>, Janghyeon Yun et al., 2025-06-09
+- Source 3: SEED: Enhancing Text-to-SQL Performance and Practical Usability Through Automatic Evidence Generation, <https://arxiv.org/abs/2506.07423>, Janghyeon Yun et al., 2025-06-09
 - Source 4: Semantic Evaluation for Text-to-SQL with Distilled Test Suites, <https://arxiv.org/abs/2010.02840>, Ruiqi Zhong et al., 2020-10-06

@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# Checks the message of the commit being made against the naming rule (short forms and shorthand),
+# Checks the message of the commit being made: no co-author line, and the naming rule (short forms
+# and shorthand),
 # the same check the verification gate runs over the history. The gate runs before a commit and so
 # cannot see the new message; this hook can. Installed by copying it to .git/hooks/commit-msg.
 # It finds the checker from its own location (platform/scripts/hooks/ or .git/hooks/) and runs no git.
 set -euo pipefail
 
 message_file="$1"
+# The build has one author, ANI-IN, and no co-author line. The repository guards find one only
+# after the commit exists; here the commit is refused first. Any case, as trailers allow.
+if grep -qiE '^[[:space:]]*co-authored-by:' "$message_file"; then
+  echo "commit-msg: the message has a co-author line; the build has one author, ANI-IN: remove the line" >&2
+  exit 1
+fi
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 checker=""
 for candidate in "$here/../short_forms.py" "$here/../../platform/scripts/short_forms.py"; do

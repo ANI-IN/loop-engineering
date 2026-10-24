@@ -33,8 +33,10 @@ services:
     image: postgres:18.6-bookworm
     environment:
       POSTGRES_PASSWORD: postgres  # the local superuser; only the init script uses it
+    # Every published port listens on this machine only (127.0.0.1): the superuser password is
+    # "postgres", and the api and the console have no sign-in, so no other machine may reach them.
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql
       - ./platform/ops/docker/postgres-init:/docker-entrypoint-initdb.d:ro
@@ -56,7 +58,7 @@ services:
     <<: *app
     command: ["uvicorn", "datapilot.loop3_events.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 5s
@@ -81,7 +83,7 @@ services:
     working_dir: /app/platform/console
     command: ["streamlit", "run", "app.py", "--server.port", "8501", "--server.address", "0.0.0.0"]
     ports:
-      - "${CONSOLE_PORT:-8501}:8501"
+      - "127.0.0.1:${CONSOLE_PORT:-8501}:8501"
 
 volumes:
   pgdata:

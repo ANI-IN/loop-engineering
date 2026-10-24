@@ -26,7 +26,11 @@ from datapilot_console import ops_reads  # noqa: E402
 pytest_plugins = ["loops_fixtures"]
 pytestmark = [pytest.mark.integration, pytest.mark.usefixtures("clean_ops")]
 
-KNOWLEDGE_TABLES = "ops.promotion_decisions, ops.experiments, ops.knowledge_versions"
+# The reset archive too: next_name counts the names it holds, and other tests archive versions.
+KNOWLEDGE_TABLES = (
+    "ops.promotion_decisions, ops.experiments, ops.knowledge_versions, ops.reset_archive_rows, "
+    "ops.reset_archives"
+)
 TEMPLATE = "_template"
 
 

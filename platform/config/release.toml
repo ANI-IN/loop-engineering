@@ -1,6 +1,7 @@
 # The public release: only the paths in `include` ship, built from the private repository.
-# Add every new public folder here. platform/tests/test_release_list.py fails when a top-level
-# folder is in neither list, or when the style checker or the prose lint does not scan it.
+# Add every new public folder here. platform/tests/unit/test_release_list.py fails when a top-level
+# folder is in neither list, when the style checker or the prose lint does not scan it, or when a
+# shipped Markdown file is neither a course page nor listed in `other_markdown`.
 include = [
     "README.md",
     "LICENSE",
@@ -34,18 +35,56 @@ exclude = [
     # Runtime output (gitignored): calibration's raw results and run log, seed files.
     ".runs/",
     "research/",
-    # Published separately, at the start of the Thursday review (docs/release-checklist.md).
+    # Published separately, at the start of the Thursday review (docs/release-checklist.md); the
+    # owner's release with --with-solutions ships them (platform/scripts/build_release.py).
     "section-*/assignment/solution/",
+    # The class deck's build: the owner builds the deck from the outline and hands it out
+    # separately. No learner page uses the template, its fonts and pictures, the deck scripts, or
+    # the program's slide templates; the outline and its sources (slides/source/) ship.
+    "slides/template.pptx",
+    "slides/assets/",
+    "slides/scripts/",
+    "slides/source/build_deck.py",
+    "slides/tests/test_build_deck.py",
+    "slides/outline-template.md",
+    "slides/slide-review.md",
+    # The guide kit's template configuration (placeholders); guide/guide.json is this guide's.
+    "guide/source/guide.example.json",
 ]
+# The withheld solutions: an `exclude` entry and a `public_gitignore` line until the owner's
+# release with --with-solutions, at the start of the Thursday review, publishes them.
+solutions = "section-*/assignment/solution/"
 # Internal files that may sit anywhere in the tree (a nested copy too) and never ship.
 internal_files = ["PLAN.md", "DECISIONS.md", "CLAUDE.md"]
 # Build tooling for this machine's agents, never shipped (it names the build machine's checkout).
+# The repository guards also read this list: a checkout that holds one of these files is the
+# course's build, where the sole-author and commit-message rules apply.
 build_only = ["platform/scripts/wsl_make.sh"]
 # Host-path patterns in public files that are documented examples, not real paths: a placeholder
 # name, the fake user `x` in tests, and the container's own user.
+# Patterns no shipped file may match: a link into a LangSmith organization (the build's traces are
+# private; placeholders such as /o/example or /o/{TENANT} in tests do not match).
+deny_patterns = ['smith\.langchain\.com/o/[0-9a-f]{8}-[0-9a-f]{4}-']
 host_path_examples = ['<[a-z]+>', '/Users/x(/|$)', '/home/datapilot/']
 # The public repository's .gitignore also ignores these, so a learner's copy of the Thursday
-# solutions is never committed by accident.
-public_gitignore = ["section-*/assignment/solution/"]
+# solutions is never committed by accident. Appended as its own block, with its comment.
+public_gitignore = [
+    "# Assignment solutions: published at the start of the Thursday review; never commit your own copy.",
+    "section-*/assignment/solution/",
+]
+# .gitignore lines only the private build needs (its working notes and the agent worktrees): the
+# public .gitignore leaves them out, with their comments.
+build_only_gitignore = [".dev/", ".claude/worktrees/"]
 # Public folders whose Markdown pages are course text: the checkers must scan each one.
 pages = ["setup", "section-*", "final-project", "use-in-your-repo", "guide", "docs"]
+# Shipped Markdown that is not a course page, so the style checker does not read it: the naming
+# rule (short forms and shorthand) reads each one instead, in platform/tests/unit/test_release_list.py.
+other_markdown = [
+    "SECURITY.md",  # the security policy, shown by GitHub
+    "slides/outline.md",  # generated from slides/source/; also read by `make check-names`
+    "platform/before-class/README.md",  # the instructor's machine check
+    "platform/console/DESIGN.md",  # the console's design notes
+    "platform/packs/_template/README.md",  # the domain pack template
+    "platform/packs/*/benchmark/business_rules.md",  # a pack's business rules, read by the agent
+    "platform/scripts/kit/*/README.md",  # the course kit's tools
+]

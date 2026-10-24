@@ -246,7 +246,13 @@ datapilot-scheduler-1   datapilot:local          "datapilot scheduler"    schedu
 datapilot-worker-1      datapilot:local          "datapilot worker"       worker      32 minutes ago   Up 31 minutes
 ```
 
-**Check it worked.** Five services show `Up`, and `api` and `postgres` show `(healthy)`.
+This capture was taken before the hill-climbing runner became a service, and before every port was
+bound to this machine only. Your `make ps` also lists `datapilot-hill-climbing-runner-1`, running
+`datapilot hill-climbing-runner`, with status `Up`, and its ports read `127.0.0.1:8000->8000/tcp`,
+`127.0.0.1:8501->8501/tcp`, and `127.0.0.1:5432->5432/tcp`, with no `0.0.0.0` or `[::]` entries.
+
+**Check it worked.** Six services show `Up` (postgres, api, worker, scheduler,
+hill-climbing-runner, and console), and `api` and `postgres` show `(healthy)`.
 
 **If it fails.**
 
@@ -295,7 +301,8 @@ belong to the open live session, so a demo needs a preflight first.
 make preflight PURPOSE=development
 ```
 
-The canary makes five live model calls with your key. `PURPOSE=development` names a session on
+The canary asks five questions with your key, each one agent run (about 40 model calls, under a
+cent). `PURPOSE=development` names a session on
 your own machine; on class day you run `make preflight PURPOSE=class`.
 
 **You should see.** One line per check starting with `ok`, one `canary` line per question ending
@@ -358,7 +365,7 @@ Every other message, with its cause and fix: [troubleshooting](../docs/troublesh
 
 You are ready when:
 
-- `make ps` shows five services up, with `api` and `postgres` healthy;
+- `make ps` shows six services up, with `api` and `postgres` healthy;
 - `make check-data` ends with `check-data: both warehouses match expected.yaml`;
 - `make preflight PURPOSE=development` ends with `Live session started at`;
 - `make demo NAME=agent-simple-question` shows a run with a live stamp on the console.

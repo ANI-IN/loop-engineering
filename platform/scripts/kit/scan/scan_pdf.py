@@ -1,6 +1,6 @@
 """Scan the text of a PDF (a demo guide, a handout) for things no learner should see.
 
-    uv run --with pypdf python tools/scan/scan_pdf.py GUIDE.pdf [--account PATTERN ...]
+    uv run --with pypdf python platform/scripts/kit/scan/scan_pdf.py GUIDE.pdf [--account PATTERN ...]
 
 Checks every page's text for: key-like text, host paths (user home folders), account links
 (UUID-like ids, and links matching `--account` regexes, such as a vendor's workspace URL), and

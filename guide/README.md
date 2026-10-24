@@ -40,25 +40,33 @@ build the PDF with the command at the end of this page.
 ## Time and cost
 
 The times are wall time from the trigger to the checked result, from the calibration demo pass of
-22 and 23 October 2026, each demo run alone with a reset between
-([calibration report](../docs/calibration-report.md)). A range spans the two runs; a single value
-means only one run showed the demo's moment. The malicious Structured Query Language (SQL) demo
-makes no model call.
+22 and 23 October 2026 and the live session of 23 October, afternoon, each demo run alone with a
+reset between ([calibration report](../docs/calibration-report.md)). A range spans the runs that
+showed the demo's moment; a single value means one run did. The malicious Structured Query Language
+(SQL) demo makes no model call.
 
-| Chapter | Core demos, time per demo | Not measured | Cost |
+| Chapter | Core demos, time per demo | Not timed | Cost |
 |---|---|---|---|
-| [Section 1: Agent loop](chapters/1-agent-loop.md) | Simple question 37 to 39 s; confident wrong answer 76 s | Unbounded rows | About 0.001 dollars per analyst run |
-| [Section 2: Verification loop](chapters/2-verification-loop.md) | Malicious SQL 6 s; retry cap 69 to 79 s | Every grader passes, still wrong | 0 tokens for malicious SQL |
-| [Section 3: Event loop](chapters/3-event-loop.md) | Webhook 46 s; approval 81 to 84 s; duplicates 57 to 78 s; kill switch 8 to 33 s | Planted halves | About 0.001 dollars per analyst run |
-| [Section 4: Hill-climbing loop](chapters/4-hill-climbing-loop.md) | Baseline 266 to 285 s; analyzer team 62 to 98 s | Naive analyzer; the finale | 0.0594 to 0.0828 dollars per 70-run experiment |
+| [Section 1](chapters/1-agent-loop.md) | Simple question 14 to 39 s; confident wrong answer 37 to 76 s | None | About 0.001 dollars per analyst run |
+| [Section 2](chapters/2-verification-loop.md) | Malicious SQL 2 to 6 s; retry cap 14 to 79 s; graders pass 52 to 58 s | None | 0 tokens for malicious SQL |
+| [Section 3](chapters/3-event-loop.md) | Webhook 14 to 46 s; approval 50 to 84; duplicates 35 to 78; kill switch 3 to 33 | Planted halves | About 0.001 dollars per analyst run |
+| [Section 4](chapters/4-hill-climbing-loop.md) | Baseline 266 to 285 s; analyzer team 326 to 377 s; candidate 186 to 211 s | The finale | 0.0594 to 0.0914 dollars per 70-run experiment |
 
-Part 0's preflight makes five live model calls for the drift canary. Setting up a new
+Section 4's analyzer team writes two candidates and measures each on the dev split, so its step
+took 326 and 377 s; with one candidate it took 62 to 98 s. The candidate experiment demo took 186
+and 211 s with two candidates, and candidate experiments ran 182 to 459 s over every measurement.
+The naive analyzer, blocked, took 211 to 285 s from the trigger to the verdict. The fixed half of
+Section 1's unbounded rows demo took 26 s, once.
+
+Part 0's preflight asks the drift canary's five questions, each one agent run (about 40 model
+calls, under a cent). Setting up a new
 machine is in [setup](../setup/README.md); the time to follow the whole guide has not been
 measured in one sitting.
 
 ## The slides
 
-The class deck that goes with these demos is in [slides/](../slides/README.md).
+The class deck that goes with these demos is handed out separately; its outline and speaker
+notes are in [slides/](../slides/README.md).
 
 ## Build the PDF
 

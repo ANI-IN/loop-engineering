@@ -25,7 +25,7 @@ from datapilot.assignments.cost import (
     Cap,
     CapReached,
     Planned,
-    activity,
+    check_activity,
     check_cap_usd,
     dollars,
     estimate_lines,
@@ -36,7 +36,7 @@ from datapilot.assignments.cost import (
 from datapilot.assignments.keys import require_openai_key
 from datapilot.assignments.live import Api
 from datapilot.assignments.report import STOPPED, Report, Stop
-from datapilot.assignments.stack import Stack, bring_up
+from datapilot.assignments.stack import Stack, bring_up, reset_command
 from datapilot.settings import MissingSetting, get_settings
 
 PACKAGE_TREE = Path(datapilot.__file__).resolve().parents[3]
@@ -63,9 +63,11 @@ class Context:
         *,
         none_because: str = "",
         live: Sequence[tuple[int, str]] = (),
+        typical: str = "",
     ) -> None:
         """Before the first model call: print the estimate and the spend cap, then check the OpenAI
-        key. `live` names the live requirements, so a stop at the cap prints each one."""
+        key. `live` names the live requirements, so a stop at the cap prints each one; `typical` is
+        what a check of a working solution spent in the build's verification."""
         say = self.report.say
         say()
         cap_usd = check_cap_usd() if planned else None
@@ -73,7 +75,7 @@ class Context:
         self.live = list(live)
         if planned:
             try:
-                lines = estimate_lines(planned, cap_usd=cap_usd)
+                lines = estimate_lines(planned, cap_usd=cap_usd, typical=typical)
                 headroom = headroom_usd(planned)
             except KeyError as error:  # a model without a price in pack.yaml
                 raise Stop(str(error).strip("'\"")) from None
@@ -83,9 +85,12 @@ class Context:
             say(f"No live step will run this time, because {none_because}.")
         require_openai_key()
         if self.api.control().kill_switch == "engaged":
+            reset = reset_command(self.assignment.slug)
             raise Stop(
-                "The kill switch of this stack is engaged, so every live run would be blocked: "
-                "release it (make reset NAME=<section>) and run the check again."
+                "The kill switch of this check's stack is engaged, so every live run would be "
+                f"blocked: release it on the check's console ({self.stack.console_url}), or with "
+                f"{reset}, which resets the check's own stack and never the class stack, then run "
+                "the check again."
             )
         self.mark = ledger_mark()
         if cap_usd is not None:
@@ -189,14 +194,14 @@ def stop_at_cap(
 def run_check(slug: str, tree: Path) -> int:
     target = assignment(slug, tree)
     report = Report(target.title)
-    name = activity()
+    name = check_activity(slug)  # this run's own, so a check beside it never counts here
     report.say(f"{target.title}: live check (make check-assignment NAME={slug})")
     report.say(f"Tree: {tree}")
     context: Context | None = None
     code = STOPPED
     try:
         stack = bring_up(tree, name, report.say)
-        context = Context(target, tree, report, stack, Api(stack.api_url), name)
+        context = Context(target, tree, report, stack, Api(stack.api_url, slug=slug), name)
         load_check(target.check_file).run(context)
         code = report.finish()
     except CapReached as reached:

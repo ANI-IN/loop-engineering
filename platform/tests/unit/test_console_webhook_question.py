@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx
 
-from datapilot import demo_questions
+from datapilot import demo_questions, finale
 from datapilot.contracts import registries
 from datapilot.settings import PLATFORM
 
@@ -33,6 +33,21 @@ def test_the_button_starts_one_of_the_registry_demos_that_name_it() -> None:
     assert webhook_demo({"revenue": "unattended", "orders": "report_only"}) == (
         "improve-cleared-unattended"
     )
+
+
+def test_the_button_sends_the_finale_after_a_promotion_that_cleared_no_family() -> None:
+    # Review round 2 (R2B-03): a promotion that cleared no family is the assisted-level outcome of
+    # the finale, so the button sends the spine question, not the orders question.
+    none_cleared = {"revenue": "assisted", "orders": "report_only"}
+    section_3 = finale.FinaleState("released", "report_only", None)
+    assert webhook_demo(none_cleared, section_3) == "events-webhook-question"
+    for state in (
+        finale.FinaleState("released", "unattended", None, promoted="v9"),
+        finale.FinaleState("released", "unattended", "v9"),
+        finale.FinaleState("released", "unattended", None, clearing="v9"),
+    ):
+        assert state.finale_due
+        assert webhook_demo(none_cleared, state) == "improve-cleared-unattended"
 
 
 def test_the_webhook_demo_asks_about_the_previous_day() -> None:

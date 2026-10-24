@@ -147,3 +147,18 @@ def test_one_events_page_read_is_well_under_half_a_second(conn: Any) -> None:
     events_view.board(live, open_ledger=None)
     events_view.channel(live)
     assert time.perf_counter() - started < 0.25
+
+
+def test_the_board_shows_the_gold_check_the_runner_wrote(conn: Any) -> None:
+    # Review round 2 (R2B-04): the finale is an Events run, and its gold check, the class-day
+    # safeguard's trigger, shows on its strip; a run without one shows none.
+    session = seed.open_session(conn)
+    runs = seed.events_scene(conn, session)
+    gold = {"grader": "gold", "passed": False, "agent_value": "72394572.08"}
+    seed.add_event(conn, runs["done-0"], "grader_result", {**gold, "gold_value": "64015091.21"})
+    seed.add_event(conn, runs["done-0"], "status_changed", {"to": "posted"})
+    strips = {s["run_id"]: s for s in events_view.board(_live(conn), open_ledger=None)["strips"]}
+    checked = strips[str(runs["done-0"])]
+    assert checked["gold"] == "fail"
+    assert checked["gold_text"] == "Gold check failed: 72,394,572.08, gold 64,015,091.21"
+    assert strips[str(runs["done-1"])]["gold"] == ""

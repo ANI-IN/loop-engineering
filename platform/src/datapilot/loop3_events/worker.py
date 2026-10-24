@@ -395,19 +395,22 @@ class Worker:
         def middleware(guard: RunGuard) -> list[Any]:
             return [pacing.PacingMiddleware(), killswitch.KillSwitchMiddleware(guard)]
 
+        def stop() -> StopReason | None:
+            # A worker that lost its lease stops at the next model or tool call: its result
+            # would be discarded, and another worker may hold the requeued job by now.
+            return StopReason.LOST_LEASE if self.lost_lease else _daily_budget_stop()
+
         return VerificationLoop(
             services,
             hooks,
-            external_stop=_daily_budget_stop,
-            on_usage=lambda tokens_in, tokens_out: self._usage(run_id, tokens_in, tokens_out),
+            external_stop=stop,
+            on_usage=lambda usage: self._usage(run_id, usage),
             extra_middleware=middleware,
         )
 
-    def _usage(self, run_id: str, tokens_in: int, tokens_out: int) -> None:
-        model = self.base.model_name
-        cost = 0.0
-        if model in pack_config()["prices"]:
-            cost = spend.cost_usd(model, spend.Usage(tokens_in, 0, tokens_out))
+    def _usage(self, run_id: str, usage: spend.Usage) -> None:
+        tokens_in, tokens_out = usage.input_tokens, usage.output_tokens
+        cost = call_cost(self.base.model_name, usage)
         with db.connect(db.Role.APP) as conn:
             conn.execute(
                 "UPDATE ops.runs SET tokens_in = tokens_in + %s, tokens_out = tokens_out + %s, "
@@ -602,6 +605,13 @@ class Worker:
                 with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(stop.wait(), self.settings.poll_seconds)
         return "stopped"
+
+
+def call_cost(model: str, usage: spend.Usage) -> float:
+    """One call's cost on the run, priced as the spend ledger prices it (cached input at the cached
+    rate, cache writes at theirs), so ops.runs.cost_usd matches the ledger; 0 for an unpriced
+    model (the tests' scripted one)."""
+    return spend.cost_usd(model, usage) if model in pack_config()["prices"] else 0.0
 
 
 def _daily_budget_stop() -> StopReason | None:

@@ -1,15 +1,15 @@
 # layout-check: does the app hold at every width, pixel ratio, and zoom?
 
-`layout_check.py` opens each page of a JSON config in Playwright Chromium at many viewports and
-prints every layout problem. Exit 1 on any problem, so it can gate a release or a CI job. No
+`layout_check.py` opens each page of a JSON configuration file in Playwright Chromium at many viewports and
+prints every layout problem. Exit 1 on any problem, so it can gate a release or a continuous integration job. No
 model calls; the app must already be running (or serve recorded data).
 
 ## The sweep
 
-- every `step` CSS px from `min_width` to `max_width` (default 320 to 2560, step 40), at each of
+- every `step` CSS pixels from `min_width` to `max_width` (default 320 to 2560, step 40), at each of
   `heights` (600 and 1000), pixel ratio 1;
 - pixel ratios `dprs` (1.25, 1.5, 2) at the `dpr_widths`;
-- the named `viewports`: a 1920x1080 laptop at 150% and 125% display scaling, a small laptop,
+- the named `viewports`: a 1920 by 1080 laptop at 150% and 125% display scaling, a small laptop,
   class screen sizes, a phone, and a browser at 150% and 175% zoom.
 
 ## The rules
@@ -27,7 +27,7 @@ model calls; the app must already be running (or serve recorded data).
 ## Use
 
 ```bash
-uv run python tools/layout-check/layout_check.py --config layout.json --shots /tmp/layout
+uv run python platform/scripts/kit/layout-check/layout_check.py --config layout.json --shots /tmp/layout
 ```
 
 ```json

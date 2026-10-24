@@ -16,18 +16,18 @@ from datapilot.business_date import today as business_day
 from datapilot.business_date import yesterday as business_yesterday
 from datapilot.contracts.api import AnalyzerIn, EventIn, ExperimentIn, KillSwitchIn
 from datapilot.contracts.registries import Demo
-from datapilot.demo_questions import question_for
+from datapilot.demo_questions import EXPORT_QUESTION, question_for
 from datapilot.loop3_events.scheduler import digest_event_id
 
-EXPORT_QUESTION = (
-    "Export the California customers who may receive marketing, with their email addresses."
-)
 DEMO_POSTS = {
     "/demo/large-query",
     "/demo/malicious-sql",
     "/demo/cartesian-query",
     "/demo/failing-grader",
 }
+# The naive analyzer demo queues both of its steps: its blocked verdict comes from the candidate
+# experiment, and the runner takes requests in the order they were made.
+ANALYZER_THEN_CANDIDATE = "POST /analyzer/run, then POST /experiments/run (the candidate)"
 
 
 class Client(Protocol):
@@ -111,9 +111,13 @@ def trigger(client: Client, demo: Demo, *, wait_running_seconds: float = 60.0) -
         )
         sent = client.post("/experiments/run", json=experiment.model_dump(mode="json"))
         done.request_ids.append(str(_ok(sent)["request_id"]))
-    elif api == "POST /analyzer/run":
+    elif api in ("POST /analyzer/run", ANALYZER_THEN_CANDIDATE):
         sent = client.post("/analyzer/run", json=AnalyzerIn(requested_by="demo").model_dump())
         done.request_ids.append(str(_ok(sent)["request_id"]))
+        if api == ANALYZER_THEN_CANDIDATE:  # the runner takes it after the analyzer, on its draft
+            experiment = ExperimentIn(target="candidate", requested_by="demo")
+            sent = client.post("/experiments/run", json=experiment.model_dump(mode="json"))
+            done.request_ids.append(str(_ok(sent)["request_id"]))
     else:
         raise KeyError(f"{demo.id}: no trigger for {api!r}")
     return done

@@ -70,11 +70,11 @@ def set_state(conn: psycopg.Connection[Any], action: Action, *, by: str) -> str:
             run_id = str(row["run_id"])
             lifecycle.transition(conn, run_id, RunStatus.BLOCKED_KILLSWITCH, by="api: kill switch")
             lifecycle.record(conn, run_id, RunEventKind.KILLSWITCH_BLOCKED, {"at": "approval"})
-            conn.execute(
-                "UPDATE ops.jobs SET status = 'done', updated_at = now() WHERE event_id = "
-                "(SELECT event_id FROM ops.runs WHERE run_id = %s) AND status = 'parked'",
-                (run_id,),
-            )
+            # Its parked job is done, and its open approval is closed as rejected by the kill
+            # switch, so the console never offers an approval the api would refuse for a blocked
+            # run (the two statements sit below the middleware).
+            conn.execute(PARKED_JOB_DONE, (run_id,))
+            conn.execute(OPEN_APPROVAL_CLOSED, (f"kill switch, engaged by {by}", run_id))
     return new
 
 
@@ -111,3 +111,14 @@ class KillSwitchMiddleware(AgentMiddleware):
         if self._check():
             return stopped_message(request, "Run stopped: the kill switch is engaged.")
         return await handler(request)
+
+
+# What engaging the switch does to a run that was waiting for approval (set_state, above).
+PARKED_JOB_DONE = (
+    "UPDATE ops.jobs SET status = 'done', updated_at = now() WHERE event_id = "
+    "(SELECT event_id FROM ops.runs WHERE run_id = %s) AND status = 'parked'"
+)
+OPEN_APPROVAL_CLOSED = (
+    "UPDATE ops.approvals SET decision = 'reject', decided_by = %s, decided_at = now(), "
+    "comment = 'closed: the kill switch was engaged' WHERE run_id = %s AND decision IS NULL"
+)

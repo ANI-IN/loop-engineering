@@ -42,22 +42,28 @@ def event_id(slug: str, what: str) -> str:
 
 
 class Api:
-    def __init__(self, url: str, cap: Cap | None = None) -> None:
+    def __init__(self, url: str, cap: Cap | None = None, *, slug: str = "") -> None:
         # the worker records the checked runs' calls under this command's activity
         self.http = httpx.Client(base_url=url, timeout=30, headers=spend.activity_headers())
-        self._setup(cap)
+        self._setup(cap, slug)
 
-    def _setup(self, cap: Cap | None) -> None:
+    def _setup(self, cap: Cap | None, slug: str = "") -> None:
         self.cap = cap  # set by the live gate; None until then
+        self.slug = slug  # the assignment, for the reset command a stop prints
         self.started: set[str] = set()  # the runs this check started
+        # Runs in this process (Assignment 4's benchmark) stop at the kill switch too: at the cap,
+        # it is engaged even when the check started no run in the workers.
+        self.in_process = False
         self.engaged_at_cap = False
+        self.engaged_by_check = False  # the check's own kill-switch step engaged it
         self.level_before: str | None = None  # the autonomy level when the cap engaged the switch
         self.halt_error = ""
         self._halting = threading.Lock()
 
     def guard(self) -> None:
         """Before each new run and while waiting for one: at the spend cap, engage the kill switch
-        once (when the check has runs of its own in the workers) and raise CapReached."""
+        once (when the check has runs of its own, in the workers or in this process) and raise
+        CapReached."""
         if self.cap is None:
             return
         try:
@@ -68,7 +74,7 @@ class Api:
 
     def _halt(self) -> None:
         with self._halting:
-            if self.engaged_at_cap or self.halt_error or not self.started:
+            if self.engaged_at_cap or self.halt_error or not (self.started or self.in_process):
                 return
             try:
                 control = self.control()
@@ -149,9 +155,11 @@ class Api:
     def engage(self) -> None:
         self.kill_switch("arm")
         self.kill_switch("engage")
+        self.engaged_by_check = True
 
     def release(self) -> None:
         self.kill_switch("release")
+        self.engaged_by_check = False
 
     def autonomy(self, level: str) -> None:
         body = AutonomyIn(level=level, by=BY)  # type: ignore[arg-type]
@@ -175,6 +183,60 @@ def stop_on_rejected_key(detail: RunDetail) -> None:
         raise Stop(MISSING_KEY)
     if out_of_credits(text):
         raise Stop(NO_CREDITS)
+
+
+def daily_budget_stop(detail: RunDetail) -> str:
+    from datapilot.config import pack_config
+
+    per_day = int(pack_config()["budgets"]["tokens_per_day"])
+    return (
+        f"Stopped: run {detail.run_id} ended blocked_budget, because this stack's daily token "
+        f"budget (budgets.tokens_per_day in pack.yaml, {per_day:,} tokens per Eastern time "
+        "calendar day) is spent. This is not a fault in your solution, and that run was not "
+        "judged. The count starts again at midnight Eastern time; a check on its own Compose "
+        "project also sets it back to zero when it starts, so run the check again. With "
+        "DATAPILOT_ASSIGNMENT_STACK=running, the services' own stack keeps its count until "
+        "midnight."
+    )
+
+
+def release_hint(slug: str) -> str:
+    from datapilot.assignments.stack import reset_command
+
+    return (
+        f"Release it on the check's console, or with {reset_command(slug or '<slug>')}, then run "
+        "the check again."
+    )
+
+
+def kill_switch_stop(detail: RunDetail, slug: str = "") -> str:
+    return (
+        f"Stopped: run {detail.run_id} ended blocked_killswitch, because the kill switch of this "
+        "check's stack was engaged from outside the check, such as on its console. This is not a "
+        f"fault in your solution, and that run was not judged. {release_hint(slug)}"
+    )
+
+
+def in_process_kill_switch_stop(slug: str) -> str:
+    """The stop of a check whose runs are in this process (Assignment 4's benchmark)."""
+    return (
+        "Stopped: the kill switch of this check's stack was engaged from outside the check, such "
+        "as on its console, so the benchmark's runs stopped at their next model call and nothing "
+        "measured after it counts. This is not a fault in your solution, and nothing more was "
+        f"judged. {release_hint(slug)}"
+    )
+
+
+def stop_on_blocked(detail: RunDetail, api: Any) -> None:
+    """A run the stack blocked says nothing about the solution: the daily token budget, or a kill
+    switch the check did not engage itself, stops the check (exit 2) instead of failing a line. A
+    block from the check's own kill-switch step, or from its stop at the spend cap, is judged as
+    the check expects."""
+    if detail.status is RunStatus.BLOCKED_BUDGET:
+        raise Stop(daily_budget_stop(detail))
+    ours = getattr(api, "engaged_by_check", False) or getattr(api, "engaged_at_cap", False)
+    if detail.status is RunStatus.BLOCKED_KILLSWITCH and not ours:
+        raise Stop(kill_switch_stop(detail, getattr(api, "slug", "")))
 
 
 def trace_link(trace_id: str, *, project: str | None = None, tries: int = 10) -> str:
@@ -246,6 +308,7 @@ def settle(api: Api, run_id: str, decide: Decide, *, seconds: float = 900) -> Ru
         detail = api.wait(run_id, seconds=max(deadline - time.monotonic(), 1))
         if detail.status is not RunStatus.AWAITING_APPROVAL:
             stop_on_rejected_key(detail)
+            stop_on_blocked(detail, api)
             return detail
         if _open_approval(detail):
             api.decide(run_id, decide(detail))

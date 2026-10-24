@@ -21,7 +21,7 @@ names the command to run and what it must print. If an item fails, the
 3. **LangSmith on your own free account.** Put your key in `LANGSMITH_API_KEY` and keep
    `LANGSMITH_TRACING=true`. Stay on the free Developer plan and add no card. Every run on the
    console links to its trace in your account, in the project `datapilot-live`.
-4. **The services.** `make up`, then `make ps`: five services up, with `api` and `postgres`
+4. **The services.** `make up`, then `make ps`: six services up, with `api` and `postgres`
    healthy.
 5. **The warehouse.** `make check-data` prints `check-data: both warehouses match
    expected.yaml`. If it does not, run `make seed` and check again.
@@ -34,8 +34,8 @@ names the command to run and what it must print. If an item fails, the
 ## On class day
 
 1. **Start the services** with `make up`, then confirm with `make ps`.
-2. **Run preflight for the class**: `make preflight PURPOSE=class`. Its canary makes five live
-   model calls with your key, and the class session starts when every check passes.
+2. **Run preflight for the class**: `make preflight PURPOSE=class`. Its canary asks five questions,
+   each one agent run with your key, and the class session starts when every check passes.
 3. **Open the console** at http://localhost:8501 and press F11 for full screen. The run board is
    laid out for a page of 1280 by 720 pixels (`platform/console/DESIGN.md`), and browser toolbars
    take space it needs. Press F11 again to leave full screen.

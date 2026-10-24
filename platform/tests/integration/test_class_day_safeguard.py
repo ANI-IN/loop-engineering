@@ -196,12 +196,63 @@ def test_the_safeguard_activates_the_rehearsed_version_with_its_own_clearance(re
     assert "activated by the class-day safeguard" in views.no_candidate_text(shown)
 
 
+def test_a_verification_made_before_the_rehearsal_reset_still_activates_in_class(
+    rehearsal,
+) -> None:
+    """The rehearsal's order: verify right after the correct finale, then reset between attempts.
+    The reset clears the run, its gold check, and the clearance, but the verification kept them."""
+    run_id = finale_run(rehearsal.session_id)
+    verify(run_id)
+    execute(
+        "INSERT INTO ops.experiments (experiment_id, knowledge_version, split, session_id, "
+        "started_at) VALUES (%s, 'v1', 'all', %s, now() - interval '1 minute')",
+        str(uuid.uuid4()),
+        rehearsal.session_id,
+    )
+    report = commands.reset("hill-climbing-loop")
+    assert report.active_version == "v1" and REHEARSED not in report.removed_versions
+    with pytest.raises(versions.SafeguardRefused, match="before any reset"):
+        verify(run_id)  # too late after a reset: the run is gone
+    class_day()
+    with db.connect(db.Role.APP) as conn:
+        done = versions.activate_verified(conn, activated_by="instructor")
+        conn.commit()
+    assert done.version == REHEARSED and done.verification.cleared_families == ["revenue"]
+    with db.connect(db.Role.APP) as conn:
+        policy = autonomy.OpsAutonomyPolicy.load(conn, REHEARSED)
+    assert policy.eligible == frozenset({"revenue"})
+
+
 def test_the_safeguard_needs_a_verified_version_and_never_reactivates_one(rehearsal) -> None:
     with db.connect(db.Role.APP) as conn, pytest.raises(versions.SafeguardRefused):
         versions.activate_verified(conn, activated_by="instructor")
     verify(finale_run(rehearsal.session_id))
     with db.connect(db.Role.APP) as conn, pytest.raises(versions.SafeguardRefused, match="already"):
         versions.activate_verified(conn, activated_by="instructor")
+
+
+def test_the_safeguard_is_rehearsed_after_a_reset_as_the_guide_orders_it(rehearsal) -> None:
+    # Review round 2 (R2B-01): right after the verified finale its version is the active one, so
+    # the command refuses and says how to rehearse it; after the hill-climbing reset (the
+    # baseline's version active again) the same command activates it.
+    verify(finale_run(rehearsal.session_id))
+    refused = CliRunner().invoke(cli, ["safeguard", "activate", "--by", "instructor"])
+    assert refused.exit_code == 1
+    assert "nothing to switch" in refused.output
+    assert "make reset NAME=hill-climbing-loop" in refused.output
+    execute(  # the rehearsal session's baseline, under v1
+        "INSERT INTO ops.experiments (experiment_id, knowledge_version, split, session_id, "
+        "started_at) VALUES (%s, 'v1', 'all', %s, now() - interval '1 minute')",
+        str(uuid.uuid4()),
+        rehearsal.session_id,
+    )
+    assert commands.reset("hill-climbing-loop").active_version == "v1"
+    done = CliRunner().invoke(cli, ["safeguard", "activate", "--by", "instructor"])
+    assert done.exit_code == 0, done.output
+    assert "Safeguard activation: v5" in done.output and "replaces v1" in done.output
+    with db.connect(db.Role.APP) as conn:
+        assert versions.active_name(conn) == REHEARSED
+        assert autonomy.OpsAutonomyPolicy.load(conn, REHEARSED).eligible == frozenset({"revenue"})
 
 
 def test_the_safeguard_commands(rehearsal) -> None:

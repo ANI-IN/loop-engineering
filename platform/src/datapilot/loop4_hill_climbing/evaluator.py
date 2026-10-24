@@ -3,7 +3,7 @@ warehouse and warehouse_alt.
 
 Results are normalized before comparing: numbers on the item's tolerance grid, column names
 ignored, the same column count required, rows compared as a multiset unless order matters. Trap
-labels are attached for explanation only.
+labels are attached for explanation only, and only to a failed result: never beside a match.
 """
 
 from __future__ import annotations
@@ -100,7 +100,9 @@ class ExecutionEvaluator:
             # planted: compares SQL text, so a correct query written differently fails
             same = _sql_text(answer.final_sql) == _sql_text(item.gold_sql)
             reason = "SQL text matches gold" if same else "SQL text differs from gold"
-            return ItemResult(item_id=item.id, passed=same, reason=reason, trap_labels=labels)
+            return ItemResult(
+                item_id=item.id, passed=same, reason=reason, trap_labels=[] if same else labels
+            )
         for warehouse in WAREHOUSES:
             passed, reason = self._match_on(item, answer.final_sql, warehouse)
             if not passed:
@@ -114,7 +116,6 @@ class ExecutionEvaluator:
             item_id=item.id,
             passed=True,
             reason="matches gold on both warehouses",
-            trap_labels=labels,
         )
 
     def match_each(self, item: BenchmarkItem, sql: str) -> dict[str, tuple[bool, str]]:

@@ -9,8 +9,9 @@ steps.
   `platform/src/datapilot/loop3_events/extension.py`, listed in
   [starter/README.md](starter/README.md).
 - The seeded warehouse. The check adds its own orders for the anomalous day, Friday 30 January
-  2026 (order ids from 900000001, all in the evening in Eastern time, so some fall on the next day
-  in Coordinated Universal Time (UTC)), and removes them at the end.
+  2026 (order ids from 900000001, all between 20:00 and 23:58 Eastern standard time, so every one
+  falls on the next day in Coordinated Universal Time (UTC), 01:00 to 04:58), and removes them at
+  the end.
 - Read-only: the frozen contracts in `platform/src/datapilot/contracts/`, the business rules for
   net revenue and Eastern business days, and `platform/packs/datapilot_us/pack.yaml`.
 
@@ -55,7 +56,9 @@ Model-dependent, run once live on the real model and checked against gold:
     answer is unmistakable. When the run holds for approval (the reviewer holds an answer, or a
     tool call needs one), the check approves it, as an instructor would, and its output says
     "approved by the check"; it then waits for the run to post and judges the posted answer, never
-    the held one. A run that ends without posting fails this requirement.
+    the held one. A run that ends without posting fails this requirement. The drill-down's event id
+    is yours to choose; the check clears any earlier run under it first, so the first ask always
+    starts a new run, and a first ask absorbed into an earlier run fails this requirement.
 
 The job exists in no class code path: the course build's boundary test keeps the router table and
 the schedule hook empty on the class branch, so the unchanged starter fails this check.
@@ -63,13 +66,16 @@ the schedule hook empty on the class branch, so the unchanged starter fails this
 ## Live check
 
 `make check-assignment NAME=event-loop` brings up the real stack, sets the report-only level and
-releases the kill switch, clears the job's earlier events and alerts, adds its orders, and checks
+releases the kill switch, clears the job's earlier events and alerts and the runs of their
+drill-down questions, adds its orders, and checks
 requirements 1 to 9. It then prints "This check makes live model calls, about N cents, and stops at 1.00 dollar" with its
 estimate, checks your OpenAI key, and runs requirement 10, approving any hold as an instructor
 would, printing its trace link and live stamp, and at the end the actual tokens and cost. On the way out it removes its orders and puts back your
 autonomy level. If the check reaches its spend cap of 1.00 dollar (`assignments.check_cap_usd` in pack.yaml), it stops cleanly: it starts no new run, every requirement it did not reach reads NOT RUN, and it exits 2. A missing or rejected key stops the check with "Live checks need your OpenAI key
-from the operations team"; it never falls back to anything offline. When no alert was posted, the
-live step does not run. The command exits 0 when every line reads PASS, 1 on any FAIL, and 2 when
+from the operations team"; it never falls back to anything offline. A run the stack itself
+blocked, at its daily token budget or by a kill switch the check did not engage, stops the check
+(exit 2) with that reason instead of failing a line. When no alert was posted, the live step does
+not run. The command exits 0 when every line reads PASS, 1 on any FAIL, and 2 when
 it stopped.
 
 Agent runs: 1. An approval resumes the same run; it starts no new one.

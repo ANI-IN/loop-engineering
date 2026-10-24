@@ -104,7 +104,8 @@ a bug, not a mistake for the analyst to fix.
 This is malicious SQL, layer 2. The root check stops a statement that is not a read. The walk over
 every node stops a `DELETE` hidden in a common table expression under a `SELECT` root, which a
 prefix check passes. With the naive guard (`BUG_NAIVE_GUARD`) on, a `startswith` check replaces
-this grader, and only the read-only role is left to refuse the write.
+both the parse and the statement policy graders, and only the read-only transaction and the role's
+grants are left to refuse the write.
 
 ### platform/src/datapilot/loop2_verification/loop.py, lines 364-369
 

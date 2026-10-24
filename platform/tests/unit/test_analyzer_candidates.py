@@ -128,7 +128,15 @@ def test_each_candidate_runs_on_the_dev_split_only_under_its_own_version(
         candidates, "save_selection_draft", lambda conn, version: saved.append(version.version)
     )
     items = [item("d1"), item("d2"), item("d3"), item("h1", Split.HOLDOUT)]
-    hill = HillClimbingRunner(items, target, _Evaluator(), Scheme(), 2)  # type: ignore[arg-type]
+    # The runner now reads the kill switch before each run (review round 1): released here.
+    hill = HillClimbingRunner(
+        items,
+        target,
+        _Evaluator(),  # type: ignore[arg-type]
+        Scheme(),
+        2,
+        kill_switch_engaged=lambda: False,
+    )
     team = _Team()
     runs = hill.measured_candidates(
         team,

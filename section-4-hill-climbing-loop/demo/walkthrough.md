@@ -9,7 +9,7 @@ team may read and keep, and how the promotion gate decides.
 > - **Dev split**: The benchmark questions the analyzer team may learn from.
 > - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 > - **Promotion gate**: The check that a new knowledge version must pass before it becomes active.
-> - **Regression**: An item that passed under the active version and fails under the candidate.
+> - **Regression**: An item that passed under the active version and fails under the candidate, confirmed by re-runs.
 > - **Planted bug**: A defect switched on by a flag so a demo shows its failure every time.
 >
 > All terms: [glossary](../../docs/glossary.md).
@@ -38,9 +38,10 @@ sequenceDiagram
     Team->>Guard: the rules the critic kept whose SQL guidance runs
     Runner->>Runner: each candidate on the dev split only, one kept
     Guard-->>Person: candidate version in the knowledge diff
-    Person-->>Gate: approval
     Runner->>Gate: candidate experiment, same session
-    Gate-->>Person: promoted or blocked, with every reason
+    Gate-->>Person: ready for human approval, or blocked with every reason
+    Person-->>Gate: approval
+    Gate-->>Person: promoted
 ```
 
 ## The code, explained

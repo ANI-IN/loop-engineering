@@ -25,7 +25,7 @@ and posts its answer.
 - A Postgres queue built on `FOR UPDATE SKIP LOCKED` delivers at least once and is not strictly
   in order, so a handler can see the same event twice
   ([PostgreSQL SELECT](https://www.postgresql.org/docs/current/sql-select.html),
-  [Postgres Job Queues & Failure By MVCC](https://brandur.org/postgres-queues)).
+  [You don't need a job queue: Postgres already has SKIP LOCKED](https://www.prisma.io/blog/you-dont-need-a-job-queue-postgres-already-has-skip-locked)).
 - A pending approval is an interrupted run. If the run's state lives in process memory, a restart
   loses it ([Human-in-the-loop](https://docs.langchain.com/oss/python/langchain/human-in-the-loop)).
 - A stop that is checked only when a job is claimed never reaches a run already in flight.
@@ -46,7 +46,7 @@ a lookup you can test and audit. The section adds no agent.
 *Notice that every safeguard here is a row in Postgres, not memory: the event id, the lease, the parked job, and the checkpoint, so a restart loses nothing.*
 
 What the course measured for this section is on the
-[evidence page](../docs/evidence/section-3-event-loop.md). <!-- provisional: results come from the calibration and class runs -->
+[evidence page](../docs/evidence/section-3-event-loop.md).
 
 ## How to work through this section
 
@@ -77,6 +77,6 @@ Section 4: Hill-climbing loop answers it: autonomy is earned from evidence.
 ## Sources
 
 - Source 1: PostgreSQL SELECT, <https://www.postgresql.org/docs/current/sql-select.html>, PostgreSQL Global Development Group, n.d.
-- Source 2: Postgres Job Queues & Failure By MVCC, <https://brandur.org/postgres-queues>, Brandur Leach, 2015-05-18
+- Source 2: You don't need a job queue: Postgres already has SKIP LOCKED, <https://www.prisma.io/blog/you-dont-need-a-job-queue-postgres-already-has-skip-locked>, Prisma, 2026-07-17
 - Source 3: Human-in-the-loop, <https://docs.langchain.com/oss/python/langchain/human-in-the-loop>, LangChain, n.d.
 - Source 4: Loop engineering, <https://cobusgreyling.github.io/loop-engineering/>, Cobus Greyling, n.d.

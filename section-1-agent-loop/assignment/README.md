@@ -58,17 +58,19 @@ Estimated effort: about 1.5 hours.
 
 **Cost of one full check:** at most 12 analyst runs: 2 runs of each of the 4 live questions, and a
 third run only for a question whose first two runs disagree. The check prints its own estimate
-before the first model call and the actual tokens and cost at the end. Measured on gpt-6-luna in the build's verification on 23 October 2026: one full check of a
-working solution cost 0.34 to 0.42 cents (six checks), about 0.4 cents typically. At the caps,
+before the first model call and the actual tokens and cost at the end. Measured on gpt-6-luna
+in the build's verification on 23 October 2026, one full check of a working solution typically
+costs about 0.4 cents; the measured checks are in the costs table linked below. At the caps,
 with every run using its whole token budget at the output price, one check can cost at most 36
 cents, below the check's own spend cap of 1.00 dollar, at which any check stops cleanly
 ([costs](../../docs/costs.md#assignments)).
 
 ## Step by step
 
-1. Bring up the stack and seed it once (`make up`, `make seed`; [setup](../../setup/README.md)),
-   with your OpenAI key in `.env`. Then run the live check on the unchanged starter:
-   `make check-assignment NAME=agent-loop`. Check: requirements 1 to 7 read FAIL, each saying which
+1. With your OpenAI key in `.env` ([setup](../../setup/README.md)), run the live check on the
+   unchanged starter: `make check-assignment NAME=agent-loop`. The check builds, starts, and seeds a
+   stack of its own, the Compose project `datapilot-assignments`, so it needs no `make up` or
+   `make seed` (those are for the class stack and its demos). Check: requirements 1 to 7 read FAIL, each saying which
    extension point to fill, and the live requirements say they did not run.
 2. Read [starter/README.md](starter/README.md) and open `extension.py`. Check: you can name the
    hook the tool list calls, the prompt step, and the hook that edits the answer envelope.

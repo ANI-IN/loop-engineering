@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -172,8 +172,10 @@ class Line:
     approval_variable: str | None = None  # set only on the reserve
 
     def covers(self, activity: str) -> bool:
-        return (
-            activity == self.name or activity.startswith(f"{self.name}-") or activity in self.names
+        """The line's name or one of its other names, alone or followed by "-" and a step, such
+        as "calibration-traps" or one assignment check's own "assignment-agent-loop-1a2b3c4d"."""
+        return any(
+            activity == name or activity.startswith(f"{name}-") for name in (self.name, *self.names)
         )
 
 
@@ -577,15 +579,22 @@ class SpendCallback(BaseCallbackHandler):
             log.warning("a failed model call could not be recorded", error=repr(failure))
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
-        self._sent.pop(kwargs.get("run_id"), None)
+        estimate = self._sent.pop(kwargs.get("run_id"), None)
         for generations in response.generations:
             for generation in generations:
                 message = getattr(generation, "message", None)
                 if isinstance(message, AIMessage):
+                    usage = usage_from_message(message)
+                    # A sent request that reports no input tokens (live, a reply cut off at its
+                    # cap) was still billed: count it from the request, as a failed call is.
+                    estimated = not usage.input_tokens and bool(estimate)
+                    if estimated:
+                        usage, estimate = replace(usage, input_tokens=estimate or 0), None
                     record(
                         component=self.component,
                         model=self.model,
-                        usage=usage_from_message(message),
+                        usage=usage,
                         activity=self.activity,
                         run_id=self.run_id,
+                        estimated=estimated,
                     )

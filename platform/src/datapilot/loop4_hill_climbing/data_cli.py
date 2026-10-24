@@ -163,20 +163,34 @@ def preflight(
 
 @data_app.command("hill-climbing-runner")
 def hill_climbing_runner() -> None:
-    """Serve the Improve page: experiments, the analyzer team, promotions, and gold checks."""
+    """Serve the Improve page: experiments, the analyzer team, promotions, and gold checks. The
+    Compose service of this name runs it; a second runner on the same database refuses to start."""
     import threading
+    from dataclasses import replace
 
+    from datapilot import db
     from datapilot.config import pack_config
+    from datapilot.loop3_events import improvement
     from datapilot.loop4_hill_climbing.evaluator import ExecutionEvaluator
     from datapilot.loop4_hill_climbing.measurement import Scheme
     from datapilot.loop4_hill_climbing.pack_files import load_benchmark
-    from datapilot.loop4_hill_climbing.runner import HillClimbingRunner
+    from datapilot.loop4_hill_climbing.runner import (
+        ALREADY_SERVING,
+        HillClimbingRunner,
+        RunnerAlreadyServing,
+        kill_switch_stop,
+    )
     from datapilot.loop4_hill_climbing.targets import analyst
 
+    with db.connect(db.Role.APP, autocommit=True) as conn:
+        serving = improvement.runner_serving(conn)
+    if serving:
+        typer.echo(f"x {ALREADY_SERVING}")
+        raise typer.Exit(2)
     tracer, links = _tracing()
     runner = HillClimbingRunner(
         items=load_benchmark(),
-        target=analyst(),
+        target=replace(analyst(), external_stop=kill_switch_stop),
         evaluator=ExecutionEvaluator.live(),
         scheme=Scheme.from_pack(),
         concurrency=pack_config()["evaluation"]["concurrency"],
@@ -184,7 +198,11 @@ def hill_climbing_runner() -> None:
         project_url=links.project_url() if links else None,
     )
     typer.echo("hill-climbing runner ready")
-    runner.serve(threading.Event())
+    try:
+        runner.serve(threading.Event())
+    except RunnerAlreadyServing as error:  # another one started in the moment since the check
+        typer.echo(f"x {error}")
+        raise typer.Exit(2) from error
 
 
 @data_app.command("live-smoke")

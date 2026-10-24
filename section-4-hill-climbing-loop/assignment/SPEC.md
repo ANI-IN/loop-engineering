@@ -9,7 +9,9 @@ and the steps.
   `platform/src/datapilot/loop4_hill_climbing/extension.py`, listed in
   [starter/README.md](starter/README.md).
 - The benchmark in `platform/packs/datapilot_us/benchmark/`, and the planted over-broad rule in
-  [planted-rule.yaml](planted-rule.yaml), which the check adds to the rule writer's proposals.
+  [planted-rule.yaml](planted-rule.yaml), which the check adds to the rule writer's proposals. Its
+  evidence becomes your own repeat-customer dev item that failed in the baseline (else your first
+  repeat-customer dev item), so your item ids need not match the one in the file.
 - Read-only: the frozen contracts in `platform/src/datapilot/contracts/`, the measurement in the
   `evaluation` block of `platform/packs/datapilot_us/pack.yaml`, the gate, and the overfit guard.
 
@@ -30,23 +32,31 @@ Deterministic, checked against the real warehouses with no model call; each must
    gold and a naive Structured Query Language (SQL) query, and a split.
 2. At least three of the 6 are in the holdout split.
 3. Every gold query returns rows without nulls on both `warehouse` and `warehouse_alt`, and the
-   same rows twice.
+   same rows twice. With no repeat-customer item yet, this fails: there is nothing to judge.
 4. Every item names the traps it touches, and its naive query gives a different answer from gold
-   on both warehouses.
+   on both warehouses. With no repeat-customer item yet, this fails too.
 5. `repeat_customers` is in `autonomy.metric_families`.
 6. A family with fewer than three holdout items is not eligible for the unattended level, whatever
    its results: the check asks the eligibility rule about the real benchmark as if every holdout
    item passed, the most favourable case, and `aov`, with one holdout item, must stay below.
-7. A family with at least three holdout items, all passing, is eligible.
+7. A family with at least three holdout items, all passing, is eligible: the check asks the rule
+   about every count from 3 up to 10 (or the largest family, if larger), and, again as if every
+   holdout item passed, every family of the pack with three or more holdout items (`revenue` and
+   `orders` have four) and `repeat_customers` must be eligible. A rule that allows exactly three
+   fails here.
 8. The gate, the overfit guard, the measurement, and the `evaluation` block are unchanged.
 
 Model-dependent, run live with the class measurement:
 
-9. In the analyzer team's run on the failed dev items of the baseline experiment, the critic's
-   review of the planted rule is a drop with a reason, and every accepted rule is one the rule
-   writer proposed. One analyzer run, as in class.
-10. The gate promotes a candidate version, after the human approval the check gives, with zero
-    confirmed regressions on both splits, and the candidate experiment covers the six new items.
+9. The analyzer team works on the failed dev items of the baseline experiment as in class: it
+   writes `analyzer.candidates` rule sets (two, in pack.yaml), each from its own run, measures each
+   on the dev split only, and keeps the one with fewer dev regressions, then more dev passes, then
+   fewer rules. In every one of its runs, since any can be kept, the critic's review of the planted
+   rule is a drop with a reason, and every accepted rule is one the rule writer proposed.
+10. The gate promotes the kept candidate, after the human approval the check gives, with zero
+    confirmed regressions on both splits, and the candidate experiment covers the six new items:
+    each one is measured. None of them has to pass; the result line says how many holdout items of
+    the family passed, for the record.
     The measurement is the class one: holdout items run 3 times and pass on 2; dev items run once;
     every apparent regression is confirmed by re-runs before it counts. An apparent dev regression
     is re-run 2 more times under each version and counts only when the candidate fails both of its
@@ -56,6 +66,20 @@ Model-dependent, run live with the class measurement:
     eligible for the unattended level. Families are cleared as in class: the minimum number of
     holdout items first, so `aov` is never re-run, then every holdout item of the family at 2 of 3
     runs, an item that fell short counting only if it passes 2 of 3 more runs.
+
+**How often a correct solution passes.** Requirement 10 depends on the rule set the model writes
+in that check. In the build's verification and the checks of 23 October, with one candidate per
+check, it passed in 6 of 10 checks of correct solutions. Three were blocked by one confirmed dev
+regression: a rule the model wrote made one dev item fail under the candidate. The third of them,
+measured with the current re-runs of both versions, passed that item in both re-runs under v1 and
+failed it in both under the candidate, so it was a real regression of that rule set, not noise in
+v1. The fourth candidate was no better than v1 on holdout. The check now writes two candidates and
+keeps the one with fewer dev regressions, then more dev passes, as the class does, which targets
+the first cause. Measured on 23 October 2026 with two candidates, the reference passed 2 of 2
+checks (13.58 and 23.95 cents, 15 and 22 minutes); two checks are a small sample, so a correct
+solution may still read FAIL on requirement 10 now and then: run the check again, and the FAIL line
+says when the cause is the model's rule set rather than your files. A starter, and a solution that
+leaves out a family item or lets `aov` reach the unattended level, still fail it every time.
 
 None of these changes exists in a class code path: the course build's boundary test keeps the
 family out of the pack and the extension points inert on the class branch, so the unchanged
@@ -78,7 +102,8 @@ it stopped.
 Agent runs: 82 for the candidate experiment, 82 more for the baseline when the live session has
 none yet, the re-runs of apparent regressions (4 for a dev item, 2 under each version; 3 for a
 holdout item, under the candidate), 3 for each holdout item that falls short when its family is
-judged for the unattended level, and 3 analyzer team calls.
+judged for the unattended level, 28 for each of the two candidates on the dev split, and 3
+analyzer team calls for each candidate, 6 in all.
 
 ## Evidence to hand in
 

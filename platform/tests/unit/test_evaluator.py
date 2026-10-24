@@ -112,11 +112,65 @@ def test_trap_detectors_find_nothing_in_the_rule_following_query() -> None:
 
 def test_labels_are_limited_to_the_item_traps_and_never_gate() -> None:
     assert labels_for(NAIVE, ["net_revenue"]) == ["total_cents_used"]
-    runner = TableRunner({**_both(GOLD, [(1,)], [(1,)]), **_both(NAIVE, [(1,)], [(1,)])})
+    runner = TableRunner({**_both(GOLD, [(1,)], [(2,)]), **_both(NAIVE, [(1,)], [(1,)])})
     result = ExecutionEvaluator(runner).evaluate(
         item(gold_sql=GOLD, traps=["net_revenue"]), answered(NAIVE)
     )
-    assert result.passed and result.trap_labels == ["total_cents_used"]
+    assert not result.passed and result.trap_labels == ["total_cents_used"]
+
+
+def test_a_correct_answer_carries_no_trap_label() -> None:
+    # Review round 2 (R2B-07): a trap note beside a match teaches the opposite of the trap, so a
+    # passed result carries no label, whatever the detectors see in its SQL. This replaces the
+    # earlier pin that a passed result kept its labels.
+    runner = TableRunner({**_both(GOLD, [(1,)], [(1,)]), **_both(NAIVE, [(1,)], [(1,)])})
+    result = ExecutionEvaluator(runner).evaluate(
+        item(gold_sql=GOLD, traps=["net_revenue", "fiscal_year"]), answered(NAIVE)
+    )
+    assert result.passed and result.trap_labels == []
+
+
+# Correct fiscal-year 2025 ranges (1 February 2024 to 31 January 2025): no calendar-year label.
+FISCAL_YEAR_SQL = {
+    "a February-to-January range": (
+        "SELECT sum(subtotal_cents) FROM orders "
+        "WHERE order_ts >= '2024-02-01' AND order_ts < '2025-02-01'"
+    ),
+    "a closed range to 31 January": (
+        "SELECT sum(subtotal_cents) FROM orders "
+        "WHERE order_ts::date BETWEEN DATE '2024-02-01' AND DATE '2025-01-31'"
+    ),
+    "the year of the date shifted by eleven months": (
+        "SELECT sum(subtotal_cents) FROM orders "
+        "WHERE EXTRACT(YEAR FROM order_ts + INTERVAL '11 months') = 2025"
+    ),
+    "date_trunc of the shifted date": (
+        "SELECT sum(subtotal_cents) FROM orders "
+        "WHERE date_trunc('year', order_ts + INTERVAL '11 months') = DATE '2025-01-01'"
+    ),
+    "the year read beside the month": (
+        "SELECT sum(subtotal_cents) FROM orders WHERE "
+        "(EXTRACT(YEAR FROM order_ts) = 2024 AND EXTRACT(MONTH FROM order_ts) >= 2) "
+        "OR (EXTRACT(YEAR FROM order_ts) = 2025 AND EXTRACT(MONTH FROM order_ts) = 1)"
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FISCAL_YEAR_SQL))
+def test_a_fiscal_year_range_is_not_labelled_a_calendar_year(case: str) -> None:
+    assert "calendar_year_range" not in detect(FISCAL_YEAR_SQL[case])
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT 1 FROM orders WHERE EXTRACT(YEAR FROM order_ts) = 2025",
+        "SELECT 1 FROM orders WHERE date_trunc('year', order_ts) = DATE '2025-01-01'",
+        "SELECT 1 FROM orders WHERE order_ts >= '2025-01-01' AND order_ts < '2026-01-01'",
+    ],
+)
+def test_a_calendar_year_range_keeps_its_label(sql: str) -> None:
+    assert "calendar_year_range" in detect(sql)
 
 
 def test_unparseable_sql_gets_no_labels() -> None:

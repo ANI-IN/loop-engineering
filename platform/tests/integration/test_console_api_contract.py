@@ -16,6 +16,7 @@ import pytest
 from api_contract_checks import Checked, ContractClient, check_console_controls, console_controls
 from fastapi.testclient import TestClient
 
+from datapilot import demo_questions
 from datapilot.contracts import api as contract
 from datapilot.contracts import registries
 from datapilot.contracts.live import SessionPurpose
@@ -103,3 +104,24 @@ def test_the_webhook_button_sends_the_question_make_demo_sends(
     assert question_of(from_console.run_id) == question_of(from_make.run_ids[0])
     if demo_id == "events-webhook-question":
         assert question_of(from_console.run_id) == "How many orders were placed yesterday?"
+
+
+EXPORT_BUTTON = "Events > Request California export"
+
+
+def test_the_export_button_sends_the_request_make_demo_sends(console_client: ApiClient) -> None:
+    """The button starts the approval demo with exactly the export request `make demo NAME=`
+    sends (demos.trigger), the wording the approval moment was verified live with."""
+    sessions.start_session(SessionPurpose.DEVELOPMENT, "console contract test", "UTC")
+    demo = next(d for d in registries.demos().demos if d.id == "events-approval-survives-restart")
+    assert demo.trigger.console == EXPORT_BUTTON
+
+    def sent(run_id: object) -> contract.RunDetail:
+        status, run = console_client.send("GET", f"/runs/{run_id}", None)
+        assert status == 200
+        return contract.RunDetail.model_validate(run)
+
+    from_console = sent(console_client.request_export().run_id)
+    from_make = sent(demos.trigger(ContractClient(console_client.send, Checked()), demo).run_ids[0])
+    assert from_console.question == from_make.question == demo_questions.EXPORT_QUESTION
+    assert from_console.demo_name == from_make.demo_name == demo.id

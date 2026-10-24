@@ -184,8 +184,10 @@ def test_the_data_check_runs_through_the_executor(select_pack) -> None:
     assert executor.queries == ['SELECT count(*) AS n FROM "club"."payments"']
     assert not data.check(_Counting(0)).ok, "an empty table fails"  # type: ignore[arg-type]
     refused = data.check(_Counting(None))  # type: ignore[arg-type]
+    # Review round 2: every database message the executor passes on has its quoted part redacted
+    # (a cast such as ::regclass quotes a data value there); the check names the table itself.
     assert refused.line() == (
-        'x  data: club.payments is not readable as the agent\'s role: relation "club.payments" '
+        'x  data: club.payments is not readable as the agent\'s role: relation "<redacted>" '
         "does not exist"
     )
 

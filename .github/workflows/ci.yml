@@ -26,16 +26,24 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run lint-imports
       - run: uv run python platform/scripts/lint_prose.py
-      - name: course style check (switch to --strict once every page is written)
-        run: uv run python platform/scripts/check_style.py
-      - name: repository guards (config allow-list, sole author, no co-author lines, no tracked .env)
+      # Strict: a warning fails as an error does. Strict style is the release gate, and the release
+      # build runs the same check on the public tree (platform/scripts/build_release.py).
+      - name: course style check, strict
+        run: uv run python platform/scripts/check_style.py --strict
+      # In a public copy the guards refuse a core.worktree setting and a tracked .env; the
+      # configuration allow-list, the sole-author rule, and the co-author rule belong to the
+      # course's build and are skipped, so a learner's own git settings and commits pass.
+      - name: repository guards (no core.worktree, no tracked .env)
         run: uv run python platform/scripts/check_repo_guards.py
-      - name: naming rule on the course pages (shorthand and first use warn until --strict)
-        run: uv run python platform/scripts/check_style.py --names-only
+      - name: naming rule on the course pages, strict
+        run: uv run python platform/scripts/check_style.py --names-only --strict
       - name: naming rule on the slide outline
         run: uv run python platform/scripts/short_forms.py slides/outline.md
-      - name: naming rule on commit messages (short forms and shorthand fail)
-        run: git log --format=%B | uv run python platform/scripts/short_forms.py --commit-messages -
+      # Read by the guards script, which fails when git fails (no pipe), and skipped in a public
+      # copy, where the commit messages are a learner's own.
+      - name: naming rule on commit messages (the course's build only)
+        shell: bash
+        run: uv run python platform/scripts/check_repo_guards.py --commit-messages
       - run: uv run python platform/tools/generators/render.py --check
 
   test:

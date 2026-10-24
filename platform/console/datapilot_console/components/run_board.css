@@ -12,7 +12,7 @@
 .lane > h3 { padding: 3px 8px; border-bottom: 2px solid var(--ink); }
 .count { font-weight: 400; color: var(--graphite); }
 .list { padding: 4px; display: flex; flex-direction: column; gap: 4px; }
-.lane > .list { overflow-y: auto; }
+.lane > .list { overflow-y: auto; position: relative; }
 .more, .none { color: var(--graphite); font-size: 0.889em; padding: 0 4px; }
 .more:empty { display: none; }
 
@@ -45,6 +45,9 @@
 }
 .stamp { font-size: 14px; }
 .dups { font-weight: 700; }
+.gold { font-weight: 700; overflow-wrap: anywhere; }
+.gold.pass { color: var(--green-text); }
+.gold.fail { color: var(--red-text); }
 .strip button {
   margin-top: 3px; min-height: 30px; padding: 2px 10px; font-size: 1em; align-self: flex-start;
 }

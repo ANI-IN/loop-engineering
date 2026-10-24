@@ -62,19 +62,21 @@ Estimated effort: about 2 hours.
 **Cost of one full check:** at most 36 analyst runs: 2 runs of each of the 12 cases that reach the
 model, and a third only for a case whose first two runs disagree. The two questions your grader
 stops make no model call at all. The check prints its own estimate before the first model call and
-the actual tokens and cost at the end. Measured on gpt-6-luna in the build's verification on 23 October 2026, from 06:45 Coordinated
-Universal Time (UTC): one full check of a working solution cost 1.84 to 2.28 cents (six checks,
-149 to 172 model calls each), about 2 cents typically. At the caps, with every run using its whole
+the actual tokens and cost at the end. Measured on gpt-6-luna in the build's verification on
+23 October 2026, one full check of a working solution typically costs about 2 cents (the current
+check: 1.86 cents in 135 model calls); the measured checks are in the costs table linked below.
+At the caps, with every run using its whole
 token budget at the output price, its runs would come to 108 cents, but the check stops cleanly at
 its own spend cap of 1.00 dollar, so one check costs at most 100 cents
 ([costs](../../docs/costs.md#assignments)).
 
 ## Step by step
 
-1. With the stack up and seeded and your OpenAI key in `.env`
-   ([setup](../../setup/README.md)), run the live check on the unchanged starter:
-   `make check-assignment NAME=verification-loop`. Check: requirements 1 to 4 and 6 read FAIL, and
-   the live requirements say they did not run.
+1. With your OpenAI key in `.env` ([setup](../../setup/README.md)), run the live check on the
+   unchanged starter: `make check-assignment NAME=verification-loop`. The check builds, starts, and
+   seeds a stack of its own, the Compose project `datapilot-assignments`, so it needs no `make up`
+   (that is the class stack, for the demos). Check: requirements 1 to 7 read FAIL, each naming its
+   extension point, and the live requirements say they did not run.
 2. Read [starter/README.md](starter/README.md), the `Grader` protocol, and the docstring of
    `extension.py`, which says what each kind of grader receives. Check: you can say which stage
    each new grader runs at and which severity ends the run.
@@ -82,9 +84,10 @@ its own spend cap of 1.00 dollar, so one check costs at most 100 cents
    `context.extra["knowledge"]`, never the model. Check: requirements 1 to 4 read PASS once it is
    registered (step 5).
 4. Write the personal-data leak grader in a second module. It passes when
-   `context.extra["approved"]` is true. Check: requirement 5 still reads PASS.
+   `context.extra["approved"]` is true. Check: requirement 7 reads PASS once it is registered
+   (step 5), and requirement 5 still reads PASS.
 5. Return both from `question_graders()` and `answer_graders()`. Check: requirement 6 reads PASS,
-   and the live requirements 7 to 9 run and read PASS, each with its trace link and live stamp.
+   and the live requirements 8 to 10 run and read PASS, each with its trace link and live stamp.
 
 ## Grading criteria (100 points)
 
@@ -96,9 +99,10 @@ This rubric is for assessing your own work. Nobody grades it.
 | Defined terms pass | A defined term, and words that are not business terms, pass | 10 | Check line 3 |
 | Feedback | Each failure has a reason, feedback for the agent, and a severity | 10 | Check line 4 |
 | Deterministic | Neither grader calls a model; both are registered in stage order | 10 | Check lines 5 and 6 |
-| Live ambiguity suite | All 8 questions end as expected | 20 | Check line 7 |
-| Live leak cases | No personal data posted without approval; approved runs still post | 25 | Check line 8 |
-| Approved export | The approved export posts its rows | 10 | Check line 9 |
+| Leak grader | Personal data in an answer fails unless a person approved it | 10 | Check line 7 |
+| Live ambiguity suite | All 8 questions end as expected | 15 | Check line 8 |
+| Live leak cases | No personal data posted without approval; approved runs post the approved data | 20 | Check line 9 |
+| Approved export | The approved export posts its rows | 10 | Check line 10 |
 | Total | | 100 | |
 
 Every requirement and its pass rule is in [SPEC.md](SPEC.md).

@@ -15,7 +15,7 @@ from typing import Any, Literal, TypeVar, cast
 
 import httpx
 
-from datapilot import demo_questions
+from datapilot import demo_questions, finale
 from datapilot.contracts import api as contract
 from datapilot.contracts.lifecycle import EventType
 from datapilot.observability import spend
@@ -25,25 +25,35 @@ API_DOWN = "The api did not answer. Start it with make up."
 TIMEOUT_SECONDS = 2.0
 
 # The demo inputs the console sends. They are questions, never answers. Each demo's question comes
-# from datapilot.demo_questions, the table `make demo NAME=` reads too.
+# from datapilot.demo_questions, the table `make demo NAME=` reads too; so does the export request.
 SPINE_QUESTION = demo_questions.SPINE_QUESTION
-EXPORT_REQUEST = (
-    "Export the email and first name of every marketable customer in California for the spring "
-    "campaign."
-)
 OVERBROAD_RULE = "knowledge-v2-overbroad"
 
 # Events > Send webhook question starts two registry demos: the event loop's webhook question, and
-# the finale's spine question once a metric family is cleared for the unattended level.
+# the finale's spine question once the finale is the demo being shown.
 WEBHOOK_DEMO = "events-webhook-question"
-FINALE_DEMO = "improve-cleared-unattended"
+FINALE_DEMO = finale.FINALE_DEMO
 UNATTENDED = "unattended"
 
 
-def webhook_demo(family_levels: dict[str, str]) -> str:
-    """The demo the webhook button starts: the finale once any metric family is cleared for the
-    unattended level (ops.autonomy_policy), the event loop's webhook question before that."""
+def webhook_demo(family_levels: dict[str, str], state: finale.FinaleState | None = None) -> str:
+    """The demo the webhook button starts: the finale once a version is approved for promotion or
+    was promoted in this live session (by the gate or the class-day safeguard), whether a family
+    cleared under it or none did, and once any family is cleared for the unattended level; the
+    event loop's webhook question before that."""
+    if state is not None and state.finale_due:
+        return FINALE_DEMO
     return FINALE_DEMO if UNATTENDED in family_levels.values() else WEBHOOK_DEMO
+
+
+def webhook_hold(demo: str, state: finale.FinaleState) -> str | None:
+    """Why the webhook button sends nothing now, or None. While an approved version's promotion is
+    pending it never sends: pressed then, it would ask the event loop's question, or the finale
+    under the previous version. The finale also waits for the kill switch to be released and the
+    unattended level to be set, as `make demo NAME=improve-cleared-unattended` does."""
+    if demo == FINALE_DEMO:
+        return finale.refusal(state)
+    return finale.waiting_for_promotion(state)
 
 
 Reply = TypeVar("Reply", bound=contract.Response)
@@ -131,7 +141,11 @@ class ApiClient:
         return self.ask(demo_questions.question_for(demo_name), demo_name)
 
     def request_export(self) -> contract.EventSubmitted:
-        payload = {"question": EXPORT_REQUEST, "demo_name": "events-approval-survives-restart"}
+        """Start the approval demo with exactly the export request `make demo NAME=` sends."""
+        payload = {
+            "question": demo_questions.EXPORT_QUESTION,
+            "demo_name": "events-approval-survives-restart",
+        }
         return self.send_event(EventType.EXPORT_REQUESTED, payload)
 
     def run_digest(self, day: str, session_id: str) -> contract.EventSubmitted:
@@ -168,6 +182,14 @@ class ApiClient:
         """The status line's second click: the api arms, then engages, the kill switch."""
         self.kill_switch("arm")
         return self.kill_switch("engage")
+
+    def set_autonomy(
+        self, level: Literal["report_only", "assisted", "unattended"]
+    ) -> contract.AutonomyState:
+        """The system's autonomy level, set by a person (the api refuses while the kill switch is
+        engaged); the finale needs the unattended level."""
+        request = contract.AutonomyIn(level=contract.AutonomyLevel(level), by="console")
+        return self._call("POST", "/control/autonomy", contract.AutonomyState, request)
 
     def restart_worker(self) -> contract.RestartRequested:
         return self._call("POST", "/control/restart-worker", contract.RestartRequested)

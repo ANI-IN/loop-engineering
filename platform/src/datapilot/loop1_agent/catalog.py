@@ -16,6 +16,8 @@ import psycopg
 from psycopg import sql
 from psycopg.rows import dict_row
 
+from datapilot.config import pack_config
+
 _SNAPSHOT_SQL = """
 SELECT c.relname AS table_name,
        CASE c.relkind WHEN 'v' THEN 'view' WHEN 'm' THEN 'view' ELSE 'table' END AS kind,
@@ -105,22 +107,41 @@ def load_snapshot(url: str, schema: str) -> CatalogSnapshot:
     return CatalogSnapshot(schema=schema, tables=tables)
 
 
+# What a sample row shows in place of a personal-data value.
+PERSONAL_SAMPLE = "<personal data, not shown>"
+
+
+def personal_columns(table: str, cfg: dict[str, Any] | None = None) -> frozenset[str]:
+    """The pack's personal-data columns (personal_data in pack.yaml) of one table, or of the
+    marketing view, which holds the same columns. Only the verification loop's graders and a
+    person's approval may release their values, so a description of a table never shows them."""
+    personal = (cfg or pack_config())["personal_data"]
+    view = personal["marketing_view"].split(".")[-1]
+    tagged = [qualified.split(".") for qualified in personal["columns"]]
+    return frozenset(column for *_, owner, column in tagged if table in (owner, view))
+
+
 def sample_rows(url: str, table: Table, schema: str, *, limit: int = 3) -> list[dict[str, Any]]:
+    """A few rows as they are, except that every personal-data value is masked."""
     query = sql.SQL("SELECT * FROM {}.{} ORDER BY 1 LIMIT {}").format(
         sql.Identifier(schema), sql.Identifier(table.name), sql.Literal(limit)
     )
     with read_only(url) as conn:
-        return conn.execute(query).fetchall()
+        rows = conn.execute(query).fetchall()
+    masked = personal_columns(table.name)
+    return [{k: PERSONAL_SAMPLE if k in masked else v for k, v in row.items()} for row in rows]
 
 
 def few_distinct_values(
     url: str, table: Table, schema: str, *, max_distinct: int = 10
 ) -> dict[str, list[Any]]:
-    """Distinct values of each discrete column that has at most `max_distinct` of them."""
+    """Distinct values of each discrete column that has at most `max_distinct` of them; never of
+    a personal-data column."""
     found: dict[str, list[Any]] = {}
+    masked = personal_columns(table.name)
     with read_only(url) as conn:
         for column in table.columns:
-            if not column.data_type.startswith(_DISCRETE_TYPES):
+            if column.name in masked or not column.data_type.startswith(_DISCRETE_TYPES):
                 continue
             query = sql.SQL("SELECT {c} AS v FROM {s}.{t} GROUP BY 1 ORDER BY 1 LIMIT {n}").format(
                 c=sql.Identifier(column.name),

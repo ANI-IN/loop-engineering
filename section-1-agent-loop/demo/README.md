@@ -29,9 +29,11 @@ Each demo is one real run of the analyst against the warehouse, with real model 
 LangSmith. The analyst writes SQL, runs it through `run_query`, and
 returns an answer envelope that the console shows with its SQL, tokens, cost, and trace link.
 
-Times and cost: not measured yet. Calibration runs each demo three times and lists the runs on the
-[evidence page](../../docs/evidence/section-1-agent-loop.md). Until then, `run.sh` states the most
-a run can cost at the caps in `platform/packs/datapilot_us/pack.yaml`.
+Times and cost, measured live on 22 and 23 October 2026, each demo twice with a reset between
+and once more on the current code: the simple question 14 to 39 s, the confident wrong answer 52
+to 76 s. An analyst run costs about 0.001 dollars. The runs are on the
+[evidence page](../../docs/evidence/section-1-agent-loop.md), and `run.sh` states the most a run
+can cost at the caps in `platform/packs/datapilot_us/pack.yaml`.
 
 ```mermaid
 flowchart LR
@@ -119,7 +121,7 @@ and what may differ from run to run.
 - **Tier**: optional, cut first when the section runs late
 - **Start it**: Agent > Ask in the console, or `make demo NAME=agent-texas-last-quarter`
 - **What appears**: A multi-join question across orders, order items, products, and categories for customers in Texas over the last completed fiscal quarter (August to October 2025, against the business date of 31 January 2026), with the join path visible in the SQL.
-- **Expected live outcome**: An answer whose SQL joins four tables; the gold check shows pass or the trap hit.
+- **Expected live outcome**: An answer whose SQL joins four tables. No benchmark item asks this question, so the run gets no gold check; the date range in the SQL shows whether the fiscal-quarter trap is hit.
 - **What can vary**: join order; whether the fiscal-quarter trap is hit; latency
 - **Recovery**: `make reset NAME=agent-loop`, then the same trigger again
 
@@ -140,7 +142,7 @@ and what may differ from run to run.
 - **Guaranteed by**: the unbounded rows bug (`BUG_UNBOUNDED_ROWS`)
 - **What appears**: With the unbounded rows bug on, a 10,000-row SELECT goes through run_query and a list question follows; the token counter spikes. With it off, the same steps return at most the row cap, the total count, and a truncation notice.
 - **Expected live outcome**: Tokens per run jump with the bug on and drop back with it off.
-- **What can vary**: exact token counts; the list question's wording
+- **What can vary**: exact token counts; the list question's wording; whether the run with the bug off ends held for approval by a reviewer concern; the token counter is the moment either way
 - **Recovery**: `make reset NAME=agent-loop`, then the same trigger again
 <!-- /generated:demo-runbook -->
 
@@ -167,4 +169,5 @@ truncation notice.
 | The run stays in Queued | The worker is not running or is restarting | `make ps`; `make logs NAME=worker` for the reason |
 | The run ends escalated with a token limit | The run reached `budgets.tokens_per_run` | Reset and run it again; the cap is the designed stop |
 | The token counter does not move with the bug on | The services still hold the old `.env` | Run `make up` after each change to `.env` |
+| The run with the bug off ends in Holding for approval | A reviewer concern, as twice in calibration | Nothing: point at its token counter, the moment |
 | Anything else | A stale run or an engaged kill switch | `make reset NAME=agent-loop`, then the same trigger again |

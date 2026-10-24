@@ -3,7 +3,9 @@
 `make apply-solution NAME=<slug> VARIANT=<variant>` copies the tree (the complete class system with
 its extension points) to a scratch folder outside the repository, copies the variant's files/ over
 it, and applies its changes.patch when it has one. Learner work in the repository is never
-touched. The copy links to the repository's .env rather than copying it.
+touched, and an existing copy is replaced only when asked (FORCE=1, or --force). In a public copy
+made before the Thursday review the solutions are withheld, and apply stops and says so. The copy
+links to the repository's .env rather than copying it.
 
 `make verify-assignments` runs, for each assignment, the starter once (it must FAIL) and each of
 the three solutions twice in a row (each must PASS), under the spend activity "assignment
@@ -14,6 +16,7 @@ and a console screenshot. Captures are evidence for people; no check ever reads 
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -21,8 +24,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from datapilot.assignments import VARIANTS, assignment
+from datapilot.assignments import VARIANTS, assignment, solutions_withheld
 from datapilot.assignments.cost import VERIFICATION
+from datapilot.assignments.report import Stop
 from datapilot.assignments.stack import CLASS_PROJECT, DEFAULTS, running_stack
 from datapilot.names import SECTIONS
 from datapilot.settings import PLATFORM, REPO
@@ -42,6 +46,14 @@ SKIP = {
     ".claude",
 }
 NOTE = "Your output will differ: run times, ids, and the agent's wording change on every run."
+# A LangSmith run link names the organization it belongs to. The build's traces are private, so a
+# capture keeps each trace id in words and never the build's organization (it ships with the
+# solutions at the Thursday review).
+TRACE_LINK = re.compile(
+    r"https://(?:[\w.-]+\.)?smith\.langchain\.com/o/[0-9a-f-]+/projects/p/[0-9a-f-]+/r/"
+    r"(?P<trace>[0-9a-f-]+)(?:\?\S*)?"
+)
+PRIVATE_TRACE = "trace id {trace}, in the build's private LangSmith project"
 # The console page each assignment's runs show on, and an element that means it has loaded.
 CONSOLE_PAGES = {
     "agent-loop": ("events", ".sl"),
@@ -92,17 +104,51 @@ def copy_tree(source: Path, dest: Path) -> None:
         shutil.copy2(source / rel, target)
 
 
-def apply(slug: str, variant: str, *, source: Path = REPO, dest: Path | None = None) -> Path:
-    """A scratch copy of `source` with the solution applied ("starter" applies nothing)."""
+WITHHELD = (
+    "The solutions are withheld until the Thursday review: this copy has no solution/ folder, so "
+    "there is no {variant} to apply. They are published at the start of the review. To check your "
+    "own work now, run make check-assignment NAME={slug}."
+)
+EXISTS = (
+    "{dest} already exists, and apply never replaces a folder unasked: it may hold your own "
+    "changes. Replace it with FORCE=1 on the make command (or --force), or remove it yourself."
+)
+
+
+def solution_files(slug: str, variant: str, source: Path) -> tuple[Path | None, Path | None]:
+    """The variant's files/ folder and changes.patch, each None when absent; a Stop when the copy
+    withholds the solutions, or when the variant has neither, so nothing reports a solution applied
+    that was never there."""
+    if solutions_withheld(source):
+        raise Stop(WITHHELD.format(variant=variant, slug=slug))
+    solution = assignment(slug, source).solution(variant)
+    files = solution / "files"
+    patch = solution / "changes.patch"
+    found = (files if files.is_dir() else None, patch if patch.is_file() else None)
+    if found == (None, None):
+        raise Stop(f"{solution} has no files/ folder and no changes.patch: nothing to apply.")
+    return found
+
+
+def apply(
+    slug: str,
+    variant: str,
+    *,
+    source: Path = REPO,
+    dest: Path | None = None,
+    force: bool = False,
+) -> Path:
+    """A scratch copy of `source` with the solution applied ("starter" applies nothing). An
+    existing destination is replaced only with `force`."""
     dest = dest or work_root() / f"{slug}-{variant}"
+    files, patch = solution_files(slug, variant, source) if variant != "starter" else (None, None)
+    if dest.exists() and not force:
+        raise Stop(EXISTS.format(dest=dest))
     copy_tree(source, dest)
     if variant != "starter":
-        solution = assignment(slug, source).solution(variant)
-        files = solution / "files"
-        if files.is_dir():
+        if files is not None:
             shutil.copytree(files, dest, dirs_exist_ok=True)
-        patch = solution / "changes.patch"
-        if patch.is_file():
+        if patch is not None:
             subprocess.run(
                 ["git", "apply", "--whitespace=nowarn", str(patch)], cwd=dest, check=True
             )
@@ -150,12 +196,18 @@ def _kit() -> None:
         sys.path.insert(0, kit)
 
 
+def masked(text: str) -> str:
+    """Every LangSmith run link becomes its trace id in words: no organization is named."""
+    return TRACE_LINK.sub(lambda hit: PRIVATE_TRACE.format(trace=hit.group("trace")), text)
+
+
 def _redacted(text: str) -> str:
-    """Host home folders become ~, as in every capture of the course kit."""
+    """Host home folders become ~, as in every capture of the course kit, and every LangSmith
+    run link becomes its trace id (masked)."""
     _kit()
     from capturelib import redact_paths
 
-    return redact_paths(text)
+    return masked(redact_paths(text))
 
 
 def _terminal_image(text: str, out: Path, command: str) -> str | None:
@@ -215,7 +267,7 @@ def _write_capture(slug: str, folder: Path, capture: Capture) -> None:
             f"![The terminal after {command} finished: the last lines of its output, with the "
             f"result line reading {verdict}.]({capture.name}-terminal.png)",
             "",
-            "*The end of the check's output, with each live run's trace link and live stamp.*",
+            "*The end of the check's output, with each live run's trace id and live stamp.*",
             "",
         ]
     else:
@@ -230,10 +282,16 @@ def _write_capture(slug: str, folder: Path, capture: Capture) -> None:
         ]
     else:
         lines += [f"No console screenshot was made ({console_problem}).", ""]
-    links = [line.split("trace: ", 1)[1] for line in text.splitlines() if "trace: http" in line]
-    if links:
-        lines += ["Trace links of the live runs, in order:", ""]
-        lines += [f"- <{link}>" for link in links]
+    traces = [
+        hit.group(1) for hit in re.finditer(r"trace: trace id ([0-9a-f-]+), in the build's", text)
+    ]
+    if traces:
+        lines += [
+            "Trace ids of the live runs, in order (the build's LangSmith project is private, so "
+            "no link is given):",
+            "",
+        ]
+        lines += [f"- {trace}" for trace in traces]
         lines.append("")
     while lines and lines[-1] == "":
         lines.pop()
@@ -242,7 +300,10 @@ def _write_capture(slug: str, folder: Path, capture: Capture) -> None:
 
 def verify(only: list[str] | None = None) -> int:
     """Every assignment: the starter once, each solution twice. Returns 0 when all came out as
-    expected (the starter FAIL, every solution PASS)."""
+    expected (the starter FAIL, every solution PASS). The verification makes its own copies, so it
+    replaces them; in a public copy it stops before any check, as apply does."""
+    if solutions_withheld():
+        raise Stop(WITHHELD.format(variant="solution", slug="<slug>"))
     problems = []
     for section in SECTIONS:
         slug = section.slug
@@ -251,7 +312,7 @@ def verify(only: list[str] | None = None) -> int:
         folder = assignment(slug).folder / "solution" / "captured"
         plan = [("starter", 1), *[(variant, 2) for variant in VARIANTS]]
         for variant, times in plan:
-            tree = apply(slug, variant)
+            tree = apply(slug, variant, force=True)
             for n in range(1, times + 1):
                 code, text = _run_captured(slug, tree)
                 name = f"{variant}-run-{n}" if times > 1 else variant

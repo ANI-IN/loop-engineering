@@ -113,7 +113,17 @@ def system_architecture() -> Scene:
 
     # Row 3: the services outside, and the data the agents read.
     s.shape("outside", 480, 520, 250, 100, "OpenAI API\nevery agent:\ngpt-6-luna", size=22)
-    s.shape("outside", 480, 640, 250, 90, "LangSmith\ntraces of every run", size=22)
+    # Traces: every demo and check run in full, experiment runs as a sample
+    # (`tracing.experiment_sample_rate` 0.2 in pack.yaml).
+    s.shape(
+        "outside",
+        480,
+        640,
+        250,
+        120,
+        "LangSmith\ndemo and check runs\nin full; about 1\nexperiment run in 5",
+        size=20,
+    )
     s.shape("store", 950, 520, 180, 120, "Schema lg\ncheckpoints", size=24)
     s.shape("store", 1170, 520, 250, 120, "Schema warehouse\nread-only role", size=22)
     s.shape("store", 1610, 520, 260, 120, "Database\nwarehouse_alt\nread-only role", size=22)
@@ -128,8 +138,9 @@ def system_architecture() -> Scene:
         "PostgreSQL 18.6, database datapilot, schema ops: the shared state\n"
         "events, event duplicates, jobs, runs, run events, approvals, posts, control,\n"
         "budgets, autonomy policy, knowledge versions, experiments, promotion decisions,\n"
-        "improvement requests, live sessions",
-        size=24,
+        "improvement requests, live sessions, analyzer candidates, rehearsal verifications,\n"
+        "reset archives and their rows",
+        size=22,
     )
 
     # Arrows.
@@ -638,7 +649,7 @@ def hill_climbing_loop() -> Scene:
 
     s.step = 2
     s.shape("boundary", 1160, 40, 720, 470)
-    s.text(1184, 52, "Analyzer team: failed dev items only", size=24)
+    s.text(1184, 52, "Analyzer team, run twice: failed dev items only", size=22)
     s.shape(
         "agent", 1190, 100, 320, 130, "Failure analyst:\ndiagnoses each\nfailed dev item", size=22
     )
@@ -669,7 +680,15 @@ def hill_climbing_loop() -> Scene:
         size=22,
     )
     s.arrow([(1535, 452), (1535, 548)])
-    s.shape("store", 1160, 710, 720, 80, "Candidate knowledge version, a draft", size=24)
+    s.shape(
+        "store",
+        1160,
+        710,
+        720,
+        80,
+        "Two candidates measured on the dev split;\nthe better one becomes the draft",
+        size=22,
+    )
     s.arrow([(1520, 672), (1520, 708)])
 
     s.step = 4

@@ -1,7 +1,7 @@
 """Build a public course repository from an allow-list of a private build repository.
 
-    uv run python tools/release/make_release.py --config release.json            # dry run
-    uv run python tools/release/make_release.py --config release.json --build DIR
+    uv run python platform/scripts/kit/release/make_release.py --config release.json  # dry run
+    uv run python platform/scripts/kit/release/make_release.py --config release.json --build DIR
 
 A reference implementation of the private-to-public release pattern, small on purpose:
 
@@ -70,8 +70,14 @@ class Config:
     # Regular expressions for host-path matches that are documented examples (a placeholder name,
     # a fake test user), not a real machine's path; any other host path is still a problem.
     host_path_examples: list[str] = field(default_factory=list)
-    # Lines appended to the public tree's .gitignore before the commit.
+    # Regular expressions no public file may match, such as a link into a private account; the
+    # report names the file and the pattern's number, never the text.
+    deny_patterns: list[str] = field(default_factory=list)
+    # Lines appended to the public tree's .gitignore before the commit, after a blank line.
     gitignore_extra: list[str] = field(default_factory=list)
+    # .gitignore lines only the private build needs: each is left out of the public .gitignore,
+    # with its comment when it is the only line of its block.
+    gitignore_drop: list[str] = field(default_factory=list)
 
 
 def load_config(path: Path) -> Config:
@@ -165,6 +171,9 @@ def content_problems(files: Mapping[str, str], cfg: Config) -> list[str]:
         for word in cfg.deny:
             if word and word.casefold() in text.casefold():
                 out.append(f"{path}: deny word #{cfg.deny.index(word) + 1}")
+        for number, pattern in enumerate(cfg.deny_patterns, start=1):
+            if re.search(pattern, text):
+                out.append(f"{path}: deny pattern #{number}")
     return out
 
 
@@ -240,18 +249,33 @@ def release(repo: Path, cfg: Config, dest: Path, ref: str = "HEAD") -> Result:
     return res
 
 
+def public_gitignore(text: str, drop: Iterable[str], extra: Iterable[str]) -> str:
+    """The public .gitignore: `drop` lines removed (a block of comments and patterns, separated by
+    blank lines, goes whole when only dropped patterns are left in it), then `extra` appended as
+    its own block. Line endings are LF."""
+    drop, extra = set(drop), list(extra)
+    blocks = []
+    for block in re.split(r"\n\s*\n", text.replace("\r\n", "\n").strip("\n")):
+        lines = [line for line in block.split("\n") if line.strip() not in drop]
+        if any(line.strip() and not line.lstrip().startswith("#") for line in lines):
+            blocks.append("\n".join(lines))
+    if extra:
+        blocks.append("\n".join(extra))
+    return "\n\n".join(blocks) + "\n" if blocks else ""
+
+
 def write_tree(dest: Path, files: Mapping[str, bytes], cfg: Config) -> None:
-    """Write the public files into `dest`, then append `gitignore_extra` to its .gitignore."""
+    """Write the public files into `dest`, then make its .gitignore public: `gitignore_drop`
+    lines left out and `gitignore_extra` appended (LF line endings on every system)."""
     for p, data in files.items():
         target = dest / p
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(data)
-    if cfg.gitignore_extra:
+    if cfg.gitignore_extra or cfg.gitignore_drop:
         ignore = dest / ".gitignore"
-        text = ignore.read_text(encoding="utf-8") if ignore.exists() else ""
-        lines = "\n".join(cfg.gitignore_extra)
-        sep = "" if not text or text.endswith("\n") else "\n"
-        ignore.write_text(f"{text}{sep}{lines}\n", encoding="utf-8")
+        text = ignore.read_bytes().decode("utf-8") if ignore.exists() else ""
+        public = public_gitignore(text, cfg.gitignore_drop, cfg.gitignore_extra)
+        ignore.write_bytes(public.encode("utf-8"))
 
 
 def main(argv: list[str] | None = None) -> int:

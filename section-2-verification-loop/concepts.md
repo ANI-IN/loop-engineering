@@ -141,15 +141,15 @@ The reviewer's output contract is `ReviewVerdict` in
 
 ## What we measured
 
-| Measure | Reviewer on | Reviewer off |
+| Measure, schema scout on | Reviewer on | Reviewer off |
 |---|---|---|
-| Tokens per question | Not run | Not run |
-| Latency per question | Not run | Not run |
-| Reviewer approves the wrong spine answer | Not run | Not applicable |
-<!-- provisional: calibration fills this table from real runs with the reviewer on and off -->
+| Tokens per question | 8,648 | 5,786 |
+| Latency per question | 24.2 s | 12.8 s |
+| Reviewer approves the wrong spine answer | 1 of 7 runs (concern in 6) | Not applicable |
 
-The class runs and the calibration runs will be listed on the
-[Section 2 evidence page](../docs/evidence/section-2-verification-loop.md).
+Tokens and latency are the mean of 4 benchmark questions under v1, one run each; the extra cost
+comes with the reviewer's concerns, which send the analyst back and then hold the answer. The runs
+are on the [Section 2 evidence page](../docs/evidence/section-2-verification-loop.md).
 
 ## When it helps, and when it does not
 

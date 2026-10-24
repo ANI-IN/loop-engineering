@@ -7,7 +7,7 @@ This outline is the input for the deck and the review gate before it is built. S
 Every console control and demo name in the notes comes from the demo registry; every file and line range in a code walkthrough comes from that section's demo walkthrough page; every measured number comes from the calibration of 22 and 23 October 2026 on gpt-6-luna. Values the next live session still changes carry a refresh marker that says what to refresh.
 
 Terms spelled out once for the whole outline: application programming interface (API), Structured Query Language (SQL), Coordinated Universal Time (UTC), JavaScript Object Notation (JSON), and large language model (LLM).
-<!-- refresh after the session: the finale chain with the SQL guidance check and two analyzer candidates chosen on the dev split, the deterministic naive analyzer blocked twice, the live re-verification of Assignment 4, and trace sampling seen live after the LangSmith limit resets on 1 November; each marker below names its own value -->
+<!-- refresh after the session: trace sampling seen live after the LangSmith limit resets on 1 November; each marker below names its own value -->
 
 ## Opening
 
@@ -132,7 +132,7 @@ Recommended on the key's project: a 3-dollar limit and an alert at 1.50 dollars
 Speaker notes:
 
 Time: 0.5 minutes (0:03-0:03:30)  
-Say: You get your OpenAI key from the operations team. Paste it into your .env file and never commit it; the file is ignored by git. The recommended limit on your key's project is 3 dollars, with an alert at 1.50 dollars. That is plenty: one analyst run costs about a tenth of a cent, a full experiment of 70 runs about 6 to 8 cents, and each assignment check stops at its own spend cap of 1 dollar. Every run shows its tokens and cost on the console, so you can see what your own experiments spend.  
+Say: You get your OpenAI key from the operations team. Paste it into your .env file and never commit it; the file is ignored by git. The recommended limit on your key's project is 3 dollars, with an alert at 1.50 dollars. That is plenty: one analyst run costs about a tenth of a cent, a full experiment of 70 runs about 6 to 9 cents, and each assignment check stops at its own spend cap of 1 dollar. Every run shows its tokens and cost on the console, so you can see what your own experiments spend.  
 Point at: the never-committed line, then the limit line.  
 Likely question: "Which model does the class use?" Answer: gpt-6-luna, named in the model setting of the example environment file; it is a reasoning model, which matters in Section 1: Agent loop.  
 Transition: LangSmith is the second key.
@@ -643,8 +643,8 @@ Expected live result: a mismatch against gold with at least one trap note on the
 May vary: which traps the SQL hits, the wrong value, the wording, and whether the run posts or holds. If it does, say: the exact mistake varies, the fact of a mistake does not, because the knowledge it needs is absent. If the strip shows held for approval, say: that is the reviewer from Section 2: Verification loop raising a concern, which it did on this answer in calibration; the gold check still shows the mismatch.  
 If it stalls: reset and run it again, `make reset NAME=agent-loop`, then the same trigger. In calibration the second attempt got no gold check within 90 seconds; the gold checks were hardened the same night so one run can never block another, and both retakes got their gold check.  
 Demo: unbounded rows.  
-Starting state: the Agent page; the unbounded rows bug (`BUG_UNBOUNDED_ROWS`) switched on, its chip visible on the status line. Reset first: `make reset NAME=agent-loop`.  
-Do: Agent > Run large query, or `make demo NAME=agent-unbounded-rows`. Then set `BUG_UNBOUNDED_ROWS=0` in `.env`, run `make up` so the services read it, and run it again. Before class the flag was set to 1 the same way.  
+Starting state: the Agent page; the unbounded rows bug (`BUG_UNBOUNDED_ROWS`) switched on: once the confident wrong answer had posted, `BUG_UNBOUNDED_ROWS=1` was set in `.env` and `make up` ran, during its narration, so the first two demos ran on the fixed system; its chip shows on the status line once the run starts. Reset first: `make reset NAME=agent-loop`.  
+Do: Agent > Run large query, or `make demo NAME=agent-unbounded-rows`. Then set `BUG_UNBOUNDED_ROWS=0` in `.env`, run `make up` so the services read it, and run it again.  
 Narrate: tie it to concept 2, Context is a budget. With the bug on, a 10,000-row result goes to the model and every later call carries it. With it off, the tool returns the row cap, the total count, and the truncation notice.  
 Point at, in order: the token counter with the bug on; the same counter with it off; the truncation notice and the total count under the rows; and last the live stamp: the run's start time in your local time and its trace link.  
 Expected live result: tokens per run jump with the bug on and drop back with it off. Measured with the bug on: 183,639 and 185,727 tokens per run, stopped by the run budget after 18 or 19 seconds. With the bug off: 19,661 and 17,298 tokens per run; one of the two runs was held by a reviewer concern, which does not change the token story.  
@@ -784,16 +784,16 @@ The demo: `make demo NAME=verify-malicious-sql`, `make demo NAME=verify-retry-ca
 | 29 | Agenda (Section 2 highlighted) | concept | 0:55-0:55:30 | Section 2: Verification loop, after the agent loop | section-2-verification-loop/README.md |
 | 30 | Failure story: the product name that said delete | diagram | 0:55:30-0:57:30 | Illustrative: an instruction hidden in data reaches SQL, and only the last layer stops it | section-2-verification-loop/concepts.md |
 | 31 | Verification loop: if every grader passes, is the answer right? | concept | 0:57:30-1:00 | KEY IDEA: No. Graders prove a query is safe and well formed, not that it means what the business means | section-2-verification-loop/README.md |
-| 32 | 1) Allowlist the shape, not a list of bad words | diagram | 1:00-1:05 | Key idea: accept only shapes you can name; reject everything else, including what the parser cannot model | the course research synthesis (sqlglot guard findings) |
-| 33 | 2) Permissions are the boundary, not the parser | table | 1:05-1:09:30 | Key idea: a session can switch a default off; it cannot grant itself a privilege | the course research synthesis (read-only role findings, PostgreSQL 16.2) |
-| 34 | 3) Stops that are not the model's choice | table | 1:09:30-1:13:30 | Key idea: every loop needs a stop the model cannot argue with, placed before the next model call | platform/packs/datapilot_us/pack.yaml (limits, cost_guard); the course research synthesis (middleware findings) |
-| 35 | 4) A checker that shares the maker's blind spots | table | 1:13:30-1:18 | Key idea: judgement goes after the deterministic checks, and a checker on the same model shares its errors | platform/src/datapilot/contracts/agents.py; the prior-art research notes (test-suite accuracy) |
+| 32 | 1) Allowlist the shape, not a list of bad words | diagram | 1:00-1:05 | Key idea: accept only shapes you can name; reject everything else, including what the parser cannot model | measured for the course (sqlglot guard) |
+| 33 | 2) Permissions are the boundary, not the parser | table | 1:05-1:09:30 | Key idea: a session can switch a default off; it cannot grant itself a privilege | measured for the course on PostgreSQL 16.2 during research (read-only role); compose.yaml (PostgreSQL 18.6) |
+| 34 | 3) Stops that are not the model's choice | table | 1:09:30-1:13:30 | Key idea: every loop needs a stop the model cannot argue with, placed before the next model call | platform/packs/datapilot_us/pack.yaml (limits, cost_guard); Sources 11 and 12 (middleware) |
+| 35 | 4) A checker that shares the maker's blind spots | table | 1:13:30-1:18 | Key idea: judgement goes after the deterministic checks, and a checker on the same model shares its errors | platform/src/datapilot/contracts/agents.py; Source 8 (test-suite accuracy) |
 | 36 | Cheat sheet: verification in four moves | table | 1:18-1:19 | Allowlist the shape, scope the credential, cap the loop, decorrelate the checker | section-2-verification-loop/README.md |
 | 37 | Section 2: Verification loop - Implementation Notes: Every grader passes, still wrong | demo | 1:19-1:37 | Badge DEMO - 2 and title only; the demos and the code walkthrough are in the notes | section-2-verification-loop/demo/walkthrough.md |
 | 38 | Questions | concept | 1:37-1:42 | No Question Is Too Small Every Question Deserves an Answer!! Likely: why two databases; can the reviewer be fooled | - |
-| 39 | Reference: skip if short on time - attack patterns | table | 1:42-1:43 | Seven attack patterns a syntax-tree guard must handle, and the defense for each | the course research synthesis (sqlglot guard findings) |
-| 40 | Reference: skip if short on time - database errors as feedback | table | 1:43-1:44 | Map each database error to feedback the agent can act on, and to retry or stop | the course research synthesis (PostgreSQL error codes); Source 10 |
-| 41 | Reference: skip if short on time - why one database lies | diagram | 1:44-1:45 | A wrong query can match on one database by coincidence; distinguishing rows expose it | the prior-art research notes (test-suite accuracy); Source 8 |
+| 39 | Reference: skip if short on time - attack patterns | table | 1:42-1:43 | Seven attack patterns a syntax-tree guard must handle, and the defense for each | measured for the course (sqlglot guard) |
+| 40 | Reference: skip if short on time - database errors as feedback | table | 1:43-1:44 | Map each database error to feedback the agent can act on, and to retry or stop | Source 10 (PostgreSQL error codes) |
+| 41 | Reference: skip if short on time - why one database lies | diagram | 1:44-1:45 | A wrong query can match on one database by coincidence; distinguishing rows expose it | Source 8 (test-suite accuracy) |
 
 Numbers this section states (each gets a "Re-check after live runs" line in its notes):
 
@@ -802,7 +802,7 @@ Numbers this section states (each gets a "Re-check after live runs" line in its 
 - Statement timeout of 5,000 milliseconds: from `limits.statement_timeout_ms` in pack.yaml.
 - Plan cost cap 500,000 and plan rows cap 5,000,000: from `cost_guard` in pack.yaml.
 - 6.5 percent mean false-positive rate of single-database execution match, 11.0 percent on extra-hard queries, about 1,000 fuzzed databases per schema, about 42 kept per query, 2.5 percent false negatives: from Source 8.
-- SQLSTATE 25006, 42501, 57014: from Source 10 and the local PostgreSQL 16.2 runs in the course research synthesis.
+- SQLSTATE 25006, 42501, 57014: from Source 10 and runs measured for the course on PostgreSQL 16.2 during research; the class stack runs PostgreSQL 18.6.
 - Malicious SQL: fixed system guard, guard, then 42501 from the missing grant; naive guard 25006, 25006, then 42501: docs/calibration-report.md, Demos.
 - Retry cap demo: escalated after 3 attempts, in 69 and 79 seconds: docs/calibration-report.md, Demos; without the cap, 9 attempts until the 60,000-token run budget, 62,762 and 63,737 tokens, 0.0067 and 0.0069 dollars, 104 and 111 seconds: docs/calibration-report.md, Resumed after the ledger correction.
 - Every grader passes, still wrong, retaken twice: 76,981,355.95 dollars against gold 64,015,091.21, 4 trap labels each: docs/calibration-report.md, Resumed without traces.
@@ -938,11 +938,11 @@ Time: 4.5 minutes (1:05-1:09:30)
 Plain explanation: every layer above the database is code you hope is right. The database role is the one layer the agent's own session cannot rewrite, as long as the barrier is a missing grant rather than a default setting. Defaults are preferences; grants are walls.  
 Concrete example from DataPilot: the agent connects as a role with SELECT on the warehouse schema and nothing else. The executor also opens every query with `SET TRANSACTION READ ONLY`, and the process refuses to start unless a probe write inside a read-only transaction fails. Temporary tables and schema creation are revoked from the public role. A write the database refuses is an incident, not a mistake to retry: the run ends escalated at once.  
 Analogy: a sign on a door that says staff only, versus a door with no key cut for you.  
-Under the hood: tested on PostgreSQL 16.2. Inside `BEGIN READ ONLY`, an INSERT or CREATE TEMP raises SQLSTATE 25006 even as superuser. But a session can run `SET default_transaction_read_only = off`, and after that an INSERT failed with 42501 only because the role lacked the grant. CREATE TEMP TABLE succeeded until `REVOKE TEMP ON DATABASE ... FROM PUBLIC`. And `dblink` or `query_to_xml` can run SQL held inside a string, which no syntax tree sees; only the grants stop what those strings try to do.  
+Under the hood: tested on PostgreSQL 16.2 during research; the class stack runs 18.6, where the read-only probe at startup checks the same barrier. Inside `BEGIN READ ONLY`, an INSERT or CREATE TEMP raises SQLSTATE 25006 even as superuser. But a session can run `SET default_transaction_read_only = off`, and after that an INSERT failed with 42501 only because the role lacked the grant. CREATE TEMP TABLE succeeded until `REVOKE TEMP ON DATABASE ... FROM PUBLIC`. And `dblink` or `query_to_xml` can run SQL held inside a string, which no syntax tree sees; only the grants stop what those strings try to do.  
 Source 9: PostgreSQL ALTER ROLE (https://www.postgresql.org/docs/current/sql-alterrole.html): "Role-specific variable settings take effect only at login; SET ROLE and SET SESSION AUTHORIZATION do not process role-specific variable settings." A role setting is a session default, applied at login, not a barrier.  
 Transfer: for any agent with credentials, scope the credential, not the instructions. Read-only API tokens, least-privilege cloud roles, per-agent database users. Then test the barrier at startup the way the probe does, and refuse to run if it is missing.  
 Point at: the two rows that answer yes; those are the layers an attacker can switch off.  
-Ask: "Which row would you test in CI?" Expected: the grant row, with a probe that must fail.  
+Ask: "Which row would you test in continuous integration?" Expected: the grant row, with a probe that must fail.  
 Likely question: "If the role is the real boundary, why keep the guard?" Answer: the guard rejects early with a reason the agent can use, and it blocks reads the role allows but you do not want, such as `pg_sleep` or reading server files.  
 Likely question: "Why revoke temporary tables if they vanish anyway?" Answer: a writable temp table is a place to stage data and a way around read-only assumptions; the probe found it open by default.  
 Misconception: a read-only transaction makes the session read-only. Correction: the session can turn the default off; only the missing grant holds.  
@@ -1064,10 +1064,10 @@ Speaker notes:
 Time: 18 minutes (1:19-1:37)  
 Run sheet: three core demos, about 12 minutes, then the code walkthrough, about 6 minutes. Share the console's Verify page full screen: the pre-flight checklist on the left, the defense-layer panel on the right. Calibration ran each core demo twice with a reset between; the measured results are under each demo. A planted bug is switched by setting its flag to 1 in `.env` and running `make up`, and back to 0 the same way.  
 Demo: malicious SQL.  
-Starting state: Verify page open, the naive guard (`BUG_NAIVE_GUARD`) switched on, its chip visible on the status line. Reset first: `make reset NAME=verification-loop`.  
+Starting state: Verify page open, the naive guard (`BUG_NAIVE_GUARD`) switched on. Reset first: `make reset NAME=verification-loop`. The reset clears the runs, so its chip shows on the status line once the first run with the flag starts.  
 Do: Verify > Send malicious SQL, or `make demo NAME=verify-malicious-sql`. Then switch the naive guard off and send it again.  
 Narrate: concept 1, allowlist the shape. The naive guard reads the first word, sees SELECT, and lets "SELECT 1; DELETE FROM orders" and a data-modifying CTE through. Concept 2, permissions are the boundary: the read-only transaction refuses both with SQLSTATE 25006, and the third statement, a raw DELETE as the agent role, meets the missing grant, 42501. A refused write ends the run escalated at once; it is never fed back as a retry. With the syntax-tree guard on, layer two rejects the first two before they reach the database.  
-Point at, in order: the statement text; the defense-layer panel with the layer that stopped each statement; the row counts showing no warehouse row changed; and last the live stamp: the run's start time in your local time and its trace link.  
+Point at, in order: the statement text; the defense-layer panel with the layer that stopped each statement and the layers it never reached; and last the live stamp: the run's start time in your local time and its trace link.  
 Expected live result: with the naive guard, 25006, 25006, then 42501; with the syntax-tree guard, the guard, the guard, then 42501; no warehouse row changes in either run. Measured: exactly that, in about 6 seconds, twice each.  
 May vary: timings only. If they do, say: the outcome is deterministic; only the clock moves.  
 If it stalls: reset and run it again, `make reset NAME=verification-loop`, then the same trigger.  
@@ -1150,7 +1150,7 @@ Source 7: LangChain SQL agent (https://docs.langchain.com/oss/python/langchain/s
 Transfer: keep a table like this for any language your agent emits, with one test per row, and add a row each time a parser surprises you.  
 Point at: the Defense column; no row relies on the prompt.  
 Ask: "Which row is the grant's job, not the guard's?" Expected: SQL in a string.  
-Likely question: "Is a new parser version a risk?" Answer: yes; pin it, and keep these tests so an upgrade that changes a node type fails CI.  
+Likely question: "Is a new parser version a risk?" Answer: yes; pin it, and keep these tests so an upgrade that changes a node type fails continuous integration.  
 Likely question: "Why reject FOR UPDATE in a read-only tool?" Answer: it takes row locks that can block writers elsewhere, a side effect without a write.  
 Misconception: if it parses, it is safe. Correction: three rows here parse without error.  
 Transition: next reference slide.
@@ -1259,15 +1259,15 @@ The demo: `make demo NAME=events-webhook-question`, `make demo NAME=events-appro
 | 43 | Agenda (Section 3 highlighted) | concept | 1:55-1:55:30 | Section 3: Event loop: the same agent, now driven by events, schedules, and people | section-3-event-loop/README.md |
 | 44 | Failure story: the digest that posted twice | diagram | 1:55:30-1:57:30 | Illustrative: a retried digest posts twice, an export runs unwatched, stop misses a running job | section-3-event-loop/concepts.md |
 | 45 | Event loop: should an agent route the events? | concept | 1:57:30-2:00 | KEY IDEA: No. Routing a closed set of event types is a lookup; a table is testable and auditable | section-3-event-loop/README.md |
-| 46 | 1) At-least-once delivery needs idempotent effects | diagram | 2:00-2:05 | Key idea: delivery repeats, so every effect needs a deterministic key and a conflict rule | the course research synthesis (Postgres queue caveats); platform/planted/registry.yaml |
-| 47 | 2) The queue is a table: claim, lease, reap | diagram | 2:05-2:09:30 | Key idea: a job in a table survives what a process does not | the course research synthesis (Postgres queue); platform/src/datapilot/contracts/lifecycle.py |
-| 48 | 3) Durable approval: pause where state lives | diagram | 2:09:30-2:14 | Key idea: a pending approval is state, so it lives in the checkpointer, not in memory | the course research synthesis (human approval, checkpointer); platform/packs/datapilot_us/pack.yaml |
-| 49 | 4) A router, levels, and a stop for running work | diagram | 2:14-2:18:30 | Key idea: policy is a table, autonomy is a level, and the stop is checked before every step | platform/src/datapilot/contracts/autonomy.py; the course research synthesis (kill switch) |
+| 46 | 1) At-least-once delivery needs idempotent effects | diagram | 2:00-2:05 | Key idea: delivery repeats, so every effect needs a deterministic key and a conflict rule | Sources 13 to 15 (Postgres queue caveats); platform/planted/registry.yaml |
+| 47 | 2) The queue is a table: claim, lease, reap | diagram | 2:05-2:09:30 | Key idea: a job in a table survives what a process does not | Sources 13 to 15 (Postgres queue); platform/src/datapilot/contracts/lifecycle.py |
+| 48 | 3) Durable approval: pause where state lives | diagram | 2:09:30-2:14 | Key idea: a pending approval is state, so it lives in the checkpointer, not in memory | Source 16 (human approval, checkpointer); platform/packs/datapilot_us/pack.yaml |
+| 49 | 4) A router, levels, and a stop for running work | diagram | 2:14-2:18:30 | Key idea: policy is a table, autonomy is a level, and the stop is checked before every step | platform/src/datapilot/contracts/autonomy.py; Source 17 (autonomy levels and the kill switch) |
 | 50 | Cheat sheet: the event loop in four moves | table | 2:18:30-2:19 | Key every effect, claim with leases, pause durably, route by table and stop before each step | section-3-event-loop/README.md |
 | 51 | Section 3: Event loop - Implementation Notes: The kill switch in flight | demo | 2:19-2:41 | Badge DEMO - 3 and title only; the demos and code walkthrough are in the notes | section-3-event-loop/demo/walkthrough.md; platform/demos/registry.yaml |
 | 52 | Questions | concept | 2:41-2:47 | Fixed question slide; likely: why not a message broker, and what if nobody approves | - |
-| 53 | Reference: skip if short on time - queue failure modes | table | 2:47-2:48 | Failure, symptom, and defense for each way a table-backed queue goes wrong | the course research synthesis (Postgres queue); the cost research notes |
-| 54 | Reference: skip if short on time - router or supervisor | table | 2:48-2:49 | A decision table for when routing should be a table and when it should be an agent | docs/architecture.md; the course research synthesis |
+| 53 | Reference: skip if short on time - queue failure modes | table | 2:47-2:48 | Failure, symptom, and defense for each way a table-backed queue goes wrong | Sources 13 to 15 (Postgres queue); docs/costs.md |
+| 54 | Reference: skip if short on time - router or supervisor | table | 2:48-2:49 | A decision table for when routing should be a table and when it should be an agent | docs/architecture.md |
 | 55 | Reference: skip if short on time - two clocks | table | 2:49-2:50 | Business logic uses the business date and its time zone; live stamps use the wall clock | platform/src/datapilot/business_date.py; platform/demos/registry.yaml |
 
 Numbers this section states (each gets a "Re-check after live runs" line in its notes):
@@ -1371,7 +1371,7 @@ Plain explanation: Every queue, webhook, and scheduler you will use delivers at 
 Concrete example from DataPilot: A question arrives as a webhook with the sender's event id. The api inserts the event with `INSERT ... ON CONFLICT (event_id) DO NOTHING`. The second and third copies hit the conflict, create no job, and are counted as duplicates ignored on the run board. The morning digest has no sender, so its key is built from the job name and the business date, `digest:YYYY-MM-DD`. Two planted bugs show the failure: the missing idempotency (`BUG_NO_IDEMPOTENCY`) posts three answers, and the random digest id (`BUG_RANDOM_DIGEST_ID`) posts two digests.  
 Analogy: A cheque number. The bank may see the same cheque twice through two channels, but it clears one cheque per number.  
 Under the hood: The key must be derived from the meaning of the event, never generated at arrival. A random id per arrival defeats the constraint because every copy looks new. A key from wall-clock time breaks the other way: a retry a second later gets a new key. Business identity is the rule: who sent it and what it is about, or which job for which business date. The constraint lives in the database, not in application memory, so it holds across workers and restarts. The conflict rule is a choice: do nothing for a repeated question; update the existing post when a late order changes a daily alert, which is what Assignment 3: Event loop builds.  
-Source 14: Postgres Job Queues & Failure By MVCC (https://brandur.org/postgres-queues), in summary: a Postgres-backed queue is at-least-once, so handlers must be safe to run again.  
+Source 15: You don't need a job queue: Postgres already has SKIP LOCKED (https://www.prisma.io/blog/you-dont-need-a-job-queue-postgres-already-has-skip-locked), in summary: a crash after the side effect but before the job is marked done can run a job twice, so handlers must be idempotent.  
 Transfer: Use the same pattern for payments, emails, ticket creation, and any agent tool with a side effect. Ask of every effect: what is its business key, and what happens on the second arrival: ignore, update, or reject.  
 Point at: the two columns row by row, the worked example's 2 duplicates ignored, then the trade-off line: too coarse or too fine.  
 Ask: "What key would you use for an email an agent sends after a ticket closes?" Expected: the ticket id plus the email type, not a timestamp or a random id.  
@@ -1449,7 +1449,7 @@ Point at: the last row of the table: the condition re-runs on resume, so it is d
 Ask: "Why is 'ask the reviewer agent whether this needs approval' a bad condition?" Expected: it can answer differently on resume, and the run loses track of its pause.  
 Likely question: "What if nobody ever approves?" Answer: The run stays held and visible on the board; the kill switch can block it, and you can add an expiry that rejects.  
 Likely question: "Why forbid edits?" Answer: An edited query skips every grader that passed the original; reject and ask again instead.  
-Misconception: "The approval is just a UI dialog." Correction: The dialog is a view; the approval is a durable checkpoint plus a decision record.  
+Misconception: "The approval is just a user interface dialog." Correction: The dialog is a view; the approval is a durable checkpoint plus a decision record.  
 Transition: Approvals decide single actions. Who decides what may run unattended at all, and how do we stop everything?
 
 **Slide 49: 4) A router, levels, and a stop for running work**
@@ -1545,7 +1545,7 @@ Expected live result: the pending approval survives the restart, and approving r
 May vary: the row count wording and how long the restart takes. If it does, say: what matters is that the same run id resumes.  
 If it stalls: reset and run it again, `make reset NAME=event-loop`, then the same trigger.  
 Demo: Duplicate events.  
-Starting state: the missing idempotency (`BUG_NO_IDEMPOTENCY`) switched on from the planted chip. Reset first: `make reset NAME=event-loop`.  
+Starting state: the missing idempotency (`BUG_NO_IDEMPOTENCY`) and the random digest id (`BUG_RANDOM_DIGEST_ID`) switched on: both set to 1 in `.env`, then `make up`; the console has no control for a flag. Reset first: `make reset NAME=event-loop`.  
 Do: Events > Send the same event three times, or `make demo NAME=events-duplicate-events`; then switch the planted bug off, reset, and send the same event three times again.  
 Narrate: Delivery is at least once, and here are three deliveries of one event (concept 1, idempotent effects). Without a key, three effects; with the key and the conflict rule, one.  
 Point at, in order: three posts in the channel with the bug on; then one post and the count of two duplicates ignored with it off; and last the live stamp: the run's start time in your local time and its trace link.  
@@ -1554,7 +1554,7 @@ May vary: the timing of the duplicates. If it does, say: order does not matter; 
 If it stalls: reset and run it again, `make reset NAME=event-loop`, then the same trigger.  
 Demo: The kill switch in flight.  
 Starting state: demo pacing (`DEMO_PACING`) on, so a run moves slowly between steps, and the kill switch at claim only (`BUG_KILLSWITCH_AT_CLAIM_ONLY`) on. Reset first: `make reset NAME=event-loop`.  
-Do: send a webhook question; while its strip is in Running, use Status line > Kill switch: arm, then stop, or `make demo NAME=events-kill-switch-in-flight`. Then switch the planted bug off, reset, and repeat.  
+Do: send a webhook question; while its strip is in Running, use Status line > Kill switch: arm, then stop, or `make demo NAME=events-kill-switch-in-flight`. Then release the switch (Status line > Release kill switch, or `make reset NAME=event-loop`): the first half leaves it engaged, and an engaged switch blocks the next run at claim. Then switch the planted bug off with `make up`, and repeat. End with `make reset NAME=event-loop`: the switch stays engaged until a release, and it would block every later run, the finale included.  
 Narrate: With the check at claim only, no new job starts, but the running one keeps going: that is beat four of the story. With the check before every model and tool call (concept 4), the run stops at its next step.  
 Point at, in order: the strip still moving with the bug on; with it off, the strip moving to Blocked by kill switch; the status line dropping to the report-only level; and last the live stamp: the run's start time in your local time and its trace link.  
 Expected live result: the in-flight strip moves to Blocked by kill switch, and the status line shows the report-only level. Measured: stopped in flight in 33 and 8 seconds. With the check at claim only, measured twice: the in-flight run posted after the kill switch was engaged.  
@@ -1730,16 +1730,16 @@ Speaker notes:
 Time: 10 minutes (2:55-3:05)  
 Say: Write the return time, 3:05, in the chat. Check once that the grouped benchmark progress strip on the run board is counting up.  
 Point at: the timer.  
-Likely question: "Will the experiment finish in time?" Answer: yes; at concurrency 8 a 70-run experiment took 187 to 285 seconds in calibration, well inside the poll and the break.  
+Likely question: "Will the experiment finish in time?" Answer: yes; at concurrency 8 a 70-run experiment took 182 to 459 seconds in calibration, and the baseline itself 266 to 285 seconds, inside the poll and the break.  
 Transition: Welcome back. The poll asked how much autonomy to grant; now we earn it.
 
 ## Section 4: Hill-climbing loop
 
 The failure this section fixes: Rules learned from the questions they were written for raise that score, break other answers, and then get trusted to run unattended on too little evidence.
 
-Measured in calibration, each core demo twice with a reset between: the baseline experiment shown in 285 and 266 seconds, the starting version at 2 of 15 holdout passes; the analyzer team shown in 62 and 98 seconds, 7 and 8 rules through the overfit guard; the candidate experiment not shown, 3 and 6 of 15 against 2 with 0 regressions (the version promoted on 22 October scored 11 and 12 of 15); cleared for the unattended level not shown, both attempts posted at the assisted level with a wrong answer after those weak candidates, while on 22 October the spine question by webhook was right at the assisted level. On 23 October the analyzer team at reasoning effort high gave candidates of 2, 9, and 5 of 15 from the same failed dev items, so the spread stays; the finale chain on the confirmed standard promoted the best, 10 of 15 against 2 with 0 regressions, cleared average order value and products but not revenue (one revenue item fell short twice), and posted the spine question at the assisted level with a wrong answer, 63,986,616.77 dollars against gold 64,015,091.21, the internal-account filter missing; the naive analyzer's first live attempt, before it was made deterministic, passed 15 of 15 holdout items and the gate did not block it. <!-- refresh after the session: the finale chain with the SQL guidance check and two candidates chosen on the dev split: both candidates, the one kept, the guidance rejections, the families cleared, and the spine answer and its level; the deterministic naive analyzer, blocked by the gate's fourth condition, twice -->
+Measured in calibration, each core demo twice with a reset between: the baseline experiment shown in 285 and 266 seconds, the starting version at 2 of 15 holdout passes; the analyzer team shown in 62 and 98 seconds, 7 and 8 rules through the overfit guard; the candidate experiment not shown, 3 and 6 of 15 against 2 with 0 regressions (the version promoted on 22 October scored 11 and 12 of 15); cleared for the unattended level not shown, both attempts posted at the assisted level with a wrong answer after those weak candidates, while on 22 October the spine question by webhook was right at the assisted level. On 23 October the analyzer team at reasoning effort high gave candidates of 2, 9, and 5 of 15 from the same failed dev items, so the spread stays; the finale chain on the confirmed standard promoted the best, 10 of 15 against 2 with 0 regressions, cleared average order value and products but not revenue (one revenue item fell short twice), and posted the spine question at the assisted level with a wrong answer, 63,986,616.77 dollars against gold 64,015,091.21, from an internal-account filter that was too broad; the naive analyzer's first live attempt, before it was made deterministic, passed 15 of 15 holdout items and the gate did not block it. In the live session of 23 October, afternoon, with the SQL guidance check and two candidates chosen on the dev split: candidate A 18 of 25 dev with 11 rules, candidate B 19 of 25 with 8 rules, B kept as v8, the guidance check rejecting none of its rules, in 326 seconds; v8 passed 14 of 15 holdout items against 2, 12 of 13 trap items fixed, 0 regressions; revenue, average order value, customers, and products cleared, orders not; the spine question correct, 64,015,091.21 dollars, posted at the unattended level; and the deterministic naive analyzer blocked twice, 21 rules all flagged, holdout 2 of 15. In the capture session of 23 October, evening: candidate A 21 of 25 dev with 8 rules, candidate B 10 of 25 with 5 rules, A kept as v9, in 377 seconds; v9 passed 14 of 15 holdout items against 2, 0 regressions, in 186 seconds; the finale held 5 times over 50 seconds while the promotion and its clearance re-runs finished, then the spine question correct, 64,015,091.21 dollars, posted at the unattended level with the same four families cleared; and the naive analyzer blocked a third time, 20 rules all flagged, holdout 2 of 15.
 
-The demo: `make demo NAME=improve-baseline-experiment`, `make demo NAME=improve-naive-analyzer-blocked`, `make demo NAME=improve-analyzer-team-approve`, `make demo NAME=improve-candidate-experiment`, `make demo NAME=improve-cleared-unattended`, launched at 2:50 for the baseline experiment, during the poll; the rest at 3:25 on the DEMO slide, code walked at 3:40, recovery `make reset NAME=hill-climbing-loop` and re-run: reset and run it again, live.
+The demo: `make demo NAME=improve-baseline-experiment`, `make demo NAME=improve-naive-analyzer-blocked`, `make demo NAME=improve-analyzer-team-approve`, `make demo NAME=improve-candidate-experiment`, `make demo NAME=improve-cleared-unattended`, launched at 2:50 for the baseline experiment, during the poll; 2:55 for the naive analyzer, at the break; the rest at 3:25 on the DEMO slide, code walked at 3:40, recovery `make reset NAME=hill-climbing-loop` and re-run: reset and run it again, live.
 
 | # | Slide | Layout | Time (start-end) | Says in one line | Source in the repository |
 |---|---|---|---|---|---|
@@ -1753,8 +1753,8 @@ The demo: `make demo NAME=improve-baseline-experiment`, `make demo NAME=improve-
 | 65 | Cheat sheet: the hill-climbing loop in four moves | table | 3:24:30-3:25 | Score by execution, split the learning, gate per item, earn autonomy per family | section-4-hill-climbing-loop/README.md |
 | 66 | Section 4: Hill-climbing loop - Implementation Notes: The candidate experiment | demo | 3:25-3:45 | Badge DEMO - 4 and title only; the demos and the code walkthrough are in the notes | section-4-hill-climbing-loop/demo/walkthrough.md; platform/demos/registry.yaml |
 | 67 | Questions | concept | 3:45-3:48 | Fixed question slide; open question: is N holdout questions enough evidence | - |
-| 68 | Reference: skip if short on time - gate statistics | table | 3:48-3:49 | How small holdouts behave: intervals, flaky items, three schemes, and the stability filter | the prior-art research notes, risk 9; pack.yaml evaluation |
-| 69 | Reference: skip if short on time - prior art compared | table | 3:49-3:49:30 | Genie, Cortex Analyst, Vanna, and LangChain's loop against this gate | the prior-art research notes; Sources 1, 21-23 |
+| 68 | Reference: skip if short on time - gate statistics | table | 3:48-3:49 | How small holdouts behave: intervals, flaky items, three schemes, and the stability filter | computed for the course; pack.yaml evaluation |
+| 69 | Reference: skip if short on time - prior art compared | table | 3:49-3:49:30 | Genie, Cortex Analyst, Vanna, and LangChain's loop against this gate | Sources 1, 21-23 |
 | 70 | Reference: skip if short on time - when learned knowledge fails | table | 3:49:30-3:50 | Failure modes of learned knowledge, their evidence, and the guard for each | Sources 18-20; pack.yaml evaluation; knowledge v2-overbroad |
 
 Numbers this section states (each gets a "Re-check after live runs" line in its notes):
@@ -1762,19 +1762,19 @@ Numbers this section states (each gets a "Re-check after live runs" line in its 
 - 40 benchmark items, 25 dev and 15 holdout, so 70 runs per experiment: from `platform/packs/datapilot_us/benchmark/dev.yaml` and `holdout.yaml` with `evaluation.holdout_repeats`.
 - Holdout questions per metric family (revenue 4, orders 4, customers 3, products 3, average order value 1): from `platform/packs/datapilot_us/benchmark/holdout.yaml`; calibration replaced 3 unstable items, then restored the reviewed holdout, so 0 were replaced in the end: docs/calibration-report.md, Stability and the holdout.
 - Holdout passes 2 of 15 under the starting version and 12 of 15 under the promoted one; 10 of 13 holdout trap items flipped; 0 regressions on either split: docs/calibration-report.md, Model bake-off. On 23 October v5 passed 10 of 15 against 2, 8 fixed, 0 regressions on either split, dev 15 of 25, in 257.6 seconds: docs/calibration-report.md, Resumed after the ledger correction.
-- Wall time of one 70-run experiment at concurrency 8: 187 to 285 seconds over 8 experiments; cost 0.0594 to 0.0828 dollars: docs/calibration-report.md, Wall time and Model bake-off.
-- Analyzer team candidates from the same kind of input: 3, 6, 11, and 12 of 15 holdout passes against 2 at reasoning effort medium: docs/calibration-report.md, Analyzer comparison; 2, 9, and 5 of 15 at reasoning effort high from the same failed dev items: docs/calibration-report.md, Resumed without traces. The response is two candidates chosen on the dev split only, `analyzer.candidates` 2 in pack.yaml, each about one more analyzer team run and 25 dev runs. <!-- refresh after the session: the holdout passes of the candidate kept from two, once the finale chain with two candidates has run live -->
-- A family clears for the unattended level on the gate's confirmed standard: every holdout item passes 2 of 3 runs, an item that falls short passes 2 of 3 more: `evaluation` in pack.yaml and docs/calibration-report.md, Stability and the holdout. On 23 October average order value and products cleared; revenue did not: net-revenue-cyber-monday-2025 failed 3 of 3, then passed 2 of 3 more, and app-share-net-revenue-fiscal-2026 passed 1 of 3, then 1 of 3 more: docs/calibration-report.md, Resumed after the ledger correction. <!-- refresh after the session: which families clear, with every clearance re-run, in the finale chain with the SQL guidance check and two candidates -->
-- The finale of 23 October posted at the assisted level, labelled verified, 63,986,616.77 dollars against gold 64,015,091.21, trap label missing internal filter, 16,291 tokens: docs/calibration-report.md, Resumed after the ledger correction.
-- The naive analyzer's first live attempt, before it was made deterministic: 21 rules, 15 of 15 holdout and 25 of 25 dev, the gate ready for human approval: docs/calibration-report.md, Resumed after the ledger correction. The gate's four conditions: `platform/src/datapilot/loop4_hill_climbing/gate.py`.
+- Wall time of one 70-run experiment at concurrency 8: 182 to 459 seconds over every 70-run experiment, two candidates at reasoning effort high taking 458.9 and 403.8; cost 0.0594 to 0.0914 dollars: docs/calibration-report.md, Wall time.
+- Analyzer team candidates from the same kind of input: four runs at reasoning effort medium gave 11, 3, and 6 of 15 holdout passes against 2, and 2 for v3 in an earlier session, with the first candidate re-measured at 12: docs/calibration-report.md, Analyzer comparison; 2, 9, and 5 of 15 at reasoning effort high from the same failed dev items: docs/calibration-report.md, Resumed without traces. The response is two candidates chosen on the dev split only, `analyzer.candidates` 2 in pack.yaml; measured twice, the kept candidate passed 14 of 15 both times and the step took 326 and 377 seconds: docs/calibration-report.md, Live sessions of 23 October, afternoon and evening.
+- A family clears for the unattended level on the gate's confirmed standard: every holdout item passes 2 of 3 runs, an item that falls short passes 2 of 3 more: `evaluation` in pack.yaml and docs/calibration-report.md, Stability and the holdout. On 23 October average order value and products cleared; revenue did not: net-revenue-cyber-monday-2025 failed 3 of 3, then passed 2 of 3 more, and app-share-net-revenue-fiscal-2026 passed 1 of 3, then 1 of 3 more: docs/calibration-report.md, Resumed after the ledger correction. In session 4 revenue, average order value, customers, and products cleared, revenue with no re-run; orders did not: business-day-orders-november-2025 failed 3 of 3, then 0 of 3 more: docs/calibration-report.md, Live session of 23 October, afternoon. In the evening the same four families cleared under v9: docs/calibration-report.md, Live session of 23 October, evening.
+- The finale of 23 October, morning, posted at the assisted level, labelled verified, 63,986,616.77 dollars against gold 64,015,091.21, 16,291 tokens; that total is exactly the one an internal-account filter that is too broad gives, `NOT ILIKE '%harborpine%'`, which also removes the look-alike addresses. The finale of session 4, and again the finale under v9 that evening: 64,015,091.21 dollars, gold passed, posted at the unattended level: docs/calibration-report.md.
+- The naive analyzer's first live attempt, before it was made deterministic: 21 rules, 15 of 15 holdout and 25 of 25 dev, the gate ready for human approval; the deterministic naive analyzer, three times since: 21, 21, and 20 rules, all flagged, holdout 2 of 15, blocked: docs/calibration-report.md. The gate's four conditions: `platform/src/datapilot/loop4_hill_climbing/gate.py`.
 - Experiment runs traced as a sample of about 1 run in 5, demo and check runs in full: `tracing.experiment_sample_rate` 0.2 in pack.yaml. <!-- refresh after the session: trace sampling seen live after the LangSmith limit resets on 1 November -->
 - Holdout 3 runs and pass on 2; an apparent dev regression re-run 2 more times under each version, counted when the candidate fails 2 of 2 and the active version passes 2 of 2; concurrency 8; overfit guard 6 words and 20 SQL tokens: from `evaluation` in `platform/packs/datapilot_us/pack.yaml`.
 - Confirming re-run of an apparent holdout regression (3 more runs, 2 of 3 must fail again) and the calibration stability filter (5 runs per item under each version, kept at 4 or 5 of 5 or 0 or 1 of 5): `evaluation` in pack.yaml.
 - MAGIC 56.52, 57.76, 59.13 on BIRD dev and 78.62 to 85.66 on Spider dev, when correcting only queries already known to be wrong; 56.52 to 58.55 on BIRD dev when applied to every query: Source 18, Tables 1 and 2.
 - SEED 148 pairs (9.65 percent) without evidence, 105 (6.84 percent) with wrong evidence, CodeS-15B 44.76 to 54.29: Source 20.
 - 6.5 percent mean false positives on one database, 11.0 percent on extra-hard queries, across 21 systems: Source 8.
-- 10 of 15 gives a 95 percent interval of 0.42 to 0.85; 12 of 15 gives 0.55 to 0.93: research notes, risk 9 (analysis).
-- Three holdout items flaky at 0.7 per run: about 51 percent chance of a false regression on single runs (research notes, risk 9), about 43 percent with pass on 2 of 3, about 11 percent with 2 of 3 plus a confirming 3-run re-run (computed for the course).
+- 10 of 15 gives a 95 percent interval of 0.42 to 0.85; 12 of 15 gives 0.55 to 0.93; 14 of 15 gives 0.70 to 0.99: Wilson intervals, computed for the course.
+- Three holdout items flaky at 0.7 per run: about 51 percent chance of a false regression on single runs, about 43 percent with pass on 2 of 3, about 11 percent with 2 of 3 plus a confirming 3-run re-run (computed for the course).
 - Cortex Analyst suggests up to 10 verified queries at a time; Genie's chat-mode benchmarks compare numbers to 4 significant digits: Sources 22 and 21.
 - N, the minimum holdout questions per family before the unattended level: 3, the calibration report's recommendation, built by Assignment 4: Hill-climbing loop, not in class code.
 
@@ -1836,7 +1836,7 @@ KEY IDEA: No. Promote only on holdout questions the analyzer never saw, with zer
 Speaker notes:
 
 Time: 2 minutes (3:07-3:09)  
-Say: No. A score on the questions the rules were written from measures memory, not generalisation. MAGIC, Source 18: MAGIC: Generating Self-Correction Guideline for In-Context Text-to-SQL (https://arxiv.org/html/2406.12692), learns a self-correction guideline from training failures; in their words, "MAGIC's guideline outperforms expert human's created ones." Then a later survey re-ran it. Source 19: Toward Real-World Table Agents (https://arxiv.org/html/2507.10281) found small gains over the baseline, lower scores with Qwen2.5-Coder-32B on both Spider dev and BIRD dev; in summary, feedback refinement gained little for weaker models. Same method, different model, different verdict. That is the second reason on the slide, and the argument for a gate that decides on questions the learner never saw.  
+Say: No. A score on the questions the rules were written from measures memory, not generalisation. MAGIC, Source 18: MAGIC: Generating Self-Correction Guideline for In-Context Text-to-SQL (https://arxiv.org/abs/2406.12692), learns a self-correction guideline from training failures; in their words, "MAGIC's guideline outperforms expert human's created ones." Then a later survey re-ran it. Source 19: Toward Real-World Table Agents (https://arxiv.org/html/2507.10281) found small gains over the baseline, lower scores with Qwen2.5-Coder-32B on both Spider dev and BIRD dev; in summary, feedback refinement gained little for weaker models. Same method, different model, different verdict. That is the second reason on the slide, and the argument for a gate that decides on questions the learner never saw.  
 Say: So the verdict has three parts. First, a holdout split the analyzer team never reads. Second, zero regressions, item by item, on both splits, which is the third reason on the slide. Third, a person approves the knowledge diff. Each part closes a different hole, and we take them in order.  
 Point at: the KEY IDEA box, then the three reasons, top to bottom.  
 Likely question: "Is a holdout split new?" Answer: No; every machine-learning engineer uses one. What we have not seen documented is the combination with zero regressions, human approval, an overfit guard, and autonomy granted per metric family.  
@@ -1904,7 +1904,7 @@ Plain explanation: Learning rules from failures works, and it overfits by defaul
 Concrete example from DataPilot: The failure analyst reads each failed dev item and returns a diagnosis: what went wrong and the likely cause, with no rules. The rule writer turns the diagnoses into general rules, such as the one on the slide, "the fiscal year runs February to January and is named for its end year". The critic keeps, narrows, or drops each rule. In code, a review of a rule the writer never proposed is ignored, so the critic cannot add one. Then the overfit guard rejects any rule that shares 6 consecutive words with a benchmark question or 20 consecutive SQL tokens with a gold query, from `evaluation.overfit_question_words` and `evaluation.overfit_sql_tokens`. The team reads dev items only; handing it a holdout item raises an error. A rule's SQL guidance must also run over the real schema: a check parses it against the catalog, and a placeholder or a column that does not exist goes back to the critic, then is dropped. The naive analyzer (`BUG_NAIVE_ANALYZER`) makes no model call: it writes one rule per failed dev question, quoting it word for word, and skips the critic; the guard flags every rule, unapplied.  
 Analogy: A code review where the author cannot approve their own pull request, and the linter runs whatever the reviewers think.  
 Under the hood: The research numbers show both sides. When correcting only the queries already known to be wrong, MAGIC lifted BIRD dev from 56.52 with no self-correction, to 57.76 with DIN-SQL's human-written guideline, to 59.13 with its learned one, and Spider dev from 78.62 to 85.66. Applied to every query, with no one saying which are wrong, the human guideline fell to 55.80 and MAGIC's reached 58.55. The survey re-run found the gains small, and negative on one model. Knowledge itself is noisy too: SEED audited the human-written evidence in BIRD dev and found 105 pairs, 6.84 percent, with wrong evidence and 148 with none.  
-Source 18: MAGIC: Generating Self-Correction Guideline for In-Context Text-to-SQL (https://arxiv.org/html/2406.12692): "to iteratively generate and refine a self-correction guideline tailored to LLM mistakes".  
+Source 18: MAGIC: Generating Self-Correction Guideline for In-Context Text-to-SQL (https://arxiv.org/abs/2406.12692): "to iteratively generate and refine a self-correction guideline tailored to LLM mistakes".  
 Transfer: Any loop that rewrites its own prompts, tools, or graders needs this shape: separate roles, a critic that can only subtract, and a deterministic leak check against your eval set. It applies to prompt optimisers and memory systems alike.  
 Point at: the four role cards left to right, stop on the critic, then the guard, the only step that is code, then the worked example.  
 Ask: "Why can the critic not add rules?" Expected: then it would be proposing and judging its own work.  
@@ -1940,7 +1940,7 @@ Time: 4 minutes (3:17-3:21)
 Plain explanation: The gate does not ask whether the candidate's total is higher. It asks, item by item, whether anything that passed under the active version now fails. That is a paired comparison: the same questions, the same measurement, two versions. An aggregate can hide a trade, six items fixed and one broken. A paired check shows the broken one by name.  
 Concrete example from DataPilot: The candidate passes the gate when its holdout passes exceed the active version's, regressions are zero on both splits, every rule it adds passes the overfit guard, and a person approves the knowledge diff. Each holdout item runs 3 times per version and passes on 2 of 3, from `evaluation.holdout_repeats` and `evaluation.holdout_pass_threshold`. An apparent holdout regression counts only if 2 of 3 more candidate runs fail. An apparent dev regression, from single runs, counts only if the candidate fails 2 more runs and the active version passes 2 more. The ledger shows the step as "Apparent regression: confirming". Runs go 8 at a time. The gate refuses to compare experiments from different live sessions, which is why the baseline is the one started at the poll. The over-broad version, "exclude discounted orders from revenue", fixes some items, breaks others, and is blocked.  
 Analogy: A drug trial that measures each patient before and after, instead of comparing two crowds.  
-Under the hood: Take three holdout items that are flaky, passing 7 runs in 10 under both versions. With single runs, at least one shows a false regression with about 51 percent chance. Passing on 2 of 3 lowers that only to about 43 percent. Adding the confirming 3-run re-run brings it to about 11 percent. Calibration ran each holdout item 5 times per version: all stable under the starting version, 3 unstable under the promoted one. Their replacements were unstable on the next pass too, so the instability belonged to the version's answers, and the reviewed holdout was restored. Measured: 2 of 15 holdout passes before, 12 of 15 after, 0 regressions. A 70-run experiment took 187 to 285 seconds. Fifteen items are still a small sample: 10 of 15 has a 95 percent interval of 0.42 to 0.85.  
+Under the hood: Take three holdout items that are flaky, passing 7 runs in 10 under both versions. With single runs, at least one shows a false regression with about 51 percent chance. Passing on 2 of 3 lowers that only to about 43 percent. Adding the confirming 3-run re-run brings it to about 11 percent. Calibration ran each holdout item 5 times per version: all stable under the starting version, 3 unstable under the promoted one. Their replacements were unstable on the next pass too, so the instability belonged to the version's answers, and the reviewed holdout was restored. Measured: 2 of 15 holdout passes before, 14 of 15 after in the two latest runs, 0 regressions. A 70-run experiment took 182 to 459 seconds. Fifteen items are still a small sample: 14 of 15 has a 95 percent interval of 0.70 to 0.99.  
 Source 1: The art of loop engineering (https://www.langchain.com/blog/the-art-of-loop-engineering): "The fourth (and arguably most important) automates improvement!" Ours climbs on benchmark failures behind this gate rather than on production traces.  
 Transfer: Use the same gate for any change to a model-backed system: a new prompt, a new model id, a new retriever. Pre-register how you measure, run both arms in one session, compare per item, confirm any regression before you believe it, and block on a confirmed one before you look at the average.  
 Point at: the two-column card row by row, stop on the confirming-runs row, then the trade-offs line with its 11 percent.  
@@ -1948,7 +1948,7 @@ Ask: "Why must both experiments come from one session?" Expected: the model, dat
 Likely question: "Is zero regressions too strict?" Answer: On 40 items it can still block a good version, even with confirming runs; we accept that and say it. At scale you set a tolerance with a statistical test instead.  
 Likely question: "Why not run every item ten times?" Answer: Cost and wall time. Each repeat multiplies the 70 runs; confirming only apparent regressions spends runs where they matter.  
 Misconception: "Majority voting on three runs removes flakiness." Correction: It barely moves the false-regression chance; the confirming re-run and the calibration filter do the real work.  
-Re-check after live runs: the settings against `evaluation` in the pack; 2 and 12 of 15, 187 to 285 seconds, and 0 items replaced against the calibration report. The 51, 43, and 11 percent figures assume three items flaky at 0.7.  
+Re-check after live runs: the settings against `evaluation` in the pack; 2 and 14 of 15, 182 to 459 seconds, and 0 items replaced against the calibration report. The 51, 43, and 11 percent figures assume three items flaky at 0.7.  
 Transition: A promotion buys more than a better prompt. It buys autonomy.
 
 **Slide 64: 4) Autonomy is earned per metric family**
@@ -1979,7 +1979,7 @@ Speaker notes:
 
 Time: 3.5 minutes (3:21-3:24:30)  
 Plain explanation: Autonomy is not one switch for the whole system. A version that answers revenue questions well tells you nothing about product questions. So the unattended level is granted per metric family, only after a gated promotion, and only from that family's holdout results. Everything else stays at the level the event loop set.  
-Concrete example from DataPilot: The class starts at the report-only level. At each promotion a family clears on the gate's own confirmed standard: every holdout item of the family passes at least 2 of 3 runs, and an item that falls short gets 3 more runs and counts if it passes 2 of them. Then the spine question arrives as a webhook and posts at the level its family earned: without approval if revenue cleared, at the assisted level if not. Calibration is why: under the earlier rule, all 4 revenue items had to pass in one experiment, which happened in one measurement of four. Measured once on the confirmed standard: average order value and products cleared; revenue did not, one item passing 1 of 3, then 1 of 3 more. The families come from `autonomy.metric_families` in the pack: revenue, orders, average order value, customers, and products. Revenue, where net revenue lives, has 4 holdout questions; average order value has 1. Three consecutive escalations demote a family again, from `autonomy.demote_after_consecutive_escalations`, and the kill switch drops everything to the report-only level.  
+Concrete example from DataPilot: The class starts at the report-only level. At each promotion a family clears on the gate's own confirmed standard: every holdout item of the family passes at least 2 of 3 runs, and an item that falls short gets 3 more runs and counts if it passes 2 of them. Then the spine question arrives as a webhook and posts at the level its family earned: without approval if revenue cleared, at the assisted level if not. Calibration is why: under the earlier rule, all 4 revenue items had to pass in one experiment, which happened in one measurement of four. Measured three times on the confirmed standard: under v5 revenue did not clear, one item passing 1 of 3, then 1 of 3 more; under v8 and v9 it did. The families come from `autonomy.metric_families` in the pack: revenue, orders, average order value, customers, and products. Revenue, where net revenue lives, has 4 holdout questions; average order value has 1. Three consecutive escalations demote a family again, from `autonomy.demote_after_consecutive_escalations`, and the kill switch drops everything to the report-only level.  
 Analogy: A new engineer earns merge rights per service, after reviews on that service, not for the whole monorepo at once.  
 Under the hood: The three levels and the kill switch that drops the system to the report-only level come from Cobus Greyling's loop engineering patterns. What is distinctive here is the coupling: the unattended level is tied to eval results per family. The small-sample caveat from the last slide applies with force here. One holdout question for average order value is not evidence of anything, and the class code would still let that family through if it were promoted. The calibration report recommends N = 3: a family needs at least three holdout questions before the unattended level, which keeps average order value at the assisted level. That rule is not in class code; Assignment 4: Hill-climbing loop builds it.  
 Source 17: Loop engineering (https://cobusgreyling.github.io/loop-engineering/), in summary: three autonomy levels, report-only, assisted, and unattended, and a kill switch that drops the system to report-only.  
@@ -1991,7 +1991,7 @@ Likely question: "What lowers it again?" Answer: Three consecutive escalations i
 Misconception: "A promoted version is trusted everywhere." Correction: It is trusted for the families its holdout evidence covers, and nowhere else.  
 Re-check after live runs: the holdout counts per family, 4, 4, 3, 3, and 1, against the benchmark files, and N = 3 against the calibration report.  
 Say: End the promotion discussion with the open question, and leave it open: "A family clears for the unattended level on its holdout questions: 4 for revenue, 1 for average order value. Is that enough evidence?"  
-<!-- refresh after the session: whether revenue clears on the confirmed standard in the finale chain with the SQL guidance check and two candidates -->  
+Measured: revenue cleared on the confirmed standard in 2 of 6 live promotions, the two latest, under v8 and v9.  
 Transition: Assignment 4 turns one answer into a rule. First, the four moves together.
 
 **Slide 65: Cheat sheet: the hill-climbing loop in four moves**
@@ -2038,42 +2038,38 @@ Expected live result: a holdout pass count for the starting version with the tra
 May vary: which non-trap items pass, and the wall time. If it does, say: the trap items are the ones that must fail, and they are guaranteed by the planted traps; the others vary run to run, which is why holdout items run three times and calibration removes unstable ones.  
 If it stalls: reset and run it again, `make reset NAME=hill-climbing-loop`, then the same trigger. Read the reset output aloud: it names the baseline it kept and its start time.  
 Demo: the naive analyzer, blocked.  
-Starting state: the baseline is complete. Reset first: `make reset NAME=hill-climbing-loop` if a previous analyzer run is on screen; the baseline stays.  
-Do: set `BUG_NAIVE_ANALYZER=1` in `.env` and run `make up`, then Improve > Run analyzer, or `make demo NAME=improve-naive-analyzer-blocked`. The planted chip shows on the status line. Set the flag back to 0 and run `make up` before the next demo. Each attempt is the analyzer and a 70-run candidate experiment.  
+Starting state: it ran at the break and its verdict is on the Improve page. During the Section 3 questions `BUG_NAIVE_ANALYZER=1` was set in `.env` with `make up`; at the start of the break it was queued behind the baseline; once its gate read blocked, the flag was set back to 0 with `make up`, with the runner idle.  
+Do: at the break, `make demo NAME=improve-naive-analyzer-blocked`, which queues the analyzer and then its candidate experiment, or Improve > Run analyzer, then Improve > Run experiment on the candidate; the runner takes them in that order. Here, read the result. Each attempt is the analyzer and a 70-run candidate experiment, 211 to 285 seconds from the trigger to the verdict in three measured runs, which is why it runs at the break.  
 Narrate: This is concept 2, Rules learned from failures overfit, without its defences. The naive analyzer makes no model call: it writes one rule per failed dev question, quoting the question word for word with the query that failed, and skips the critic. The overfit guard flags every rule, but its verdict is not applied, so the knowledge diff keeps them all.  
 Point at, in order: a rule that quotes a benchmark question; the guard's flag on every rule; after the candidate experiment, the gate verdict blocked, naming the rules the overfit guard rejects; and last the live stamp.  
 Expected live result: the overfit guard flags every rule, and the gate verdict reads blocked, naming those rules, whatever the holdout count.  
-May vary: how many dev items failed, the dev count, and the holdout count. If the holdout count rises, say: a higher score does not license rules that copy the test, and the gate's fourth condition blocks them anyway. Measured once, before the naive analyzer was made deterministic: it read the reference queries, its 21 rules passed 15 of 15 holdout items, and the gate of three conditions let it through. That run is why the fourth exists.  
-<!-- refresh after the session: the deterministic naive analyzer, blocked, twice: the guard's flags, the dev and holdout counts, and the verdict naming the rejected rules -->  
+May vary: how many dev items failed, the dev count, and the holdout count. If the holdout count rises, say: a higher score does not license rules that copy the test, and the gate's fourth condition blocks them anyway. Measured three times as it is now: 21, 21, and 20 rules, all flagged by the guard, dev 5, 6, and 4 of 25, holdout 2 of 15, and the gate blocked on both counts, in 211 to 285 seconds. Once before it was made deterministic, it read the reference queries, its 21 rules passed 15 of 15 holdout items, and the gate of three conditions let it through. That run is why the fourth exists.  
 If it stalls: reset and run it again, `make reset NAME=hill-climbing-loop`, then the same trigger.  
 Demo: the analyzer team and approval.  
-Starting state: the naive analyzer's candidate is discarded. Reset first: `make reset NAME=hill-climbing-loop` if its chip is still on; the baseline stays.  
-Do: Improve > Run analyzer, or `make demo NAME=improve-analyzer-team-approve`.  
-Narrate: Concept 2 with its defences. The failure analyst diagnoses, the rule writer proposes, the critic keeps, narrows, or drops, a rule whose SQL guidance does not run over the schema is dropped, and the overfit guard passes what is left. The team writes two candidates this way; each runs on the dev split only, and the one kept has fewer dev regressions, then more dev passes, then fewer rules. The holdout never takes part in the choice.  
+Starting state: the naive analyzer's candidate is discarded. Reset first: `make reset NAME=hill-climbing-loop`; the baseline stays.  
+Do: Improve > Run analyzer, or `make demo NAME=improve-analyzer-team-approve`, then at once Improve > Run experiment on the candidate: the runner starts it as soon as the team's candidate is written. The team took 326 and 377 seconds measured with two candidates.  
+Narrate: Concept 2 with its defences. The failure analyst diagnoses, the rule writer proposes, the critic keeps, narrows, or drops, a rule whose SQL guidance does not run over the schema is dropped, and the overfit guard rejects any rule that quotes a question or copies gold SQL and passes the rest; live, it once rejected a rule the critic kept for copying 20 or more tokens of a gold query. The team writes two candidates this way; each runs on the dev split only, and the one kept has fewer dev regressions, then more dev passes, then fewer rules. The holdout never takes part in the choice.  
 Point at, in order: one diagnosis with no rule in it, one proposed rule, the critic's decision and reason, the guard result, the line naming both candidates and the one kept, the knowledge diff waiting for human approval, and last the live stamp.  
-Expected live result: a candidate version with general rules in the diff viewer, not yet approved, and the line naming both candidates and the one kept. Measured with one candidate: 62 and 98 seconds; 7 and 8 rules passed the overfit guard, which rejected none; the critic dropped the business-day holiday rule each time it came up. The second candidate adds one analyzer team run and 25 dev runs, about 1 to 1.5 minutes.  
-<!-- refresh after the session: both candidates, the one kept, its time, and the guidance rejections, from the finale chain with two candidates -->  
+Expected live result: a candidate version with general rules in the diff viewer, not yet approved, and the line naming both candidates and the one kept. Measured with two candidates, twice: 326 seconds, candidate A 18 of 25 dev with 11 rules, candidate B 19 of 25 with 8 rules, B kept; then 377 seconds, A 21 of 25 with 8 rules, B 10 of 25 with 5, A kept; the SQL guidance check rejected none of the kept rules either time. With one candidate it took 62 and 98 seconds, and 7 and 8 rules passed the overfit guard.  
 May vary: the rule wording, the number of rules, and which candidate is kept. If it does, say: a different wording is fine; what matters is that no rule names a benchmark question.  
 If it stalls: reset and run it again, `make reset NAME=hill-climbing-loop`, then the same trigger.  
 Demo: the candidate experiment.  
 Starting state: the candidate version from the analyzer team, in the same session as the baseline. Reset first: `make reset NAME=hill-climbing-loop` only if the candidate is missing; the baseline stays.  
-Do: Improve > Run experiment on the candidate, or `make demo NAME=improve-candidate-experiment`. When the gate reads ready for human approval, click Approve on the knowledge diff.  
+Do: nothing to start: it was queued at once after the analyzer. Only if it never started, Improve > Run experiment on the candidate, or `make demo NAME=improve-candidate-experiment`; a second press queues a second 70-run experiment. When the gate reads ready for human approval, click Approve on the knowledge diff.  
 Narrate: Concept 3, The gate is a paired comparison. Same items, same measurement, same session. Holdout items run three times and pass on two; an apparent holdout regression is confirmed by three more runs, and an apparent dev regression by two more runs of each version, before it counts.  
 Point at, in order: the live holdout ledger with the flips marked against this session's baseline, the regression column at zero on both splits, the gate reasons, the verdict after approval, then the LangSmith trace list of `datapilot-experiments` filtered by knowledge version to show the candidate's traced runs, a sample of about 1 run in 5, tagged by split, item, and repetition, and last the live stamp.  
 <!-- refresh after the session: the sampled trace list seen live after the LangSmith limit resets on 1 November -->  
-Expected live result: holdout flips marked against this session's baseline, no regressions, and the gate verdict passed once approved. Measured: the version promoted on 22 October scored 12 of 15 against 2, flipping 10 of 13 holdout trap items with 0 regressions, in 203 seconds; across 8 experiments a 70-run experiment took 187 to 285 seconds, inside the 5-minute budget. The same input also gave candidates of 3, 6, and 11 of 15, and at reasoning effort high 2, 9, and 5 of 15, so higher effort did not narrow the spread; the best of those three passed 10 of 15 against 2 with 0 regressions when it was measured again for the finale. That spread is why the team writes two candidates and keeps the better on dev. A weak candidate is still possible. If the gate blocks it for too few holdout passes, say: the gate is refusing a version that did not earn it, which is the point.  
-<!-- refresh after the session: the holdout passes of the candidate kept from two, in the finale chain with the SQL guidance check -->  
+Expected live result: holdout flips marked against this session's baseline, no regressions, and the gate verdict passed once approved. Measured: the two latest candidates, each kept from two, v8 and then v9, each scored 14 of 15 against 2, fixing 12 of 13 holdout trap items with 0 regressions, in 206.5 and 181.9 seconds; the version promoted on 22 October scored 12 of 15. A 70-run experiment took 182 to 459 seconds; two, at reasoning effort high, ran past the 5-minute budget. The same input also gave candidates of 3, 6, and 11 of 15, and at reasoning effort high 2, 9, and 5 of 15, so higher effort did not narrow the spread; the best of those three passed 10 of 15 against 2 with 0 regressions when it was measured again for the finale. That spread is why the team writes two candidates and keeps the better on dev. A weak candidate is still possible. If the gate blocks it for too few holdout passes, say: the gate is refusing a version that did not earn it, which is the point.  
 May vary: which items flip and the wall time. If the ledger shows "Apparent regression: confirming", say: this is concept 3 at work; wait for the re-runs. If the regression is confirmed, say: the gate is doing its job; read the item, and the version stays blocked.  
 If it stalls: reset and run it again, `make reset NAME=hill-climbing-loop`, then the same trigger.  
 Demo: cleared for the unattended level.  
-Starting state: the candidate is promoted and active. No reset.  
-Do: Events > Send webhook question, or `make demo NAME=improve-cleared-unattended`.  
+Starting state: the candidate is promoted and active: after approval, wait until the Improve page says the version is the active version and the note under the Events buttons goes away, when the clearance re-runs finish (50 seconds, measured once). The status line then names the families cleared, or reads Not cleared for every family when none cleared, and the finale posts at the assisted level. Send webhook question sends the spine question from the promotion on. The kill switch is released. No reset.  
+Do: set the unattended level, Improve > Set the unattended level, or `make autonomy LEVEL=unattended BY="<your name>"`; then Events > Send webhook question, or `make demo NAME=improve-cleared-unattended`. Both refuse, saying which step is missing, while the promotion is pending, the kill switch is engaged, or the level is lower.  
 Narrate: Concept 4, Autonomy is earned per metric family. The spine question, net revenue in fiscal year 2025, arrives as a webhook under the promoted version. The moment is the correct answer, posted at the level its family has earned: without approval when revenue cleared on the gate's confirmed standard, every revenue holdout item at 2 of 3 runs or 2 of 3 more, and at the assisted level when it fell short.  
-Point at, in order: the correct answer against gold, 64,015,091.21 dollars; the post and its level; the status line naming the families cleared, with any clearance re-runs beside their items in the candidate experiment; and last the live stamp.  
+Point at, in order: the correct answer against gold, 64,015,091.21 dollars, on the finale's strip, which shows the gold check once the runner writes it; the post and its level; the status line naming the families cleared, with any clearance re-runs beside their items in the candidate experiment; and last the live stamp.  
 Expected live result: a correct answer, posted at the unattended level if revenue cleared and at the assisted level if it did not.  
-May vary: the wording, the latency, and the level; the answer is correct either way. If it posts at the assisted level, say: the gate held back autonomy the evidence did not earn. Measured once on the confirmed standard: average order value and products cleared, revenue did not, and the answer was wrong, 63,986,616.77 dollars against gold 64,015,091.21, with the internal-account filter missing, because no rule stated the email-domain predicate. The analyzer now drops a rule whose SQL guidance does not run over the schema.  
+May vary: the wording, the latency, and the level; the answer is correct either way. If it posts at the assisted level, say: the gate held back autonomy the evidence did not earn. Measured three times on the confirmed standard. First, under v5, revenue did not clear, and the answer was wrong, 63,986,616.77 dollars against gold 64,015,091.21: its internal-account filter was too broad and also removed the look-alike addresses, because no rule stated the email-domain predicate. The analyzer now drops a rule whose SQL guidance does not run over the schema. Then, under v8 and again under v9, revenue cleared and the answer, 64,015,091.21 dollars, posted at the unattended level.  
 If the answer is wrong in class: use the class-day safeguard, live, from the instructor guide: `make safeguard-activate BY="<your name>"`, which makes the version verified in rehearsal active and records it, then send the finale again. Say: the gate's record of the class candidate stays as it is, and nothing is hidden.  
-<!-- refresh after the session: the finale in the chain with the SQL guidance check and two candidates: the families cleared, the clearance re-runs, the spine answer against gold, and its level -->  
 If it stalls: reset and run it again, `make reset NAME=hill-climbing-loop`, then the same trigger.  
 Say: Then ask the open question and leave it open: "A family clears for the unattended level on its holdout questions: 4 for revenue, 1 for average order value. Is that enough evidence?"  
 Optional, cut first, and only after a candidate has been promoted: the over-broad rule, blocked: Improve > Add the over-broad rule to the active version, or `make demo NAME=improve-overbroad-rule-blocked`. The rule "exclude discounted orders from revenue" breaks revenue items that pass under the active version, and the gate blocks it for regressions.  
@@ -2139,7 +2135,7 @@ Transfer: Before trusting any small eval, compute its interval and its false-ala
 Point at: the second table, row by row from 51 down to 11 percent, then the filter row.  
 Ask: "What does McNemar's test look at?" Expected: only the discordant items, the ones that passed in one arm and failed in the other.  
 Likely question: "Why not raise the threshold to 3 of 3?" Answer: Then a flaky item almost never passes under either version, and the holdout shrinks in effect.  
-Likely question: "Where do the percentages come from?" Answer: 51 percent is from our research notes; 43 and 11 percent are the same arithmetic for the two stricter schemes.  
+Likely question: "Where do the percentages come from?" Answer: all three are computed for the course, the same arithmetic for single runs and for the two stricter schemes.  
 Misconception: "More repeats fix small samples." Correction: Repeats and confirming runs reduce per-item noise; only more items narrow the interval.  
 Re-check after live runs: the holdout size and the repeat settings against the benchmark and the pack; 0 items replaced against the calibration report. The 43 and 11 percent figures are calculations on the stated assumptions.  
 Transition: Next, what others have built.
@@ -2199,7 +2195,7 @@ Plain explanation: Knowledge fails in five recognisable ways, and each has a gua
 Concrete example from DataPilot: The pre-authored over-broad version adds "exclude discounted orders from revenue". It sounds like a fix for net revenue. It fixes some items and breaks others that passed before, and the zero-regression rule blocks it.  
 Analogy: A style guide entry written after one bad review that then forbids a pattern the whole codebase uses correctly.  
 Under the hood: SEED audited the human-written evidence in BIRD dev: 148 pairs, 9.65 percent, had none, and 105, 6.84 percent, had wrong evidence. Fixing the wrong evidence raised CodeS-15B from 44.76 to 54.29 on those pairs, so bad knowledge costs real accuracy. The MAGIC re-run showed small gains and a drop on one model, so learned rules need a holdout. The overfit guard rejects 6 consecutive question words or 20 consecutive gold SQL tokens.  
-Source 20: SEED (https://arxiv.org/html/2506.07423): "human-generated evidence in BIRD contains defects, including missing or erroneous evidence, which affects model performance."  
+Source 20: SEED (https://arxiv.org/abs/2506.07423): "human-generated evidence in BIRD contains defects, including missing or erroneous evidence, which affects model performance."  
 Transfer: Treat every knowledge source for an agent, wiki pages, memory, retrieved notes, as data that can be wrong. Version it, measure it, and gate changes to it like code.  
 Point at: the over-broad row, the one the optional demo shows, then the guard column.  
 Ask: "Which guard catches a rule that is right for revenue and wrong for orders?" Expected: zero regressions on both splits.  
@@ -2218,7 +2214,7 @@ Transition: That closes Section 4: Hill-climbing loop; on to the wrap-up.
 | 74 | Use it at work: four questions to ask | concept | 3:54:30-3:55:30 | Questions to ask of any agent system you run | use-in-your-repo/README.md |
 | 75 | Assignments, final project, and the Thursday review | concept | 3:55:30-3:57 | Four assignments, each with a live check; solutions published when the Thursday review starts | docs/review-session.md |
 | 76 | Summary: key takeaways | concept | 3:57-3:58 | Agents only where judgement is needed; code and people decide; autonomy is earned | README.md |
-| 77 | References | table | 3:58-3:59 | Every source, in order of first use | the course research synthesis |
+| 77 | References | table | 3:58-3:59 | Every source, in order of first use | slides/source/sources.py, the source register |
 | 78 | Questions and close | concept | 3:59-4:00 | No Question Is Too Small Every Question Deserves an Answer!! | - |
 
 ### Slides and speaker notes: Closing
@@ -2239,8 +2235,7 @@ Lesson: each loop fixed a different failure, and none needed a bigger model
 Speaker notes:
 
 Time: 1.5 minutes (3:50-3:51:30)  
-Say: Retell the spine question's path. In Section 1: Agent loop it was confident and wrong. In Section 2: Verification loop every check turned green and it was still wrong. In Section 3: Event loop it ran as an event with an approval and a stop that works. In Section 4: Hill-climbing loop it became right, through rules that passed a gate on questions the analyzer never saw, and it posted at the level its metric family earned: the unattended level if revenue cleared on the confirmed standard. If revenue did not clear in the class run, say so: the answer was right and posted at the assisted level, because the gate did not see enough evidence. In calibration revenue has not yet cleared on the confirmed standard.  
-<!-- refresh after the session: stage 4, once the finale chain with the SQL guidance check and two candidates has run live: the spine answer against gold and the level it posted at -->  
+Say: Retell the spine question's path. In Section 1: Agent loop it was confident and wrong. In Section 2: Verification loop every check turned green and it was still wrong. In Section 3: Event loop it ran as an event with an approval and a stop that works. In Section 4: Hill-climbing loop it became right, through rules that passed a gate on questions the analyzer never saw, and it posted at the level its metric family earned: the unattended level if revenue cleared on the confirmed standard. If revenue did not clear in the class run, say so: the answer was right and posted at the assisted level, because the gate did not see enough evidence. In calibration revenue cleared on the confirmed standard once, in the latest of five promotions, and the spine answer, 64,015,091.21 dollars, posted at the unattended level.  
 Point at: the four stages in order.  
 Likely question: "Can I run the whole path myself?" Answer: yes; the final project runs it end to end on your machine.  
 Transition: All the results on one slide.
@@ -2256,15 +2251,14 @@ On the slide:
 | Agent loop | 0 of 99 trap runs passed under the starting rules |
 | Verification loop | No write landed; retry cap escalated after 3 attempts |
 | Event loop | 2 duplicates absorbed; approval survived a restart |
-| Hill-climbing loop | Holdout 2 of 15, then 10 to 12 of 15; 0 regressions |
+| Hill-climbing loop | Holdout 2 of 15, then 14 of 15; 0 regressions |
 
 How to read this: counts from calibration; say today's class counts beside them
-<!-- refresh after the session: the hill-climbing row once the finale chain with the SQL guidance check and two candidates has run live: the kept candidate's holdout count and the families cleared -->
 
 Speaker notes:
 
 Time: 1.5 minutes (3:51:30-3:53)  
-Say: Read one row per section as counts, not percentages, then say what today's runs showed beside each. Under the starting rules no trap item passed in 99 runs. No malicious statement changed a warehouse row, and the retry cap ended the run escalated after 3 attempts. The event loop absorbed 2 duplicates and kept an approval across a worker restart. The promoted rules moved the holdout from 2 of 15 to 12 of 15, flipping 10 of 13 holdout trap items with 0 regressions, and a later promotion to 10 of 15. Say plainly where a result was weaker than hoped: the same analyzer input also gave candidates of 2, 3, 5, 6, and 9 of 15, which is why the analyzer now writes two and keeps the better on dev; revenue has not yet cleared on the confirmed standard; and 15 holdout items rest on few questions per family.  
+Say: Read one row per section as counts, not percentages, then say what today's runs showed beside each. Under the starting rules no trap item passed in 99 runs. No malicious statement changed a warehouse row, and the retry cap ended the run escalated after 3 attempts. The event loop absorbed 2 duplicates and kept an approval across a worker restart. The latest promoted rules, v8, moved the holdout from 2 of 15 to 14 of 15, fixing 12 of 13 holdout trap items with 0 regressions; earlier promotions reached 10 to 12 of 15. Say plainly where a result was weaker than hoped: the same analyzer input also gave candidates of 2, 3, 5, 6, and 9 of 15, which is why the analyzer now writes two and keeps the better on dev, measured once so far; revenue cleared on the confirmed standard in one promotion of five; and 15 holdout items rest on few questions per family.  
 Re-check after live runs: every count on the slide against the calibration report and the evidence pages.  
 Point at: the hill-climbing row.  
 Likely question: "Where are the runs behind these counts?" Answer: on the evidence pages, one per section, with their trace links.  
@@ -2328,8 +2322,7 @@ Speaker notes:
 Time: 1.5 minutes (3:55:30-3:57)  
 Say: Each assignment adds a capability class code does not have. Each assignment has a live check, `make check-assignment NAME=<slug>`. It runs the done-when scenario on the real stack with your own OpenAI key, reports pass or fail per requirement with a trace link and a live stamp, and prints its cost estimate first and the actual cost at the end. There are no stubs or canned model answers in any check: every check is live. Solutions are published when the Thursday review starts. The deadline is set by the instructor.  
 Point at: Assignment 4, which turns the open question about small holdouts into a rule.  
-Likely question: "What does the check cost me?" Answer: it prints its estimate before it starts and the actual cost when it ends, on your own key. Measured in the build's verification: about 0.4 cents for a full check of Assignment 1, 0.34 to 0.42 cents over six checks; about 2 cents for Assignment 2, 1.84 to 2.28 over six; about 0.3 cents for Assignment 3, 0.23 to 0.40 over six; and for Assignment 4, which runs the benchmark, 30.66 cents for the first check of a live session and about 15 cents for each later one, 10.69 to 20.56 over five. Every check stops at its own spend cap of 1 dollar.  
-<!-- refresh after the session: the cost of Assignment 4's check once it is verified live again with the gate's fourth condition and two analyzer candidates -->  
+Likely question: "What does the check cost me?" Answer: it prints its estimate before it starts and the actual cost when it ends, on your own key. Measured in the build's verification: typically about 0.4 cents for a full check of Assignment 1, about 2 cents for Assignment 2, and about 0.3 cents for Assignment 3; and for Assignment 4, which runs the benchmark, about 14 to 24 cents for each later check of a live session (13.58 and 23.95 cents, two checks with two candidates) and an estimated 38 cents for the first. Except that estimate, these are measured costs, not bounds; the costs page lists every measured check. Every check stops at its own spend cap of 1 dollar.  
 Transition: The class in three lines.
 
 **Slide 76: Summary: key takeaways**
@@ -2421,7 +2414,7 @@ Words on the slide and words in the speaker notes after the Time line; reviewer 
 | 21 | 3) Structured output is a contract | 119 | 526 |
 | 22 | 4) A subagent must earn its place | 137 | 594 |
 | 23 | Cheat sheet: the agent loop in four moves | 96 | 124 |
-| 24 | Section 1: Agent loop - Implementation Notes: The confident wrong answer | 7 | 1251 |
+| 24 | Section 1: Agent loop - Implementation Notes: The confident wrong answer | 7 | 1274 |
 | 25 | Questions | 24 | 168 |
 | 26 | Reference: skip if short on time - tool output design | 60 | 321 |
 | 27 | Reference: skip if short on time - structured output strategies | 48 | 315 |
@@ -2430,49 +2423,49 @@ Words on the slide and words in the speaker notes after the Time line; reviewer 
 | 30 | Failure story: the product name that said delete | 99 | 235 |
 | 31 | Verification loop: if every grader passes, is the answer right? | 67 | 213 |
 | 32 | 1) Allowlist the shape, not a list of bad words | 138 | 537 |
-| 33 | 2) Permissions are the boundary, not the parser | 138 | 464 |
+| 33 | 2) Permissions are the boundary, not the parser | 138 | 482 |
 | 34 | 3) Stops that are not the model's choice | 140 | 600 |
 | 35 | 4) A checker that shares the maker's blind spots | 138 | 526 |
 | 36 | Cheat sheet: verification in four moves | 106 | 135 |
-| 37 | Section 2: Verification loop - Implementation Notes: Every grader passes, still wrong | 7 | 1176 |
+| 37 | Section 2: Verification loop - Implementation Notes: Every grader passes, still wrong | 7 | 1188 |
 | 38 | Questions | 18 | 210 |
-| 39 | Reference: skip if short on time - attack patterns | 110 | 307 |
+| 39 | Reference: skip if short on time - attack patterns | 110 | 308 |
 | 40 | Reference: skip if short on time - database errors as feedback | 102 | 392 |
 | 41 | Reference: skip if short on time - why one database lies | 74 | 309 |
 | 42 | Time for a Break | 20 | 69 |
 | 43 | Agenda (Section 3 highlighted) | 13 | 254 |
 | 44 | Failure story: the digest that posted twice | 86 | 239 |
 | 45 | Event loop: should an agent route the events? | 62 | 244 |
-| 46 | 1) At-least-once delivery needs idempotent effects | 122 | 574 |
+| 46 | 1) At-least-once delivery needs idempotent effects | 122 | 590 |
 | 47 | 2) The queue is a table: claim, lease, reap | 140 | 648 |
-| 48 | 3) Durable approval: pause where state lives | 124 | 542 |
+| 48 | 3) Durable approval: pause where state lives | 124 | 543 |
 | 49 | 4) A router, levels, and a stop for running work | 128 | 549 |
 | 50 | Cheat sheet: the event loop in four moves | 85 | 128 |
-| 51 | Section 3: Event loop - Implementation Notes: The kill switch in flight | 7 | 1355 |
+| 51 | Section 3: Event loop - Implementation Notes: The kill switch in flight | 7 | 1429 |
 | 52 | Questions | 19 | 212 |
 | 53 | Reference: skip if short on time - queue failure modes | 76 | 371 |
 | 54 | Reference: skip if short on time - router or supervisor | 68 | 324 |
 | 55 | Reference: skip if short on time - two clocks | 60 | 439 |
 | 56 | Live Zoom Poll | 19 | 142 |
-| 57 | Time for a Break | 20 | 74 |
+| 57 | Time for a Break | 20 | 81 |
 | 58 | Agenda (Section 4 highlighted) | 19 | 217 |
 | 59 | Failure story: the prompt full of patches | 88 | 230 |
 | 60 | Hill-climbing loop: promote rules when the dev score rises? | 65 | 231 |
 | 61 | 1) A benchmark is a measuring instrument | 136 | 581 |
 | 62 | 2) Rules learned from failures overfit | 140 | 613 |
-| 63 | 3) The gate is a paired comparison | 139 | 644 |
-| 64 | 4) Autonomy is earned per metric family | 137 | 619 |
+| 63 | 3) The gate is a paired comparison | 139 | 649 |
+| 64 | 4) Autonomy is earned per metric family | 137 | 643 |
 | 65 | Cheat sheet: the hill-climbing loop in four moves | 81 | 123 |
-| 66 | Section 4: Hill-climbing loop - Implementation Notes: The candidate experiment | 7 | 2195 |
+| 66 | Section 4: Hill-climbing loop - Implementation Notes: The candidate experiment | 7 | 2572 |
 | 67 | Questions | 20 | 236 |
-| 68 | Reference: skip if short on time - gate statistics | 97 | 570 |
+| 68 | Reference: skip if short on time - gate statistics | 97 | 569 |
 | 69 | Reference: skip if short on time - prior art compared | 93 | 353 |
 | 70 | Reference: skip if short on time - when learned knowledge fails | 82 | 326 |
-| 71 | Final run: one question through four loops | 73 | 164 |
-| 72 | All results: one picture | 63 | 202 |
+| 71 | Final run: one question through four loops | 73 | 181 |
+| 72 | All results: one picture | 61 | 210 |
 | 73 | Which loop when: match the failure | 61 | 107 |
 | 74 | Use it at work: four questions to ask | 56 | 117 |
-| 75 | Assignments, final project, and the Thursday review | 80 | 226 |
+| 75 | Assignments, final project, and the Thursday review | 80 | 234 |
 | 76 | Summary: key takeaways | 62 | 73 |
 | 77 | References | 67 | 67 |
 | 78 | Questions and close | 16 | 46 |
@@ -2492,13 +2485,13 @@ Words on the slide and words in the speaker notes after the Time line; reviewer 
 - Source 11: LangChain custom middleware, https://docs.langchain.com/oss/python/langchain/middleware/custom, LangChain, n.d.
 - Source 12: LangChain built-in middleware, https://docs.langchain.com/oss/python/langchain/middleware/built-in, LangChain, n.d.
 - Source 13: PostgreSQL SELECT, https://www.postgresql.org/docs/current/sql-select.html, PostgreSQL Global Development Group, n.d.
-- Source 14: Postgres Job Queues & Failure By MVCC, https://brandur.org/postgres-queues, Brandur Leach, n.d.
-- Source 15: You don't need a job queue: Postgres already has SKIP LOCKED, https://www.prisma.io/blog/you-dont-need-a-job-queue-postgres-already-has-skip-locked, Prisma, n.d.
+- Source 14: Postgres Job Queues & Failure By MVCC, https://brandur.org/postgres-queues, Brandur Leach, 2015-05-18
+- Source 15: You don't need a job queue: Postgres already has SKIP LOCKED, https://www.prisma.io/blog/you-dont-need-a-job-queue-postgres-already-has-skip-locked, Prisma, 2026-07-17
 - Source 16: LangChain human-in-the-loop, https://docs.langchain.com/oss/python/langchain/human-in-the-loop, LangChain, n.d.
 - Source 17: Loop engineering, https://cobusgreyling.github.io/loop-engineering/, Cobus Greyling, n.d.
-- Source 18: MAGIC: Generating Self-Correction Guideline for In-Context Text-to-SQL, https://arxiv.org/html/2406.12692, Arian Askari et al., 2024
-- Source 19: Toward Real-World Table Agents: Capabilities, Workflows, and Design Principles for LLM-based Table Intelligence, https://arxiv.org/html/2507.10281, arXiv, n.d.
-- Source 20: SEED: Enhancing Text-to-SQL Performance and Practical Usability Through Automatic Evidence Generation, https://arxiv.org/html/2506.07423, arXiv, n.d.
+- Source 18: MAGIC: Generating Self-Correction Guideline for In-Context Text-to-SQL, https://arxiv.org/abs/2406.12692, Arian Askari et al., 2024-06-18
+- Source 19: Toward Real-World Table Agents: Capabilities, Workflows, and Design Principles for LLM-based Table Intelligence, https://arxiv.org/html/2507.10281, Jiaming Tian et al., 2025-07-14
+- Source 20: SEED: Enhancing Text-to-SQL Performance and Practical Usability Through Automatic Evidence Generation, https://arxiv.org/abs/2506.07423, Janghyeon Yun et al., 2025-06-09
 - Source 21: Test and monitor a Genie Agent, https://docs.databricks.com/aws/en/genie-agents/monitor, Databricks, n.d.
 - Source 22: Suggestions for semantic models and views, https://docs.snowflake.com/en/user-guide/views-semantic/verified-query-suggestions, Snowflake, n.d.
 - Source 23: Vanna documentation, https://vanna.ai/docs/, Vanna, n.d.
@@ -2512,4 +2505,4 @@ Words on the slide and words in the speaker notes after the Time line; reviewer 
 - [x] No file names, repository paths, make commands, or screenshots on any slide.
 - [x] Names are plain; codes appear only in code spans in the notes.
 - [x] Every measured number comes from the calibration report; no provisional marker is left.
-- [ ] 14 refresh markers: their values are updated from the next live session, then the class run.
+- [ ] 3 refresh markers: their values are updated from the next live session, then the class run.

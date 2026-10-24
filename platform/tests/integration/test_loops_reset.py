@@ -88,11 +88,12 @@ def versions() -> dict[str, str]:
 def test_reset_keeps_the_baseline_and_clears_the_candidate(knowledge_state) -> None:
     report = commands.reset("hill-climbing-loop")
     assert experiments() == {knowledge_state["older"], knowledge_state["baseline"]}
-    assert versions() == {"v1": "active", "v2-overbroad": "draft"}
+    # the promoted candidate keeps its row, retired: its name is never given to other rules
+    assert versions() == {"v1": "active", "v2-overbroad": "draft", "candidate-1": "retired"}
     assert (
         report.kept_baseline and report.kept_baseline.experiment_id == knowledge_state["baseline"]
     )
-    assert report.removed_versions == ["candidate-1"]
+    assert report.removed_versions == [] and report.kept_versions == ["candidate-1"]
     assert execute("SELECT count(*) AS n FROM ops.promotion_decisions")[0]["n"] == 0
     assert execute("SELECT count(*) AS n FROM ops.autonomy_policy")[0]["n"] == 0
     assert execute("SELECT count(*) AS n FROM ops.improvement_requests")[0]["n"] == 0
@@ -114,7 +115,7 @@ def test_the_full_reset_also_discards_the_baseline(knowledge_state) -> None:
     assert result.exit_code == 0, result.output
     assert "discarded this session's baseline" in result.output
     assert experiments() == {knowledge_state["older"]}  # earlier sessions keep their record
-    assert versions()["v1"] == "active" and "candidate-1" not in versions()
+    assert versions()["v1"] == "active" and versions()["candidate-1"] == "retired"
 
 
 def test_only_the_hill_climbing_loop_has_a_baseline_to_discard() -> None:
@@ -162,7 +163,7 @@ def test_the_reset_archives_every_row_before_it_deletes_or_retires_it(knowledge_
     assert by_table[("ops.autonomy_policy", "deleted")] == ["revenue"]
     assert len(by_table[("ops.improvement_requests", "deleted")]) == 1
     assert by_table[("ops.knowledge_versions", "retired")] == ["datapilot_us/candidate-1"]
-    assert by_table[("ops.knowledge_versions", "deleted")] == ["datapilot_us/candidate-1"]
+    assert ("ops.knowledge_versions", "deleted") not in by_table  # promoted: kept, retired
     experiment = next(r["row"] for r in rows if r["source_table"] == "ops.experiments")
     assert experiment["per_example"][0]["confirmation"]["active_reruns"] == [False, True]
     retired = next(r["row"] for r in rows if r["action"] == "retired")
@@ -193,7 +194,7 @@ def test_the_full_reset_archives_the_baseline_too(knowledge_state) -> None:
 def test_the_archive_commands_read_an_archived_experiment(knowledge_state) -> None:
     reset = CliRunner().invoke(cli, ["reset", "hill-climbing-loop"])
     assert reset.exit_code == 0, reset.output
-    assert "archived 6 rows" in reset.output, reset.output
+    assert "archived 5 rows" in reset.output, reset.output
     listed = CliRunner().invoke(cli, ["archive", "list"])
     assert listed.exit_code == 0, listed.output
     assert "make reset NAME=hill-climbing-loop" in listed.output

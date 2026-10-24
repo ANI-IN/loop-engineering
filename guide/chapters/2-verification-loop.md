@@ -138,7 +138,7 @@ make demo NAME=verify-graders-pass-still-wrong
 **You should see:** the checklist turns green, the gold check fails, and the reviewer gives its
 verdict.
 
-![The checklist on attempt 2 of 3 with every grader passed, the answer against gold showing a mismatch on both databases, and the reviewer's concern about the fiscal year](../../section-2-verification-loop/demo/expected/verify-graders-pass-still-wrong-checklist.png)
+![The run holding for approval with the line that it waits for a person's approval, the checklist on attempt 3 of 3 with every grader passed, the answer against gold showing a mismatch on both databases, and the reviewer's concern about the fiscal year](../../section-2-verification-loop/demo/expected/verify-graders-pass-still-wrong-checklist.png)
 
 *Every grader passes; the gold check fails on both databases; the reviewer raises a concern.*
 
@@ -167,16 +167,15 @@ approval.
 
 **You should see:** the query with numbered marks and one note per trap.
 
-![The annotated query below the checklist, with four trap notes: fiscal year, cancelled orders, Eastern time, and internal accounts](../../section-2-verification-loop/demo/expected/verify-graders-pass-still-wrong-sql.png)
+![The annotated query below the checklist, with three trap notes: fiscal year, Eastern time, and internal accounts, each numbered on a fragment of the query](../../section-2-verification-loop/demo/expected/verify-graders-pass-still-wrong-sql.png)
 
-*The query that passed every grader, with the four traps it hits.*
+*The query that passed every grader, with the three traps it hits.*
 
 1. Trap: Fiscal year. The query reads calendar year 2025.
-2. Trap: Cancelled orders. Status 5 means cancelled, and the query keeps those orders.
-3. Trap: Eastern time. `order_ts` is compared in Coordinated Universal Time (UTC).
-4. Trap: Internal accounts. The query keeps the staff and test accounts.
+2. Trap: Eastern time. `order_ts` is compared in Coordinated Universal Time (UTC).
+3. Trap: Internal accounts. The query keeps the staff and test accounts.
 
-**Look at:** the tokens line at the bottom: 12,505 tokens and 0.0015 dollars in the captured run.
+**Look at:** the tokens line at the bottom: 23,181 tokens and 0.0020 dollars in the captured run.
 
 **What it means:** a grader can only check what someone wrote down. The missing business rules
 are the case for Section 4: Hill-climbing loop.
@@ -203,13 +202,19 @@ are the case for Section 4: Hill-climbing loop.
 ## Time and cost
 
 Times are wall time from the trigger to the checked result, from the calibration demo pass of 22
-and 23 October 2026 (`docs/calibration-report.md`), each demo run alone with a reset between.
+and 23 October 2026 and the live sessions of 23 October, afternoon and evening
+(`docs/calibration-report.md`), each demo run alone with a reset between.
 
-| Demo | Time, two runs | Cost of the captured run | Cap |
+| Demo | Time | Cost of the captured run | Cap |
 |---|---|---|---|
-| Malicious SQL | 6 s in each run | 0 tokens | No model call |
-| The retry cap | 69 to 79 s | Not captured | 3 attempts; 60,000 tokens per run |
-| Every grader passes, still wrong | Not measured: no gold check in either run | 0.0015 dollars | 60,000 tokens per run |
+| Malicious SQL | 2 to 6 s | 0 tokens | No model call |
+| The retry cap | 14 to 79 s | Not captured | 3 attempts; 60,000 tokens per run |
+| Every grader passes, still wrong | 52 to 58 s; shown in 4 of 5 later runs | 0.0020 dollars | 60,000 tokens per run |
+
+"Later runs" are those after the change that keeps one run's gold check from blocking another. In
+the one not shown, on the evening of 23 October, every grader passed but the run posted with no
+gold check within 214 seconds; the cause is not yet confirmed, and the retry showed the moment. If
+it happens in class, reset and run it again.
 
 ## What to say in class
 

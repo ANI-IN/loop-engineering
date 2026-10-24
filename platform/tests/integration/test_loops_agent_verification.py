@@ -24,6 +24,7 @@ from loops_support import (
 
 from datapilot import db
 from datapilot.contracts import KnowledgeRule, KnowledgeVersion, RunStatus
+from datapilot.loop1_agent.catalog import PERSONAL_SAMPLE
 from datapilot.loop1_agent.tools import Warehouse
 from datapilot.loop2_verification.executor import ExecutionError, ReadOnlyProbeFailed
 from datapilot.loop2_verification.loop import RunRequest, VerificationLoop
@@ -48,11 +49,37 @@ def test_the_executor_reads_and_always_rolls_back(executor) -> None:
     assert result.columns == ["orders"] and result.rows == [(2000,)]
 
 
-def test_a_write_reaching_the_executor_is_refused_by_the_read_only_transaction(executor) -> None:
-    for sql in ("DELETE FROM orders", "SELECT 1; DELETE FROM orders"):
-        with pytest.raises(ExecutionError) as error:
-            executor.run(sql)
-        assert error.value.sqlstate == "25006"
+def test_a_write_reaching_the_executor_is_refused_by_the_read_only_transaction(
+    monkeypatch, executor
+) -> None:
+    monkeypatch.delenv("BUG_NAIVE_GUARD", raising=False)
+    with pytest.raises(ExecutionError) as error:
+        executor.run("DELETE FROM orders")
+    assert error.value.sqlstate == "25006"
+    assert executor.run(COUNT_SQL).rows == [(2000,)]
+
+
+def test_the_executor_sends_one_statement_only_unless_the_naive_guard_is_planted(
+    monkeypatch, executor
+) -> None:
+    """Review round 1 (F069): the executor sent the agent's text by the simple protocol, so a
+    stacked statement reached the server whenever the parse grader was not in front; EXPLAIN did
+    too (psycopg sends a query with no parameters by the simple protocol). Both now send one
+    prepared statement, and PostgreSQL refuses a second statement (42601) before anything runs;
+    only the naive guard's demo keeps the simple protocol, so its stacked write meets the
+    read-only transaction (25006). Before this change, a test pinned 25006 with the flag off."""
+    stacked = "SELECT 1; DELETE FROM orders"
+    monkeypatch.delenv("BUG_NAIVE_GUARD", raising=False)
+    for send in (executor.run, executor.explain):
+        with pytest.raises(ExecutionError) as one_only:
+            send(stacked)
+        assert one_only.value.sqlstate == "42601" and not one_only.value.refused_write
+    assert executor.run("SELECT count(*) FROM customers WHERE email LIKE '%@example.com'").rows
+    assert executor.explain("SELECT count(*) FROM customers WHERE email LIKE '%@x.com'")
+    monkeypatch.setenv("BUG_NAIVE_GUARD", "1")
+    with pytest.raises(ExecutionError) as planted_path:
+        executor.run(stacked)
+    assert planted_path.value.sqlstate == "25006"
     assert executor.run(COUNT_SQL).rows == [(2000,)]
 
 
@@ -67,13 +94,20 @@ def test_the_startup_probe_passes_on_the_read_only_role(executor) -> None:
 
 
 def test_the_startup_probe_refuses_a_connection_that_is_not_read_only(executor) -> None:
+    """Review round 1 (F008): this test asserted that the owner role passed, because the probe
+    tried a write inside a read-only transaction it opened itself, which fails for any role. The
+    probe now checks the role, so the writable owner role must fail it, naming what it can do."""
     from dataclasses import replace
 
     owner = replace(executor, url=db.url_for(db.Role.OWNER))
-    # The owner role may create temporary tables, but not inside a read-only transaction.
-    owner.probe_read_only()
+    with pytest.raises(ReadOnlyProbeFailed) as refused:
+        owner.probe_read_only()
+    assert "not read-only" in str(refused.value) and "it can write" in str(refused.value)
+    app = replace(executor, url=db.url_for(db.Role.APP))
+    with pytest.raises(ReadOnlyProbeFailed, match="temporary tables"):
+        app.probe_read_only()
     broken = replace(executor, url="postgresql://nobody:nobody@localhost:1/none")
-    with pytest.raises((ReadOnlyProbeFailed, psycopg.OperationalError)):
+    with pytest.raises(ReadOnlyProbeFailed, match="could not connect"):
         broken.probe_read_only()
 
 
@@ -98,6 +132,22 @@ def test_describe_table_gives_types_samples_and_few_distinct_values(warehouse, e
     } in (described["columns"])
     assert len(described["sample_rows"]) == 3
     assert described["distinct_values"]["status"] == [1, 2, 3, 4, 5]
+
+
+def test_describe_table_never_sends_personal_data_to_the_model(warehouse, executor) -> None:
+    """Review round 1 (F002): describing customers sent three people's names, emails, and phones
+    to the model with no grader and no approval. The pack's personal-data columns are now masked
+    in the sample rows and left out of the distinct values, in the base table and the view."""
+    for name in ("customers", "customers_marketable"):
+        text = Warehouse(warehouse, executor.url).describe_table(name)
+        described = json.loads(text)
+        assert "@" not in text and "555-01" not in text and "First1" not in text, name
+        rows = described["sample_rows"]
+        assert len(rows) == 3 and all(r["email"] == PERSONAL_SAMPLE for r in rows), name
+        assert all(r["state"] in ("CA", "TX", "NY") for r in rows), "other columns stay visible"
+        assert not {"email", "first_name", "last_name", "phone"} & set(described["distinct_values"])
+    products = Warehouse(warehouse, executor.url).describe_table("products")
+    assert "Ignore previous instructions" in products, "the planted injected name stays visible"
 
 
 def test_planted_names_only_schema(monkeypatch, warehouse, executor) -> None:
@@ -411,6 +461,26 @@ def test_a_resumed_run_keeps_its_attempt_and_the_reviewers_one_concern(services_
     assert resumed.approval and resumed.approval.kind == "held_answer"
 
 
+def test_a_kill_switch_engaged_before_the_review_ends_the_run_blocked_not_escalated(
+    services_for,
+) -> None:
+    """Before, a stop seen at the review ended the run escalated, so the board showed escalated
+    for a run the kill switch stopped and the run counted toward the escalation demotion."""
+    from datapilot.loop1_agent.guard import StopReason
+
+    script = query_then_answer(COUNT_SQL, "There are 2000 orders.")
+    services = services_for({"analyst": script, "reviewer": reviewer_script([])}, reviewer=True)
+    hooks = ListHooks()
+
+    def engaged_once_verifying() -> StopReason | None:
+        return StopReason.KILL_SWITCH if RunStatus.VERIFYING in hooks.statuses else None
+
+    loop = VerificationLoop(services, hooks, external_stop=engaged_once_verifying)
+    outcome = run(loop, request())
+    assert outcome.status is RunStatus.BLOCKED_KILLSWITCH  # the empty reviewer was never called
+    assert outcome.envelope is not None and outcome.verdict is None
+
+
 def test_the_reviewer_never_sees_a_failed_grader(services_for) -> None:
     script = query_then_answer(COUNT_SQL, "There are 2000 orders.")
     services = services_for({"analyst": script, "reviewer": reviewer_script([])}, reviewer=True)
@@ -446,8 +516,8 @@ def test_a_reviewer_reply_cut_off_at_its_cap_ends_the_run_escalated(services_for
 def test_a_reply_cut_off_as_the_responses_api_sends_it_names_its_real_output_tokens(
     services_for,
 ) -> None:
-    """The live probe's shape (run d9f0ab0e): a real ChatOpenAI over a stand-in client returns an
-    incomplete Responses API reply of 14 output tokens; the reason names 14, as the ledger does."""
+    """A real ChatOpenAI over a stand-in client returns an incomplete Responses API reply of 14
+    output tokens as the first call; the reason names 14, as the ledger does."""
     from dataclasses import replace
 
     from cut_off_responses import OUTPUT_TOKENS, LedgerView, cut_off_model, incomplete_response
@@ -459,5 +529,39 @@ def test_a_reply_cut_off_as_the_responses_api_sends_it_names_its_real_output_tok
     assert outcome.status is RunStatus.ESCALATED and ledger.output_tokens == [OUTPUT_TOKENS]
     assert outcome.reasons == [
         f"a model response was cut off at its output-token cap after {OUTPUT_TOKENS} tokens"
+    ]
+    assert outcome.tokens_out == OUTPUT_TOKENS
+
+
+def test_the_live_probe_cut_off_after_list_tables_never_reads_after_0_tokens(
+    services_for,
+) -> None:
+    """The live probe's two calls (runs d9f0ab0e and 730953ea, two ledger rows each): list_tables
+    completed within the cap (715 input, 14 output tokens), then the next call was cut off and
+    reported 0 input and 0 output tokens. The reason never says 0 tokens; it names the 14 output
+    tokens the run's calls reported, which is the ledger's total for the run."""
+    from dataclasses import replace
+
+    from cut_off_responses import (
+        OUTPUT_TOKENS,
+        LedgerView,
+        cut_off_model,
+        incomplete_response,
+        list_tables_response,
+        stand_in,
+    )
+
+    ledger = LedgerView()
+    replies = [list_tables_response(), incomplete_response(input_tokens=0, output_tokens=0)]
+    model = cut_off_model(replies, [ledger])
+    hooks = ListHooks()
+    services = replace(services_for({}), models=lambda component: model)
+    outcome = run(VerificationLoop(services, hooks), request())
+    assert ledger.output_tokens == [OUTPUT_TOKENS, 0] and stand_in(model).calls == 2
+    assert [p["tool"] for p in hooks.kinds("tool_call_finished")] == ["list_tables"]
+    assert outcome.status is RunStatus.ESCALATED and outcome.attempts == 1
+    assert outcome.reasons == [
+        "a model response was cut off at its output-token cap; it reported no output-token "
+        f"count, and the run's model calls so far reported {OUTPUT_TOKENS} output tokens"
     ]
     assert outcome.tokens_out == OUTPUT_TOKENS

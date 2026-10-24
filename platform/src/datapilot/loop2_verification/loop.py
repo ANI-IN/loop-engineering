@@ -52,6 +52,7 @@ from datapilot.loop2_verification.feedback import FeedbackClient, send_grader_fe
 from datapilot.loop2_verification.graders import FinalAnswerGrader, InjectedFailingGrader
 from datapilot.loop2_verification.limits import attempt_allowed
 from datapilot.loop2_verification.reviewer import Reviewer
+from datapilot.observability.spend import Usage
 
 
 class RunHooks(Protocol):
@@ -141,6 +142,7 @@ STOPPED_STATUS = {
     StopReason.TOKEN_LIMIT: RunStatus.ESCALATED,
     StopReason.REFUSED_WRITE: RunStatus.ESCALATED,
     StopReason.OUTPUT_LIMIT: RunStatus.ESCALATED,
+    StopReason.LOST_LEASE: RunStatus.FAILED,  # the worker discards the result
 }
 REFUSED_STOP = "Run stopped: the database refused a write."
 
@@ -159,7 +161,7 @@ class VerificationLoop:
         hooks: RunHooks,
         *,
         external_stop: Callable[[], StopReason | None] = _no_stop,
-        on_usage: Callable[[int, int], None] | None = None,
+        on_usage: Callable[[Usage], None] | None = None,
         extra_middleware: ExtraMiddleware = _no_extra,
     ) -> None:
         self.s = services
@@ -352,12 +354,10 @@ class VerificationLoop:
                         continue
                     return self._held(envelope, verdict, attempt)
                 if self.guard.stop_reason is not None:
-                    return self._outcome(
-                        RunStatus.ESCALATED,
-                        envelope=envelope,
-                        reasons=[f"stopped during verification: {self.guard.stop_detail}"],
-                        attempts=attempt,
-                    )
+                    # A stop seen during the review ends the run as on the retry path below: a
+                    # kill switch stop is blocked by the kill switch, not escalated, so it never
+                    # counts toward the demotion after consecutive escalations.
+                    return self._stopped_while_verifying(envelope, attempt)
                 return self._outcome(
                     RunStatus.ANSWERED, envelope=envelope, verdict=verdict, attempts=attempt
                 )

@@ -112,27 +112,54 @@ def demo(name: str) -> None:
     """Trigger a live demo through the api, as the console does: make demo NAME=<demo>."""
     from datapilot.loop3_events import commands
 
-    done = commands.demo(name)
+    try:
+        done = commands.demo(name)
+    except commands.FinaleRefused as error:
+        typer.echo(f"x {name} not sent: {error}")
+        raise typer.Exit(1) from error
     typer.echo(f"{name}: runs {done.run_ids or '-'}; requests {done.request_ids or '-'}")
+
+
+@app.command()
+def autonomy(
+    level: str,
+    by: str = typer.Option(..., "--by", help="Who sets it, for the status line and the record"),
+) -> None:
+    """Set the system's autonomy level through the api, as the console's control does:
+    make autonomy LEVEL=unattended BY="<your name>". The finale needs the unattended level."""
+    from datapilot.loop3_events import commands
+
+    try:
+        chosen = commands.set_autonomy(level, by=by)
+    except ValueError as error:
+        typer.echo(f"x {error}")
+        raise typer.Exit(1) from error
+    typer.echo(f"autonomy level: {chosen.label}, set by {by}")
 
 
 @app.command()
 def reset(name: str) -> None:
     """Clear one section's live state, release the kill switch: make reset NAME=<section>. The
     hill-climbing loop keeps this session's baseline experiment and says so."""
-    from datapilot.loop3_events import commands
-
-    for line in commands.reset(name).lines():
-        typer.echo(line)
+    _reset(name, discard_baseline=False)
 
 
 @app.command("reset-discarding-baseline")
 def reset_discarding_baseline(name: str) -> None:
     """The deliberate full reset of the hill-climbing loop: also discards this session's baseline
     experiment, so the next comparison needs a new baseline run."""
+    _reset(name, discard_baseline=True)
+
+
+def _reset(name: str, *, discard_baseline: bool) -> None:
     from datapilot.loop3_events import commands
 
-    for line in commands.reset(name, discard_baseline=True).lines():
+    try:
+        report = commands.reset(name, discard_baseline=discard_baseline)
+    except commands.ResetRefused as error:
+        typer.echo(f"x {error}")
+        raise typer.Exit(1) from error
+    for line in report.lines():
         typer.echo(line)
 
 

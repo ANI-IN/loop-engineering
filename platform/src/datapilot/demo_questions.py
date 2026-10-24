@@ -9,6 +9,12 @@ from __future__ import annotations
 SPINE_QUESTION = "What was our net revenue in fiscal year 2025?"
 DEFAULT_QUESTION = "How many orders have been placed in total?"
 WEBHOOK_QUESTION = "How many orders were placed yesterday?"
+# The approval demo (events-approval-survives-restart) sends this as an export.requested event, not
+# a question.asked one, so it stays out of QUESTIONS. Its query returns a personal-data column, so
+# the run is held for human approval; this wording is the one verified live for that moment.
+EXPORT_QUESTION = (
+    "Export the California customers who may receive marketing, with their email addresses."
+)
 
 QUESTIONS = {
     "agent-simple-question": DEFAULT_QUESTION,
@@ -18,6 +24,10 @@ QUESTIONS = {
     "agent-confident-wrong-answer": SPINE_QUESTION,
     "verify-graders-pass-still-wrong": SPINE_QUESTION,
     "events-webhook-question": WEBHOOK_QUESTION,
+    # Both arrive as webhooks on the Events page: in the console, the duplicates button sends this
+    # question three times, and the kill switch stops the run Send webhook question started.
+    "events-duplicate-events": WEBHOOK_QUESTION,
+    "events-kill-switch-in-flight": WEBHOOK_QUESTION,
     "improve-cleared-unattended": SPINE_QUESTION,
 }
 

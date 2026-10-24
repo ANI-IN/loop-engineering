@@ -33,6 +33,22 @@ SCHEME = Scheme(holdout_repeats=3, holdout_pass_threshold=2, dev_regression_reru
 REFUSAL = b'{"detail": "Monthly unique traces usage limit exceeded"}'
 
 
+@pytest.fixture(autouse=True)
+def fresh_refusal_log(monkeypatch: pytest.MonkeyPatch):
+    """Each test counts its own refusals (review round 2): the process-wide log otherwise kept
+    every refusal these tests provoke, so `make test` ended with "LangSmith refused 10 trace
+    uploads in this process for its monthly trace limit" when no upload reached LangSmith, and a
+    later test read the flag these tests set."""
+    import logging
+
+    logger = logging.getLogger(background.SDK_LOGGER)
+    before = list(logger.filters)
+    monkeypatch.setattr(background, "_refusals", background.RefusalLog())
+    yield
+    for added in [f for f in logger.filters if f not in before]:
+        logger.removeFilter(added)
+
+
 class Refusing(requests.Session):
     """Answers every request with 429 and a Retry-After of 30 seconds; with `hang`, first waits
     until released, like an upload that never completes."""
@@ -348,6 +364,98 @@ def test_a_process_whose_uploads_are_refused_exits_in_seconds(refusing_server, t
     # the SDK's own transport would sleep 3 times 30 seconds on the way out
     assert time.monotonic() - started < 45
     assert any(p.startswith("/runs") for p in seen), "it tried, was refused, and let go"
+
+
+REFUSING_TWICE = """
+import sys
+from langchain_core.runnables import RunnableLambda
+from langsmith.run_helpers import tracing_context
+from datapilot.observability.background import bounded_client, use_for_tracing
+client = bounded_client(api_key="test-key", api_url=sys.argv[1])
+use_for_tracing(client)
+for n in range(2):  # two uploads, each refused
+    with tracing_context(enabled=True, client=client, project_name="datapilot-experiments"):
+        RunnableLambda(lambda x: x).invoke(n)
+    client.flush()
+print("runs done", flush=True)
+"""
+
+
+def test_the_refusal_log_of_a_process_is_one_line_and_a_count(refusing_server, tmp_path) -> None:
+    """Live, the SDK logged one warning per refused upload, hundreds per command (review round 1,
+    F015). The first refusal is one short line, the rest are counted, and the count is one line
+    at exit."""
+    url, _seen = refusing_server
+    script = tmp_path / "refusing_twice.py"
+    script.write_text(REFUSING_TWICE, encoding="utf-8")
+    clean = {
+        k: v
+        for k, v in os.environ.items()
+        if not k.startswith(("LANGSMITH_", "LANGCHAIN_", "OPENAI_"))
+    }
+    done = subprocess.run(
+        [sys.executable, str(script), url], env=clean, capture_output=True, text=True, timeout=120
+    )
+    assert done.returncode == 0 and "runs done" in done.stdout, done.stderr[-2000:]
+    lines = [line for line in done.stderr.splitlines() if line.strip()]
+    raw = [line for line in lines if any(s in line for s in ("Failed to", "429", "Rate limit"))]
+    assert raw == [], lines
+    first = [line for line in lines if line.startswith("LangSmith refused a trace upload")]
+    assert first == [
+        "LangSmith refused a trace upload (its monthly trace limit); later refusals are counted, "
+        "not shown"
+    ]
+    assert lines[-1].startswith("LangSmith refused ") and lines[-1].endswith(
+        "trace uploads in this process for its monthly trace limit"
+    )
+
+
+def test_the_refusal_filter_names_the_monthly_limit_and_lets_other_lines_through() -> None:
+    import logging
+
+    log = background.RefusalLog()
+    record = lambda text: logging.LogRecord("langsmith.client", 30, "", 0, text, None, None)  # noqa: E731
+    assert log.filter(record("Failed to get info: a connection was reset"))
+    assert log.summary() is None and not log.monthly_limit
+    limit = 'HTTPError(429, \'{"detail":"Monthly unique traces usage limit exceeded"}\')'
+    shown = [log.filter(record(f"Failed to multipart ingest runs: {limit}")) for _ in range(300)]
+    assert shown == [True] + [False] * 299
+    assert log.monthly_limit and log.summary() == (
+        "LangSmith refused 300 trace uploads in this process for its monthly trace limit"
+    )
+
+
+def test_the_refusal_log_keeps_the_runs_it_refused_and_only_those() -> None:
+    """Review round 2: one refusal for the monthly limit marked every missing trace of the
+    command as refused, whatever the reason it was missing."""
+    import logging
+
+    log = background.RefusalLog()
+    record = lambda text: logging.LogRecord("langsmith.client", 30, "", 0, text, None, None)  # noqa: E731
+    root, child, other = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    limit = 'HTTPError(429, \'{"detail":"Monthly unique traces usage limit exceeded"}\')'
+    ids = f"trace={root},id={root}; trace={root},id={child}"
+    log.filter(record(f"Failed to multipart ingest runs: {limit}{ids}"))
+    log.filter(record(f"Failed to multipart ingest runs: HTTPError(429)trace={other},id={other}"))
+    assert log.refused_run(root) and log.refused_run(str(child).upper())
+    assert not log.refused_run(other), "a 429 that did not name the monthly limit is no refusal"
+    assert not log.refused_run(uuid.uuid4())
+
+
+def test_a_trace_the_sdk_could_not_upload_is_known_by_its_run_id(refusing_server, monkeypatch):
+    """The SDK's own refusal line, from a real upload to the refusing stand-in, names the run."""
+    from langchain_core.runnables import RunnableLambda
+    from langsmith import run_trees
+    from langsmith.run_helpers import tracing_context
+
+    url, _seen = refusing_server
+    client = background.bounded_client(api_key="test-key", api_url=url)
+    monkeypatch.setattr(run_trees, "_CLIENT", client)
+    run_id = uuid.uuid4()
+    with tracing_context(enabled=True, client=client, project_name="datapilot-experiments"):
+        RunnableLambda(lambda x: x).invoke(1, config={"run_id": run_id})
+    assert traces.flush(timeout=30)
+    assert background.trace_refused(run_id) and not background.trace_refused(uuid.uuid4())
 
 
 def test_a_check_gives_up_on_trace_links_quickly_once_traces_are_refused(monkeypatch) -> None:

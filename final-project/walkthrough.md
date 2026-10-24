@@ -60,7 +60,7 @@ def load_benchmark(pack: str | None = None) -> list[BenchmarkItem]:
 ```
 
 Each item is validated against the contract, so a missing field fails at load, before any model
-call. Any YAML file in `benchmark/` is part of the benchmark.
+call. Any `.yaml` file in `benchmark/` is part of the benchmark.
 
 ### use-in-your-repo/check_pack.py, lines 148-159
 

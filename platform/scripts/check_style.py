@@ -35,6 +35,7 @@ checks: `make check-names` runs it. The naming checks print a readable name, not
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 import tomllib
@@ -354,7 +355,7 @@ _TYPES = [
     (r"guide/appendix\.md", "guide-appendix"),
 ]
 # Every folder of public pages. A new public folder goes here, in lint_prose.py, and in
-# platform/config/release.toml; platform/tests/test_release_list.py checks all three.
+# platform/config/release.toml; platform/tests/unit/test_release_list.py checks all three.
 _DEFAULT_DIRS = ("setup", "final-project", "use-in-your-repo", "docs", "guide")
 # Files copied into a learner's repository: the skills and the kit templates. Besides their
 # Markdown, their scripts and other text files are read for the label checks.
@@ -427,14 +428,20 @@ def doc_type(rel: str) -> str:
     return "other"
 
 
+def _tree_files(folder: Path, skip: Iterable[str], *, dot_files: bool = False) -> list[Path]:
+    """Every file under `folder`, sorted. Dot folders and `skip` folders are pruned before the walk
+    descends into them, and a folder that vanishes during the walk (a cache another process
+    deletes) is passed over instead of ending the check with an error."""
+    skip = set(skip)
+    found = []
+    for top, dirs, files in os.walk(folder, onerror=lambda _error: None):
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in skip]
+        found += [Path(top) / f for f in files if dot_files or not f.startswith(".")]
+    return sorted(found)
+
+
 def _walk(folder: Path) -> list[Path]:
-    return sorted(
-        p
-        for p in folder.rglob("*.md")
-        if not any(
-            part.startswith(".") or part == "node_modules" for part in p.relative_to(folder).parts
-        )
-    )
+    return [p for p in _tree_files(folder, {"node_modules"}) if p.suffix == ".md"]
 
 
 def default_files(root: Path) -> list[Path]:
@@ -449,16 +456,11 @@ def default_files(root: Path) -> list[Path]:
         found.append(root / "slides" / "README.md")
     kit = root / "use-in-your-repo"
     if kit.is_dir():
-        found += sorted(
+        found += [
             p
-            for p in kit.rglob("*")
-            if p.is_file()
-            and p.suffix in TEXT_SUFFIXES
-            and not any(
-                part.startswith(".") or part in _SKIP_DIRS for part in p.relative_to(kit).parts
-            )
-            and is_copy_out(p.relative_to(root).as_posix())
-        )
+            for p in _tree_files(kit, _SKIP_DIRS)
+            if p.suffix in TEXT_SUFFIXES and is_copy_out(p.relative_to(root).as_posix())
+        ]
     return [p for p in found if is_checked(p.relative_to(root).as_posix())]
 
 
@@ -538,10 +540,8 @@ def final_project_problems(root: Path) -> list[Problem]:
 def diagram_problems(root: Path) -> list[Problem]:
     """SC20: every .png or .svg under a diagrams/ folder has a .excalidraw file with its stem."""
     out: list[Problem] = []
-    for path in sorted(root.rglob("*")):
+    for path in _tree_files(root, _SKIP_DIRS, dot_files=True):
         rel = path.relative_to(root)
-        if any(part in _SKIP_DIRS or part.startswith(".") for part in rel.parts[:-1]):
-            continue
         if path.suffix.lower() in DIAGRAM_SUFFIXES and "diagrams" in rel.parts[:-1]:
             source = path.with_suffix(".excalidraw")
             if not source.is_file():

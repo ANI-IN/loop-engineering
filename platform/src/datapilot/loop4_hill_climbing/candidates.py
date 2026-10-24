@@ -133,16 +133,8 @@ def sentence(candidates: Sequence[CandidateRun], chosen: CandidateRun, *, naive:
 def save_selection_draft(conn: psycopg.Connection[Any], version: KnowledgeVersion) -> None:
     """A candidate's rules under its own name, retired at once: the target can answer under it,
     and it is never offered for approval or taken for the newest candidate."""
-    conn.execute(
-        versions.INSERT_VERSION,
-        {
-            "pack": active_pack(),
-            "version": version.version,
-            "yaml": versions.to_yaml(version),
-            "status": "retired",
-            "created_by": "analyzer team, a candidate for the dev selection",
-        },
-    )
+    created_by = "analyzer team, a candidate for the dev selection"
+    versions.insert_new(conn, version, status="retired", created_by=created_by)
 
 
 def save(

@@ -39,11 +39,11 @@ outline_check() {
   rm -f "$built"
 }
 
-# Commit messages read through the guards script's git-directory resolution, which also works in
-# an agent worktree under WSL (its .git file names a C:/ path that git there cannot follow).
+# Commit messages are read by the guards script, which resolves the git directory itself (an
+# agent worktree under WSL has a .git file naming a C:/ path that git there cannot follow), fails
+# when git fails, and skips the check in a public copy, where it is not a rule of a learner's commits.
 commit_messages_check() {
-  "$UV" run python -c 'import sys; sys.path.insert(0, "platform/scripts"); import check_repo_guards as g; from pathlib import Path; print(g._git(Path(".").resolve(), "log", "--format=%B"))' \
-    | "$UV" run python platform/scripts/short_forms.py --commit-messages -
+  "$UV" run python platform/scripts/check_repo_guards.py --commit-messages
 }
 
 run_check "repository guards"            "$UV" run python platform/scripts/check_repo_guards.py
@@ -51,7 +51,7 @@ run_check "ruff check"                   "$UV" run ruff check .
 run_check "ruff format"                  "$UV" run ruff format --check .
 run_check "import contracts"             "$UV" run lint-imports
 run_check "prose lint"                   "$UV" run python platform/scripts/lint_prose.py
-run_check "style check"                  "$UV" run python platform/scripts/check_style.py
+run_check "style check, strict"          "$UV" run python platform/scripts/check_style.py --strict
 run_check "naming check, course pages"   "$UV" run python platform/scripts/check_style.py --names-only
 run_check "naming check, outline"        "$UV" run python platform/scripts/short_forms.py slides/outline.md
 run_check "naming check, commit messages" commit_messages_check

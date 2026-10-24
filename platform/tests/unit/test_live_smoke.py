@@ -145,6 +145,67 @@ def test_a_missing_trace_is_a_hard_breakage() -> None:
     assert checks[0].hard_failure and checks[0].hard_failure.startswith("missing trace")
 
 
+def test_a_trace_refused_for_the_monthly_limit_is_reported_not_failed() -> None:
+    """Live, 23 October: LangSmith's free plan refused every upload once its monthly limit was
+    used up, and live-smoke reported each check as a hard failure (review round 1, F015)."""
+    checks = smoke.run(
+        _services(trace_found=lambda run_id: False, trace_refused=lambda run_id: True)
+    )
+    assert all(c.ok for c in checks), [c.hard_failure for c in checks]
+    refused = [c for c in checks if c.trace_refused]
+    assert [c.name[:3] for c in refused] == ["(a)", "(b)", "(c)", "(d)", "(e)"]
+    assert "    trace refused by LangSmith (monthly limit): https://smith.example/r/" in "\n".join(
+        refused[0].lines()
+    )
+
+
+def test_a_trace_missing_for_any_other_reason_stays_a_hard_breakage() -> None:
+    checks = smoke.run(
+        _services(trace_found=lambda run_id: False, trace_refused=lambda run_id: False)
+    )
+    assert not any(c.ok for c in checks) and not any(c.trace_refused for c in checks)
+
+
+def test_only_the_run_langsmith_refused_reads_as_refused() -> None:
+    """Review round 2: after one refusal for the monthly limit, every missing trace of the
+    command was reported as refused; now only a run the refusal named is."""
+    checks = smoke.run(
+        _services(
+            trace_found=lambda run_id: False, trace_refused=lambda run_id: run_id == "webhook-run"
+        )
+    )
+    assert [c.trace_refused for c in checks] == [False, False, True, False, False]
+    assert [c.ok for c in checks] == [False, False, True, False, False]
+    assert checks[0].hard_failure and checks[0].hard_failure.startswith("missing trace")
+
+
+def test_the_workers_trace_is_not_confirmed_when_this_process_was_refused_at_the_limit() -> None:
+    """Live, 24 October: the worker uploads the webhook run's trace, so this process never sees
+    that refusal; with this process's own uploads refused for the monthly limit, check (c) read
+    as a hard failure although its run posted. It reads as not confirmed, never as refused."""
+    checks = smoke.run(
+        _services(
+            trace_found=lambda run_id: False,
+            trace_refused=lambda run_id: run_id != "webhook-run",
+            limit_reached=lambda: True,
+        )
+    )
+    assert all(c.ok for c in checks), [c.hard_failure for c in checks]
+    webhook = checks[2]
+    assert not webhook.trace_refused and webhook.trace_unconfirmed
+    assert any(
+        line.startswith("    trace not confirmed: the worker uploads it")
+        for line in webhook.lines()
+    )
+
+
+def test_the_workers_missing_trace_stays_a_breakage_without_a_refusal_at_the_limit() -> None:
+    checks = smoke.run(
+        _services(trace_found=lambda run_id: run_id != "webhook-run", limit_reached=lambda: False)
+    )
+    assert [c.ok for c in checks] == [True, True, False, True, True]
+
+
 def test_a_write_the_database_did_not_refuse_is_a_hard_breakage() -> None:
     checks = smoke.run(_services(write_refused=lambda sql: None))
     assert checks[4].hard_failure == "a write was not refused by the database"

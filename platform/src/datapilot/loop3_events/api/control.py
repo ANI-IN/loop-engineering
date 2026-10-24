@@ -28,10 +28,14 @@ from datapilot.settings import get_settings
 
 api = APIRouter()
 
+# The worker commits a run's awaiting_approval status before it parks the job, so an approval can
+# land while the job is still running: requeue it then too. Its worker's fenced finish then matches
+# no row and the run resumes on the next claim, instead of staying parked with nothing to wake it.
 REQUEUE_SQL = (
     "UPDATE ops.jobs SET status = 'queued', run_after = now(), attempts = 0, lease_owner = NULL, "
     "lease_until = NULL, updated_at = now() "
-    "WHERE event_id = (SELECT event_id FROM ops.runs WHERE run_id = %s) AND status = 'parked'"
+    "WHERE event_id = (SELECT event_id FROM ops.runs WHERE run_id = %s) "
+    "AND status IN ('parked', 'running')"
 )
 CLOSE_SQL = (
     "UPDATE ops.jobs SET status = 'done', updated_at = now() "

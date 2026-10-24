@@ -219,10 +219,8 @@ def render(out: str) -> None:
         "Structured Query Language (SQL), Coordinated Universal Time (UTC), JavaScript Object "
         "Notation (JSON), and large language model (LLM).",
         REFRESH.format(
-            "the finale chain with the SQL guidance check and two analyzer candidates chosen on the "
-            "dev split, the deterministic naive analyzer blocked twice, the live re-verification of "
-            "Assignment 4, and trace sampling seen live after the LangSmith limit resets on 1 "
-            "November; each marker below names its own value"
+            "trace sampling seen live after the LangSmith limit resets on 1 November; each marker "
+            "below names its own value"
         ),
         "",
     ]
@@ -235,7 +233,10 @@ def render(out: str) -> None:
             demo_start = t + int(sum(s["minutes"] for s in slides[:8]) * 60)
             first = clock(demo_start)
             if name == "s4":
-                first = "2:50 for the baseline experiment, during the poll; the rest at " + first
+                first = (
+                    "2:50 for the baseline experiment, during the poll; 2:55 for the naive "
+                    "analyzer, at the break; the rest at " + first
+                )
             lines += [
                 f"The failure this section fixes: {mod.FAILURE}",
                 "",

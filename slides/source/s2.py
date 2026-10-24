@@ -24,7 +24,7 @@ NUMBERS = [
     "Statement timeout of 5,000 milliseconds: from `limits.statement_timeout_ms` in pack.yaml.",
     "Plan cost cap 500,000 and plan rows cap 5,000,000: from `cost_guard` in pack.yaml.",
     "6.5 percent mean false-positive rate of single-database execution match, 11.0 percent on extra-hard queries, about 1,000 fuzzed databases per schema, about 42 kept per query, 2.5 percent false negatives: from Source 8.",
-    "SQLSTATE 25006, 42501, 57014: from Source 10 and the local PostgreSQL 16.2 runs in the course research synthesis.",
+    "SQLSTATE 25006, 42501, 57014: from Source 10 and runs measured for the course on PostgreSQL 16.2 during research; the class stack runs PostgreSQL 18.6.",
     "Malicious SQL: fixed system guard, guard, then 42501 from the missing grant; naive guard 25006, 25006, then 42501: docs/calibration-report.md, Demos.",
     "Retry cap demo: escalated after 3 attempts, in 69 and 79 seconds: docs/calibration-report.md, Demos; without the cap, 9 attempts until the 60,000-token run budget, 62,762 and 63,737 tokens, 0.0067 and 0.0069 dollars, 104 and 111 seconds: docs/calibration-report.md, Resumed after the ledger correction.",
     "Every grader passes, still wrong, retaken twice: 76,981,355.95 dollars against gold 64,015,091.21, 4 trap labels each: docs/calibration-report.md, Resumed without traces.",
@@ -155,7 +155,7 @@ SLIDES = [
         allow_example=True,
         minutes=5,
         says="Key idea: accept only shapes you can name; reject everything else, including what the parser cannot model",
-        src="the course research synthesis (sqlglot guard findings)",
+        src="measured for the course (sqlglot guard)",
         on_slide=[
             "Principle: accept only query shapes you can name; reject everything else.",
             "Think of it as a badge reader at the door, not a list of banned items.",
@@ -221,7 +221,7 @@ SLIDES = [
         container="table: layer | can the session undo it, with worked-example, trade-offs, at-work, and key idea bars",
         minutes=4.5,
         says="Key idea: a session can switch a default off; it cannot grant itself a privilege",
-        src="the course research synthesis (read-only role findings, PostgreSQL 16.2)",
+        src="measured for the course on PostgreSQL 16.2 during research (read-only role); compose.yaml (PostgreSQL 18.6)",
         on_slide=[
             "Principle: put the last defense where the agent's own session cannot change it.",
             "Think of it as a staff-only sign versus a door with no key cut for you.",
@@ -246,7 +246,8 @@ SLIDES = [
             "fails. Temporary tables and schema creation are revoked from the public role. A write the "
             "database refuses is an incident, not a mistake to retry: the run ends escalated at once.",
             "Analogy: a sign on a door that says staff only, versus a door with no key cut for you.",
-            "Under the hood: tested on PostgreSQL 16.2. Inside `BEGIN READ ONLY`, an INSERT or CREATE "
+            "Under the hood: tested on PostgreSQL 16.2 during research; the class stack runs 18.6, "
+            "where the read-only probe at startup checks the same barrier. Inside `BEGIN READ ONLY`, an INSERT or CREATE "
             "TEMP raises SQLSTATE 25006 even as superuser. But a session can run `SET "
             "default_transaction_read_only = off`, and after that an INSERT failed with 42501 only "
             "because the role lacked the grant. CREATE TEMP TABLE succeeded until `REVOKE TEMP ON "
@@ -259,7 +260,7 @@ SLIDES = [
             "Read-only API tokens, least-privilege cloud roles, per-agent database users. Then test the "
             "barrier at startup the way the probe does, and refuse to run if it is missing.",
             "Point at: the two rows that answer yes; those are the layers an attacker can switch off.",
-            'Ask: "Which row would you test in CI?" Expected: the grant row, with a probe that must '
+            'Ask: "Which row would you test in continuous integration?" Expected: the grant row, with a probe that must '
             "fail.",
             'Likely question: "If the role is the real boundary, why keep the guard?" Answer: the '
             "guard rejects early with a reason the agent can use, and it blocks reads the role allows "
@@ -281,7 +282,7 @@ SLIDES = [
         container="table: stop | value | then, with worked-example, trade-offs, at-work, and key idea bars",
         minutes=4,
         says="Key idea: every loop needs a stop the model cannot argue with, placed before the next model call",
-        src="platform/packs/datapilot_us/pack.yaml (limits, cost_guard); the course research synthesis (middleware findings)",
+        src="platform/packs/datapilot_us/pack.yaml (limits, cost_guard); Sources 11 and 12 (middleware)",
         on_slide=[
             "Principle: every loop needs a stop the model cannot argue with.",
             "Think of it as a circuit breaker: it never asks the appliance whether it is finished.",
@@ -351,7 +352,7 @@ SLIDES = [
         container="table: check | catches | misses, with worked-example, trade-offs, at-work, and key idea bars",
         minutes=4.5,
         says="Key idea: judgement goes after the deterministic checks, and a checker on the same model shares its errors",
-        src="platform/src/datapilot/contracts/agents.py; the prior-art research notes (test-suite accuracy)",
+        src="platform/src/datapilot/contracts/agents.py; Source 8 (test-suite accuracy)",
         on_slide=[
             "Principle: a checker helps only where its errors differ from the maker's.",
             "Think of it as proofreading your own essay again in a different font.",
@@ -457,8 +458,9 @@ SLIDES = [
             "between; the measured results are under each demo. A planted bug is switched by setting "
             "its flag to 1 in `.env` and running `make up`, and back to 0 the same way.",
             "Demo: malicious SQL.",
-            "Starting state: Verify page open, the naive guard (`BUG_NAIVE_GUARD`) switched on, its chip "
-            "visible on the status line. Reset first: `make reset NAME=verification-loop`.",
+            "Starting state: Verify page open, the naive guard (`BUG_NAIVE_GUARD`) switched on. Reset "
+            "first: `make reset NAME=verification-loop`. The reset clears the runs, so its chip shows on "
+            "the status line once the first run with the flag starts.",
             "Do: Verify > Send malicious SQL, or `make demo NAME=verify-malicious-sql`. Then switch the "
             "naive guard off and send it again.",
             "Narrate: concept 1, allowlist the shape. The naive guard reads the first word, sees SELECT, "
@@ -468,7 +470,7 @@ SLIDES = [
             "A refused write ends the run escalated at once; it is never fed back as a retry. With the "
             "syntax-tree guard on, layer two rejects the first two before they reach the database.",
             "Point at, in order: the statement text; the defense-layer panel with the layer that stopped "
-            "each statement; the row counts showing no warehouse row changed; and last the live stamp: "
+            "each statement and the layers it never reached; and last the live stamp: "
             "the run's start time in your local time and its trace link.",
             "Expected live result: with the naive guard, 25006, 25006, then 42501; with the syntax-tree "
             "guard, the guard, the guard, then 42501; no warehouse row changes in either run. Measured: "
@@ -587,7 +589,7 @@ SLIDES = [
         minutes=1,
         allow_example=True,
         says="Seven attack patterns a syntax-tree guard must handle, and the defense for each",
-        src="the course research synthesis (sqlglot guard findings)",
+        src="measured for the course (sqlglot guard)",
         on_slide=[
             "How to read this: each row is a shape that passes a first-word or root-only check; the last column is the defense that stops it.",
             "Shapes that hide a write:",
@@ -625,7 +627,7 @@ SLIDES = [
             "Point at: the Defense column; no row relies on the prompt.",
             "Ask: \"Which row is the grant's job, not the guard's?\" Expected: SQL in a string.",
             'Likely question: "Is a new parser version a risk?" Answer: yes; pin it, and keep these '
-            "tests so an upgrade that changes a node type fails CI.",
+            "tests so an upgrade that changes a node type fails continuous integration.",
             'Likely question: "Why reject FOR UPDATE in a read-only tool?" Answer: it takes row locks '
             "that can block writers elsewhere, a side effect without a write.",
             "Misconception: if it parses, it is safe. Correction: three rows here parse without error.",
@@ -640,7 +642,7 @@ SLIDES = [
         container="table: SQLSTATE | meaning | feedback to the agent | then, with a how-to-read bar",
         minutes=1,
         says="Map each database error to feedback the agent can act on, and to retry or stop",
-        src="the course research synthesis (PostgreSQL error codes); Source 10",
+        src="Source 10 (PostgreSQL error codes)",
         on_slide=[
             "How to read this: a fixable error becomes a reason the agent can act on, counted against the cap of 3; a refused write ends the run.",
             "| SQLSTATE | Meaning | Feedback to the agent | Then |",
@@ -692,7 +694,7 @@ SLIDES = [
         container="two-column cards: the two-database example | the false-positive table, with a how-to-read bar",
         minutes=1,
         says="A wrong query can match on one database by coincidence; distinguishing rows expose it",
-        src="the prior-art research notes (test-suite accuracy); Source 8",
+        src="Source 8 (test-suite accuracy)",
         on_slide=[
             "How to read this: a result match is only as strong as the rows it runs on; the table gives the measured size of the gap.",
             "Gold: net revenue without cancelled orders. Wrong: net revenue with them.",

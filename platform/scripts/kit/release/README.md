@@ -26,10 +26,10 @@ and learners get a public repository made from an allow-list, as one commit.
 ## Use
 
 ```bash
-uv run python tools/release/make_release.py --config release.json            # dry run
-uv run python tools/release/make_release.py --config release.json --build /tmp/public
+uv run python platform/scripts/kit/release/make_release.py --config release.json  # dry run
+uv run python platform/scripts/kit/release/make_release.py --config release.json --build /tmp/public
 ```
 
-The config format is in the script's docstring. Grow it for your course as needed: a generated
+The configuration format is in the script's docstring. Grow it for your course as needed: a generated
 references page, checkpoint tags rebuilt from the private tags, a contributor check. Keep each
 addition a pure function with a test, as the ones here are.

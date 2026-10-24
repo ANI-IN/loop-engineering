@@ -91,7 +91,7 @@ EXPORT_SQL = (
 _STILL: list[tuple[str, str, str, RunStatus, dict[str, Any]]] = [
     (
         "export-ca",
-        "Export California customers for the spring campaign",
+        "Export the California customers who may receive marketing, with their email addresses.",
         "customers",
         RunStatus.AWAITING_APPROVAL,
         {"step": "412 rows of personal data"},

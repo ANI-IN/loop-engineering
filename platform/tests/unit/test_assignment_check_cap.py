@@ -175,7 +175,7 @@ def test_the_wind_down_puts_the_stack_back_as_a_normal_end_would(ledger: Path) -
 
 def test_a_check_with_no_run_of_its_own_leaves_the_kill_switch_alone(ledger: Path) -> None:
     cap = cost.Cap(usd=1.00, mark=cost.ledger_mark(), activity="assignment", headroom_usd=0.0)
-    api = _Stack(cap)  # the in-process benchmark of Assignment 4 starts no worker run
+    api = _Stack(cap)  # no run in the workers, and none in this process (in_process unset)
     _spend(1.00)
     with pytest.raises(cost.CapReached):
         api.guard()
@@ -294,6 +294,85 @@ def test_an_experiment_that_met_the_cap_is_never_kept(ledger: Path) -> None:
         runner.run(items, "v1", session_id=uuid.uuid4())
     with pytest.raises(cost.CapReached):  # and nothing more starts
         runner.rerun(items[0], "v1", 3)
+
+
+def test_checks_that_run_at_the_same_time_never_count_each_others_spend(ledger: Path) -> None:
+    mark = cost.ledger_mark()
+    first = cost.check_activity("agent-loop", "assignment")
+    beside = cost.check_activity("hill-climbing-loop", "assignment")
+    cap = cost.Cap(usd=1.00, mark=mark, activity=first, headroom_usd=0.0)
+    _spend(0.10, first)
+    _spend(0.95, beside)  # the Assignment 4 benchmark, on its own stack, in the same minutes
+    assert cost.spent_since(mark, first).cost_usd == pytest.approx(0.10)
+    assert cost.spent_since(mark, beside).cost_usd == pytest.approx(0.95)
+    cap.check()  # 0.10 of this check's own: far from its cap
+
+
+def test_the_cap_engages_the_kill_switch_for_runs_in_this_process(ledger: Path) -> None:
+    """Assignment 4's benchmark runs in the check's process and starts no worker run: at the cap
+    the kill switch is engaged all the same, so its runs in flight stop at their next model call,
+    and it is released again at the wind-down."""
+    cap = cost.Cap(usd=1.00, mark=cost.ledger_mark(), activity="assignment", headroom_usd=0.0)
+    api = _Stack(cap)
+    api.statuses = {}
+    api.in_process = True
+    _spend(1.00)
+    with pytest.raises(cost.CapReached):
+        api.guard()
+    assert api.calls == ["kill switch arm", "kill switch engage"] and api.engaged_at_cap
+    assert api.wind_down(seconds=5) == []
+    assert api.switch == "released" and api.level == "assisted"
+
+
+def test_the_benchmark_stops_at_a_kill_switch_engaged_from_outside(ledger: Path) -> None:
+    check = _hill_climbing_check()
+    cap = cost.Cap(usd=1.00, mark=cost.ledger_mark(), activity="assignment", headroom_usd=0.0)
+    api = _Stack(cap)
+    api.slug = "hill-climbing-loop"
+    switch = {"engaged": False}
+    held = check.Held(api, engaged=lambda: switch["engaged"])
+    asked: list[str] = []
+    target = check.RecordingTarget(lambda question, version: asked.append(question), held)
+    target("first question", "v1")
+    switch["engaged"] = True  # someone engages it on the check's console
+    with pytest.raises(Stop) as stopped:
+        target("second question", "v1")
+    assert not isinstance(stopped.value, cost.CapReached)
+    message = str(stopped.value)
+    assert "engaged from outside the check" in message and "not a fault in your solution" in message
+    assert "python -m datapilot.assignments reset hill-climbing-loop" in message
+    assert asked == ["first question"]
+
+
+def test_a_kill_switch_the_cap_engaged_reads_as_the_cap(ledger: Path) -> None:
+    check = _hill_climbing_check()
+    cap = cost.Cap(usd=1.00, mark=cost.ledger_mark(), activity="assignment", headroom_usd=0.0)
+    api = _Stack(cap)
+    api.in_process = True
+    held = check.Held(api, engaged=lambda: api.switch == "engaged")
+    _spend(1.00)
+    for _ in range(2):
+        with pytest.raises(cost.CapReached):
+            held.check()
+    assert api.calls == ["kill switch arm", "kill switch engage"]
+
+
+def test_each_benchmark_run_stops_at_the_kill_switch(monkeypatch: pytest.MonkeyPatch) -> None:
+    from dataclasses import dataclass
+
+    from datapilot.loop4_hill_climbing.runner import kill_switch_stop
+
+    check = _hill_climbing_check()
+
+    @dataclass
+    class Target:
+        tags: list[str]
+        external_stop: object = None
+
+    monkeypatch.setattr(check.targets, "analyst", lambda tags: Target(list(tags)))
+    target = check.analyst_target()
+    assert target.external_stop is kill_switch_stop
+    assert "feature:hill-climbing-loop" in target.tags
 
 
 def test_every_check_names_its_live_requirements_for_the_stop() -> None:

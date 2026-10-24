@@ -30,6 +30,7 @@ from datapilot.config import pack_config
 from datapilot.contracts import AnswerEnvelope, AnswerStatus, KnowledgeVersion, RunEventKind
 from datapilot.loop1_agent.analyst import AgentLimits
 from datapilot.loop1_agent.catalog import load_snapshot
+from datapilot.loop1_agent.guard import StopReason
 from datapilot.loop1_agent.models import ModelFactory, openai_factory
 from datapilot.loop2_verification.config import VerificationConfig
 from datapilot.loop2_verification.executor import Executor
@@ -148,6 +149,9 @@ class AnalystTarget:
     model_ids: ModelIds = field(default_factory=ModelIds)
     stats: list[RunStats] = field(default_factory=list)
     pack: dict[str, Any] | None = None  # this target's own copy of pack.yaml (None: the pack's)
+    # Checked before every model and tool call of each run (the hill-climbing runner passes the
+    # kill switch, so an experiment's run in flight stops at its next call).
+    external_stop: Callable[[], StopReason | None] | None = None
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
     @property
@@ -188,7 +192,11 @@ class AnalystTarget:
         hooks = MemoryHooks()
         request = RunRequest(run_id=run_id, question=question)
         started = time.monotonic()
-        loop = VerificationLoop(services, hooks)
+        loop = (
+            VerificationLoop(services, hooks, external_stop=self.external_stop)
+            if self.external_stop
+            else VerificationLoop(services, hooks)
+        )
 
         async def run() -> Any:
             # the tracing context is entered on the event loop's thread, where the run happens

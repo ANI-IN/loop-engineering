@@ -1,24 +1,40 @@
 """Repository guards: run in CI and before every merge (`make guards`).
 
 Fails when:
-1. the shared git configuration holds core.worktree or any key outside ALLOWED_CONFIG
-   (read from the config file directly; no git command touches the configuration);
-2. any commit on any branch has an author other than ANI-IN, or carries a co-author line;
+1. the shared git configuration holds core.worktree, or, in the course's build, any key outside
+   ALLOWED_CONFIG (read from the config file directly; no git command touches the configuration);
+2. any commit on any branch has an author or committer other than ANI-IN, or carries a co-author
+   line (the course's build only, see below);
 3. a .env file is tracked.
+
+`--commit-messages` checks every commit message against the naming rule instead (short forms and
+shorthand, platform/scripts/short_forms.py). It reads the history itself and fails when git fails,
+so it can never pass having read nothing, as a `git log | ...` pipe without pipefail can.
+
+The sole-author rule, the co-author rule, and the naming rule on commit messages are rules of the
+course's build, not of a learner's copy, and so is the configuration's allow-list, which protects
+the build's shared worktrees. The build repository is the one that holds the build-only files of
+the release list (platform/config/release.toml, `build_only`), which never ship. In a public copy
+those checks are skipped with a message, and the configuration check refuses only the keys that
+break the checkout (PUBLIC_COPY_REFUSED); every other key is the learner's own git setting (an
+editor, `pull.rebase`, an alias, a credential helper) and is listed, never refused. A learner's
+own commits and settings never fail. The build repository keeps every check strict.
 
 This is the only code that reads the real repository's git data, and it only reads (`git log`,
 `git ls-files`). Tests use throwaway repositories in temporary folders.
 
-    uv run python platform/scripts/check_repo_guards.py [--repo PATH]
+    uv run python platform/scripts/check_repo_guards.py [--repo PATH] [--commit-messages]
 """
 
 from __future__ import annotations
 
 import argparse
+import io
 import os
 import re
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -44,7 +60,19 @@ ALLOWED_CONFIG_PATTERNS = (
     r"remote\.[\w.-]+\.(url|fetch|pushurl)",
     r"branch\.[\w./-]+\.(remote|merge)",
 )
+# The keys refused in a public copy too: each breaks the learner's own checkout. Any other key
+# there (an editor, `pull.rebase`, an alias, a credential helper, the token header and `gc.auto`
+# that actions/checkout writes) is the learner's or the runner's own setting and is allowed.
+PUBLIC_COPY_REFUSED = {
+    "core.worktree": "points git at another folder, so every command reads the wrong tree",
+}
 CO_AUTHOR = re.compile(r"^co-authored-by:", re.I | re.M)
+RELEASE_LIST = "platform/config/release.toml"
+SKIPPED_IN_A_PUBLIC_COPY = (
+    "skipped in a public copy: the sole author, the co-author lines, and the naming rule on "
+    "commit messages are rules of the course's build ({marker} is absent), so your own commits "
+    "never fail them"
+)
 
 
 def _native(path: str) -> str:
@@ -88,14 +116,42 @@ def config_keys(config_file: Path) -> list[str]:
     return keys
 
 
-def config_problems(config_file: Path) -> list[str]:
+def build_only_files(repo: Path) -> list[str]:
+    """The release list's build-only files: tracked in the build repository, never shipped."""
+    listed = repo / RELEASE_LIST
+    if not listed.is_file():
+        return []
+    return list(tomllib.loads(listed.read_text(encoding="utf-8")).get("build_only", []))
+
+
+def build_repository(repo: Path) -> bool:
+    """True in the course's build repository (or one of its worktrees): it holds a build-only file
+    of the release list. A public copy never does, because the release build leaves them out."""
+    return any((repo / path).is_file() for path in build_only_files(repo))
+
+
+def _build_allows(key: str) -> bool:
+    return key in ALLOWED_CONFIG or any(re.fullmatch(p, key) for p in ALLOWED_CONFIG_PATTERNS)
+
+
+def config_problems(config_file: Path, *, public_copy: bool = False) -> list[str]:
+    """The build refuses every key outside its allow-list; a public copy only the keys that break
+    the checkout."""
     problems = []
     for key in config_keys(config_file):
-        if key in ALLOWED_CONFIG or any(re.fullmatch(p, key) for p in ALLOWED_CONFIG_PATTERNS):
+        if public_copy and key not in PUBLIC_COPY_REFUSED:
+            continue
+        if not public_copy and _build_allows(key):
             continue
         reason = " (breaks git for every other checkout)" if key == "core.worktree" else ""
         problems.append(f"git config key '{key}' is not allowed{reason}")
     return problems
+
+
+def own_settings(config_file: Path) -> list[str]:
+    """A public copy's keys outside the build's allow-list: the learner's own settings, allowed."""
+    keys = config_keys(config_file)
+    return sorted({k for k in keys if not _build_allows(k) and k not in PUBLIC_COPY_REFUSED})
 
 
 def _git(repo: Path, *args: str, git_dir: Path | None = None) -> str:
@@ -123,6 +179,23 @@ def commit_problems(repo: Path) -> list[str]:
     return problems
 
 
+def commit_message_problems(repo: Path) -> int:
+    """The naming rule on every commit message of this branch, read here rather than through a
+    pipe; returns the exit code of short_forms.py."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import short_forms
+
+    messages = _git(repo, "log", "--format=%B")
+    if not messages.strip():
+        raise SystemExit("x git log returned no commit messages; nothing was checked")
+    standard_input = sys.stdin
+    sys.stdin = io.StringIO(messages)
+    try:
+        return short_forms.main(["--commit-messages", "-"])
+    finally:
+        sys.stdin = standard_input
+
+
 def tracked_env_problems(repo: Path) -> list[str]:
     tracked = [p for p in _git(repo, "ls-files").splitlines() if Path(p).name == ".env"]
     return [f"{p} is tracked; it must never be committed" for p in tracked]
@@ -131,10 +204,29 @@ def tracked_env_problems(repo: Path) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Repository guards")
     parser.add_argument("--repo", type=Path, default=REPO)
+    parser.add_argument(
+        "--commit-messages",
+        action="store_true",
+        help="check every commit message against the naming rule instead",
+    )
     args = parser.parse_args(argv)
     repo = args.repo.resolve()
-    problems = config_problems(common_git_dir(repo) / "config")
-    problems += commit_problems(repo)
+    build = build_repository(repo)
+    marker = ", ".join(build_only_files(repo)) or f"the build-only files of {RELEASE_LIST}"
+    if args.commit_messages:
+        if not build:
+            print(f"commit messages: {SKIPPED_IN_A_PUBLIC_COPY.format(marker=marker)}")
+            return 0
+        return commit_message_problems(repo)
+    config_file = common_git_dir(repo) / "config"
+    problems = config_problems(config_file, public_copy=not build)
+    if build:
+        problems += commit_problems(repo)
+    else:
+        print(f"commit authors: {SKIPPED_IN_A_PUBLIC_COPY.format(marker=marker)}")
+        own = own_settings(config_file)
+        if own:
+            print(f"git settings: your own, allowed in a public copy: {', '.join(own)}")
     problems += tracked_env_problems(repo)
     for problem in problems:
         print(f"x {problem}")

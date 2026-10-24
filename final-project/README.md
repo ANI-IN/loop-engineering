@@ -62,8 +62,8 @@ final-project/run.sh my_pack
 ```
 
 This runs the pack check with the database and makes no model call. Fix every `x` line. Then set
-`DATAPILOT_PACK=my_pack` in `.env`, start `make hill-climbing-runner` in its own terminal, and run
-the live part:
+`DATAPILOT_PACK=my_pack` in `.env`, run `make up` so every service, the hill-climbing runner
+among them, reads it, and run the live part:
 
 ```bash
 final-project/run.sh my_pack --live
@@ -108,7 +108,7 @@ confirming runs of any apparent regression. The [costs page](../docs/costs.md) e
 | `x ...: the naive query differs from gold` | The trap does not change the answer on your data | Add rows that expose it, on both databases |
 | `x DATAPILOT_PACK selects "..."` | The platform still reads another pack | Set `DATAPILOT_PACK=my_pack` in `.env`, then run it again |
 | `The drift canary failed: a trap question passed ...` | The model solves a canary trap unaided | Pick a harder trap item for the canary, or strengthen the trap |
-| The Improve page never updates | The hill-climbing runner is not running | `make hill-climbing-runner` in its own terminal |
+| The Improve page never updates | The `hill-climbing-runner` service is down | `make ps`; `make logs NAME=hill-climbing-runner`; `make up` |
 | A run stalls or shows the wrong state | State left from an earlier run | `make reset NAME=hill-climbing-loop`, then run it again |
 
 ## Use it on your own repository

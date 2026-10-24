@@ -24,7 +24,7 @@ OpenAI with your key.
 | Target | What it does | Model calls |
 |---|---|---|
 | `make setup` | Installs the pinned packages; creates `.env` from `.env.example` if missing | None |
-| `make up` | Builds the image, starts the five services, and waits until they are healthy | None |
+| `make up` | Builds the image, starts the six services, and waits until they are healthy | None |
 | `make down` | Stops every service; the database volume is kept | None |
 | `make ps` | Shows the services and their health | None |
 | `make logs` | Follows the logs of every service; `NAME=<service>` for one | None |
@@ -38,7 +38,8 @@ OpenAI with your key.
 | `make reset NAME=<section slug>` | Clears a section's live run state and releases the kill switch | None |
 | `make reset-discarding-baseline NAME=hill-climbing-loop` | The full reset: it also discards the session's baseline experiment | None |
 | `make open-code NAME=<section slug>` | Prints the files and line ranges a section shows in class | None |
-| `make hill-climbing-runner` | Serves the Improve page: experiments, the analyzer team, promotions | Yes, for each request |
+| `make autonomy LEVEL=<level> BY="<your name>"` | Sets the autonomy level through the api; the finale needs `unattended` | None |
+| `make hill-climbing-runner` | The runner on the host, for development only; `make up` runs it, and a second one refuses | Yes, for each request |
 | `make live-smoke` | Five real calls across the system, each with tokens, cost, and trace link | Yes |
 | `make spend` | The model spend recorded on this machine, by activity | None |
 
@@ -65,7 +66,6 @@ Two more commands of the `datapilot` command line, with no model calls:
 
 `VARIANT` is `reference`, `alternative-one`, or `alternative-two`. `make check-assignment
 NAME=<slug> TREE=<copy>` checks the copy that `make apply-solution` printed.
-<!-- provisional: lands with the assignments merge -->
 
 ### Checks and documentation
 
@@ -74,6 +74,7 @@ NAME=<slug> TREE=<copy>` checks the copy that `make apply-solution` printed.
 | `make test` | The zero-token suites: no model calls, no database | None |
 | `make test-integration` | Zero-token tests against Postgres | None |
 | `make test-security` | The security suite, zero tokens | None |
+| `make test-console` | The console in a real browser on the tests' own Postgres; rewrites `platform/console/screenshots/` | None |
 | `make test-stack`, `make test-stack-down` | Starts or stops the tests' own Postgres, apart from the live stack | None |
 | `make lint` | Ruff, import contracts, the style, prose, and naming checks | None |
 | `make format` | Rewrites files with `ruff check --fix` and `ruff format` | None |
@@ -81,9 +82,9 @@ NAME=<slug> TREE=<copy>` checks the copy that `make apply-solution` printed.
 | `make lint-prose` | Banned words and emoji in the course pages | None |
 | `make check-style` | The course style check; `CHECK_STYLE_OPTS=--strict` makes warnings fail | None |
 | `make check-style-strict` | The style check where warnings fail too | None |
-| `make check-names` | The naming rule on course pages, the slide outline, and commit messages | None |
-| `make check-short-forms` | The naming rule on this branch's commit messages | None |
-| `make guards` | Git configuration allow-list, the only author, no tracked `.env` | None |
+| `make check-names` | The naming rule on the course pages and the slide outline (note 1) | None |
+| `make check-short-forms` | The naming rule on this branch's commit messages (note 1) | None |
+| `make guards` | Git configuration allow-list and no tracked `.env`; the author rule too (note 1) | None |
 | `make registries` | Validates the demo and planted-item registries | None |
 | `make docs` | Regenerates every generated page from its registry | None |
 | `make docs-check` | Fails if a generated page is out of date | None |
@@ -95,7 +96,10 @@ NAME=<slug> TREE=<copy>` checks the copy that `make apply-solution` printed.
 | `make verify-assignments` | Each starter once and each solution twice, with captures | Yes |
 
 `make verify-assignments` is the course build's own verification of the solutions.
-<!-- provisional: lands with the assignments merge -->
+
+Note 1: the commit-message and author checks run in the course's build only: `make check-names`
+reads commit messages there, `make check-short-forms` runs there, and `make guards` also checks
+that every commit has the one author and no co-author lines. Your own copy skips them.
 
 ## Settings and variables
 
@@ -109,7 +113,7 @@ Settings come from `.env` at the repository root, which `make setup` copies from
 | `LANGSMITH_API_KEY` | empty | Your key from your own LangSmith account |
 | `OPENAI_MODEL` | `gpt-6-luna` | The analyst, the schema scout, and the reviewer |
 | `OPENAI_ANALYZER_MODEL` | `gpt-6-luna` | The analyzer team; empty means `OPENAI_MODEL` |
-| `LANGSMITH_TRACING` | `true` | Sends a trace of every run |
+| `LANGSMITH_TRACING` | `true` | Sends traces: every demo run, a sample of experiment runs |
 | `LANGSMITH_ENDPOINT` | `https://api.smith.langchain.com` | EU accounts use `https://eu.api.smith.langchain.com` |
 | `LANGSMITH_PROJECT` | `datapilot-live` | The project live runs trace to |
 | `LANGSMITH_EXPERIMENTS_PROJECT` | `datapilot-experiments` | The project benchmark runs trace to |
@@ -137,9 +141,8 @@ holds with the switch on or off.
 
 While `DATAPILOT_SESSION_SINCE` names a session's start, the session limits in `pack.yaml`
 (`build_budget.session`) are checked before every model call, in addition to the lines, counting
-only the spend since that time: 0.40 dollars for development live checks, 1.00 for calibration,
-1.50 for assignment verification, and 2.50 in total. A line not listed there gets nothing in the
-session. The variable is read from the environment first, then from `.env`, and `make spend` shows
+only the spend since that time; the owner sets them for each session, so read them in `pack.yaml`.
+A line not listed there gets nothing in the session. The variable is read from the environment first, then from `.env`, and `make spend` shows
 the session as "this session since" its start.
 
 The Compose services reach the owner and application roles on the `postgres` container

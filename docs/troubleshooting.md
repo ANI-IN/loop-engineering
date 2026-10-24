@@ -91,7 +91,8 @@ The console runs at http://localhost:8501 (`CONSOLE_PORT`, `compose.yaml`).
 |---|---|---|
 | `No live session. Run make preflight to start one.` | No live session is open | `make preflight PURPOSE=development` |
 | `No baseline run in this session yet.` on the Improve page | No baseline experiment started in the open session | Start it from the Improve page, or `make demo NAME=improve-baseline-experiment` |
-| The Improve page never updates | The hill-climbing runner is not running | `make hill-climbing-runner` in its own terminal |
+| The Improve page never updates | The `hill-climbing-runner` service is down | `make ps`; `make logs NAME=hill-climbing-runner`; `make up` |
+| A planted bug's half shows no change | The services still hold the old `.env` | Run `make up` after each change to a flag in `.env` |
 | The page does not open from Windows | The services are down after a restart | `make up` in Ubuntu, then reload |
 | The status line or the off-the-board row is cut off | The browser toolbars take the space | Press F11 for full screen |
 | A result has no trace link | LangSmith tracing is off or the key is wrong | Check `LANGSMITH_TRACING` and `LANGSMITH_API_KEY`, then `make up` |
@@ -100,7 +101,6 @@ The console runs at http://localhost:8501 (`CONSOLE_PORT`, `compose.yaml`).
 ## Assignments
 
 Messages from `make check-assignment` (`platform/src/datapilot/assignments/`).
-<!-- provisional: lands with the assignments merge -->
 
 | You see | Cause | Fix |
 |---|---|---|

@@ -1,0 +1,3 @@
+# The console's fit check writes these shots on every run; they are measurements, not pages,
+# and no page shows them, so they are never committed.
+events-fit-*.png

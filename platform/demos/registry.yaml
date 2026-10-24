@@ -37,7 +37,9 @@
     A multi-join question across orders, order items, products, and categories for customers in
     Texas over the last completed fiscal quarter (August to October 2025, against the business
     date of 31 January 2026), with the join path visible in the SQL.
-  expected_outcome: "An answer whose SQL joins four tables; the gold check shows pass or the trap hit."
+  expected_outcome: >-
+    An answer whose SQL joins four tables. No benchmark item asks this question, so the run gets no
+    gold check; the date range in the SQL shows whether the fiscal-quarter trap is hit.
   can_vary: ["join order", "whether the fiscal-quarter trap is hit", "latency"]
   target_minutes: 4
   code:
@@ -76,7 +78,7 @@
     follows; the token counter spikes. With it off, the same steps return at most the row cap, the
     total count, and a truncation notice.
   expected_outcome: "Tokens per run jump with the bug on and drop back with it off."
-  can_vary: ["exact token counts", "the list question's wording"]
+  can_vary: ["exact token counts", "the list question's wording", "whether the run with the bug off ends held for approval by a reviewer concern; the token counter is the moment either way"]
   target_minutes: 4
   code:
     - {path: platform/src/datapilot/loop1_agent/tools.py, lines: "33-54"}
@@ -188,9 +190,9 @@
     api: "POST /events (digest.requested)"
   planted: []
   guaranteed_moment: >-
-    The 8 a.m. Eastern time KPI digest runs on demand with its deterministic id and posts one
-    digest to the channel.
-  expected_outcome: "One digest post with the previous business day's KPIs."
+    The 8 a.m. Eastern time digest of key performance indicators runs on demand with its
+    deterministic id and posts one digest to the channel.
+  expected_outcome: "One digest post with the previous business day's key figures."
   can_vary: ["the digest wording"]
   target_minutes: 3
   code:
@@ -245,9 +247,14 @@
     api: "POST /control/kill-switch"
   planted: [BUG_KILLSWITCH_AT_CLAIM_ONLY, DEMO_PACING]
   guaranteed_moment: >-
-    With demo pacing on, a run is in flight when the kill switch is engaged. With the kill switch
-    at claim only, the run keeps going; with the check before every model and tool call, it stops
-    at its next step as blocked by kill switch and the system drops to the report-only level.
+    With demo pacing on, the webhook question is in flight (Events > Send webhook question) when
+    the kill switch is engaged. With the kill switch at claim only, the run keeps going; with the
+    check before every model and tool call, it stops at its next step as blocked by kill switch and
+    the system drops to the report-only level. Each half ends with the switch engaged, so release
+    it between the halves (Status line > Release kill switch, or `make reset NAME=event-loop`)
+    before the flag goes to 0 and `make up`: an engaged switch blocks the next run at claim. The
+    switch stays engaged until a release: `make reset NAME=event-loop` right after the second
+    half, so nothing later is blocked.
   expected_outcome: "The in-flight strip moves to Blocked by kill switch; the status line shows the report-only level."
   can_vary: ["which step the run stops at"]
   target_minutes: 4
@@ -282,18 +289,21 @@
   trigger:
     console: "Improve > Run analyzer"
     make: "make demo NAME=improve-naive-analyzer-blocked"
-    api: "POST /analyzer/run"
+    api: "POST /analyzer/run, then POST /experiments/run (the candidate)"
   planted: [BUG_NAIVE_ANALYZER]
   guaranteed_moment: >-
-    The naive analyzer, with no model call, writes one rule per failed dev question, quoting it word
-    for word with the analyst's query that failed, and never reads a reference query. It skips the
-    critic and applies no overfit guard: the guard flags every rule and the Improve page says so,
-    yet the knowledge diff keeps them all. Then the candidate experiment runs, and the gate blocks
-    the version because the overfit guard rejects its rules, whatever its holdout count.
+    Two requests, queued together at the break: the analyzer, then the candidate experiment (in
+    the console, Improve > Run analyzer, then Improve > Run experiment on the candidate; the runner
+    takes them in that order, after the baseline). The naive analyzer, with no model call, writes
+    one rule per failed dev question, quoting it word for word with the analyst's query that
+    failed, and never reads a reference query. It skips the critic and applies no overfit guard:
+    the guard flags every rule and the Improve page says so, yet the knowledge diff keeps them all.
+    Then the candidate experiment runs, and the gate blocks the version because the overfit guard
+    rejects its rules, whatever its holdout count.
   expected_outcome: >-
     The overfit guard flags every rule, not applied by the analyzer; the gate verdict reads
     blocked, naming the rules the overfit guard rejects.
-  can_vary: ["how many dev items failed", "the dev count", "the holdout count"]
+  can_vary: ["how many dev items failed", "the dev count", "the holdout count", "the time from the trigger to the verdict (211 to 285 seconds in three measured runs)"]
   target_minutes: 4
   code:
     - {path: platform/src/datapilot/loop4_hill_climbing/analyzer.py, lines: "206-210"}
@@ -330,12 +340,13 @@
   guaranteed_moment: >-
     The failure analyst diagnoses the failed dev items, the rule writer proposes general rules, the
     critic keeps, narrows, or drops each one, a rule whose SQL guidance does not run over the schema
-    is dropped, and the overfit guard passes the rest. The team writes two candidates this way, each
-    runs on the dev split only, and the Improve page names the one kept by its dev results; the
-    knowledge diff shows it for human approval.
+    is dropped, and the overfit guard rejects any rule that quotes a benchmark question or copies
+    gold SQL and passes the rest. The team writes two candidates this way, each runs on the dev
+    split only, and the Improve page names the one kept by its dev results; the knowledge diff
+    shows it for human approval.
   expected_outcome: "A candidate version with general rules in the diff viewer, and the line naming both candidates and the one kept."
-  can_vary: ["rule wording", "number of rules", "which candidate is kept"]
-  target_minutes: 4
+  can_vary: ["rule wording", "number of rules", "which candidate is kept", "which rules, if any, the overfit guard rejects (live, it rejected a critic-kept rule that copied 20 or more tokens of a gold query)", "wall time: 326 and 377 s with two candidates in the two measured runs"]
+  target_minutes: 6
   code:
     - {path: platform/src/datapilot/loop4_hill_climbing/analyzer.py, lines: "242-245"}
 
@@ -349,13 +360,16 @@
     api: "POST /experiments/run"
   planted: []
   guaranteed_moment: >-
-    The candidate version flips a clear majority of holdout trap items with zero regressions on
-    either split. The live holdout ledger in the console, scored locally against this session's
+    The candidate version flips holdout trap items with zero regressions on either split. The live
+    holdout ledger in the console, scored locally against this session's
     baseline, marks the flips; then the LangSmith trace list of datapilot-experiments, filtered by
     knowledge version, shows the candidate's traced runs, a sample of about 1 run in 5. The gate
-    passes once approved.
+    passes once approved; the runner then makes the version active and runs the clearance
+    re-runs (50 seconds after the approval, measured once). In class it is queued at once after
+    the analyzer (Improve > Run analyzer, then Improve > Run experiment on the candidate); trigger
+    it again only if it never started, since a second press queues a second experiment.
   expected_outcome: "Holdout flips marked against this session's baseline, no regressions, gate verdict passed."
-  can_vary: ["which items flip", "wall time"]
+  can_vary: ["which items flip", "how many flip: 0 to 12 of 13 holdout trap items in the measured runs, a majority in 6 of 10, so check the candidate in rehearsal", "wall time: 182 to 459 s; confirming re-runs of an apparent regression lengthen it"]
   target_minutes: 5
   code:
     - {path: platform/src/datapilot/loop4_hill_climbing/experiment.py, lines: "192-194"}
@@ -371,11 +385,19 @@
     api: "POST /events (question.asked)"
   planted: []
   guaranteed_moment: >-
-    The correct answer, posted at the level its family has earned. The spine question arrives as a
+    The correct answer, posted at the level its family has earned. Before it, the Improve page says
+    the approved version is the active version, and the system is set to the unattended level (Improve > Set
+    the unattended level, or `make autonomy LEVEL=unattended BY="<your name>"`); the trigger
+    refuses, saying which step is missing, while a promotion is pending, the kill switch is
+    engaged, or the level is lower. The spine question arrives as a
     webhook and is answered correctly under the new active version; it posts at the unattended
     level when the promotion cleared its metric family on the gate's own confirmed standard (every
     holdout item at 2 of 3 runs, an item that fell short passing 2 of 3 more runs), and at the
-    assisted level when the family fell short.
+    assisted level when the family fell short. From the promotion on, Events > Send webhook
+    question sends this spine question whether a family cleared or none did. Its strip on the
+    Events page then shows the gold check the runner writes after the post: "Gold check passed",
+    or "Gold check failed" with the agent's value and the gold value, the class-day safeguard's
+    trigger.
   expected_outcome: >-
     A correct answer, posted at the unattended level if its family cleared on the confirmed
     standard, and at the assisted level if it did not.

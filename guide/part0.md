@@ -38,6 +38,11 @@ datapilot-scheduler-1   datapilot:local          "datapilot scheduler"    schedu
 datapilot-worker-1      datapilot:local          "datapilot worker"       worker      32 minutes ago   Up 31 minutes
 ```
 
+This capture was taken before the hill-climbing runner became a service, and before every port was
+bound to this machine only. Your `make ps` also lists `datapilot-hill-climbing-runner-1`, running
+`datapilot hill-climbing-runner`, with status `Up`, and its ports read `127.0.0.1:8000->8000/tcp`,
+`127.0.0.1:8501->8501/tcp`, and `127.0.0.1:5432->5432/tcp`, with no `0.0.0.0` or `[::]` entries.
+
 <!-- capture: make ps on the class machine with the hill-climbing-runner service listed -->
 
 **Look at:** the STATUS column.
@@ -147,7 +152,7 @@ still fail. Everything from now until the next preflight belongs to this class s
 
 > [!INSTRUCTOR]
 > Run preflight once. Never run it again during class: a new session orphans the class baseline.
-> The canary makes five live model calls.
+> The canary asks five questions, each one agent run: about 40 model calls, under a cent.
 
 ### Step 5: Put the console on screen
 

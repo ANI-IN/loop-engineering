@@ -73,12 +73,10 @@ def statuses(detail: dict) -> list[str]:
 
 
 def sql(query: str, *params: Any) -> list[dict]:
+    """Runs the query once (a write through it applies once) and returns its rows, if any."""
     with db.connect(db.Role.OWNER) as conn:
-        rows = (
-            conn.execute(query, params).fetchall()
-            if conn.execute(query, params).description
-            else []
-        )
+        cursor = conn.execute(query, params)
+        rows = cursor.fetchall() if cursor.description else []
         conn.commit()
     return rows
 
@@ -328,6 +326,21 @@ def test_approvals_are_approve_or_reject_only(client, make_worker) -> None:
     assert client.post(f"/approvals/{run_id}", json={"decision": "approve"}).status_code == 409
 
 
+def test_an_approval_that_lands_before_the_job_is_parked_still_resumes_the_run(
+    client, make_worker
+) -> None:
+    """Review round 1 (F067): the worker commits awaiting_approval, then parks the job in a later
+    transaction. An approval in between matched no parked job, and the run stayed stuck."""
+    submitted = export(client)
+    worker = make_worker(EXPORT_SCRIPT)
+    drain(worker)
+    execute("UPDATE ops.jobs SET status = 'running', lease_owner = 'a worker still finishing'")
+    client.post(f"/approvals/{submitted['run_id']}", json={"decision": "approve"})
+    assert [j["status"] for j in sql("SELECT status FROM ops.jobs")] == ["queued"]
+    drain(worker)
+    assert run(client, submitted["run_id"])["status"] == "posted"
+
+
 def test_report_only_level_never_releases_export_rows(client, make_worker) -> None:
     submitted = export(client)
     worker = make_worker(EXPORT_SCRIPT)  # one process: its in-memory checkpointer keeps the run
@@ -517,12 +530,47 @@ def test_the_kill_switch_stops_an_in_flight_paced_run(
         assert not detail["posts"]
 
 
+def test_a_worker_that_lost_its_lease_stops_the_agent_at_its_next_step(
+    client, services_for
+) -> None:
+    """Review round 1 (F066): the heartbeat noted the lost lease, but the agent ran to the end,
+    spending tokens on a result that was then thrown away."""
+    from loops_support import envelope
+
+    calls: list[int] = []
+
+    def script(messages: Any) -> Any:
+        calls.append(1)
+        if len(calls) == 1:
+            execute("UPDATE ops.jobs SET lease_owner = 'another worker'")  # the lease is gone
+            time.sleep(0.5)  # the heartbeat, every 0.1 seconds, sees it
+            return call("run_query", {"sql": COUNT_SQL}, "q")
+        return envelope(COUNT_SQL, "There are 2000 orders.")
+
+    services = services_for({"analyst": script})
+    worker = Worker(
+        services,
+        models_for=lambda _run_id, _activity: services.models,
+        settings=WorkerSettings(lease_seconds=0.3, poll_seconds=0.05),
+    )
+    submitted = ask(client)
+    drain(worker, limit=1)
+    assert calls == [1], "no model call after the lease was lost"
+    assert run(client, submitted["run_id"])["posts"] == []
+
+
 def test_engaging_blocks_runs_waiting_for_approval(client, make_worker) -> None:
     submitted = export(client)
     drain(make_worker(EXPORT_SCRIPT))
     engage(client)
     assert run(client, submitted["run_id"])["status"] == "blocked_killswitch"
     assert client.post("/control/autonomy", json={"level": "assisted"}).status_code == 409
+    # Review round 1 (F068): the approval stayed open, so the console still offered it.
+    closed = sql("SELECT decision, decided_by, decided_at FROM ops.approvals")
+    assert [(a["decision"], a["decided_by"]) for a in closed] == [
+        ("reject", "kill switch, engaged by console")
+    ]
+    assert closed[0]["decided_at"] is not None
 
 
 def test_the_daily_budget_blocks_before_claim(client, make_worker) -> None:

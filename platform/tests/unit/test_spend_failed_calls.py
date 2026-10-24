@@ -207,3 +207,30 @@ def test_the_estimate_counts_tool_definitions_and_tool_calls() -> None:
     call = AIMessage("", tool_calls=[{"name": "run_sql", "args": {"sql": "SELECT 1"}, "id": "c1"}])
     bare = spend.estimate_input_tokens([[call]])
     assert spend.estimate_input_tokens([[call]], {"tools": tools}) > bare > 0
+
+
+def _finished(handler: spend.SpendCallback, tokens_in: int, tokens_out: int) -> None:
+    usage = {"input_tokens": tokens_in, "output_tokens": tokens_out}
+    usage["total_tokens"] = tokens_in + tokens_out
+    message = AIMessage("", usage_metadata=usage)  # type: ignore[arg-type]
+    handler.on_llm_end(LLMResult(generations=[[ChatGeneration(message=message)]]), run_id="call-1")
+
+
+def test_a_finished_call_reporting_zero_input_tokens_records_the_estimate(ledger: Path) -> None:
+    """Live, a reply cut off at its cap reported 0 input tokens (run 730953ea); the request was
+    sent and billed, so the ledger records the estimate from the request, marked estimated, as it
+    does for a failed call, and keeps the output tokens the reply reported."""
+    handler = callback()
+    sent(handler, "x" * 400)  # about 100 tokens
+    _finished(handler, 0, 7)
+    assert rows(ledger) == [(100, 0, 7, 0, 1, None)]
+    price = spend.pack_config()["prices"][MODEL]
+    expected = (100 * price["input"] + 7 * price["output"]) / 1_000_000
+    assert spend.total_usd(ledger) == pytest.approx(expected)
+
+
+def test_a_finished_call_reporting_its_input_tokens_is_not_estimated(ledger: Path) -> None:
+    handler = callback()
+    sent(handler, "x" * 400)
+    _finished(handler, 900, 0)
+    assert rows(ledger) == [(900, 0, 0, 0, 0, None)]

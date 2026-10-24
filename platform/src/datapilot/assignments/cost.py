@@ -2,8 +2,10 @@
 
 The estimate is computed, never a constant: each planned model run is priced as a run that uses
 its whole token budget (pack.yaml budgets.tokens_per_run), at the model's input rate for the
-"about" figure and at its output rate for the ceiling, with the prices in pack.yaml. The actual
-figures come from the build-wide spend ledger, which records every model call's usage.
+"about" figure and at its output rate for the ceiling, with the prices in pack.yaml. Both are upper
+readings, so each check also prints what a check of a working solution typically spent, measured
+in the build's verification. The actual figures come from the build-wide spend ledger, which
+records every model call's usage.
 
 Each check also has its own spend cap (assignments.check_cap_usd in pack.yaml), counted from the
 ledger rows of this check alone, so it holds with the build budget on or off. The check starts no
@@ -11,13 +13,19 @@ new run once its spend, plus the most the runs already under way can still add (
 many runs as can be under way at once, each at its whole token budget at the output rate), would
 pass the cap; so no check spends more than its cap, and no printed ceiling exceeds it.
 
-Spend activity: "assignment" for a learner's check; "assignment verification" when the build runs
-the check with DATAPILOT_SPEND_ACTIVITY set to that value (make verify-assignments does).
+Spend activity: each check run records under its own name (check_activity), the base followed by
+the assignment's slug and a short id of the run, such as "assignment-agent-loop-1a2b3c4d". The base
+is "assignment" for a learner's check, and "assignment verification" when the build runs the check
+with DATAPILOT_SPEND_ACTIVITY set to that value (make verify-assignments does). So two checks that
+run at the same time, such as the Assignment 4 check beside the others at the Thursday review, never
+count each other's calls in their spend line or their cap; and every such name still counts under
+the assignment verification line of the build budget (spend.line_for).
 """
 
 from __future__ import annotations
 
 import threading
+import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -33,6 +41,11 @@ def activity() -> str:
     """Read like every budget switch: the environment, else .env."""
     flag = spend.budget_setting("DATAPILOT_SPEND_ACTIVITY")
     return VERIFICATION if flag == VERIFICATION else LEARNER
+
+
+def check_activity(slug: str, base: str | None = None) -> str:
+    """This check run's own activity name: the base, the slug, and a short id of the run."""
+    return f"{base or activity()}-{slug}-{uuid.uuid4().hex[:8]}"
 
 
 @dataclass(frozen=True)
@@ -96,7 +109,11 @@ def headroom_usd(planned: list[Planned], pack: dict[str, Any] | None = None) -> 
 
 
 def estimate_lines(
-    planned: list[Planned], pack: dict[str, Any] | None = None, *, cap_usd: float | None = None
+    planned: list[Planned],
+    pack: dict[str, Any] | None = None,
+    *,
+    cap_usd: float | None = None,
+    typical: str = "",
 ) -> list[str]:
     pack = pack or pack_config()
     budget = int(pack["budgets"]["tokens_per_run"])
@@ -120,6 +137,11 @@ def estimate_lines(
         f"(budgets.tokens_per_run, {budget:,} tokens) at the input rate in pack.yaml; with every "
         f"extra run, at the output rate, the ceiling is {top}. Most runs use far less."
     )
+    if typical:
+        lines.append(
+            f"  Typical: a check of a working solution has spent {typical} in the build's "
+            "verification (docs/costs.md), far below the figure above."
+        )
     if cap_usd is not None:
         lines.append(
             f"  Spend cap: {dollars(cap_usd)} for this check (assignments.check_cap_usd in "

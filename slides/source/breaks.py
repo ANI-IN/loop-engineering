@@ -86,8 +86,8 @@ BLOCKS = {
                 "benchmark progress strip on the run board is counting up.",
                 "Point at: the timer.",
                 'Likely question: "Will the experiment finish in time?" Answer: yes; at '
-                "concurrency 8 a 70-run experiment took 187 to 285 seconds in calibration, well "
-                "inside the poll and the break.",
+                "concurrency 8 a 70-run experiment took 182 to 459 seconds in calibration, and the "
+                "baseline itself 266 to 285 seconds, inside the poll and the break.",
                 "Transition: Welcome back. The poll asked how much autonomy to grant; now "
                 "we earn it.",
             ],

@@ -9,7 +9,7 @@ there is no experiment-comparison view.
 from __future__ import annotations
 
 import streamlit as st
-from datapilot_console import components, frame, improve_view, views, widgets
+from datapilot_console import components, frame, improve_view, ops_reads, views, widgets
 from datapilot_console.api_client import OVERBROAD_RULE
 from datapilot_console.frame import Live
 
@@ -28,7 +28,8 @@ def body(live: Live) -> None:
     if view["gate"]:
         st.markdown(widgets.gate_line(view["gate"]))
 
-    columns = st.columns([1.5, 0.9, 1.5, 2.2])
+    # Two rows, so no label is cut at a 1280-pixel class screen (test_console checks the widths).
+    columns = st.columns(3)
     if view["has_baseline"] and columns[0].button(
         "Run experiment on the active version", key="improve-baseline"
     ):
@@ -37,8 +38,19 @@ def body(live: Live) -> None:
         frame.act(lambda: frame.api().run_analyzer())
     if columns[2].button("Run experiment on the candidate", key="improve-candidate"):
         frame.act(lambda: frame.api().run_experiment("candidate"))
-    if columns[3].button("Add the over-broad rule to the active version", key="improve-overbroad"):
+    optional = st.columns([2, 1])
+    if optional[0].button("Add the over-broad rule to the active version", key="improve-overbroad"):
         frame.act(lambda: frame.api().run_experiment("active", plus_rule=OVERBROAD_RULE))
+    # The finale's step after the promotion: the unattended level for the families it cleared.
+    autonomy = live.view(
+        "improve-autonomy", lambda: views.autonomy_control(ops_reads.finale_state(live.conn))
+    )
+    note, control = st.columns([3, 1.5])
+    note.caption(" ".join(t for t in (autonomy["text"], autonomy["blocked"]) if t))
+    if control.button(
+        autonomy["label"], key="improve-autonomy", disabled=bool(autonomy["blocked"])
+    ):
+        frame.act(lambda: frame.api().set_autonomy(autonomy["target"]))
     frame.show_action_error()
 
     candidate = view["candidate"]

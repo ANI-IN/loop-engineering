@@ -37,7 +37,10 @@ class Assignment:
 # The public repository's .gitignore carries this line while the solutions are withheld: they are
 # published at the start of the Thursday review.
 WITHHELD_LINE = "section-*/assignment/solution/"
-WITHHELD_REASON = "the solutions are published at the start of the Thursday review"
+WITHHELD_REASON = (
+    "this public copy has no solution/ folders yet: the assignment solutions are published at the "
+    "start of the Thursday review"
+)
 
 
 def solutions_withheld(tree: Path = REPO) -> bool:

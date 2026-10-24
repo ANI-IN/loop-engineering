@@ -124,13 +124,14 @@ and the output contract, and nothing about the business.
 
 ## What we measured
 
-| Setting | Tokens per question | Latency per question |
+| Setting, reviewer on | Tokens per question | Latency per question |
 |---|---|---|
-| Analyst with the schema scout | Not run | Not run |
-| Analyst without the schema scout | Not run | Not run |
-<!-- provisional: calibration fills this table from real runs with and without the scout -->
+| Analyst with the schema scout | 8,648 | 24.2 s |
+| Analyst without the schema scout | 3,853 | 12.8 s |
 
-The class runs and the calibration runs will be listed on the
+Each figure is the mean of 4 benchmark questions under v1, one run each, so it is a small sample.
+The gold result was the same in both settings: the 2 easy questions passed, the 2 trap questions
+failed. The runs are on the
 [Section 1 evidence page](../docs/evidence/section-1-agent-loop.md).
 
 ## When it helps, and when it does not
@@ -200,4 +201,4 @@ It does not help when:
 ## Sources
 
 - Source 1: Can LLM Already Serve as A Database Interface? A BIg Bench for Large-Scale Database Grounded Text-to-SQLs, <https://arxiv.org/abs/2305.03111>, Jinyang Li et al., 2023-05-04
-- Source 2: The art of loop engineering, <https://www.langchain.com/blog/the-art-of-loop-engineering>, LangChain, 2026-06-16
+- Source 2: The art of loop engineering, <https://www.langchain.com/blog/the-art-of-loop-engineering>, Sydney Runkle (LangChain), 2026-06-16

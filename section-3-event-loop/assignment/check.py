@@ -17,6 +17,7 @@ import re
 import time
 from dataclasses import dataclass, field
 from datetime import date, timedelta
+from types import SimpleNamespace
 from typing import Any
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -25,8 +26,9 @@ from apscheduler.triggers.cron import CronTrigger
 from datapilot import db
 from datapilot.assignments.cost import Planned
 from datapilot.assignments.gold import rows
-from datapilot.assignments.live import live_run, settle
-from datapilot.assignments.report import Result
+from datapilot.assignments.live import live_run, settle, stop_on_blocked
+from datapilot.assignments.report import Result, Stop
+from datapilot.assignments.stack import running_stack
 from datapilot.contracts import RunStatus
 from datapilot.contracts.api import RunDetail
 from datapilot.loop3_events import extension, router, scheduler
@@ -94,7 +96,8 @@ def remove_check_orders() -> None:
 
 
 def add_orders(count: int, *, product: str = "Kayak") -> None:
-    """Evening orders on DAY in Eastern time, so some fall on the next day in UTC."""
+    """Evening orders on DAY in Eastern time, 20:00 to 23:58 Eastern standard time, so every
+    one falls on the next day in Coordinated Universal Time (01:00 to 04:58)."""
     with db.connect(db.Role.OWNER) as conn:
         customer = conn.execute(
             "SELECT min(customer_id) AS id FROM warehouse.customers "
@@ -114,7 +117,7 @@ def add_orders(count: int, *, product: str = "Kayak") -> None:
         price = int(kayak["list_price_cents"])
         for n in range(count):
             order_id = start + n
-            minute = 20 * 60 + (n * 7) % 239  # 20:00 to 23:59 Eastern time
+            minute = 20 * 60 + (n * 7) % 239  # 20:00 to 23:58 Eastern time
             conn.execute(
                 "INSERT INTO warehouse.orders VALUES (%s, %s, "
                 "(%s::date + make_interval(mins => %s)) AT TIME ZONE 'America/New_York', "
@@ -130,20 +133,43 @@ def add_orders(count: int, *, product: str = "Kayak") -> None:
 
 # --- the stack's state for this check ---------------------------------------------------------
 CHECK_EVENTS = "event_id LIKE 'revenue-anomaly:%%'"
+# The drill-down event ids the job's earlier alerts named: the learner chooses them, so they need
+# not start with the job's key, and an earlier check's run under one would be absorbed again.
+DRILL_DOWN_IDS = (
+    "SELECT body -> 'drill_down' ->> 'event_id' AS event_id FROM ops.posts "
+    "WHERE body ->> 'alert_key' LIKE 'revenue-anomaly:%%' AND body -> 'drill_down' ? 'event_id'"
+)
+
+
+def clear_events(conn, where: str, params: tuple[Any, ...] = ()) -> None:
+    """The runs, posts, approvals, run events, duplicates, jobs, and events of the events that
+    `where` selects (a condition on event_id), children first."""
+    runs = f"SELECT run_id FROM ops.runs WHERE {where}"
+    conn.execute(f"DELETE FROM ops.posts WHERE run_id IN ({runs}) OR {where}", params * 2 or None)
+    for table in ("ops.approvals", "ops.run_events"):
+        conn.execute(f"DELETE FROM {table} WHERE run_id IN ({runs})", params or None)
+    for table in ("ops.event_duplicates", "ops.runs", "ops.jobs", "ops.events"):
+        conn.execute(f"DELETE FROM {table} WHERE {where}", params or None)
 
 
 def clear_job_state() -> None:
-    """Earlier runs of this job, so its deterministic keys start fresh: runs, posts, events."""
+    """Earlier runs of this job and of its alerts' drill-down questions, so their deterministic
+    keys start fresh: runs, posts, events."""
     with db.connect(db.Role.APP) as conn:
-        runs = f"SELECT run_id FROM ops.runs WHERE {CHECK_EVENTS}"
-        conn.execute(f"DELETE FROM ops.posts WHERE run_id IN ({runs}) OR {CHECK_EVENTS}")
+        found = conn.execute(DRILL_DOWN_IDS).fetchall()
+        drill_ids = sorted({r["event_id"] for r in found if r["event_id"]})
+        if drill_ids:
+            clear_events(conn, "event_id = ANY(%s)", (drill_ids,))
+        clear_events(conn, CHECK_EVENTS)
         conn.execute("DELETE FROM ops.posts WHERE body ->> 'alert_key' LIKE 'revenue-anomaly:%%'")
-        for table in ("ops.approvals", "ops.run_events"):
-            conn.execute(f"DELETE FROM {table} WHERE run_id IN ({runs})")
-        conn.execute(f"DELETE FROM ops.event_duplicates WHERE {CHECK_EVENTS}")
-        conn.execute(f"DELETE FROM ops.runs WHERE {CHECK_EVENTS}")
-        conn.execute(f"DELETE FROM ops.jobs WHERE {CHECK_EVENTS}")
-        conn.execute(f"DELETE FROM ops.events WHERE {CHECK_EVENTS}")
+        conn.commit()
+
+
+def clear_drill_down(event_id: str) -> None:
+    """Right before the live step: any earlier run under the drill-down's event id, so the first
+    ask always starts a new run."""
+    with db.connect(db.Role.APP) as conn:
+        clear_events(conn, "event_id = %s", (event_id,))
         conn.commit()
 
 
@@ -156,7 +182,10 @@ def alerts(key: str) -> list[dict[str, Any]]:
         ).fetchall()
 
 
-def run_of(event: str, seconds: float = 120) -> dict[str, Any]:
+def run_of(event: str, api: Any = None, seconds: float = 120) -> dict[str, Any]:
+    """The job run of `event`, once it ended. A run the stack blocked (the daily token budget, or
+    a kill switch the check did not engage itself) stops the check, as `settle` does for the runs
+    it waits on, instead of failing a requirement."""
     deadline = time.monotonic() + seconds
     while True:
         with db.connect(db.Role.APP) as conn:
@@ -167,8 +196,11 @@ def run_of(event: str, seconds: float = 120) -> dict[str, Any]:
             RunStatus.POSTED,
             RunStatus.FAILED,
             RunStatus.BLOCKED_KILLSWITCH,
+            RunStatus.BLOCKED_BUDGET,
             RunStatus.ESCALATED,
         ):
+            ended = SimpleNamespace(run_id=row["run_id"], status=RunStatus(row["status"]))
+            stop_on_blocked(ended, api)  # type: ignore[arg-type]
             return row
         if time.monotonic() > deadline:
             raise TimeoutError(f"the job for {event} did not finish in {seconds:.0f} seconds")
@@ -193,9 +225,12 @@ class Scenario:
         self.alert: dict[str, Any] | None = None
 
     def router_table(self) -> str | None:
-        route = router.route("digest.requested", {"job": extension.JOB_NAME})
         if extension.JOB_NAME not in extension.JOB_QUEUES:
-            return "add the job to JOB_QUEUES, the router's table"
+            return (
+                f"event-loop-3: add the job {extension.JOB_NAME!r} to JOB_QUEUES, the router's "
+                "table"
+            )
+        route = router.route("digest.requested", {"job": extension.JOB_NAME})
         if route.handler != f"job:{extension.JOB_NAME}":
             return f"the router sent the job to {route.handler}"
         return None
@@ -204,9 +239,9 @@ class Scenario:
         built = scheduler.build(BackgroundScheduler(timezone=EASTERN))
         job = next((j for j in built.get_jobs() if j.id == extension.JOB_NAME), None)
         if job is None:
-            return f"schedule() must add a job with id {extension.JOB_NAME!r}"
+            return f"event-loop-1: schedule() must add a job with id {extension.JOB_NAME!r}"
         if not isinstance(job.trigger, CronTrigger) or str(job.trigger.timezone) != str(EASTERN):
-            return "schedule the job nightly with a cron trigger in Eastern time"
+            return "event-loop-1: schedule the job nightly with a cron trigger in Eastern time"
         return None
 
     def deterministic_key(self) -> str | None:
@@ -234,7 +269,7 @@ class Scenario:
 
     def normal_day(self) -> str | None:
         event, _ = request(NORMAL_DAY + timedelta(days=1))
-        run = run_of(event)
+        run = run_of(event, self.ctx.api)
         if run["status"] != "posted":
             return f"the job for {NORMAL_DAY} ended {run['status']}"
         if alerts(extension.anomaly_event_id(NORMAL_DAY)):
@@ -243,7 +278,7 @@ class Scenario:
 
     def anomalous_day(self) -> str | None:
         event, _ = request()
-        run = run_of(event)
+        run = run_of(event, self.ctx.api)
         posted = alerts(self.key)
         if run["status"] != "posted" or len(posted) != 1:
             return f"one alert for {DAY}: run {run['status']}, {len(posted)} alert posts"
@@ -275,7 +310,7 @@ class Scenario:
     def late_order(self) -> str | None:
         add_orders(1)
         event, _ = request(occasion="late-order")
-        run_of(event)
+        run_of(event, self.ctx.api)
         posted = alerts(self.key)
         gold = gold_net([DAY])[DAY]
         if len(posted) != 1 or self.alert is None or posted[0]["post_id"] != self.alert["post_id"]:
@@ -292,7 +327,7 @@ class Scenario:
         api.autonomy("unattended")
         try:
             event, _ = request(occasion="assisted")
-            run_of(event)
+            run_of(event, self.ctx.api)
             if alerts(self.key)[0]["label"] != "verified":
                 return "revenue is not eligible, so the unattended level applies as assisted"
             with db.connect(db.Role.APP) as conn:
@@ -308,7 +343,7 @@ class Scenario:
                 )
                 conn.commit()
             event, _ = request(occasion="unattended")
-            run_of(event)
+            run_of(event, self.ctx.api)
             if alerts(self.key)[0]["label"] != "unattended":
                 return "an eligible family at the unattended level posts unattended"
             return None
@@ -324,7 +359,7 @@ class Scenario:
         api.engage()
         try:
             event, _ = request(occasion="kill-switch")
-            run = run_of(event)
+            run = run_of(event, self.ctx.api)
             if run["status"] != "blocked_killswitch" or alerts(self.key)[0]["body"] != before:
                 return "with the kill switch engaged the job must stop at claim and post nothing"
             with db.connect(db.Role.APP) as conn:
@@ -374,6 +409,7 @@ class DrillDown:
     once: bool
     held: list[str]
     posted: str | None
+    fresh: bool = True  # the first ask started a new run, never an earlier check's
 
     @property
     def right(self) -> bool:
@@ -381,7 +417,7 @@ class DrillDown:
 
     @property
     def passed(self) -> bool:
-        return self.once and self.right
+        return self.fresh and self.once and self.right
 
     def what(self) -> str:
         if self.held:
@@ -393,11 +429,18 @@ class DrillDown:
         else:
             said = "the posted answer " + ("named it" if self.right else "did not name it")
         asks = "the second ask was absorbed" if self.once else "the second ask started another run"
+        if not self.fresh:
+            asks = "the first ask was absorbed into an earlier run, so this is not a new run"
         return f"gold category {self.gold}; {hold}; {said}; {asks}"
 
     def fix(self) -> str:
         if self.passed:
             return ""
+        if not self.fresh:
+            return (
+                "the first ask must start a new run: the check cleared the drill-down's event id "
+                "first, so give each alert's drill-down an event id of its own"
+            )
         if not self.once:
             return "give the drill-down a deterministic event id per alert"
         if self.posted is None:
@@ -413,14 +456,15 @@ class DrillDown:
 
 def drill_down(api, drill: dict[str, Any], gold: str) -> DrillDown:
     """Ask the drill-down question twice with its event id, approve any hold, wait for the run to
-    end, and judge what it posted."""
+    end, and judge what it posted. The first ask must start a new run (the check cleared the event
+    id first), so an earlier check's run is never judged again."""
     payload = {"question": drill["question"], "metric_family": "revenue"}
     first = api.submit("question.asked", payload, drill["event_id"])
     second = api.submit("question.asked", payload, drill["event_id"])
     approver = ApproveHeld()
     detail = settle(api, str(first.run_id), approver)
     once = second.duplicate and second.run_id == first.run_id
-    return DrillDown(detail, gold, once, approver.held, posted_text(detail))
+    return DrillDown(detail, gold, once, approver.held, posted_text(detail), not first.duplicate)
 
 
 def _cleanup(ctx, level: str) -> None:
@@ -431,7 +475,17 @@ def _cleanup(ctx, level: str) -> None:
 
 def run(ctx) -> None:
     report = ctx.report
-    level = ctx.api.control().autonomy_level.value
+    control = ctx.api.control()
+    level = control.autonomy_level.value
+    if running_stack() and control.kill_switch == "engaged":
+        # Services already running may be the class stack: a kill switch someone engaged there is
+        # never released by the check.
+        raise Stop(
+            "Stopped: the kill switch of the services this check uses "
+            "(DATAPILOT_ASSIGNMENT_STACK=running) is engaged, and the check never releases a kill "
+            "switch it did not engage on a stack that is not its own. Release it on that stack's "
+            "console if it may be released, then run the check again."
+        )
     ctx.api.release()
     remove_check_orders()
     clear_job_state()
@@ -479,8 +533,11 @@ def run(ctx) -> None:
     ctx.live_gate(
         [Planned("analyst run (the drill-down question, once)", 1, ctx.agent_model)],
         live=[(10, text)],
+        typical="about 0.3 cents",
     )
-    outcome = drill_down(ctx.api, scenario.alert["body"]["drill_down"], gold_category(DAY))
+    drill = scenario.alert["body"]["drill_down"]
+    clear_drill_down(str(drill["event_id"]))
+    outcome = drill_down(ctx.api, drill, gold_category(DAY))
     report.add(
         Result(
             10,

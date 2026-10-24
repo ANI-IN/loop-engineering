@@ -4,7 +4,7 @@ Dark theme, DejaVu Sans Mono, a prompt row with the command, rows wrapped
 at about 100 columns, 2x scale. Host home folders are redacted to `~` and `--user` names to
 `<user>`; key-like text (sk-..., lsv2_..., ghp_...) is refused and nothing is written.
 
-    uv run python tools/capture/term_render.py terminal.txt out.png \
+    uv run python platform/scripts/kit/capture/term_render.py terminal.txt out.png \
         --command "make demo" [--lines -12] [--highlight 3,5-7] [--title "Terminal 2"]
 
 `--lines` picks line ranges of the input ("1-20,40"; "-12" is the last 12 lines); left-out lines

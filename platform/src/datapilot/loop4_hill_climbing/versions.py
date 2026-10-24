@@ -34,6 +34,19 @@ INSERT INTO ops.knowledge_versions (pack, version, yaml, status, created_by)
 VALUES (%(pack)s, %(version)s, %(yaml)s, %(status)s, %(created_by)s)
 ON CONFLICT (pack, version) DO NOTHING
 """
+# A new version never takes a name in use: no ON CONFLICT, so a second row under one name fails.
+INSERT_NEW_VERSION = """
+INSERT INTO ops.knowledge_versions (pack, version, yaml, status, created_by)
+VALUES (%(pack)s, %(version)s, %(yaml)s, %(status)s, %(created_by)s)
+"""
+# Every name the pack has used: its versions in ops, and the ones a hill-climbing reset deleted
+# (the reset archives each row first), so a name is never given to a second set of rules.
+NAMES_EVER_USED = """
+SELECT version FROM ops.knowledge_versions WHERE pack = %(pack)s
+UNION
+SELECT row ->> 'version' FROM ops.reset_archive_rows
+WHERE source_table = 'ops.knowledge_versions' AND row ->> 'pack' = %(pack)s
+"""
 ACTIVE = "SELECT version FROM ops.knowledge_versions WHERE pack = %s AND status = 'active'"
 ONE = (
     "SELECT version, yaml, status, approved_by FROM ops.knowledge_versions "
@@ -46,6 +59,10 @@ MAKE_ACTIVE = (
     "UPDATE ops.knowledge_versions SET status = 'active', activated_at = now() "
     "WHERE pack = %s AND version = %s"
 )
+
+
+class VersionNameTaken(ValueError):
+    """A new version was given a name the pack already uses: the message names it."""
 
 
 def shipped() -> list[str]:
@@ -107,28 +124,39 @@ def latest_candidate(conn: psycopg.Connection[Any]) -> str | None:
 
 
 def next_name(conn: psycopg.Connection[Any]) -> str:
-    """v2, v3, ...: one more than the highest numbered version of the pack, in ops or shipped."""
-    rows = conn.execute(
-        "SELECT version FROM ops.knowledge_versions WHERE pack = %s", (active_pack(),)
-    )
+    """v2, v3, ...: one more than the highest numbered name the pack has ever used, in ops, in the
+    reset archive, or shipped. A reset never frees a name: a promoted v8 stays the only v8."""
+    rows = conn.execute(NAMES_EVER_USED, {"pack": active_pack()}).fetchall()
     names = [r["version"] for r in rows]
     numbers = [int(m.group(1)) for n in [*names, *shipped()] if (m := _NUMBERED.match(n))]
     return f"v{max(numbers, default=1) + 1}"
 
 
+def insert_new(
+    conn: psycopg.Connection[Any], version: KnowledgeVersion, *, status: str, created_by: str
+) -> None:
+    """Save a version under a name no row of the pack has. VersionNameTaken when one has, so an
+    older row is never kept silently in place of these rules."""
+    values = {
+        "pack": active_pack(),
+        "version": version.version,
+        "yaml": to_yaml(version),
+        "status": status,
+        "created_by": created_by,
+    }
+    try:
+        with conn.transaction():  # a savepoint: the caller's transaction stays usable
+            conn.execute(INSERT_NEW_VERSION, values)
+    except psycopg.errors.UniqueViolation as error:
+        raise VersionNameTaken(
+            f"the pack {values['pack']} already has a knowledge version named {version.version}"
+        ) from error
+
+
 def save_draft(
     conn: psycopg.Connection[Any], version: KnowledgeVersion, *, created_by: str
 ) -> None:
-    conn.execute(
-        INSERT_VERSION,
-        {
-            "pack": active_pack(),
-            "version": version.version,
-            "yaml": to_yaml(version),
-            "status": "draft",
-            "created_by": created_by,
-        },
-    )
+    insert_new(conn, version, status="draft", created_by=created_by)
 
 
 def with_rules_of(base: KnowledgeVersion, extra: KnowledgeVersion, name: str) -> KnowledgeVersion:
@@ -145,6 +173,18 @@ def activate(conn: psycopg.Connection[Any], name: str) -> None:
     pack = active_pack()
     conn.execute(RETIRE_ACTIVE, (pack,))
     conn.execute(MAKE_ACTIVE, (pack, name))
+
+
+def retire_blocked(conn: psycopg.Connection[Any], name: str) -> None:
+    """The gate blocked an approved version: it is retired, so it waits for no promotion in this
+    session or any later one (an approved version holds the finale's controls until the runner
+    decides it). The gate's decision beside it keeps the reasons; a better candidate comes from a
+    new analyzer request."""
+    conn.execute(
+        "UPDATE ops.knowledge_versions SET status = 'retired' "
+        "WHERE pack = %s AND version = %s AND status = 'approved'",
+        (active_pack(), name),
+    )
 
 
 # --- the class-day safeguard ------------------------------------------------------------------
@@ -264,7 +304,10 @@ def verify_in_rehearsal(
         raise SafeguardRefused(f"{run_id!r} is not a run id") from error
     run = conn.execute(FINALE_RUN, (run_uuid,)).fetchone()
     if run is None:
-        raise SafeguardRefused(f"no run {run_id} in ops.runs")
+        raise SafeguardRefused(
+            f"no run {run_id} in ops.runs: every make reset clears the runs, so verify a finale "
+            "right after it posts, before any reset; run the finale again to verify one"
+        )
     problems = []
     if run["purpose"] != "rehearsal":
         problems.append(f"its live session is {run['purpose'] or 'unknown'}, not a rehearsal")
@@ -336,7 +379,12 @@ def activate_verified(
         )
     replaced = active_name(conn)
     if replaced == found.version:
-        raise SafeguardRefused(f"{found.version} is already the active version")
+        raise SafeguardRefused(
+            f"{found.version} is already the active version, so the safeguard has nothing to "
+            "switch and changed nothing. To rehearse it, make another version active first: "
+            "make reset NAME=hill-climbing-loop (the baseline's version becomes active), then "
+            "make safeguard-activate again"
+        )
     activate(conn, found.version)
     day = found.verified_at.date().isoformat()
     note = (

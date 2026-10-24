@@ -12,16 +12,17 @@
 # and a run stops at the token budget
 # budgets.tokens_per_run (60,000 tokens) in platform/packs/datapilot_us/pack.yaml, checked before
 # every model and tool call. At the gpt-6-luna output price in pack.yaml ($0.50 per million
-# tokens), a run at the cap costs at most about $0.03, plus what its last model call adds past it.
+# tokens), a run at the cap costs at most about $0.03, plus what its last model call adds past it: the cap is
+# checked before each call, so one call that carries a large result can go far past it.
 # So one experiment costs at most about $2.10 at the caps, plus those re-runs. The analyzer team
 # makes three model calls (failure analyst, rule writer, critic) for each of its analyzer.candidates
 # (2) candidates, with no token cap of their own, and each candidate runs the 25 dev items once, so
 # 50 more runs. The naive analyzer makes no model call. Cleared for the unattended level is one run. The spend ledger's stop
 # line (build_budget in pack.yaml) stops all live work when it is reached.
-# Provisional: calibration measures the real cost of three runs for the evidence page.
 #
 # How long: the class plan's target minutes are CORE_TARGET_MINUTES and OPTIONAL_TARGET_MINUTES
-# below. Provisional: calibration measures three runs and the evidence page lists them.
+# below. The measured times and costs are on the section's evidence page (docs/evidence/)
+# and in the demo README.
 #
 # Before it: make up, then make check-data (setup/README.md). Planted bugs are whatever .env sets;
 # the demo README says which flag each demo needs. Recovery: make reset NAME=hill-climbing-loop, then run
@@ -34,7 +35,7 @@ SECTION="hill-climbing-loop"
 CORE_DEMOS=(improve-baseline-experiment improve-naive-analyzer-blocked improve-analyzer-team-approve improve-candidate-experiment improve-cleared-unattended)
 OPTIONAL_DEMOS=(improve-overbroad-rule-blocked)
 # The class plan's target minutes, not measured times.
-CORE_TARGET_MINUTES=19
+CORE_TARGET_MINUTES=21
 OPTIONAL_TARGET_MINUTES=4
 # /generated:demo-list
 

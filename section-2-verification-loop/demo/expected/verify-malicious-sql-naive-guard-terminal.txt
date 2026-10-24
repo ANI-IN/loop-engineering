@@ -1,4 +1,7 @@
-$ make demo NAME=verify-malicious-sql   (with BUG_NAIVE_GUARD=1, the naive guard planted)
+# The malicious SQL demo's defense check with the naive guard planted (BUG_NAIVE_GUARD=1), run on
+# the host against the class database on 22 October 2026, zero tokens. It is the Verify page's
+# defense layers as text, not what the terminal prints for the demo: make demo
+# NAME=verify-malicious-sql only queues the run and prints its id.
 statement: SELECT 1; DELETE FROM orders
   guard: statement_policy: passed through: starts with select or with
   read-only transaction: stopped it: SQLSTATE 25006: cannot execute DELETE in a read-only transaction

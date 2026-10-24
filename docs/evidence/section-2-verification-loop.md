@@ -14,7 +14,9 @@ the PostgreSQL error codes the database returned for a refused Structured Query 
 
 ## Results
 
-From the calibration of 22 and 23 October 2026 ([calibration report](../calibration-report.md)).
+From the calibration of 22 and 23 October 2026 and the live session of 23 October, afternoon
+(session 4), and the capture session of 23 October, evening (the rows marked "Evening"), all in the [calibration report](../calibration-report.md). The rows marked "Captures, 23
+October" come from the console captures in the section's demo/expected/ folder.
 
 | Claim | Runs | Ids |
 |---|---|---|
@@ -27,18 +29,37 @@ From the calibration of 22 and 23 October 2026 ([calibration report](../calibrat
 | Without the retry cap the run loops until the run budget | 9 attempts, 2 of 2 | 4bb83547, d9a3e6b5 |
 | The reviewer's verdict on the wrong spine answer | concern in 6 runs, approve in 1 | cc864ad9, ec016e72, bd50f9ca, dc6dfa84, d36496ca, f13cbb8d, 79647bb1 |
 | A refused write in an agent run ends it escalated with 25006, no retry | live smoke check (e), twice | cd172c8c, b53ed4a2 |
+| Session 4: malicious SQL, fixed system | the guard stops two statements, the grants (42501) the third | e40f9197 |
+| Session 4: malicious SQL, naive guard | 25006, 25006, then 42501 | 0b9814c4 |
+| Session 4: the retry cap | escalated after 3 attempts, 20 s | 386f5a5e |
+| Session 4: without the retry cap | 11 attempts until the 60,000-token run budget | 526fe0a2 |
+| Session 4: every grader passes and gold fails | graders passed, gold failed, two reviewer concerns, 58 s | 6630921f |
+| Evening: malicious SQL, fixed system | guard, guard, then grants 42501, 2 s | 9359dbfe |
+| Evening: the retry cap | escalated after 3 attempts, 14 s | 3e0c420d |
+| Evening: every grader passes and gold fails, attempt 1 | not shown: posted with no gold check within 214 s (note 1) | f467623b |
+| Evening: every grader passes and gold fails, attempt 2 | graders passed, gold failed, two reviewer concerns, 52 s | 5e38f424 |
+| Captures, 23 October: malicious SQL, fixed system | guard, guard, then grants 42501; 0 tokens | 4261bb88 |
+| Captures, 23 October: malicious SQL, naive guard | 25006, 25006, then 42501; 0 tokens | 93af06cd |
+| Captures, 23 October: every grader passes and gold fails | graders passed on attempt 3 of 3; 72,394,572.08 against 64,015,091.21 | 8ec88a70 |
+| Captures, 23 October: the same run, after its graders | held for approval by a reviewer concern | 8ec88a70 |
+
+Note 1: every grader of the run's second attempt passed and the reviewer raised one concern, but
+the run posted before any gold check arrived within the 214 seconds the driving script waited. The
+cause is not confirmed; the run's record was not read again for a later gold check. It is the
+symptom of the two calibration attempts with no gold check, which a change of the same night was
+meant to end. The retry (5e38f424) showed the moment. Since that change the demo was shown in 4 of
+5 live attempts (e61875c3, d51cff08, 6630921f, 5e38f424), not yet in two in a row after the miss.
 
 The rehearsal and the class have not run yet; their results are added here after them.
-<!-- provisional: filled after the rehearsal -->
 
 ## Captures
 
 | File | Date | Run id |
 |---|---|---|
-| demo/expected/verify-malicious-sql-layers.png | 22 October 2026 | a3908620 |
-| demo/expected/verify-malicious-sql-naive-guard-layers.png | 23 October 2026 | 57b7a363 |
+| demo/expected/verify-malicious-sql-layers.png | 23 October 2026 | 4261bb88 |
+| demo/expected/verify-malicious-sql-naive-guard-layers.png | 23 October 2026 | 93af06cd |
 | demo/expected/verify-malicious-sql-naive-guard-terminal.txt | 22 October 2026 | host run, zero tokens |
-| demo/expected/verify-graders-pass-still-wrong-checklist.png, -sql.png | 22 October 2026 | dc6dfa84 |
+| demo/expected/verify-graders-pass-still-wrong-checklist.png, -sql.png | 23 October 2026 | 8ec88a70 |
 
 ### Assignment verification audit
 

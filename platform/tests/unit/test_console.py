@@ -52,6 +52,55 @@ def test_every_registry_control_is_on_its_page(demo: str, page: str, label: str)
     assert f'"{label}"' in source, f"{demo}: no control labelled {label!r} on the {page} page"
 
 
+# The class screen: 1280 pixels wide, less the wide layout's side padding (5rem each side), with a
+# 1rem gap between columns; a 16-pixel label is at most 9 pixels a character, plus the padding.
+SCREEN_PIXELS, COLUMN_GAP, CHARACTER_PIXELS, BUTTON_PADDING = 1280 - 160, 16, 9, 32
+
+
+def _button_rows(source: str) -> list[tuple[list[float], list[tuple[int, str]]]]:
+    """Every `name = st.columns(...)` row of a page and the literal button labels in it."""
+    tree = ast.parse(source)
+    rows: dict[str, tuple[list[float], list[tuple[int, str]]]] = {}
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Assign)
+            and isinstance(node.targets[0], ast.Name)
+            and isinstance(node.value, ast.Call)
+            and getattr(node.value.func, "attr", "") == "columns"
+        ):
+            spec = ast.literal_eval(node.value.args[0])
+            weights = [1.0] * spec if isinstance(spec, int) else [float(w) for w in spec]
+            rows[node.targets[0].id] = (weights, [])
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and getattr(node.func, "attr", "") == "button"
+            and isinstance(node.func.value, ast.Subscript)
+            and isinstance(node.func.value.value, ast.Name)
+            and node.func.value.value.id in rows
+            and node.args
+            and isinstance(node.args[0], ast.Constant)
+        ):
+            index = ast.literal_eval(node.func.value.slice)
+            rows[node.func.value.value.id][1].append((index, node.args[0].value))
+    return list(rows.values())
+
+
+def test_the_improve_page_buttons_show_their_whole_labels_at_1280_pixels() -> None:
+    # Review round 2 (R2B-14): the four buttons in one row cut two labels at the class screen.
+    source = (CONSOLE / "screens" / "improve.py").read_text(encoding="utf-8")
+    rows = _button_rows(source)
+    labels = [label for _, buttons in rows for _, label in buttons]
+    assert "Run experiment on the active version" in labels
+    assert "Add the over-broad rule to the active version" in labels
+    for weights, buttons in rows:
+        room = SCREEN_PIXELS - COLUMN_GAP * (len(weights) - 1)
+        for index, label in buttons:
+            column = room * weights[index] / sum(weights)
+            needed = len(label) * CHARACTER_PIXELS + BUTTON_PADDING
+            assert needed <= column, f"{label!r} needs {needed} pixels, its column has {column:.0f}"
+
+
 def test_the_console_never_imports_loop_internals_specimens_or_tests() -> None:
     forbidden = re.compile(r"^(datapilot\.loop\d|design(\.|$)|tests|conftest|pytest|unittest)")
     found = []
@@ -272,6 +321,43 @@ def test_strips_carry_lane_word_shape_step_and_a_utc_stamp() -> None:
         SESSION,
     )
     assert blocked["lane"] == "blocked_killswitch" and blocked["edge"] == "struck"
+    assert (posted["gold"], posted["gold_text"]) == ("", "")  # no gold check yet
+
+
+def _gold_event(passed: bool, agent: str, labels: list[str] | None = None) -> dict[str, Any]:
+    payload = {
+        "grader": "gold",
+        "passed": passed,
+        "agent_value": agent,
+        "gold_value": "64015091.21",
+        "reason": "matches gold on both warehouses" if passed else "warehouse: values differ",
+        "trap_labels": labels or [],
+    }
+    return {"kind": "grader_result", "payload": payload}
+
+
+def test_the_finale_strip_shows_its_gold_check_pass_or_fail() -> None:
+    # Review round 2 (R2B-04): the class-day safeguard's trigger is a failed gold check on the
+    # finale, an Events run, so its strip shows the check the runner wrote.
+    passed = views.strip_view(
+        {**_run("posted", level="unattended"), "gold_event": _gold_event(True, "64015091.21")},
+        SESSION,
+    )
+    assert (passed["gold"], passed["gold_text"]) == ("pass", "Gold check passed: 64,015,091.21")
+    failed = views.strip_view(
+        {**_run("posted", level="unattended"), "gold_event": _gold_event(False, "72394572.08")},
+        SESSION,
+    )
+    assert failed["gold"] == "fail"
+    assert failed["gold_text"] == "Gold check failed: 72,394,572.08, gold 64,015,091.21"
+
+
+def test_a_passed_gold_check_shows_no_trap_note() -> None:
+    # Review round 2 (R2B-07): a gold check recorded with a label on a match draws no note.
+    passed = views.gold_check([_gold_event(True, "1", ["calendar_year_range"])])
+    assert passed is not None and passed["trap_labels"] == []
+    failed = views.gold_check([_gold_event(False, "2", ["calendar_year_range"])])
+    assert failed is not None and failed["trap_labels"] == ["calendar_year_range"]
 
 
 def _experiment(version: str, status: str, per_example: list[dict[str, Any]], **kw: Any) -> dict:
@@ -408,3 +494,88 @@ def test_trap_marks_point_at_real_columns_and_never_overlap() -> None:
     assert all(a[0] != b[0] or a[2] <= b[1] for a, b in zip(spans, spans[1:], strict=False))
     assert views.sql_view(None, [], stamp=None, display_tz=None)["state"] == "waiting"
     assert sql_marks.annotate(["SELECT 1"], ["unknown_label"]) == []
+
+
+# The confident wrong answer's final SQL as the analyst wrote it (run bd50f9ca, the Section 1
+# capture), and the calendar-year ranges of other live runs' final SQL.
+SPINE_WRONG_SQL = (
+    "SELECT ROUND(SUM(subtotal_cents - discount_cents) / 100.0, 2) AS net_revenue_dollars "
+    "FROM orders WHERE order_ts >= TIMESTAMPTZ '2025-01-01 00:00:00-05' "
+    "AND order_ts < TIMESTAMPTZ '2026-01-01 00:00:00-05' AND status = 4"
+)
+CALENDAR_YEAR_SQL = {
+    "timestamptz with an offset": (
+        SPINE_WRONG_SQL,
+        ["TIMESTAMPTZ '2025-01-01 00:00:00-05'", "TIMESTAMPTZ '2026-01-01 00:00:00-05'"],
+    ),
+    "timestamptz in UTC, two lines": (
+        "SELECT o.customer_id, round(sum(o.subtotal_cents - o.discount_cents) / 100.0, 2)\n"
+        "FROM orders o\n"
+        "WHERE o.order_ts >= TIMESTAMPTZ '2025-01-01 00:00:00+00'\n"
+        "  AND o.order_ts < TIMESTAMPTZ '2026-01-01 00:00:00+00'\n"
+        "GROUP BY o.customer_id",
+        ["TIMESTAMPTZ '2025-01-01 00:00:00+00'", "TIMESTAMPTZ '2026-01-01 00:00:00+00'"],
+    ),
+    "date literals in Eastern time": (
+        "SELECT COUNT(*) AS order_count\n"
+        "FROM warehouse.orders o\n"
+        "WHERE (o.order_ts AT TIME ZONE 'America/New_York')::date >= DATE '2025-01-01'\n"
+        "  AND (o.order_ts AT TIME ZONE 'America/New_York')::date < DATE '2026-01-01'",
+        ["DATE '2025-01-01'", "DATE '2026-01-01'"],
+    ),
+    "bare date strings": (
+        "SELECT count(*) FROM orders WHERE order_ts >= '2025-01-01' AND order_ts < '2026-01-01'",
+        ["'2025-01-01'", "'2026-01-01'"],
+    ),
+    "a closed range with a cast": (
+        "SELECT count(*) FROM orders\n"
+        "WHERE order_ts::date BETWEEN '2025-01-01'::date AND '2025-12-31 23:59:59'::date",
+        ["'2025-01-01'::date", "'2025-12-31 23:59:59'::date"],
+    ),
+    "the year part": (
+        "SELECT sum(subtotal_cents) FROM orders WHERE EXTRACT(YEAR FROM order_ts) = 2025",
+        ["EXTRACT(YEAR FROM order_ts)"],
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(CALENDAR_YEAR_SQL))
+def test_fiscal_year_trap_marks_the_range_the_analyst_wrote(case: str) -> None:
+    from datapilot.loop4_hill_climbing import trap_detectors
+
+    sql, expected = CALENDAR_YEAR_SQL[case]
+    assert "calendar_year_range" in trap_detectors.detect(sql)  # the label the gold check gives
+    view = views.sql_view(sql, ["calendar_year_range"], stamp=None, display_tz=None)
+    lines = view["lines"]
+    marked = [lines[m["line"]][m["start"] : m["end"]] for m in view["marks"] if m["n"] == 1]
+    assert marked == expected
+
+
+def test_the_spine_capture_marks_every_trap_it_names() -> None:
+    labels = ["calendar_year_range", "utc_truncation", "missing_internal_filter"]
+    notes = sql_marks.annotate([SPINE_WRONG_SQL], labels)
+    assert [n.trap for n in notes] == ["Fiscal year", "Eastern time", "Internal accounts"]
+    assert all(note.marks for note in notes)
+    assert all(sql_marks.NO_MARK not in note.text for note in notes)
+
+
+def test_defense_layers_wrap_a_long_statement(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The data-modifying CTE is the statement the demo is about: it wraps, never cut at the edge.
+    from datapilot_console import widgets
+
+    shown: list[tuple[str, dict[str, Any]]] = []
+    monkeypatch.setattr(widgets.st, "code", lambda body, **kw: shown.append((body, kw)))
+    monkeypatch.setattr(widgets.st, "markdown", lambda *args, **kw: None)
+    cte = "WITH d AS (DELETE FROM orders RETURNING *) SELECT count(*) FROM d"
+    layer = {"word": "Stopped it", "layer": "guard", "detail": "statement_policy"}
+    widgets.defense({"defense": [{"sql": cte, "layers": [layer]}]})
+    assert shown == [(cte, {"language": "sql", "wrap_lines": True})]
+
+
+def test_a_trap_note_never_shows_a_number_with_nothing_marked() -> None:
+    # The gold check named the trap, but no fragment of this text shows it: the note says so.
+    notes = sql_marks.annotate(["SELECT 1"], ["calendar_year_range", "total_cents_used"])
+    assert [n.trap for n in notes] == ["Fiscal year", "Net revenue"]
+    for note in notes:
+        assert note.marks == []
+        assert note.text.endswith(sql_marks.NO_MARK)

@@ -1,7 +1,7 @@
 # Section 1: Agent loop. Session notes
 
-For learners, after class.
-<!-- provisional: this page is written from the real class run -->
+For learners, after class. This page is written from the class run, after the class; until then
+each part says what it will hold.
 
 ## What we showed
 

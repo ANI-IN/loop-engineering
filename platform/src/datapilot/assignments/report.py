@@ -95,9 +95,12 @@ class Report:
 
     def check(self, number: int, text: str, probe: Callable[[], str | None]) -> Result:
         """A deterministic requirement: `probe` returns None when it holds, else what to fix. An
-        unfinished extension point (NotImplementedError) or any error is a FAIL that says so."""
+        unfinished extension point (NotImplementedError) or any error is a FAIL that says so; a Stop
+        stops the whole check."""
         try:
             problem = probe()
+        except Stop:  # the stack, not the solution: the check stops (exit 2), judging nothing
+            raise
         except NotImplementedError as error:
             problem = f"the extension point is not filled in yet: {error}"
         except Exception as error:  # a broken solution fails its line; the check goes on

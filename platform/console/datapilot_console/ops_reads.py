@@ -14,6 +14,7 @@ from typing import Any
 
 import psycopg
 
+from datapilot import finale
 from datapilot.config import active_pack
 
 Conn = psycopg.Connection[Any]
@@ -86,6 +87,13 @@ ORDER BY r.created_at, r.run_id
 LAST_EVENTS = """
 SELECT DISTINCT ON (run_id) run_id, kind, payload
 FROM ops.run_events WHERE run_id = ANY(%(runs)s)
+ORDER BY run_id, id DESC
+"""
+# The newest gold check of each run (the runner writes it after the answer, as a grader result).
+BOARD_GOLD = """
+SELECT DISTINCT ON (run_id) run_id, kind, payload
+FROM ops.run_events
+WHERE run_id = ANY(%(runs)s) AND kind = 'grader_result' AND payload ->> 'grader' = 'gold'
 ORDER BY run_id, id DESC
 """
 LATEST_RUN_FOR = """
@@ -186,15 +194,18 @@ def status(conn: Conn, session_id: Any | None) -> dict[str, Any]:
 
 
 def board_runs(conn: Conn, session_id: Any) -> list[dict[str, Any]]:
-    """Every event-loop run of the session (oldest first) with its newest run event."""
+    """Every event-loop run of the session (oldest first) with its newest run event and its gold
+    check, when it has one."""
     runs = conn.execute(BOARD_RUNS, {"session": session_id}).fetchall()
     if not runs:
         return []
-    last = {
-        r["run_id"]: r
-        for r in conn.execute(LAST_EVENTS, {"runs": [r["run_id"] for r in runs]}).fetchall()
-    }
-    return [{**run, "last_event": last.get(run["run_id"])} for run in runs]
+    ids = {"runs": [r["run_id"] for r in runs]}
+    last = {r["run_id"]: r for r in conn.execute(LAST_EVENTS, ids).fetchall()}
+    gold = {r["run_id"]: r for r in conn.execute(BOARD_GOLD, ids).fetchall()}
+    return [
+        {**run, "last_event": last.get(run["run_id"]), "gold_event": gold.get(run["run_id"])}
+        for run in runs
+    ]
 
 
 def latest_run(conn: Conn, session_id: Any, prefix: str) -> dict[str, Any] | None:
@@ -229,6 +240,12 @@ def knowledge_versions(conn: Conn) -> list[dict[str, Any]]:
 def gate_decision(conn: Conn, version: str, since: datetime) -> dict[str, Any] | None:
     params = {"pack": active_pack(), "version": version, "since": since}
     return conn.execute(GATE_DECISION, params).fetchone()
+
+
+def finale_state(conn: Conn) -> finale.FinaleState:
+    """The kill switch, the system's level, and an approved version whose promotion is pending:
+    what Events > Send webhook question checks before it sends the finale (datapilot.finale)."""
+    return finale.read(conn, active_pack())
 
 
 def last_promotion(conn: Conn, since: datetime) -> dict[str, Any] | None:

@@ -13,6 +13,7 @@ from pydantic import SecretStr
 from datapilot.assignments import cost, keys
 from datapilot.assignments.report import LiveRun, Report, Stop, per_case, repeated
 from datapilot.config import pack_config
+from datapilot.observability import spend
 from datapilot.settings import Settings
 
 MESSAGE = "Live checks need your OpenAI key from the operations team"
@@ -43,6 +44,39 @@ def test_the_spend_activity(monkeypatch: pytest.MonkeyPatch) -> None:
     assert cost.activity() == "assignment"
     monkeypatch.setenv("DATAPILOT_SPEND_ACTIVITY", "assignment verification")
     assert cost.activity() == "assignment verification"
+
+
+@pytest.mark.parametrize("base", ["assignment", "assignment verification"])
+def test_each_check_run_records_under_its_own_activity_on_the_assignment_line(
+    monkeypatch: pytest.MonkeyPatch, base: str, tmp_path
+) -> None:
+    """Two checks at the same time (the Thursday review runs Assignment 4 beside the others) never
+    share an activity, and each name still counts under the assignment verification line."""
+    monkeypatch.setenv("DATAPILOT_SPEND_ACTIVITY", base)
+    one, other = cost.check_activity("agent-loop"), cost.check_activity("agent-loop")
+    assert one != other
+    assert one.startswith(f"{base}-agent-loop-")
+    for name in (one, other, cost.check_activity("hill-climbing-loop")):
+        assert spend.line_for(name).name == "assignment verification"
+    monkeypatch.setenv("DATAPILOT_SPEND_LEDGER", str(tmp_path / "ledger.sqlite"))
+    monkeypatch.setenv("DATAPILOT_BUILD_BUDGET", "1")
+    spend.check_budget(activity=one)  # covered by a line, so never refused as unknown
+
+
+def test_the_check_runs_under_its_own_activity(monkeypatch: pytest.MonkeyPatch) -> None:
+    from datapilot.assignments import runner
+
+    monkeypatch.setenv("DATAPILOT_SPEND_ACTIVITY", "development")
+    seen: list[str] = []
+
+    def bring_up(tree, name, say):
+        seen.append(name)
+        raise Stop("no stack in a unit test")
+
+    monkeypatch.setattr(runner, "bring_up", bring_up)
+    assert runner.run_check("agent-loop", runner.PACKAGE_TREE) == 2
+    assert runner.run_check("agent-loop", runner.PACKAGE_TREE) == 2
+    assert seen[0].startswith("assignment-agent-loop-") and seen[0] != seen[1]
 
 
 def _client(status: int) -> httpx.Client:

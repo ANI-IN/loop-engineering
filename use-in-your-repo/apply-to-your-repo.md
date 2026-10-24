@@ -120,8 +120,9 @@ make demo NAME=improve-baseline-experiment
 ```
 
 Then Run analyzer, read the knowledge diff, and run the experiment on the candidate, as in
-[Section 4: Hill-climbing loop](../section-4-hill-climbing-loop/README.md). Keep `make
-hill-climbing-runner` running in its own terminal: it serves the Improve page.
+[Section 4: Hill-climbing loop](../section-4-hill-climbing-loop/README.md). The
+`hill-climbing-runner` service that `make up` starts serves the Improve page; `make ps` shows it.
+After a change to `DATAPILOT_PACK` in `.env`, run `make up` so it reads the new pack.
 
 **Check it worked.** The holdout ledger shows the template's four holdout items.
 

@@ -13,10 +13,10 @@ import loops_paths  # noqa: F401  (before loops_support)
 import pytest
 from langchain_core.messages import AIMessage, BaseMessage
 from loops_support import FIXTURE_SCHEMA, ListHooks, call, envelope, fixture_config, tool_messages
-from security_cases import BENIGN, INJECTED, MALICIOUS
+from security_cases import BENIGN, CARRIES_A_PERSONAL_COLUMN, INJECTED, MALICIOUS
 
 from datapilot import db
-from datapilot.contracts import GraderContext, RunStatus
+from datapilot.contracts import GraderContext, RunStatus, Severity
 from datapilot.loop2_verification import defense
 from datapilot.loop2_verification.checker import QueryChecker
 from datapilot.loop2_verification.executor import ExecutionError
@@ -180,3 +180,83 @@ def test_the_role_grants_stop_a_write_with_read_only_switched_off(executor) -> N
 def test_the_executor_never_runs_a_second_statement_in_explain(executor) -> None:
     with pytest.raises(ExecutionError):
         executor.explain("SELECT 1; DELETE FROM orders")
+
+
+# --- personal data the agent did not name: a whole row, a LATERAL reference ---
+@pytest.mark.parametrize("sql", CARRIES_A_PERSONAL_COLUMN)
+def test_a_query_that_can_return_a_personal_column_is_routed_on_the_real_catalog(
+    checker, sql: str
+) -> None:
+    assert checker.personal.check(GraderContext(question="", sql=sql)).severity is Severity.ROUTE
+
+
+def test_a_whole_row_of_customers_carries_an_email_and_needs_approval(checker) -> None:
+    """Reviewer 2 ran this on this database: it passed every grader and returned an email."""
+    sql = "SELECT to_jsonb(c) AS r FROM customers c ORDER BY customer_id LIMIT 1"
+    assert "@" in str(checker.executor.run(sql).rows[0][0])
+    assert checker.needs_approval(sql)
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT count(*) FROM customers WHERE email::int = 1",
+        "SELECT count(*) FROM customers WHERE first_name::date IS NULL",
+        "SELECT count(*) FROM customers WHERE CAST(phone AS integer) > 0",
+        "SELECT count(*) FROM customers WHERE last_name::regclass IS NOT NULL",
+    ],
+)
+def test_a_database_error_never_carries_a_personal_value(checker, sql: str) -> None:
+    """Review round 2, reviewer A ran these on this database: the column only filters, so no
+    approval is asked, and PostgreSQL's error quoted the value it could not convert. The agent's
+    feedback and the grader's reason (which reaches the run record and LangSmith) keep the
+    SQLSTATE and the kind of error, never the value."""
+    with db.connect(db.Role.OWNER) as conn:
+        rows = conn.execute(
+            f"SELECT email, first_name, last_name, phone FROM {FIXTURE_SCHEMA}.customers"
+        ).fetchall()
+    values = {str(v) for row in rows for v in row.values() if v}
+    checked = checker.check(sql)
+    assert not checked.personal_data
+    failure = checked.failure
+    assert failure is not None and failure.grader == "execution", failure
+    assert failure.reason.startswith("SQLSTATE ")
+    for text in (failure.reason, failure.feedback_for_agent or ""):
+        assert "@" not in text and not any(v in text for v in values), text
+
+
+def test_a_personal_data_query_the_cost_guard_blocks_is_feedback_not_an_approval(
+    services_for,
+) -> None:
+    """Before, the approval interrupt came before the cost grader, and the approval row count ran
+    this cartesian join on the database until the statement timeout."""
+    cartesian = "SELECT a.email FROM customers a CROSS JOIN order_items b CROSS JOIN order_items c"
+    feedback: list[str] = []
+
+    def script(messages: Sequence[BaseMessage]) -> AIMessage:
+        tools = tool_messages(messages)
+        if not tools:
+            return call("run_query", {"sql": cartesian}, "cartesian")
+        feedback.append(str(tools[-1].content))
+        return envelope("SELECT count(*) FROM orders", "There are 2000 orders.")
+
+    loop = VerificationLoop(services_for({"analyst": script}), ListHooks())
+    outcome = asyncio.run(loop.start(RunRequest(run_id=str(uuid.uuid4()), question="Orders?")))
+    assert outcome.status is RunStatus.ANSWERED and outcome.approval is None
+    assert feedback and feedback[0].startswith("Query blocked by the cost check")
+
+
+def test_no_gold_query_needs_approval_on_the_seeded_warehouse_catalog() -> None:
+    from datapilot.loop1_agent.catalog import load_snapshot
+    from datapilot.loop2_verification.config import VerificationConfig
+    from datapilot.loop2_verification.graders import PersonalDataGrader
+    from datapilot.loop4_hill_climbing.pack_files import load_benchmark
+
+    config = VerificationConfig.from_pack()
+    grader = PersonalDataGrader(config, load_snapshot(db.url_for(db.Role.AGENT), config.schema))
+    routed = [
+        item.id
+        for item in load_benchmark()
+        if grader.check(GraderContext(question="", sql=item.gold_sql)).severity is not Severity.INFO
+    ]
+    assert routed == []

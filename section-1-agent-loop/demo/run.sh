@@ -9,11 +9,12 @@
 # The most it can cost: each demo starts one run, and a run stops at the token budget
 # budgets.tokens_per_run (60,000 tokens) in platform/packs/datapilot_us/pack.yaml, checked before
 # every model and tool call. At the gpt-6-luna output price in pack.yaml ($0.50 per million
-# tokens), a run at the cap costs at most about $0.03, plus what its last model call adds past it.
-# Provisional: calibration measures the real cost of three runs for the evidence page.
+# tokens), a run at the cap costs at most about $0.03, plus what its last model call adds past it: the cap is
+# checked before each call, so one call that carries a large result can go far past it.
 #
 # How long: the class plan's target minutes are CORE_TARGET_MINUTES and OPTIONAL_TARGET_MINUTES
-# below. Provisional: calibration measures three runs and the evidence page lists them.
+# below. The measured times and costs are on the section's evidence page (docs/evidence/)
+# and in the demo README.
 #
 # Before it: make up, then make check-data (setup/README.md). Planted bugs are whatever .env sets;
 # the demo README says which flag each demo needs. Recovery: make reset NAME=agent-loop, then run

@@ -9,6 +9,7 @@ from __future__ import annotations
 import difflib
 from collections.abc import Iterable, Mapping
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from datapilot.contracts.lifecycle import TERMINAL, RunStatus
@@ -230,6 +231,10 @@ def strip_view(run: Row, session_id: Any, duplicates: int = 0) -> dict[str, Any]
     status = RunStatus(run["status"])
     lane, word, edge = STATUS_VIEW[status]
     step, tool, after = step_of(run)
+    # The finale is an Events run: its gold check (written by the runner after the answer) shows
+    # here, the trigger of the class-day safeguard.
+    gold = gold_check([run["gold_event"]]) if run.get("gold_event") else None
+    gold_word, gold_text = gold_line(gold)
     return {
         "kind": "run",
         "run_id": str(run["run_id"]),
@@ -243,6 +248,8 @@ def strip_view(run: Row, session_id: Any, duplicates: int = 0) -> dict[str, Any]
         "step_after": after,
         "duplicates": duplicates,
         "review": status is RunStatus.AWAITING_APPROVAL,
+        "gold": gold_word,
+        "gold_text": gold_text,
         "stamp": run_stamp(run, session_id),
     }
 
@@ -298,6 +305,8 @@ def benchmark_strip_view(
         "total": total,
         "duplicates": 0,
         "review": False,
+        "gold": "",
+        "gold_text": "",
         "expanded": expanded,
         "stamp": stamp(
             experiment["experiment_id"],
@@ -434,18 +443,43 @@ def defense_layers(events: list[Row]) -> list[dict[str, Any]]:
 
 
 def gold_check(events: list[Row]) -> dict[str, Any] | None:
-    """The run's answer against gold, when the run was checked against a gold query."""
+    """The run's answer against gold, when the run was checked against a gold query. A passed
+    check shows no trap note: a note beside a match would teach the opposite of the trap (a gold
+    check recorded before the evaluator stopped labelling passed results may still carry one)."""
     found = [g for g in grader_events(events) if g.get("grader") == GOLD_GRADER]
     if not found:
         return None
     g = found[-1]
+    passed = bool(g.get("passed"))
     return {
-        "passed": bool(g.get("passed")),
+        "passed": passed,
         "agent_value": g.get("agent_value"),
         "gold_value": g.get("gold_value"),
         "reason": str(g.get("reason", "")),
-        "trap_labels": list(g.get("trap_labels") or []),
+        "trap_labels": [] if passed else list(g.get("trap_labels") or []),
     }
+
+
+def gold_line(gold: Mapping[str, Any] | None) -> tuple[str, str]:
+    """The gold check on a run's strip, as (word, text): "pass" or "fail", and the values. Empty
+    when the run has no gold check (the runner writes it shortly after the answer)."""
+    if gold is None:
+        return "", ""
+    agent = _grouped(gold.get("agent_value"))
+    if gold.get("passed"):
+        return "pass", f"Gold check passed: {agent}"
+    return "fail", f"Gold check failed: {agent}, gold {_grouped(gold.get('gold_value'))}"
+
+
+def _grouped(value: Any) -> str:
+    """A number with its thousands grouped (64,015,091.21); any other value as it is."""
+    if value is None or value == "":
+        return "no value"
+    try:
+        number = Decimal(str(value))
+    except InvalidOperation:
+        return str(value)
+    return f"{number:,}" if number.is_finite() else str(value)
 
 
 def reviewer_verdict(events: list[Row]) -> dict[str, Any] | None:
@@ -756,6 +790,29 @@ def promotion_view(promotion: Row | None) -> dict[str, Any] | None:
     if promotion.get("kind") == "safeguard":  # the class-day safeguard, not a gate promotion
         out["safeguard"] = True
     return out
+
+
+def autonomy_control(state: Any) -> dict[str, Any]:
+    """The Improve page's autonomy control (a datapilot.finale.FinaleState in): the system's level,
+    the one level its button sets, and why the button is off. The finale needs the unattended
+    level, which posts unattended only for a family the gate cleared, and assisted for the rest;
+    the report-only level is the way back. The api refuses either while the kill switch is
+    engaged, so the button is off then; it is off too while an approved version's promotion is
+    pending, since the finale must wait for that promotion anyway."""
+    level = str(state.autonomy_level)
+    target = "report_only" if level == "unattended" else "unattended"
+    blocked = None
+    if state.kill_switch == "engaged":
+        blocked = "Release the kill switch first."
+    elif target == "unattended" and state.pending_promotion:
+        blocked = f"Wait until {state.pending_promotion} is the active version."
+    words = {"unattended": "unattended", "report_only": "report-only", "assisted": "assisted"}
+    return {
+        "text": f"The system is at the {words.get(level, level)} level.",
+        "target": target,
+        "label": f"Set the {words[target]} level",
+        "blocked": blocked,
+    }
 
 
 def no_candidate_text(promotion: Mapping[str, Any] | None) -> str:

@@ -46,11 +46,16 @@ def triggered_at(client: TestClient, done: demos.Triggered) -> list[tuple[str, s
 
 
 def trigger_all(client: TestClient) -> dict[str, list[tuple[str, str, datetime]]]:
+    """The first run or request of each trigger, two triggers per demo. A trigger can make more
+    than one (the naive analyzer demo queues the analyzer, then the candidate experiment): every
+    one of them must be in the same session as the first."""
     seen: dict[str, list[tuple[str, str, datetime]]] = {}
     for demo in registries.demos().demos:
         for _ in range(2):
             done = demos.trigger(client, demo, wait_running_seconds=0)
-            seen.setdefault(demo.id, []).extend(triggered_at(client, done))
+            made = triggered_at(client, done)
+            assert {m[1] for m in made} == {made[0][1]}, demo.id
+            seen.setdefault(demo.id, []).append(made[0])
             client.post("/control/kill-switch", json={"action": "release"})
     return seen
 

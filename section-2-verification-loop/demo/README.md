@@ -30,9 +30,11 @@ graders and the read-only role, with no model call. The retry cap and the spine 
 runs of the analyst with real model calls, traced to LangSmith. The console shows every grader
 result, which layer stopped each statement, and the reviewer's verdict.
 
-Times and cost: not measured yet. Calibration runs each demo three times and lists the runs on the
-[evidence page](../../docs/evidence/section-2-verification-loop.md). Until then, `run.sh` states
-the most a run can cost at the caps in `platform/packs/datapilot_us/pack.yaml`.
+Times and cost, measured live on 22 and 23 October 2026, each demo twice with a reset between
+and once more on the current code: malicious SQL 2 to 6 s with no model call, the retry cap 20 to
+79 s, every grader passes but the answer is wrong 58 s. The runs are on the
+[evidence page](../../docs/evidence/section-2-verification-loop.md), and `run.sh` states the most a
+run can cost at the caps in `platform/packs/datapilot_us/pack.yaml`.
 
 ```mermaid
 flowchart LR

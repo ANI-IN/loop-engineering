@@ -12,7 +12,7 @@ Before an image is saved, the page text (body, title, tooltips, alt and aria lab
 a host path, a configured user name, an email address, key-like text, or an account link
 (`account_urls`, UUID-like ids) stops the capture and nothing is written.
 
-    uv run python tools/capture/capture.py --config capture.json --out images/s1 \
+    uv run python platform/scripts/kit/capture/capture.py --config capture.json --out images/s1 \
         [--only NAME ...] [--kind recorded|live] [--source-run ID]
 
 Config (JSON):

@@ -29,11 +29,8 @@ SLIDES = [
             "family earned: the unattended level if revenue cleared on the confirmed standard. If "
             "revenue did not clear in the class run, say so: the answer was right and posted at the "
             "assisted level, because the gate did not see enough evidence. In calibration revenue "
-            "has not yet cleared on the confirmed standard.",
-            R.format(
-                "stage 4, once the finale chain with the SQL guidance check and two candidates has "
-                "run live: the spine answer against gold and the level it posted at"
-            ),
+            "cleared on the confirmed standard once, in the latest of five promotions, and the spine "
+            "answer, 64,015,091.21 dollars, posted at the unattended level.",
             "Point at: the four stages in order.",
             'Likely question: "Can I run the whole path myself?" Answer: yes; the final project '
             "runs it end to end on your machine.",
@@ -54,24 +51,20 @@ SLIDES = [
             "| Agent loop | 0 of 99 trap runs passed under the starting rules |",
             "| Verification loop | No write landed; retry cap escalated after 3 attempts |",
             "| Event loop | 2 duplicates absorbed; approval survived a restart |",
-            "| Hill-climbing loop | Holdout 2 of 15, then 10 to 12 of 15; 0 regressions |",
+            "| Hill-climbing loop | Holdout 2 of 15, then 14 of 15; 0 regressions |",
             "How to read this: counts from calibration; say today's class counts beside them",
-            R.format(
-                "the hill-climbing row once the finale chain with the SQL guidance check and two "
-                "candidates has run live: the kept candidate's holdout count and the families cleared"
-            ),
         ],
         "notes": [
             "Say: Read one row per section as counts, not percentages, then say what today's runs "
             "showed beside each. Under the starting rules no trap item passed in 99 runs. No "
             "malicious statement changed a warehouse row, and the retry cap ended the run escalated "
             "after 3 attempts. The event loop absorbed 2 duplicates and kept an approval across a "
-            "worker restart. The promoted rules moved the holdout from 2 of 15 to 12 of 15, flipping "
-            "10 of 13 holdout trap items with 0 regressions, and a later promotion to 10 of 15. Say "
-            "plainly where a result was weaker than hoped: the same analyzer input also gave "
-            "candidates of 2, 3, 5, 6, and 9 of 15, which is why the analyzer now writes two and "
-            "keeps the better on dev; revenue has not yet cleared on the confirmed standard; and 15 "
-            "holdout items rest on few questions per family.",
+            "worker restart. The latest promoted rules, v8, moved the holdout from 2 of 15 to 14 of "
+            "15, fixing 12 of 13 holdout trap items with 0 regressions; earlier promotions reached 10 "
+            "to 12 of 15. Say plainly where a result was weaker than hoped: the same analyzer input "
+            "also gave candidates of 2, 3, 5, 6, and 9 of 15, which is why the analyzer now writes two "
+            "and keeps the better on dev, measured once so far; revenue cleared on the confirmed "
+            "standard in one promotion of five; and 15 holdout items rest on few questions per family.",
             "Re-check after live runs: every count on the slide against the calibration report and "
             "the evidence pages.",
             "Point at: the hill-climbing row.",
@@ -170,16 +163,13 @@ SLIDES = [
             "rule.",
             'Likely question: "What does the check cost me?" Answer: it prints its estimate '
             "before it starts and the actual cost when it ends, on your own key. Measured in the "
-            "build's verification: about 0.4 cents for a full check of Assignment 1, 0.34 to 0.42 "
-            "cents over six checks; about 2 cents for Assignment 2, 1.84 to 2.28 over six; about 0.3 "
-            "cents for Assignment 3, 0.23 to 0.40 over six; and for Assignment 4, which runs the "
-            "benchmark, 30.66 cents for the first check of a live session and about 15 cents for "
-            "each later one, 10.69 to 20.56 over five. Every check stops at its own spend cap of 1 "
-            "dollar.",
-            R.format(
-                "the cost of Assignment 4's check once it is verified live again with the gate's "
-                "fourth condition and two analyzer candidates"
-            ),
+            "build's verification: typically about 0.4 cents for a full check of Assignment 1, "
+            "about 2 cents for Assignment 2, and about 0.3 cents for Assignment 3; and for "
+            "Assignment 4, which runs the benchmark, about 14 to 24 cents for each later check of "
+            "a live session (13.58 and 23.95 cents, two checks with two candidates) and an estimated "
+            "38 cents for the first. Except that estimate, these are measured costs, not bounds; the "
+            "costs page lists "
+            "every measured check. Every check stops at its own spend cap of 1 dollar.",
             "Transition: The class in three lines.",
         ],
         "container": "four cards, one per assignment",
@@ -217,7 +207,7 @@ SLIDES = [
         "layout": "table",
         "minutes": 1,
         "says": "Every source, in order of first use",
-        "src": "the course research synthesis",
+        "src": "slides/source/sources.py, the source register",
         "on_slide": [
             "| Sources | Topic |",
             "|---|---|",

@@ -34,9 +34,9 @@ tokens: 3083 in, 58 out; cost $0.0003
 model: gpt-6-luna; knowledge version: v1
 ```
 
-![The Agent page after the simple question: Posted, a tool timeline with list_tables, describe_table, and run_query, the live stamp with its trace link, the one-line query, "No trap found in this query", and the answer 405738 orders](../../section-1-agent-loop/demo/expected/agent-simple-question-answer.png)
+![The Agent page after the simple question: the Ask button, Posted, a tool timeline with list_tables, describe_table, and run_query, the live stamp with its trace link, the one-line query, "No trap found in this query", and the answer 405738 orders](../../section-1-agent-loop/demo/expected/agent-simple-question-answer.png)
 
-*The analyst lists the tables, describes one, runs one query, and answers; run_query takes most of the 2.8 seconds of tool time.*
+*The analyst lists the tables, describes one, runs one query, and answers; describe_table takes most of the 0.8 seconds of tool time.*
 
 **Look at:** the tool timeline, then the line "Started ... Open trace in LangSmith" above the query.
 
@@ -52,7 +52,7 @@ one query, a correct count. The live stamp shows this result comes from a run st
 > More or fewer tool calls → expected; the number of tool calls can vary.
 
 > [!INSTRUCTOR]
-> Point at the timeline first, then the query, then the tokens and cost line (3,141 tokens and
+> Point at the timeline first, then the query, then the tokens and cost line (5,126 tokens and
 > 0.0003 dollars in the captured run). Say: "This is the loop you already know. The next question
 > looks just as simple."
 
@@ -69,7 +69,7 @@ make demo NAME=agent-confident-wrong-answer
 **You should see:** the run with its status line and its tool timeline. In the captured run the
 analyst also called the schema scout.
 
-![The Agent page during the spine question: Holding for approval, a tool timeline of six calls including scout_schema, the live stamp, and the start of the annotated query with trap notes](../../section-1-agent-loop/demo/expected/agent-confident-wrong-answer-run.png)
+![The Agent page after the spine question: Holding for approval with the line that it waits for a person's approval, a tool timeline of five calls including scout_schema twice, the live stamp, and the annotated query with trap notes](../../section-1-agent-loop/demo/expected/agent-confident-wrong-answer-run.png)
 
 *The spine question under the starting knowledge v1: the run holds for approval, and the analyst still answers with a number.*
 
@@ -97,7 +97,7 @@ answered anyway, with a number, and nothing in this loop tells you whether it is
 
 **You should see:** the query, with numbered marks on its wrong fragments and one note per trap.
 
-![The spine question's query with numbered marks on WHERE and order_ts, three trap notes for the fiscal year, Eastern time, and internal accounts, the agent's answer, and the answer against gold](../../section-1-agent-loop/demo/expected/agent-confident-wrong-answer-sql.png)
+![The spine question's query with numbered marks on WHERE, order_ts, and both fiscal-year bounds, three trap notes for the fiscal year, Eastern time, and internal accounts, the agent's answer, and the answer against gold](../../section-1-agent-loop/demo/expected/agent-confident-wrong-answer-sql.png)
 
 *Each wrong fragment of the query carries the number of its trap note.*
 
@@ -130,13 +130,13 @@ schema does not show.
 
 **You should see:** the agent's answer, the gold answer, and the result on both databases.
 
-![The answer against gold: agent answer 72416127.49, gold answer 64015091.21, and Mismatch on warehouse and warehouse_alt, with 9,718 tokens and 0.0012 dollars](../../section-1-agent-loop/demo/expected/agent-confident-wrong-answer-gold.png)
+![The answer against gold: agent answer 72394572.08, gold answer 64015091.21, and Mismatch on warehouse and warehouse_alt, with 27,245 tokens and 0.0025 dollars](../../section-1-agent-loop/demo/expected/agent-confident-wrong-answer-gold.png)
 
 *The gold check fails on both warehouse and warehouse_alt.*
 
 **Look at:** the **Mismatch** line.
 
-**What it means:** the answer, 72,416,127.49 dollars, is not the gold 64,015,091.21 dollars. The
+**What it means:** the answer, 72,394,572.08 dollars, is not the gold 64,015,091.21 dollars. The
 agent loop gave no sign that it was wrong.
 
 > [!CHECKPOINT]
@@ -164,7 +164,9 @@ make demo NAME=agent-unbounded-rows
 
 **You should see:** with the unbounded rows bug on, the token counter jumps. With it off, the
 query returns at most the row cap, the total count, and a truncation notice. The fixed half used
-17,298 and 19,661 tokens in its two calibration runs; the planted half has no measured run yet.
+17,298 and 19,661 tokens in its two calibration runs; the planted half used 183,639 to 186,689
+tokens in three runs, about ten times as many. In the latest run the fixed half was held for
+approval after two reviewer concerns.
 
 <!-- capture: unbounded rows with the unbounded rows bug on: the Agent page with the token counter, and its terminal summary -->
 
@@ -195,18 +197,19 @@ inside its budget.
 | The simple question | Posted, correct count |
 | The spine question's status | Holding for approval, reviewer concern |
 | Traps marked on the spine query | Fiscal year, Eastern time, internal accounts |
-| Tokens, secondary | 3,141 for the simple question; 9,718 for the spine question |
+| Tokens, secondary | 5,126 for the simple question; 27,245 for the spine question (the captured runs) |
 
 ## Time and cost
 
 Times are wall time from the trigger to the checked result, from the calibration demo pass of 22
-and 23 October 2026 (`docs/calibration-report.md`), each demo run alone with a reset between.
+and 23 October 2026 and the live sessions of 23 October, afternoon and evening
+(`docs/calibration-report.md`), each demo run alone with a reset between.
 
-| Demo | Time, two runs | Cost of the captured run | Cap |
+| Demo | Time | Cost of the captured run | Cap |
 |---|---|---|---|
-| The simple question | 37 to 39 s | 0.0003 dollars | 60,000 tokens per run |
-| The confident wrong answer | 76 s; the second run got no gold check | 0.0012 dollars | 60,000 tokens per run |
-| Unbounded rows | Not measured | Fixed half: 17,298 and 19,661 tokens | 60,000 tokens per run |
+| The simple question | 14 to 39 s | 0.0003 dollars | 60,000 tokens per run |
+| The confident wrong answer | 37 to 76 s | 0.0025 dollars | 60,000 tokens per run |
+| Unbounded rows | Planted half 18 to 19 s; fixed half 26 s | Fixed half: 17,298 to 27,040 tokens | 60,000 tokens per run |
 
 ## What to say in class
 

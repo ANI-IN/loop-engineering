@@ -8,9 +8,8 @@
 
 What each command and assignment costs, as two numbers: the most it can cost at the caps, and what
 it cost when measured. The caps and prices come from `platform/packs/datapilot_us/pack.yaml`; the
-model comes from `.env.example`. Measured costs come from the course's own live runs and are filled
-in from them.
-<!-- provisional: every measured cost on this page comes from calibration and the class run -->
+model comes from `.env.example`. Measured costs come from the course's own live runs, recorded in
+the [calibration report](calibration-report.md).
 
 ## What you pay for
 
@@ -43,20 +42,22 @@ never asks for the 12-hour lifetime.
 
 The "at most" figure prices every model run of a command at its token cap,
 `budgets.tokens_per_run` (60,000 tokens), at the output price: about 3 cents per run. The run
-guard stops a run once its tokens reach the cap, so its last call can go a little past it. Real
-runs use far less, mostly cheaper input tokens.
+guard checks the cap before each model call, so one call that carries a large result can go far
+past it: the planted unbounded rows half reached 186,689 tokens. The "at most" figures still hold,
+because they price every token at the output price. Real runs use far less, mostly cheaper input
+tokens.
 
 | Command | Model calls | At most, at the caps |
 |---|---|---|
 | `make setup`, `make up`, `make seed`, `make check-data`, `make reset`, `make ps` | None | 0 dollars |
-| `make preflight PURPOSE=<purpose>` | Five canary questions, one run each | About 15 cents |
+| `make preflight PURPOSE=<purpose>` | Five canary questions, one agent run each (about 40 model calls) | About 15 cents |
 | `make demo NAME=<slug>`, one agent run | One run; retries stay inside its caps | About 3 cents per run |
 | `make demo NAME=improve-baseline-experiment` | The whole benchmark: each holdout item 3 times, each dev item once | About 3 cents per run, times the runs |
 | `make live-smoke` | Five real calls across the system | It prints its own estimate first |
 
-What one agent run cost when measured, and what the class sequence cost, are filled in from the
-calibration report.
-<!-- provisional: measured cost per run and per class from calibration and the class run -->
+Measured on gpt-6-luna: one analyst run costs about 0.001 dollars; one 70-run experiment cost
+0.0594 to 0.0914 dollars where recorded; `make preflight` cost 0.0053 dollars. What the whole class
+sequence costs is measured in the rehearsal.
 
 Every run is also inside the daily cap, `budgets.tokens_per_day` (2,000,000 tokens). The worker
 checks it before it claims each job, and a run past it ends as blocked by the budget.
@@ -75,25 +76,39 @@ check counts its own model calls in the spend ledger, so the cap holds on your m
 build budget is off. It starts no new run once its spend, plus the most the runs already under way
 can still add, would pass the cap. That headroom is 24 cents: up to 8 runs at once, each at its
 whole token budget at the output price. So a check that meets the cap stops after about 76 cents
-to 1 dollar, never more. A check stopped at the cap:
+to 1 dollar, never more. Each check records its calls under an activity of its own (such as
+`assignment-agent-loop-1a2b3c4d`), so two checks that run at the same time never count each
+other's calls. A check stopped at the cap:
 
-- stops its runs under way with the kill switch, waits for them to end, then releases the kill
-  switch and puts back the autonomy level, and Assignment 4 puts back the active knowledge version,
-  as a normal end does;
+- stops its runs under way with the kill switch, including the benchmark runs that Assignment 4
+  makes in its own process, waits for them to end, then releases the kill switch and puts back
+  the autonomy level, and Assignment 4 puts back the active knowledge version, as a normal end
+  does;
 - prints what it spent, that the cap was reached, a PASS or FAIL line for every requirement it
   judged and a NOT RUN line for every one it did not, and how to run it again;
 - exits with the "stopped" code, 2.
 
-Typical is what one full check of a working solution cost in the build's verification on 23
-October 2026, on gpt-6-luna:
+Typical is what one full check of a solution cost in the build's verification on 23 October 2026,
+on gpt-6-luna. This table is the one source of these figures: each assignment page and each check's
+"Typical" line quote it. The ranges are what was measured, not bounds: your checks can cost more or
+less. The latest checks, on the current check code, ran from 21:28 Coordinated Universal Time (UTC)
+that day.
 
 | Assignment | What the check runs live | Typical, one full check |
 |---|---|---|
-| Assignment 1: Agent loop | Questions with informal or misspelled names | About 0.4 cents (0.34 to 0.42, six checks) |
-| Assignment 2: Verification loop | The ambiguity suite, the leak cases, an approved export | About 2 cents (1.84 to 2.28, six checks) |
-| Assignment 3: Event loop | The alert job, a late order, the kill switch, the drill-down | About 0.3 cents (0.23 to 0.40, six checks) |
-| Assignment 4, first check of a live session | The baseline and the candidate experiment, the analyzer team | 30.66 cents (one check) |
-| Assignment 4, each later check | The candidate experiment, the analyzer team | About 15 cents (10.69 to 20.56, five checks) |
+| Assignment 1: Agent loop | Questions with informal or misspelled names | Typically about 0.4 cents (0.34 to 0.49, eight checks; the latest 0.49) |
+| Assignment 2: Verification loop | The ambiguity suite, the leak cases, an approved export | About 2 cents (1.86 and 135 model calls, the current check; note 1) |
+| Assignment 3: Event loop | The alert job, a late order, the kill switch, the drill-down | Typically about 0.3 cents (0.23 to 0.40, eight checks; the latest 0.37) |
+| Assignment 4, first check of a live session | The baseline and the candidate experiment, the analyzer team, two candidates | About 38 cents, an estimate (note 2) |
+| Assignment 4, each later check | The candidate experiment, the analyzer team, two candidates | About 14 to 24 cents (13.58 and 23.95, two checks) |
+
+Note 1: one check of the current Assignment 2 check, whose case 8 was reworded; before that
+change, seven checks cost 1.84 to 2.28 cents (149 to 172 model calls each).
+
+Note 2: a first check with two candidates is not yet measured. With one candidate it cost 30.66
+cents (one check), and the second candidate's 56 dev runs add about 7 cents, at about 0.12 cents a
+run. The Assignment 4 checks before 21:28 UTC all wrote one candidate, as the check did then: each
+later check cost 8.70 to 20.56 cents (nine checks).
 
 Without the cap is every run using its whole token budget, 60,000 tokens, at the output price. The
 ceiling is what the check prints: the smaller of that and the spend cap.
@@ -103,18 +118,18 @@ ceiling is what the check prints: the smaller of that and the spend cap.
 | Assignment 1: Agent loop | 36 cents | 1.00 dollar | 36 cents |
 | Assignment 2: Verification loop | 108 cents | 1.00 dollar | 100 cents |
 | Assignment 3: Event loop | 3 cents | 1.00 dollar | 3 cents |
-| Assignment 4, first check of a live session | 501 cents, re-runs on top | 1.00 dollar | 100 cents |
-| Assignment 4, each later check | 255 cents, re-runs on top | 1.00 dollar | 100 cents |
+| Assignment 4, first check of a live session | 678 cents, re-runs on top | 1.00 dollar | 100 cents |
+| Assignment 4, each later check | 432 cents, re-runs on top | 1.00 dollar | 100 cents |
 
 ### The learner key limit
 
 Recommended: a spending limit of 3 dollars on each learner's key, in a dedicated OpenAI project,
 with an alert at 1.50 dollars. From the typical costs above, a learner who runs every check five
-times while working, with Assignment 4 over two live sessions, spends about 1.20 dollars:
+times while working, with Assignment 4 over two live sessions, spends about 1.45 dollars:
 Assignment 1 about 2 cents, Assignment 2 about 10 cents, Assignment 3 about 1.5 cents, and
-Assignment 4 about 1.06 dollars (two first checks at 30.66 cents and three later ones at about 15
-cents). The alert comes just past that, so it marks spending beyond the typical; the limit leaves
-more than as much again for class demos and extra checks. A runaway check stops at its own
+Assignment 4 about 1.31 dollars (two first checks at about 38 cents and three later ones at about
+19 cents). The alert comes just past that, so it marks spending beyond the typical; the limit
+leaves more than as much again for class demos and extra checks. A runaway check stops at its own
 1.00-dollar cap, so the limit is the backstop across checks, never the first stop.
 
 ## LangSmith traces
@@ -143,7 +158,8 @@ writer, critic). In class the analyzer team writes 2 candidates (`analyzer.candi
 its own team run and each measured on the 25 dev items once, so its demo adds 50 benchmark runs.
 The class benchmark is 70 runs (25 dev items once, 15 holdout items 3 times); with Assignment 4's
 six items it is 82. Each experiment the gate judges gets 20 re-runs, and the promoted candidate 15
-more for the clearance.
+more for the clearance. The Assignment 4 check also writes 2 candidates, as the class does, and
+measures each on its 28 dev items once: 56 more benchmark runs in every check.
 
 | Demo or check | Fully traced | Benchmark runs inside experiments |
 |---|---|---|
@@ -154,23 +170,24 @@ more for the clearance.
 | Assignment 1: Agent loop (12 runs at most) | 36 | None |
 | Assignment 2: Verification loop (36 runs at most) | 108 | None |
 | Assignment 3: Event loop (1 run) | 3 | None |
-| Assignment 4: Hill-climbing loop, first check of a live session (2 step traces) | 2 | 164 runs and 35 re-runs |
-| In all | 230 | 514 runs |
+| Assignment 4: Hill-climbing loop, first check of a live session (2 step traces) | 2 | 220 runs and 35 re-runs |
+| In all | 230 | 570 runs |
 
 Section 4's demos trace 2 analyzer team runs and 1 agent run in full (the naive analyzer makes no
 model call), and run 3 experiments and 2 candidate measurements on the benchmark.
 
 | | Benchmark traces | All traces | Share of 5,000 |
 |---|---|---|---|
-| Sampled at 0.2, one pass of everything | 309 | 539 | About 11 percent |
-| Not sampled, one pass of everything | 1,542 | 1,772 | About 35 percent |
-| Sampled at 0.2, the working pattern of "The learner key limit" above | 449 on checks, 189 on demos | About 1,470 | About 29 percent |
-| Not sampled, the same working pattern | 2,247 on checks, 945 on demos | About 4,020 | About 80 percent |
+| Sampled at 0.2, one pass of everything | 342 | 572 | About 11 percent |
+| Not sampled, one pass of everything | 1,710 | 1,940 | About 39 percent |
+| Sampled at 0.2, the working pattern of "The learner key limit" above | 617 on checks, 189 on demos | About 1,630 | About 33 percent |
+| Not sampled, the same working pattern | 3,087 on checks, 945 on demos | About 4,860 | About 97 percent |
 
 The working pattern is every check of Assignments 1 to 3 five times, and Assignment 4 over two
-live sessions: two first checks and three later ones of 117 benchmark runs each. Sampled, one
-learner's whole course fits the free plan more than three times over; unsampled, the same work
-uses four fifths of it, and the build's own experiments used it up on 23 October 2026.
+live sessions: two first checks of 255 benchmark runs each (220 runs and 35 re-runs) and three
+later ones of 173 each (82 runs, 56 dev runs for the two candidates, and 35 re-runs). Sampled, one
+learner's whole course fits the free plan three times over; unsampled, the same work uses nearly
+all of it, and the build's own experiments used it up on 23 October 2026.
 
 **Why 0.2.** A class experiment of 70 runs still sends about 14 runs to the trace list filtered by
 knowledge version, enough to open several in class; a holdout row (6 runs across the baseline and
@@ -192,7 +209,7 @@ refuses every request with the Hypertext Transfer Protocol (HTTP) status 429.
 | 3 attempts | `limits.max_retries` | The run ends escalated, with every reason |
 | 12 model calls per run | `limits.model_call_limit` | The model call limit ends the run |
 | 16 tool calls per run | `limits.tool_call_limit` | Further tool calls are refused, and the agent must answer |
-| 60,000 tokens per run | `budgets.tokens_per_run` | The run guard stops the run once it reaches the cap |
+| 60,000 tokens per run | `budgets.tokens_per_run` | Checked before each call, so one large call can go far past it |
 | 2,000,000 tokens per day | `budgets.tokens_per_day` | The worker claims no more jobs that day |
 | A planner cost of 500,000 | `cost_guard.max_plan_cost` | The cost grader rejects the query before it runs |
 | 1.00 dollar per assignment check | `assignments.check_cap_usd` | The check starts no new run and stops cleanly |

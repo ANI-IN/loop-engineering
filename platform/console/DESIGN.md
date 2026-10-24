@@ -77,7 +77,7 @@ allowed by the rules but does not appear in the style tile.
 | graphite | gray-tint | 4.62 | not rendered | Gray badges |
 | graphite | magenta-tint | 4.71 | not rendered | Text in a selected segment |
 | ink | holding-amber | 4.12 | none (rule: no text on amber) | Forbidden as text |
-| holding-amber | chart-paper | 3.20 | none (fill only) | Edges and gauge fill, 3:1 as a UI part |
+| holding-amber | chart-paper | 3.20 | none (fill only) | Edges and gauge fill, 3:1 as an interface part |
 | rule | chart-paper | 3.07 | not text | Control borders, 3:1 minimum |
 | hairline | chart-paper | 1.36 | not text | Table grid lines; decoration only |
 
@@ -149,8 +149,8 @@ the frame of the status line, so learners track one shape across all four loops.
 ```text
 +-+--------------------------------+
 |#| Holding for approval           |   word: 16 px bold, in the state's text colour
-|#| Export California customers    |   question: 16 px, 2 lines, then an ellipsis
-|#| for the spring campaign        |
+|#| Export the California          |   question: 16 px, 2 lines, then an ellipsis
+|#| customers who may receive...   |
 |#| 412 rows of personal data      |   step or reason: 16 px graphite, 1 line
 |#| Started 11:59:09. Open trace   |   live stamp: 14 px ink, link 14 px magenta bold, 1 line
 |#| [ Review ]                     |   only when holding for approval
@@ -184,7 +184,7 @@ These follow `datapilot.contracts.live` and apply to every page.
    preflight to start one." Sessions start only through `make preflight`; the console never starts
    one.
 5. **Business date.** The status line shows "Business date: 31 January 2026"
-   (`datapilot.business_date.status_label()`), so nobody reads "yesterday" against the wall clock.
+   (`datapilot.business_date.status_label()`), so nobody reads the previous day against the wall clock.
 6. **Only this session's runs.** The run board, the Agent and Verify results, and the ledger show
    only runs whose `session_id` is the open live session. With no session, the board shows the same
    sentence as the status line above empty lanes.
@@ -235,7 +235,8 @@ Rules that make it fit:
 - The strip text is 16 px, the stamp 14 px on one line, the step one line, the question two lines.
 - The status line is three rows at 16 px: identity, autonomy, and clearance; session, business
   date, token budget, and the kill switch; planted chips and the time-zone note. The kill switch
-  message adds a fourth row only while armed or engaged.
+  message adds a fourth row only while armed or engaged. A notice row, the api notice or the
+  class-day safeguard notice, is added only while it applies.
 - No heading between the status line and the board; the navigation names the page.
 - The grouped benchmark strip expands its ledger below the board only when asked.
 
@@ -344,7 +345,10 @@ Component rules:
 
 - The timeline is an Altair bar per tool call; the label carries the tool name and seconds.
 - The annotated SQL names the trap behind each wrong fragment; a correct query says "No trap found
-  in this query." in green. Samples use only columns of `platform/ops/sql/warehouse_schema.sql`.
+  in this query." in green. The fiscal-year mark covers a calendar-year bound however the analyst
+  writes it: a bare date, a `DATE`, `TIMESTAMP`, or `TIMESTAMPTZ` literal with a time and an
+  offset, or a cast. A numbered note never points at nothing: when its fragment is not in the text,
+  the note says that no line of the query is marked for it. Samples use only columns of `platform/ops/sql/warehouse_schema.sql`.
 - Tokens, cost, and latency are one line of text, not tiles. The trace link is in the stamp line.
 
 ### Verify page (Section 2: Verification loop)
@@ -363,6 +367,8 @@ Component rules:
 
 - Retries tick down the same checklist; the header says the attempt ("attempt 2 of 3").
 - The layer that stopped malicious SQL says "Stopped it"; layers after it say "Not reached".
+- Each statement wraps inside its column, so the data-modifying CTE shows whole, never cut at the
+  right edge.
 - "Every grader passes, still wrong": the all-passed checklist sits beside the failed gold check
   and the reviewer's verdict, whichever way it went.
 - The cost counter stops at the cap and says so in words.
@@ -408,6 +414,8 @@ Component rules:
 |#Report the total net revenue for fiscal year 2026  [x] Failed 0 of 3 [#] Passed 3 of 3 Fixed: now passes Trace|
 |/What number of orders arrived on Black Friday 2025 [#] Passed 3 of 3 [x] Failed 1 of 3 Regression Trace|
 | Open every v2 trace in LangSmith, filtered by knowledge version.                               |
+| Candidate A: 14 of 25 dev, 0 regressions, 7 rules; Candidate B: 12 of 25 dev, 1 regression,   |
+| 8 rules; chosen: A                                                                             |
 | [x] Gate: blocked. v2 fixes 4 holdout items but breaks 1 that v1 passed (orders on Black      |
 | Friday 2025), so it is not promoted.                                                           |
 | Knowledge diff (v1 to v2)                                                                      |
@@ -418,6 +426,9 @@ Component rules:
 - Flips are marked "Fixed: now passes" with a green edge; regressions are red, with the word
   "Regression" and a struck edge.
 - The gate verdict is one plain sentence.
+- Above the knowledge diff, one line names both candidates of the analyzer request, their dev
+  results and rules, and the one kept (`ops.analyzer_candidates`); it is absent for a version
+  that no analyzer request chose.
 - No baseline in this session: "No baseline run in this session yet." and one button, "Run the
   baseline experiment".
 - When the gate passes and a family qualifies, the status line moves that family to cleared.
@@ -589,7 +600,7 @@ went from 12.4 px to 14 px.
 
 ## 16. Console build notes
 
-Recorded by the console build, with the lead's approval. The console's component copies live in
+Recorded by the console build. The console's component copies live in
 `datapilot_console/components/`; they start from `design/components/` and add only these:
 
 - **No-baseline label.** The ledger's one button reads "Run experiment on the active version", the
@@ -599,9 +610,16 @@ Recorded by the console build, with the lead's approval. The console's component
 - **Annotated SQL, waiting.** Before a run has SQL, the component shows only its live stamp.
 - **Api notice.** The status line has one more row, in fault-red bold, only while the api does not
   answer: "The api did not answer. Start it with make up."
+- **Class-day safeguard notice.** While the version activated by the class-day safeguard is still
+  the active one, the same notice row reads "Class-day safeguard: v5 is active, the version
+  verified in rehearsal; its families keep the level they earned there. It replaced v6, which the
+  gate promoted in class." (`views.safeguard_notice`).
+- **Candidate line.** The Improve page shows the analyzer request's choice among its candidates
+  above the knowledge diff, the sentence saved in `ops.analyzer_candidates`.
 - **Lanes scroll inside themselves.** When the visible page area is short (a 1280x600 share), each
   lane's list scrolls inside the lane so the status line and the off-the-board row stay on the
-  first screen; the page itself does not scroll. Streamlit 1.65.0 with top navigation starts the
+  first screen; the page itself does not scroll. A scrolling lane ends below the last strip that
+  fits whole, so the lane's edge never cuts through a strip or its button. Streamlit 1.65.0 with top navigation starts the
   status line at 144 px, not 108 px. Measured on seeded rows: the off-the-board row ends at 715
   of 720 px and 595 of 600 px, with the kill switch armed and disarmed
   (`screenshots/measurements.json`).

@@ -47,7 +47,7 @@ DENIED_PREFIXES = (
     "query_to_xml", "table_to_xml", "cursor_to_xml", "schema_to_xml", "database_to_xml",
     "pg_terminate_backend", "pg_cancel_backend", "pg_advisory", "pg_try_advisory",
     "pg_create", "pg_drop", "pg_logical", "pg_replication", "pg_switch", "pg_rotate",
-    "pg_promote", "pg_import", "pg_execute",
+    "pg_promote", "pg_import", "pg_execute", "ts_stat", "ts_rewrite", "crosstab", "connectby",
     # Catalog introspection: view definitions and comments are not the agent's to read (the
     # marketing view's definition names the internal-account rule).
     "pg_get_", "pg_describe", "pg_options_to_table", "pg_table",

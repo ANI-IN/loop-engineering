@@ -19,9 +19,9 @@ Two kinds of time appear on these pages:
 
 - **Reading time** is a page's word count divided by 200, rounded up: to the minute on the
   concepts pages, and to 5 minutes for the post-class readings.
-- **Run time** is what a command took on the course machine, as the range over three measured
-  runs with their date. Run times come from the class rehearsals and are filled in from them.
-  <!-- provisional: run times come from the rehearsal runs -->
+- **Run time** is what a command took on the course machine, as the range over the measured runs
+  with their date. The run times on these pages come from the calibration and live sessions of 22
+  and 23 October 2026.
 
 The assignment effort is the planned time for one learner, stated in each assignment's README.
 
@@ -64,7 +64,6 @@ walkthrough, the assignment, the post-class readings, and the session notes.
 Each section's `assignment/` folder holds one standalone extension of what the section showed.
 You run its live check while you work, `make check-assignment NAME=<slug>`, with your own key. The
 solutions are published at the start of the [Thursday review](review-session.md).
-<!-- provisional: lands with the assignments merge -->
 
 ## Step 7: Final project
 

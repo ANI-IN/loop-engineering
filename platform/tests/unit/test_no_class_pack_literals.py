@@ -55,8 +55,8 @@ ALLOWED = {
     # quoted verbatim in platform/demos/registry.yaml, the demo pages, and the slides.
     "platform/src/datapilot/loop2_verification/defense.py": "verification loop demo statements",
     "platform/src/datapilot/loop3_events/worker.py": "reports the defense demo's orders count",
-    "platform/src/datapilot/loop3_events/demos.py": "class demo questions",
-    # Moved from demos.py so the console's buttons read the same questions as make demo.
+    # Moved from demos.py so the console's buttons read the same questions (and the export
+    # request) as make demo.
     "platform/src/datapilot/demo_questions.py": "class demo questions",
     "platform/src/datapilot/loop3_events/api/demo.py": "class demo questions",
     "platform/src/datapilot/loop4_hill_climbing/live_smoke.py": "the class stack's live smoke test",

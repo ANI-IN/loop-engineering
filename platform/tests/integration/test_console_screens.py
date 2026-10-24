@@ -2,11 +2,12 @@
 the Events page fit, and 15 seconds of one-second updates without a remount or greying.
 
 A test launch: this file starts Streamlit on platform/console/app.py with a stub health api (test
-code), seeds ops rows with console_seed, and drives headless Chromium with Playwright. It ends the
-open live session of the database it runs against, so it runs only when asked:
+code), seeds ops rows with console_seed, and drives headless Chromium with Playwright. Like every
+test, it reaches only the tests' own database (port 55432), never the live stack; there it ends
+the open session that the rest of the integration suite shares, and it rewrites the tracked
+screenshots, so it runs only when asked, under the tests' database lock:
 
-    DATAPILOT_CONSOLE_SCREENSHOTS=1 uv run pytest -m integration \
-        platform/tests/integration/test_console_screens.py
+    make test-console
 
 Screenshots go to platform/console/screenshots/; measurements to screenshots/measurements.json.
 """
@@ -38,7 +39,8 @@ pytestmark = [
     pytest.mark.slow,
     pytest.mark.skipif(
         os.environ.get("DATAPILOT_CONSOLE_SCREENSHOTS") != "1",
-        reason="ends the open live session; set DATAPILOT_CONSOLE_SCREENSHOTS=1 to run",
+        reason="ends the open session on the tests' own database and rewrites the tracked "
+        "screenshots; run it with make test-console",
     ),
 ]
 

@@ -72,7 +72,8 @@ build_budget:
   warn_usd: 6.00
   stop_usd: 10.00    # all live work stops here
   # Every ledger activity counts under exactly one line, by its name: the line's own name, the line
-  # name followed by "-" and a step (calibration-traps), or one of the line's other names. A call
+  # name followed by "-" and a step (calibration-traps), or one of the line's other names, itself
+  # alone or followed by "-" and a step (assignment-agent-loop-1a2b3c4d, one assignment check). A call
   # under any other activity name is refused. A line that is used up stops its activity with a
   # message naming the line and what is left; it never spills into the reserve on its own.
   lines:

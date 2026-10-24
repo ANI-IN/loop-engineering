@@ -18,7 +18,7 @@ VARIANT ?=
 TREE ?=
 PACK ?=
 
-.PHONY: verify help setup up down ps logs migrate seed check-data spend test-stack test-stack-down live-smoke preflight hill-climbing-runner calibrate style-tile demos registries outline docs docs-check test test-integration 	lint format import-lint lint-prose check-style check-style-strict check-short-forms check-names check 	demo reset reset-discarding-baseline archive archive-show safeguard-status safeguard-verify safeguard-activate open-code test-security 	check-assignment apply-solution verify-assignments diagrams check-pack
+.PHONY: verify help setup up down ps logs migrate seed check-data spend test-stack test-stack-down live-smoke preflight hill-climbing-runner calibrate style-tile demos registries outline docs docs-check test test-integration test-console 	lint format import-lint lint-prose check-style check-style-strict check-short-forms check-names check 	demo reset reset-discarding-baseline archive archive-show safeguard-status safeguard-verify safeguard-activate autonomy open-code test-security 	check-assignment apply-solution verify-assignments diagrams check-pack
 
 help: ## List every target
 	@grep -E '^[a-zA-Z0-9_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -27,7 +27,7 @@ setup: ## Install the pinned packages and create .env from .env.example if missi
 	$(UV) sync --frozen
 	@test -f .env || (cp .env.example .env && echo '+ created .env: add OPENAI_API_KEY and LANGSMITH_API_KEY')
 
-up: ## Build and start postgres, api, worker, scheduler, and console; wait until healthy
+up: ## Build and start postgres, api, worker, scheduler, hill-climbing runner, and console; wait until healthy
 	@mkdir -p $(HOME)/.datapilot
 	# Build first, then start: a combined "up --build" stalled in the image build under WSL.
 	$(COMPOSE) build
@@ -79,6 +79,10 @@ test-stack-down: ## Stop the tests' own Postgres (its volume is kept)
 test-integration: test-stack ## Zero-token tests on the tests' own database, never the live stack
 	flock $(TEST_LOCK) env DATAPILOT_TEST_POSTGRES_PORT=$(TEST_POSTGRES_PORT) $(UV) run pytest -q -m integration
 
+test-console: test-stack ## The console in a real browser on the tests' own database; rewrites platform/console/screenshots/
+	flock $(TEST_LOCK) env DATAPILOT_TEST_POSTGRES_PORT=$(TEST_POSTGRES_PORT) DATAPILOT_CONSOLE_SCREENSHOTS=1 \
+		$(UV) run pytest -q -m integration -k console_screens
+
 lint: ## Ruff, the import contracts, the style check, the prose lint, and the naming check
 	$(UV) run ruff check .
 	$(UV) run ruff format --check .
@@ -103,16 +107,20 @@ check-style: ## Course style check (errors fail; CHECK_STYLE_OPTS=--strict for w
 check-style-strict: ## Style check where warnings fail too (the release gate)
 	$(UV) run python platform/scripts/check_style.py --strict
 
-guards: ## Repository guards: git config allow-list, ANI-IN as the only author, no co-author lines, no tracked .env
+guards: ## Repository guards: no core.worktree, no tracked .env; in the build also the git configuration allow-list, ANI-IN as the only author, no co-author lines
 	$(UV) run python platform/scripts/check_repo_guards.py
 
-check-short-forms: ## The naming rule on this branch's commit messages
-	git log --format=%B | $(UV) run python platform/scripts/short_forms.py --commit-messages -
+ci-local: ## The continuous integration workflow's own steps in a clean clone, no secrets (Linux): make ci-local REPO=<release clone>
+	@test -n "$(REPO)" || { echo "x name the release clone: make ci-local REPO=<folder>"; exit 2; }
+	$(UV) run python platform/scripts/ci_local.py --repo "$(REPO)"
+
+check-short-forms: ## The naming rule on this branch's commit messages (the build only; read without a pipe)
+	$(UV) run python platform/scripts/check_repo_guards.py --commit-messages
 
 check-names: ## Naming rule: course pages, slides/outline.md, commit messages (CHECK_STYLE_OPTS=--strict)
 	$(UV) run python platform/scripts/check_style.py --names-only $(CHECK_STYLE_OPTS)
 	$(UV) run python platform/scripts/short_forms.py $(CHECK_STYLE_OPTS) slides/outline.md
-	git log --format=%B | $(UV) run python platform/scripts/short_forms.py --commit-messages -
+	$(UV) run python platform/scripts/check_repo_guards.py --commit-messages
 
 check: guards lint docs-check test ## Everything CI runs without a database
 
@@ -153,6 +161,11 @@ safeguard-verify: ## In rehearsal: make safeguard-verify NAME=<version> RUN=<fin
 safeguard-activate: ## In class, when the finale answer is wrong: make safeguard-activate BY="<your name>"
 	$(UV) run datapilot safeguard activate --by "$(BY)"
 
+autonomy: ## Set the system's autonomy level through the api: make autonomy LEVEL=unattended BY="<your name>"
+	@test -n "$(LEVEL)" || (echo 'name the level: make autonomy LEVEL=report-only|assisted|unattended BY="<your name>"'; exit 2)
+	@test -n "$(BY)" || (echo 'say who sets it: make autonomy LEVEL=$(LEVEL) BY="<your name>"'; exit 2)
+	$(UV) run datapilot autonomy "$(LEVEL)" --by "$(BY)"
+
 open-code: ## Open the code a section shows in class: make open-code NAME=<section slug>
 	$(UV) run datapilot open-code $(NAME)
 
@@ -163,7 +176,7 @@ preflight: ## Services, the OpenAI key, the drift canary, then a new live sessio
 live-smoke: ## Five real calls across the system with tokens, cost, and trace links (development live checks)
 	$(UV) run datapilot live-smoke
 
-hill-climbing-runner: ## Serve the Improve page: experiments, the analyzer team, promotions, gold checks
+hill-climbing-runner: ## The runner outside Compose (make up runs it as a service); refuses while another runner serves
 	$(UV) run datapilot hill-climbing-runner
 
 calibrate: ## One live calibration step, raw results in .runs/calibration: make calibrate STEP=traps ARGS="--runs 3"

@@ -95,7 +95,8 @@ def defense(view: dict[str, Any]) -> None:
         return
     st.markdown("**Defense layers**")
     for statement in statements:
-        st.code(statement["sql"], language="sql")
+        # wrapped, so a long statement (the data-modifying CTE) shows whole in its column
+        st.code(statement["sql"], language="sql", wrap_lines=True)
         st.markdown(
             "  \n".join(
                 f"{LAYER[layer['word']]} {escape(layer['layer'])}: {escape(layer['detail'])}"

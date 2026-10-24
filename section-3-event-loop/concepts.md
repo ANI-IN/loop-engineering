@@ -43,8 +43,8 @@ and Done on the console run board.
 
 The PostgreSQL documentation describes `SKIP LOCKED` as skipping rows that cannot be locked at
 once ([PostgreSQL SELECT](https://www.postgresql.org/docs/current/sql-select.html)). The result is
-not strictly first in, first out, and delivery is at least once
-([Postgres Job Queues & Failure By MVCC](https://brandur.org/postgres-queues)). The lock held
+not strictly first in, first out, and delivery is at least once: a crash after the work but before
+the job is marked done runs it again ([You don't need a job queue: Postgres already has SKIP LOCKED](https://www.prisma.io/blog/you-dont-need-a-job-queue-postgres-already-has-skip-locked)). The lock held
 during the model call (`BUG_LOCK_DURING_LLM`) is a planted bug with no class demo: a long claim
 transaction leaves a stuck job when the worker dies.
 
@@ -153,12 +153,13 @@ parts live beside it:
 
 | Check | Result |
 |---|---|
-| Duplicate event: answers posted | Not run <!-- provisional: count from the live run of the duplicate events demo --> |
-| Approval after a worker restart | Not run <!-- provisional: result from the live run of the approval that survives a restart --> |
-| In-flight run after the kill switch | Not run <!-- provisional: result from the live run of the kill switch in flight --> |
+| Duplicate event: answers posted | 1 answer and 2 duplicates absorbed, in 5 of 5 runs |
+| Approval after a worker restart | Survived the restart and posted after approval, in 5 of 5 runs |
+| In-flight run after the kill switch | Stopped in flight, at the report-only level, in 7 of 7 runs |
 
-The results go on the [evidence page for this section](../docs/evidence/section-3-event-loop.md) after the live
-runs. <!-- provisional: the evidence page is filled from the calibration and class runs -->
+With each planted bug on, the failure appeared in every run: three answers, a lost approval, a post
+after the switch. The kill switch count includes the paced capture. The runs are on the
+[evidence page for this section](../docs/evidence/section-3-event-loop.md).
 
 ## When it helps, and when it does not
 
@@ -225,8 +226,8 @@ deterministic, free, and testable; an agent adds cost and variance for no judgem
 
 ## Sources
 
-- Source 1: The art of loop engineering, <https://www.langchain.com/blog/the-art-of-loop-engineering>, LangChain, 2026-06-16
+- Source 1: The art of loop engineering, <https://www.langchain.com/blog/the-art-of-loop-engineering>, Sydney Runkle (LangChain), 2026-06-16
 - Source 2: PostgreSQL SELECT, <https://www.postgresql.org/docs/current/sql-select.html>, PostgreSQL Global Development Group, n.d.
-- Source 3: Postgres Job Queues & Failure By MVCC, <https://brandur.org/postgres-queues>, Brandur Leach, 2015-05-18
+- Source 3: You don't need a job queue: Postgres already has SKIP LOCKED, <https://www.prisma.io/blog/you-dont-need-a-job-queue-postgres-already-has-skip-locked>, Prisma, 2026-07-17
 - Source 4: Human-in-the-loop, <https://docs.langchain.com/oss/python/langchain/human-in-the-loop>, LangChain, n.d.
 - Source 5: Loop engineering, <https://cobusgreyling.github.io/loop-engineering/>, Cobus Greyling, n.d.

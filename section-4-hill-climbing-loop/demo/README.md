@@ -18,7 +18,7 @@ results is kept, a person approves it, and the candidate experiment decides on t
 > - **Dev split**: The benchmark questions the analyzer team may learn from.
 > - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 > - **Promotion gate**: The check that a new knowledge version must pass before it becomes active.
-> - **Regression**: An item that passed under the active version and fails under the candidate.
+> - **Regression**: An item that passed under the active version and fails under the candidate, confirmed by re-runs.
 > - **Human approval**: A person approves or rejects a held action before it runs.
 > - **Autonomy level**: How much DataPilot may do unattended: report-only, assisted, or unattended.
 >
@@ -33,19 +33,25 @@ inside the free plan's monthly traces: a row of the holdout ledger links to its 
 its runs was traced and reads "Not traced" otherwise, and every row is scored all the same. The
 analyzer team makes real model calls too, and the knowledge diff shows exactly what it proposes.
 
-Times and cost: not measured yet. Calibration runs each demo three times and lists the runs on the
-[evidence page](../../docs/evidence/section-4-hill-climbing-loop.md). Until then, `run.sh` states
-the most an experiment can cost at the caps in `platform/packs/datapilot_us/pack.yaml`.
+Times and cost, measured live on 22 and 23 October 2026: the baseline experiment 266 to 285 s;
+the analyzer team 326 and 377 s with two candidates; the candidate experiment 186 and 211 s in the
+two latest runs, and 182 to 459 s over every 70-run experiment; the naive analyzer 211 to 285 s,
+from the trigger to the verdict; the promotion after approval, with its clearance re-runs, about
+50 s, measured once. A 70-run experiment
+cost 0.0594 to 0.0914 dollars. The runs are on the
+[evidence page](../../docs/evidence/section-4-hill-climbing-loop.md), and `run.sh` states the most
+an experiment can cost at the caps in `platform/packs/datapilot_us/pack.yaml`.
 
 ```mermaid
 flowchart LR
     B[Baseline experiment on the active version] --> F[Failed dev items]
-    F --> T[Analyzer team: failure analyst, rule writer, critic]
-    T --> O[Overfit guard]
-    O --> D[Knowledge diff]
-    D -->|human approval| C[Candidate experiment]
+    F --> T[Analyzer team writes two candidates]
+    T --> O[Overfit guard on each rule]
+    O --> K[One candidate kept on the dev split]
+    K --> D[Knowledge diff]
+    D --> C[Candidate experiment]
     C --> G{Promotion gate}
-    G -->|more holdout passes, no regressions| P[Promoted]
+    G -->|more holdout passes, zero confirmed regressions, rules pass the guard, a person approves| P[Promoted]
     G -->|otherwise| X[Blocked]
 ```
 
@@ -73,11 +79,20 @@ on the Improve page.
 
 The order matters here. The baseline experiment is the comparison for every later gate verdict,
 so it runs first and stays across a `make reset NAME=hill-climbing-loop`. The naive analyzer runs
-with `BUG_NAIVE_ANALYZER=1` in `.env` (then `make up`); the analyzer team runs with it back at `0`.
-Approve the candidate in the knowledge diff before the candidate experiment's verdict can pass.
-The over-broad rule runs only after a candidate has been promoted.
+with `BUG_NAIVE_ANALYZER=1` in `.env` (then `make up`); its `make demo` queues the analyzer and then
+the candidate experiment, which the runner takes in that order. The analyzer team runs with the
+flag back at `0`. Approve the candidate in the knowledge diff before the candidate experiment's
+verdict can pass, then wait until the Improve page says the version is the active version and the
+clearance re-runs finish: the status line then names the families cleared, or reads Not cleared
+for every family when none cleared (the finale then posts at the assisted level), and the finale's
+trigger stops refusing. From the promotion on, Events > Send webhook question sends the spine
+question, and the finale's strip shows its gold check once the runner writes it. Before the finale, set the unattended level:
+`make autonomy LEVEL=unattended BY="<your name>"`, or Improve > Set the unattended level; until
+then the finale's trigger refuses and says why. The over-broad rule runs only after a candidate
+has been promoted.
 
-<!-- provisional: the hill-climbing runner that claims these requests, and its measured times, arrive with calibration -->
+The hill-climbing runner that claims these requests is a Compose service, `hill-climbing-runner`,
+started by `make up`; `make ps` shows it.
 
 <!-- generated:demo-table -->
 | Demo | Tier | Run it | Target minutes |
@@ -85,7 +100,7 @@ The over-broad rule runs only after a candidate has been promoted.
 | The baseline experiment | core | `make demo NAME=improve-baseline-experiment` | 3 |
 | The naive analyzer, blocked | core | `make demo NAME=improve-naive-analyzer-blocked` | 4 |
 | The over-broad rule, blocked | optional | `make demo NAME=improve-overbroad-rule-blocked` | 4 |
-| The analyzer team and approval | core | `make demo NAME=improve-analyzer-team-approve` | 4 |
+| The analyzer team and approval | core | `make demo NAME=improve-analyzer-team-approve` | 6 |
 | The candidate experiment | core | `make demo NAME=improve-candidate-experiment` | 5 |
 | Cleared for the unattended level | core | `make demo NAME=improve-cleared-unattended` | 3 |
 
@@ -135,9 +150,9 @@ and what may differ from run to run.
 - **Tier**: core
 - **Start it**: Improve > Run analyzer in the console, or `make demo NAME=improve-naive-analyzer-blocked`
 - **Guaranteed by**: the naive analyzer (`BUG_NAIVE_ANALYZER`)
-- **What appears**: The naive analyzer, with no model call, writes one rule per failed dev question, quoting it word for word with the analyst's query that failed, and never reads a reference query. It skips the critic and applies no overfit guard: the guard flags every rule and the Improve page says so, yet the knowledge diff keeps them all. Then the candidate experiment runs, and the gate blocks the version because the overfit guard rejects its rules, whatever its holdout count.
+- **What appears**: Two requests, queued together at the break: the analyzer, then the candidate experiment (in the console, Improve > Run analyzer, then Improve > Run experiment on the candidate; the runner takes them in that order, after the baseline). The naive analyzer, with no model call, writes one rule per failed dev question, quoting it word for word with the analyst's query that failed, and never reads a reference query. It skips the critic and applies no overfit guard: the guard flags every rule and the Improve page says so, yet the knowledge diff keeps them all. Then the candidate experiment runs, and the gate blocks the version because the overfit guard rejects its rules, whatever its holdout count.
 - **Expected live outcome**: The overfit guard flags every rule, not applied by the analyzer; the gate verdict reads blocked, naming the rules the overfit guard rejects.
-- **What can vary**: how many dev items failed; the dev count; the holdout count
+- **What can vary**: how many dev items failed; the dev count; the holdout count; the time from the trigger to the verdict (211 to 285 seconds in three measured runs)
 - **Recovery**: `make reset NAME=hill-climbing-loop`, then the same trigger again
 
 ### The over-broad rule, blocked
@@ -154,25 +169,25 @@ and what may differ from run to run.
 
 - **Tier**: core
 - **Start it**: Improve > Run analyzer in the console, or `make demo NAME=improve-analyzer-team-approve`
-- **What appears**: The failure analyst diagnoses the failed dev items, the rule writer proposes general rules, the critic keeps, narrows, or drops each one, a rule whose SQL guidance does not run over the schema is dropped, and the overfit guard passes the rest. The team writes two candidates this way, each runs on the dev split only, and the Improve page names the one kept by its dev results; the knowledge diff shows it for human approval.
+- **What appears**: The failure analyst diagnoses the failed dev items, the rule writer proposes general rules, the critic keeps, narrows, or drops each one, a rule whose SQL guidance does not run over the schema is dropped, and the overfit guard rejects any rule that quotes a benchmark question or copies gold SQL and passes the rest. The team writes two candidates this way, each runs on the dev split only, and the Improve page names the one kept by its dev results; the knowledge diff shows it for human approval.
 - **Expected live outcome**: A candidate version with general rules in the diff viewer, and the line naming both candidates and the one kept.
-- **What can vary**: rule wording; number of rules; which candidate is kept
+- **What can vary**: rule wording; number of rules; which candidate is kept; which rules, if any, the overfit guard rejects (live, it rejected a critic-kept rule that copied 20 or more tokens of a gold query); wall time: 326 and 377 s with two candidates in the two measured runs
 - **Recovery**: `make reset NAME=hill-climbing-loop`, then the same trigger again
 
 ### The candidate experiment
 
 - **Tier**: core
 - **Start it**: Improve > Run experiment on the candidate in the console, or `make demo NAME=improve-candidate-experiment`
-- **What appears**: The candidate version flips a clear majority of holdout trap items with zero regressions on either split. The live holdout ledger in the console, scored locally against this session's baseline, marks the flips; then the LangSmith trace list of datapilot-experiments, filtered by knowledge version, shows the candidate's traced runs, a sample of about 1 run in 5. The gate passes once approved.
+- **What appears**: The candidate version flips holdout trap items with zero regressions on either split. The live holdout ledger in the console, scored locally against this session's baseline, marks the flips; then the LangSmith trace list of datapilot-experiments, filtered by knowledge version, shows the candidate's traced runs, a sample of about 1 run in 5. The gate passes once approved; the runner then makes the version active and runs the clearance re-runs (50 seconds after the approval, measured once). In class it is queued at once after the analyzer (Improve > Run analyzer, then Improve > Run experiment on the candidate); trigger it again only if it never started, since a second press queues a second experiment.
 - **Expected live outcome**: Holdout flips marked against this session's baseline, no regressions, gate verdict passed.
-- **What can vary**: which items flip; wall time
+- **What can vary**: which items flip; how many flip: 0 to 12 of 13 holdout trap items in the measured runs, a majority in 6 of 10, so check the candidate in rehearsal; wall time: 182 to 459 s; confirming re-runs of an apparent regression lengthen it
 - **Recovery**: `make reset NAME=hill-climbing-loop`, then the same trigger again
 
 ### Cleared for the unattended level
 
 - **Tier**: core
 - **Start it**: Events > Send webhook question in the console, or `make demo NAME=improve-cleared-unattended`
-- **What appears**: The correct answer, posted at the level its family has earned. The spine question arrives as a webhook and is answered correctly under the new active version; it posts at the unattended level when the promotion cleared its metric family on the gate's own confirmed standard (every holdout item at 2 of 3 runs, an item that fell short passing 2 of 3 more runs), and at the assisted level when the family fell short.
+- **What appears**: The correct answer, posted at the level its family has earned. Before it, the Improve page says the approved version is the active version, and the system is set to the unattended level (Improve > Set the unattended level, or `make autonomy LEVEL=unattended BY="<your name>"`); the trigger refuses, saying which step is missing, while a promotion is pending, the kill switch is engaged, or the level is lower. The spine question arrives as a webhook and is answered correctly under the new active version; it posts at the unattended level when the promotion cleared its metric family on the gate's own confirmed standard (every holdout item at 2 of 3 runs, an item that fell short passing 2 of 3 more runs), and at the assisted level when the family fell short. From the promotion on, Events > Send webhook question sends this spine question whether a family cleared or none did. Its strip on the Events page then shows the gold check the runner writes after the post: "Gold check passed", or "Gold check failed" with the agent's value and the gold value, the class-day safeguard's trigger.
 - **Expected live outcome**: A correct answer, posted at the unattended level if its family cleared on the confirmed standard, and at the assisted level if it did not.
 - **What can vary**: wording; latency; the level: assisted or unattended; the answer is correct either way
 - **Recovery**: `make reset NAME=hill-climbing-loop`, then the same trigger again
@@ -212,4 +227,6 @@ the version promoted and verified in rehearsal: the class-day safeguard in the
 | The gate refuses to compare the experiments | The baseline came from another live session | Run the baseline experiment again in this session |
 | The naive analyzer's rules look general, or no rule quotes a question | `BUG_NAIVE_ANALYZER` is not on in the services | Set it to `1` in `.env`, then `make up` |
 | The candidate verdict stays at ready for approval | Nobody approved the candidate | Approve it in the knowledge diff on the Improve page |
+| The finale says "not sent", or Send webhook question is off | A pending promotion, an engaged kill switch, or a lower level | Do the step the message names, then the same trigger |
+| The Improve page never moves | The `hill-climbing-runner` service stopped | `make logs NAME=hill-climbing-runner`, then `make up` |
 | Anything else | A stale request or an engaged kill switch | `make reset NAME=hill-climbing-loop`, then the same trigger again |

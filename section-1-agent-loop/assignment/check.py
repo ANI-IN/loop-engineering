@@ -118,6 +118,7 @@ def _bounded() -> str | None:
 
 
 def _read_only_role() -> str | None:
+    extension.lookup_values(_warehouse(), "product", "backpack")  # a lookup to judge, first
     source = inspect.getsource(extension)
     if hit := OTHER_ROLES.search(source):
         return f"the lookup must read through warehouse.url, the agent role; found {hit.group(0)}"
@@ -128,12 +129,15 @@ def _registered() -> str | None:
     log = extension.LookupLog()
     tools = {t.name: t for t in extension.lookup_tools(_warehouse(), log)}
     if extension.LOOKUP_TOOL_NAME not in tools:
-        return f"return a tool named {extension.LOOKUP_TOOL_NAME} from lookup_tools"
+        return f"agent-loop-2: return a tool named {extension.LOOKUP_TOOL_NAME} from lookup_tools"
     tools[extension.LOOKUP_TOOL_NAME].invoke({"kind": "product", "wording": "Basin Haven shoe"})
     if not log.lookups:
-        return "the tool must append each Lookup it makes to log.lookups"
+        return "agent-loop-2: the tool must append each Lookup it makes to log.lookups"
     if extension.LOOKUP_TOOL_NAME not in extension.WORKING_METHOD:
-        return f"WORKING_METHOD must tell the analyst when to call {extension.LOOKUP_TOOL_NAME}"
+        return (
+            f"agent-loop-3: WORKING_METHOD must tell the analyst when to call "
+            f"{extension.LOOKUP_TOOL_NAME}"
+        )
     return None
 
 
@@ -170,6 +174,8 @@ def _judge(question: Question, detail: RunDetail) -> LiveRun:
 
 
 def _judge_tie(detail: RunDetail) -> LiveRun:
+    """Both stored names, letter for letter and space for space; letter case aside, since the
+    question is written for a person (the SPEC says so)."""
     answer = envelope(detail)
     asked = (answer.clarifying_question or "") if answer else ""
     named = all(name.lower() in asked.lower() for name in TIED)
@@ -223,6 +229,7 @@ def run(ctx) -> None:
             )
         ],
         live=list(enumerate(live_texts, start=8)),
+        typical="about 0.4 cents",
     )
     groups = two_of_three(
         cases,

@@ -4,7 +4,7 @@
 >
 > - **Live session**: Everything that runs between one `make preflight` and the next.
 > - **Drift canary**: Three easy questions that must pass and two trap questions that must still fail.
-> - **Live stamp**: A result's run start time in your local time and its LangSmith trace link.
+> - **Live stamp**: A result's run start time and its LangSmith trace: a check prints the time in Coordinated Universal Time (UTC), the console in your local time.
 
 The run sheet for the 120-minute review of the four assignments, held on the Thursday after the
 class. The instructor runs it from this page; learners read it to see what the session covers.
@@ -21,7 +21,6 @@ submission and no hidden grader. At the start of this session the instructor pub
 The session lasts exactly 120 minutes. Each assignment gets its own block, and each block runs its
 own live check of the reference solution, from the solution just published. There is no combined
 end-to-end run, and no check is shown from a saved output.
-<!-- provisional: make check-assignment and make apply-solution land with the assignments merge -->
 
 ## Timetable
 
@@ -39,9 +38,9 @@ Minutes per part of each block:
 
 | Part | Assignment 1 | Assignment 2 | Assignment 3 |
 |---|---|---|---|
-| Live done-when check of the reference solution | 3 | 3 | 4 |
+| Live done-when check of the reference solution | 3 | 5 | 4 |
 | Walkthrough of 3 or 4 excerpts | 8 | 10 | 11 |
-| Alternatives and volunteered learner approaches | 5 | 7 | 7 |
+| Alternatives and volunteered learner approaches | 5 | 5 | 7 |
 | Common mistakes | 2 | 3 | 3 |
 | Questions | 2 | 2 | 2 |
 
@@ -56,11 +55,21 @@ Minutes per part of each block:
 ## Rules
 
 - Each block runs its own live check of the reference solution:
-  `make apply-solution NAME=<slug> VARIANT=reference`, then
-  `make check-assignment NAME=<slug> TREE=$HOME/.datapilot/assignment-work/<slug>-reference`, the
-  copy the first command prints. The check prints its cost estimate first, then `PASS` or `FAIL`
-  per requirement with a trace link and a live stamp for each live step, then the actual cost.
-- A failed check is reset and run again: `make reset NAME=<slug>`, then the same check.
+  `make check-assignment NAME=<slug> TREE=$HOME/.datapilot/assignment-work/<slug>-reference PURPOSE=thursday-review`,
+  on the copy made before the session (step 2 below). The check prints its cost estimate first,
+  then `PASS` or `FAIL` per requirement with a trace link and a live stamp for each live step, then
+  the actual cost. `PURPOSE=thursday-review` makes the first check on each stack start the
+  review's own live session there, so the live stamps name it, never an older session.
+- The checks of Assignments 1 to 3 run one after another on the check's own stack, the Compose
+  project `datapilot-assignments` on ports 55433, 8100, and 8502. The Assignment 4 check runs at the
+  same time on a stack of its own (below), so no two stacks ask for the same port.
+- A check that stopped (exit 2) says why, such as a spent daily token budget or a kill switch
+  engaged from outside. A correct solution can also read FAIL on a model-dependent line; the
+  Assignment 4 FAIL line says when the cause is the rule set the model wrote. Either way, reset
+  the check's own stack and run the same check again with the reset command the check printed:
+  `uv run python -m datapilot.assignments reset <slug>`, with the project and port in front for
+  the Assignment 4 stack (below). It acts on that stack only: it refuses the class stack's ports
+  and any port its project does not publish. `make reset` resets the class stack.
 - The walkthrough excerpts are listed below with their paths and line ranges. Everything else lives
   in each assignment's `solution/SOLUTION.md`.
 - Questions beyond each slot go to a written list. The instructor answers them after the session
@@ -71,13 +80,21 @@ Minutes per part of each block:
 ## Before the session
 
 1. Start a rehearsal session with `make preflight PURPOSE=rehearsal`, then rehearse each live
-   check once on the reference solutions, with a reset between. In the session itself every check
-   runs again, live.
-2. Open the four `SOLUTION.md` pages and the excerpt files below in editor tabs, in block order.
-3. Open three terminals: one for the Assignment 4 check, one for the other checks, one for resets.
-4. Prepare the chat poll: "How far did you get on each assignment, and where did you get stuck?"
-5. Just before 0:00, run `make preflight PURPOSE=thursday-review`. Its canary must pass, and it
-   starts the review's own live session; the console's status line shows its start time.
+   check once on the reference solutions, with `PURPOSE=rehearsal` and a reset of the check's stack
+   between. Rehearse the Assignment 4 check with the review's own project and ports, as in the
+   opening below, so its stack is built and seeded before the day (two databases, about a minute
+   each) and the first build does not fall inside the 0:00 slot. In the session itself every
+   check runs again, live.
+2. Make the four reference copies, which takes no model call:
+   `make apply-solution NAME=<slug> VARIANT=reference FORCE=1` for each of `agent-loop`,
+   `verification-loop`, `event-loop`, and `hill-climbing-loop`. `FORCE=1` replaces the copy the
+   rehearsal left; without it, apply refuses to replace a folder.
+3. Open the four `SOLUTION.md` pages and the excerpt files below in editor tabs, in block order.
+4. Open three terminals: one for the Assignment 4 check, one for the other checks, one for resets.
+5. Prepare the chat poll: "How far did you get on each assignment, and where did you get stuck?"
+6. Just before 0:00, run `make preflight PURPOSE=thursday-review`. Its canary must pass. It starts
+   the review's live session on the class stack, which the class console's status line shows; the
+   checks start theirs on their own stacks.
 
 ## Opening (0:00 to 0:05)
 
@@ -85,16 +102,29 @@ Minutes per part of each block:
 - Launch the chat poll.
 - Start the Assignment 4 check of the reference solution in its own terminal, so its results are
   ready at 1:22. It runs the benchmark, so it is the longest and most costly check of the session.
-  Give it its own Compose project and ports, so the other checks can rebuild their own stack
-  beside it:
+  Give it its own Compose project, `datapilot-review`, and its own three ports, 55434, 8101, and
+  8503, none of which the class stack (5432, 8000, 8501), the other checks' stack (55433, 8100,
+  8502), or the tests' Postgres (55432) uses, so the other checks can rebuild their stack beside
+  it:
 
 ```bash
-make apply-solution NAME=hill-climbing-loop VARIANT=reference
-COMPOSE_PROJECT_NAME=datapilot-review POSTGRES_PORT=5433 API_PORT=8001 CONSOLE_PORT=8502 \
-  make check-assignment NAME=hill-climbing-loop TREE=$HOME/.datapilot/assignment-work/hill-climbing-loop-reference
+COMPOSE_PROJECT_NAME=datapilot-review POSTGRES_PORT=55434 API_PORT=8101 CONSOLE_PORT=8503 \
+  make check-assignment NAME=hill-climbing-loop TREE=$HOME/.datapilot/assignment-work/hill-climbing-loop-reference PURPOSE=thursday-review
 ```
 
-<!-- provisional: the wall time of the Assignment 4 check is measured in the Thursday dry run -->
+- Its console is at `http://localhost:8503`. To reset its stack, give the same project and port:
+  `COMPOSE_PROJECT_NAME=datapilot-review POSTGRES_PORT=55434 uv run python -m datapilot.assignments reset hill-climbing-loop`.
+- Its own stack has no baseline in the new review session, so this first check runs the baseline
+  experiment as well as the candidate. Measured on 23 October 2026 with two candidates, a check
+  that shared its session's baseline took 15 and 22 minutes (two checks): about 1 minute for the
+  build and the deterministic requirements, 6.5 to 7 minutes for the two analyzer team runs with
+  their 56 dev runs, and 7 to 14.5 minutes for the candidate experiment and its re-runs. The
+  baseline experiment adds one 82-run experiment, so a first check takes about 20 to 30 minutes,
+  and at most about 38 counted from the one-candidate first check's 33. It ends before the 0:50
+  break.
+- If it is still running at 0:50, leave it running and read its result at the start of the
+  Assignment 4 block; start no second check. A second check in the same session shares the
+  baseline and takes 15 to 22 minutes.
 
 ## Assignment 1: Agent loop (0:05 to 0:25)
 
@@ -112,8 +142,8 @@ Walkthrough excerpts, in
 `section-1-agent-loop/assignment/solution/reference/files/platform/src/datapilot/loop1_agent/extension.py`:
 
 1. The score and the lookup: lines 74 to 100.
-2. The working-method step: lines 128 to 133.
-3. Recording each match in `assumptions`, and the unresolved tie: lines 136 to 160.
+2. The working-method step: lines 145 to 152.
+3. The unresolved tie, and recording each match in `assumptions`: lines 155 to 178.
 4. The tie case live: the clarifying question that names both near-identical product names, in
    the check's output.
 
@@ -125,11 +155,14 @@ Point at in the trace: the lookup call before the query, and the match in the as
 
 | Part | Minutes | What happens |
 |---|---|---|
-| Live done-when check | 3 | `make check-assignment NAME=verification-loop` on the reference copy: the ambiguity suite, the leak cases, an approved export |
+| Live done-when check | 5 | The check of the reference copy, about 4 minutes |
 | Walkthrough | 10 | The excerpts below |
-| Alternatives and learner approaches | 7 | The two alternatives in `SOLUTION.md`, then volunteers |
+| Alternatives and learner approaches | 5 | The two alternatives in `SOLUTION.md`, then volunteers |
 | Common mistakes | 3 | From `SOLUTION.md` |
 | Questions | 2 | Overflow goes to the written list |
+
+The live check is `make check-assignment NAME=verification-loop`: the ambiguity suite, the leak
+cases, and an approved export, the longest of the three blocks' checks.
 
 Walkthrough excerpts, under
 `section-2-verification-loop/assignment/solution/reference/files/platform/src/datapilot/loop2_verification/`:
@@ -145,7 +178,12 @@ benchmark.
 
 ## Break (0:50 to 0:55)
 
-A 5-minute break. Check that the Assignment 4 check is still running in its terminal.
+A 5-minute break. Read the result line of the Assignment 4 check in its terminal. If it reads
+FAIL or STOPPED, keep that output on screen as the evidence, and start the same command again at
+once: it shares this session's baseline, so it takes 15 to 22 minutes and ends by about 1:17,
+before its block. In the block,
+show both outputs and what the FAIL line says, such as a gate that blocked the rule set the model
+wrote.
 
 ## Assignment 3: Event loop (0:55 to 1:22)
 
@@ -181,11 +219,14 @@ normal Friday flagged as an anomaly.
 
 | Part | Minutes | What happens |
 |---|---|---|
-| Live done-when check | 5 | Read the check started at 0:00: promotion, zero regressions, the rejected rule |
+| Live done-when check | 5 | Read the check started at 0:00, and any second run |
 | Walkthrough | 14 | The excerpts below |
 | Alternatives and learner approaches | 8 | The two alternatives in `SOLUTION.md`, then volunteers |
 | Common mistakes | 4 | From `SOLUTION.md` |
 | Questions | 2 | Overflow goes to the written list |
+
+The live check is the one started at 0:00, and its second run when the break started one: read
+its promotion, its zero regressions, and the rule the critic dropped.
 
 Walkthrough excerpts:
 

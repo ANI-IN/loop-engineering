@@ -3,9 +3,9 @@
   "excalidraw": "0.18.1",
   "renders": {
     "hill-climbing-loop": {
-      "source": "45a4523af2b492520ff006bece25e33ee8e0d2fd32d2259709be1165ccd7c050",
-      "svg": "471666f616ba5f44b19b91dd835855cbfd9664076d0e3885c1f3c31c810da008",
-      "png": "52659d6bec7faadce7aaad9f8a8992a58bceded1bbcbc9b6533589b78a061cdd"
+      "source": "edf829d361f8dbab9fb866b6baac2e590b37eba7896c30091cceb2fe98b929b9",
+      "svg": "97cf4523ed9690fd7f1711ea18974050a43a227777863014fe9b2edd8e8b3704",
+      "png": "0c66fad8686af4b3ae45dd4c30245fffdd06b6cff1a0908bff3f7efa87ec8120"
     },
     "hill-climbing-loop-step-1": {
       "source": "f86d8048a4f701af0910d3b0ef93b047fe5f84cdf06d12d335ab819117a9d5d1",
@@ -13,24 +13,24 @@
       "png": "815cbcec51b82cf75bc23b397b311d4e3eebb3fac8a46c2b6afefadca05c949a"
     },
     "hill-climbing-loop-step-2": {
-      "source": "3e56f36eccbb1ce87e482370140dc0cda8bfb3f1a3d81dd44d1f602af416232a",
-      "svg": "03f9fb9d5c7c68bb3b839f126fba85fb67e188409e5df610e819c18c8947ee33",
-      "png": "a7ce8f9b1021a093c27ad3ff0e4a5780a09e4f156a1714b2c26fc2db077fedbc"
+      "source": "e400eb0e74cbf4194376fe84e11e8befbffa315c83e6b5c249f22c241527276c",
+      "svg": "3f5375aa8273e782592dfddc34ab4093017f1428378c671b9036fa2b1b1c0a9a",
+      "png": "c60d24a94d5e654456f078bae73a3a3a56bc0e13013041d37d6402f7c1fcc578"
     },
     "hill-climbing-loop-step-3": {
-      "source": "c331fa6c0f51b304f93d5864981be864febc0c89de172b0ca99f031940d8d9c0",
-      "svg": "8c447568437f4bc3c94c246e65e779dc40fc6ff99610f7622b9654c17a529fbd",
-      "png": "dd00775f96e9b726504848e7ad02debb7b001a1b3b9aa5ed0831ee0caa196570"
+      "source": "7823db57c6d2e3a0e43bcf7d67c973235c3f9e7a1a2e074022d4f908322d1e2f",
+      "svg": "d29c87ba2cac8bbaa1edf99136c72c9ca5685287b246e757927ceaaf9f7015c7",
+      "png": "a5da0b56dda80b50a54b671af058049ec32eeb0583efb134120e0181bf04cb1c"
     },
     "hill-climbing-loop-step-4": {
-      "source": "556e6a31b517578f58eddaf5aa9f2ebb7b64dbb2acffc1efe3f3b115690f4c73",
-      "svg": "3c4bf1135b3fc81d0b6c589493102a8688291eaac354b82874550fe4543817b5",
-      "png": "b9ba94d05d59a52e3c018c8243ce19b36f53478b642b1ee00ec01c28e2d0a3a7"
+      "source": "95e12e6296c4dd5dabb2dc602a801cdfd00c112ee15b3680b96029803f402a79",
+      "svg": "5fa332a489de5581b64fce9a66e59caea306f3b5f25e19f571c9a5f574318384",
+      "png": "b3667a42d95b07693e60f4a9fb3af6860114751337898349a889e46ca7375bf3"
     },
     "hill-climbing-loop-step-5": {
-      "source": "45a4523af2b492520ff006bece25e33ee8e0d2fd32d2259709be1165ccd7c050",
-      "svg": "471666f616ba5f44b19b91dd835855cbfd9664076d0e3885c1f3c31c810da008",
-      "png": "52659d6bec7faadce7aaad9f8a8992a58bceded1bbcbc9b6533589b78a061cdd"
+      "source": "edf829d361f8dbab9fb866b6baac2e590b37eba7896c30091cceb2fe98b929b9",
+      "svg": "97cf4523ed9690fd7f1711ea18974050a43a227777863014fe9b2edd8e8b3704",
+      "png": "0c66fad8686af4b3ae45dd4c30245fffdd06b6cff1a0908bff3f7efa87ec8120"
     }
   }
 }

@@ -1,5 +1,5 @@
 """The deck's source register, numbered in order of first use. Every 'Source N' in the notes uses
-these numbers. Titles, URLs, authors, and dates come from the course research synthesis and its notes."""
+these numbers. Each entry gives the title, link, author, and date as the source publishes them."""
 
 SOURCES = [
     "Source 1: The art of loop engineering, https://www.langchain.com/blog/the-art-of-loop-engineering, Sydney Runkle (LangChain), 2026-06-16",
@@ -15,13 +15,13 @@ SOURCES = [
     "Source 11: LangChain custom middleware, https://docs.langchain.com/oss/python/langchain/middleware/custom, LangChain, n.d.",
     "Source 12: LangChain built-in middleware, https://docs.langchain.com/oss/python/langchain/middleware/built-in, LangChain, n.d.",
     "Source 13: PostgreSQL SELECT, https://www.postgresql.org/docs/current/sql-select.html, PostgreSQL Global Development Group, n.d.",
-    "Source 14: Postgres Job Queues & Failure By MVCC, https://brandur.org/postgres-queues, Brandur Leach, n.d.",
-    "Source 15: You don't need a job queue: Postgres already has SKIP LOCKED, https://www.prisma.io/blog/you-dont-need-a-job-queue-postgres-already-has-skip-locked, Prisma, n.d.",
+    "Source 14: Postgres Job Queues & Failure By MVCC, https://brandur.org/postgres-queues, Brandur Leach, 2015-05-18",
+    "Source 15: You don't need a job queue: Postgres already has SKIP LOCKED, https://www.prisma.io/blog/you-dont-need-a-job-queue-postgres-already-has-skip-locked, Prisma, 2026-07-17",
     "Source 16: LangChain human-in-the-loop, https://docs.langchain.com/oss/python/langchain/human-in-the-loop, LangChain, n.d.",
     "Source 17: Loop engineering, https://cobusgreyling.github.io/loop-engineering/, Cobus Greyling, n.d.",
-    "Source 18: MAGIC: Generating Self-Correction Guideline for In-Context Text-to-SQL, https://arxiv.org/html/2406.12692, Arian Askari et al., 2024",
-    "Source 19: Toward Real-World Table Agents: Capabilities, Workflows, and Design Principles for LLM-based Table Intelligence, https://arxiv.org/html/2507.10281, arXiv, n.d.",
-    "Source 20: SEED: Enhancing Text-to-SQL Performance and Practical Usability Through Automatic Evidence Generation, https://arxiv.org/html/2506.07423, arXiv, n.d.",
+    "Source 18: MAGIC: Generating Self-Correction Guideline for In-Context Text-to-SQL, https://arxiv.org/abs/2406.12692, Arian Askari et al., 2024-06-18",
+    "Source 19: Toward Real-World Table Agents: Capabilities, Workflows, and Design Principles for LLM-based Table Intelligence, https://arxiv.org/html/2507.10281, Jiaming Tian et al., 2025-07-14",
+    "Source 20: SEED: Enhancing Text-to-SQL Performance and Practical Usability Through Automatic Evidence Generation, https://arxiv.org/abs/2506.07423, Janghyeon Yun et al., 2025-06-09",
     "Source 21: Test and monitor a Genie Agent, https://docs.databricks.com/aws/en/genie-agents/monitor, Databricks, n.d.",
     "Source 22: Suggestions for semantic models and views, https://docs.snowflake.com/en/user-guide/views-semantic/verified-query-suggestions, Snowflake, n.d.",
     "Source 23: Vanna documentation, https://vanna.ai/docs/, Vanna, n.d.",

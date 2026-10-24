@@ -33,7 +33,8 @@ Deterministic, checked against the real warehouse with no model call; each must 
 5. It returns between one and `MAX_CANDIDATES` candidates (at most 10), each an exact stored value,
    never a whole column.
 6. It reads the warehouse only through `warehouse.url`, the read-only agent role: the module names
-   neither the owner role nor the application role.
+   neither the owner role nor the application role. Until `lookup_values` returns a lookup, there
+   is nothing to judge, and this requirement fails too.
 7. `lookup_tools` returns a tool named `find_exact_values`, with the arguments `kind` and
    `wording`, that appends each lookup to the run's log, and `WORKING_METHOD` names the tool.
 
@@ -47,7 +48,14 @@ runs (two runs, and a third only when the first two disagree):
    line?".
 10. The same for "How many products do we list under trail running shoes?".
 11. "What is the list price, in dollars, of the Alpine Trek 45 litre backpack?" ends with status
-    `needs_clarification` and a `clarifying_question` that names both stored names exactly.
+    `needs_clarification` and a `clarifying_question` that names both stored names letter for
+    letter and space for space; letter case does not count, since the question is written for a
+    person, and the two names differ only by a space.
+
+Requirements 8 to 11 judge the analyst's answer, the envelope the run returns. Nothing in this
+assignment is posted on its own merit, so when the stack holds a run for human approval, the check
+rejects the hold, as it rejects every hold, and still judges the answer the run returned. The
+checks of Assignments 2 and 3, which are about posting, judge what is posted instead.
 
 The capability exists in no class code path: the course build's boundary test keeps every
 extension point inert on the class branch, so the unchanged starter fails this check.
@@ -60,8 +68,10 @@ then runs requirements 8 to 11 live. Each live run prints its LangSmith trace li
 stamp (run id, start time in Coordinated Universal Time (UTC), live session). At the end it prints
 the actual tokens and cost from the spend ledger. If the check reaches its spend cap of 1.00 dollar (`assignments.check_cap_usd` in pack.yaml), it stops cleanly: it starts no new run, every requirement it did not reach reads NOT RUN, and it exits 2. A missing or rejected key stops the check with
 "Live checks need your OpenAI key from the operations team"; it never falls back to anything
-offline. When requirement 7 fails, the live requirements do not run, so nothing is spent on a
-starter that cannot pass them. The command exits 0 when every line reads PASS, 1 on any FAIL, and
+offline. A run the stack itself blocked, at its daily token budget or by a kill switch engaged
+from outside the check, stops the check (exit 2) with that reason instead of failing a line. When
+requirement 7 fails, the live requirements do not run, so nothing is spent on a starter that cannot
+pass them. The command exits 0 when every line reads PASS, 1 on any FAIL, and
 2 when it stopped.
 
 Agent runs: 8 always (4 questions, 2 runs each), and at most 4 more.

@@ -21,15 +21,16 @@ every holdout item of the family passes 2 of 3 runs, an item that fell short pas
 from __future__ import annotations
 
 import threading
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
 import psycopg
 import structlog
 
-from datapilot import db
+from datapilot import db, finale
 from datapilot.config import active_pack, pack_config
 from datapilot.contracts import (
     AnswerEnvelope,
@@ -39,7 +40,8 @@ from datapilot.contracts import (
     Split,
 )
 from datapilot.contracts.live import NoLiveBaseline
-from datapilot.loop3_events import autonomy, improvement
+from datapilot.loop1_agent.guard import StopReason
+from datapilot.loop3_events import autonomy, improvement, killswitch
 from datapilot.loop4_hill_climbing import candidates, eligibility, gold, store, versions
 from datapilot.loop4_hill_climbing.analyzer import (
     AnalyzerReport,
@@ -66,8 +68,67 @@ OVERBROAD = "over-broad"
 SESSION_STARTED = "SELECT started_at FROM ops.live_sessions WHERE ended_at IS NULL"
 
 
+ALREADY_SERVING = (
+    "another hill-climbing runner already serves this database: the Compose service "
+    "hill-climbing-runner, which make up starts. Read it with make logs NAME=hill-climbing-runner; "
+    "do not start a second runner"
+)
+
+
 class RequestFailed(RuntimeError):
     """A request that cannot run, with the sentence the console shows."""
+
+
+class RunnerAlreadyServing(RuntimeError):
+    """Another runner holds the runner's lock on this database."""
+
+
+KILL_SWITCH_STOP = "stopped: the kill switch is engaged"
+
+
+class KillSwitchEngaged(RequestFailed):
+    """The kill switch is engaged: the request stops, and nothing it measured counts."""
+
+
+def kill_switch_stop() -> StopReason | None:
+    """The kill switch as the stop source of each run the runner's target starts, so a run in
+    flight stops at its next model or tool call (AnalystTarget.external_stop)."""
+    return StopReason.KILL_SWITCH if killswitch.engaged() else None
+
+
+@dataclass
+class KillSwitchStop:
+    """The kill switch as one request sees it: checked before the request starts and before
+    every run of the target, so once it is engaged no further run starts (a run in flight stops
+    at its next model call: AnalystTarget.external_stop). A run it stopped fails as an item, so
+    the request checks again before it records or decides anything."""
+
+    engaged: Callable[[], bool] = killswitch.engaged
+    seen: threading.Event = field(default_factory=threading.Event)
+
+    def check(self) -> None:
+        if self.seen.is_set() or self.engaged():
+            self.seen.set()
+            raise KillSwitchEngaged(KILL_SWITCH_STOP)
+
+    def target(self, target: Target) -> Target:
+        def checked(question: str, knowledge_version: str) -> AnswerEnvelope:
+            self.check()
+            return target(question, knowledge_version)
+
+        return checked
+
+    def rerun(self, runner: ExperimentRunner, knowledge_version: str) -> eligibility.Rerun:
+        """Confirming re-runs that stop the request when the switch is engaged before or during
+        them: a run the switch stopped is never counted as a measured failure."""
+
+        def checked(item: BenchmarkItem, times: int) -> list[bool]:
+            self.check()
+            passes = runner.rerun(item, knowledge_version, times)
+            self.check()
+            return passes
+
+        return checked
 
 
 @dataclass
@@ -79,6 +140,10 @@ class HillClimbingRunner:
     concurrency: int
     tracer: RunTracer | None = None
     project_url: str | None = None
+    kill_switch_engaged: Callable[[], bool] = killswitch.engaged
+    # Held from the moment a candidate experiment is finished until its gate has decided, and by
+    # the background promotion while it decides: the two threads never decide one version at once.
+    deciding: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
 
     # --- requests (improvement.ImprovementRunner) -----------------------------------------------
     def run(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -86,34 +151,47 @@ class HillClimbingRunner:
         if session_id is None:
             raise RequestFailed("no live session was open when this was requested")
         params = dict(request.get("params") or {})
+        stop = KillSwitchStop(self.kill_switch_engaged)
+        stop.check()  # an engaged switch fails a claimed request before it calls the model
         if request["kind"] == "analyzer":
-            return self.analyzer(session_id, request.get("request_id"))
-        return self.experiment(params, session_id)
+            return self.analyzer(session_id, request.get("request_id"), stop)
+        return self.experiment(params, session_id, stop)
 
-    def experiment(self, params: dict[str, Any], session_id: UUID) -> dict[str, Any]:
+    def experiment(
+        self, params: dict[str, Any], session_id: UUID, stop: KillSwitchStop | None = None
+    ) -> dict[str, Any]:
+        stop = stop or KillSwitchStop(self.kill_switch_engaged)
         with db.connect(db.Role.APP) as conn:
             active = versions.active_name(conn)
             name = self._version_for(conn, params, active)
             conn.commit()
-        runner = self._runner()
+        runner = self._runner(stop=stop)
         result = runner.run(
             self.items, name, session_id=session_id, splits=SPLITS[params.get("split") or "all"]
         )
-        with db.connect(db.Role.APP) as conn:
-            store.finish_experiment(conn, result, langsmith_url=self.project_url)
-            conn.commit()
-        summary = experiment_summary(result)
-        if name != active:
-            decision = self.gate(result, active, runner)
-            summary |= {
-                "verdict": decision.verdict,
-                "ready_for_approval": decision.ready_for_approval,
-                "sentence": decision.sentence,
-                "reasons": decision.reasons,
-            }
+        stop.check()  # a stopped experiment is never finished, so it never becomes a baseline
+        with self.deciding:  # finished and gated as one step, as the background promotion sees it
+            with db.connect(db.Role.APP) as conn:
+                store.finish_experiment(conn, result, langsmith_url=self.project_url)
+                conn.commit()
+            summary = experiment_summary(result)
+            if name != active:
+                decision = self.gate(result, active, runner, stop)
+                summary |= {
+                    "verdict": decision.verdict,
+                    "ready_for_approval": decision.ready_for_approval,
+                    "sentence": decision.sentence,
+                    "reasons": decision.reasons,
+                }
         return summary
 
-    def analyzer(self, session_id: UUID, request_id: UUID | str | None = None) -> dict[str, Any]:
+    def analyzer(
+        self,
+        session_id: UUID,
+        request_id: UUID | str | None = None,
+        stop: KillSwitchStop | None = None,
+    ) -> dict[str, Any]:
+        stop = stop or KillSwitchStop(self.kill_switch_engaged)
         with db.connect(db.Role.APP) as conn:
             active = versions.active_name(conn)
             try:
@@ -123,12 +201,15 @@ class HillClimbingRunner:
             knowledge = versions.get(conn, active)
             name = versions.next_name(conn)
         failed = failed_dev_items(self.items, baseline)
-        team = live_team(self.items)
+        team = live_team(self.items).stopping(stop.check)  # checked before each model call
         naive = planted("BUG_NAIVE_ANALYZER")
         if naive or candidates.count() == 1:  # the naive analyzer writes the same rules each time
             runs = [candidates.CandidateRun("A", name, team.run(failed, knowledge, name))]
         else:
-            runs = self.measured_candidates(team, failed, knowledge, name, baseline, session_id)
+            runs = self.measured_candidates(
+                team, failed, knowledge, name, baseline, session_id, stop
+            )
+        stop.check()  # nothing is saved for approval from a request the kill switch stopped
         chosen = candidates.choose(runs)
         report = chosen.report
         draft = report.candidate.model_copy(update={"version": name})
@@ -160,12 +241,16 @@ class HillClimbingRunner:
         name: str,
         baseline: ExperimentResult,
         session_id: UUID,
+        stop: KillSwitchStop | None = None,
     ) -> list[candidates.CandidateRun]:
         """Each candidate from its own analyzer team run, measured on the dev split only, every
         item once, under its own retired version; never on the holdout split."""
-        runner = self._runner(stream=False)  # the Improve page's ledger shows the gate's runs only
+        stop = stop or KillSwitchStop(self.kill_switch_engaged)
+        # the Improve page's ledger shows the gate's runs only
+        runner = self._runner(stream=False, stop=stop)
         runs = []
         for index in range(candidates.count()):
+            stop.check()
             version = candidates.selection_version(name, index)
             report = team.run(failed, knowledge, version)
             with db.connect(db.Role.APP) as conn:
@@ -185,18 +270,24 @@ class HillClimbingRunner:
 
     # --- the gate -------------------------------------------------------------------------------
     def gate(
-        self, candidate: ExperimentResult, active: str, runner: ExperimentRunner
+        self,
+        candidate: ExperimentResult,
+        active: str,
+        runner: ExperimentRunner,
+        stop: KillSwitchStop | None = None,
     ) -> GateDecision:
+        stop = stop or KillSwitchStop(self.kill_switch_engaged)
         with db.connect(db.Role.APP) as conn:
             baseline = store.baseline_for(conn, active)
+            conn.commit()  # no transaction stays open through the confirming re-runs
             regressions = find_regressions(
                 self.items,
                 baseline,
                 candidate,
-                lambda item, times: runner.rerun(item, candidate.knowledge_version, times),
+                stop.rerun(runner, candidate.knowledge_version),
                 self.scheme,
                 sink=store.OpsStepSink(conn),
-                active_rerun=lambda item, times: runner.rerun(item, active, times),
+                active_rerun=stop.rerun(runner, active),
             )
             found = versions.status_of(conn, candidate.knowledge_version)
             approved_by = found["approved_by"] if found and found["status"] == "approved" else None
@@ -204,9 +295,9 @@ class HillClimbingRunner:
             decision = decide(
                 baseline, candidate, regressions, approved_by=approved_by, overfit_flags=flags
             )
-            store.save_decision(conn, decision)
+            save_decision(conn, decision)
             if decision.verdict == "promoted":
-                self._activate(conn, decision.candidate_version, candidate, runner)
+                self._activate(conn, decision.candidate_version, candidate, runner, stop)
             conn.commit()
         return decision
 
@@ -217,7 +308,20 @@ class HillClimbingRunner:
         )
 
     def promote_approved(self) -> list[str]:
-        """Promote each approved candidate whose gate was ready, once, in the open session."""
+        """Promote each approved candidate whose gate was ready, once, in the open session; never
+        while the kill switch is engaged (a promotion's confirming re-runs call the model), and
+        never while the request thread finishes or gates an experiment (`deciding`): the next
+        poll after the gate decides instead."""
+        if self.kill_switch_engaged():
+            return []
+        if not self.deciding.acquire(blocking=False):
+            return []
+        try:
+            return self._promote_approved()
+        finally:
+            self.deciding.release()
+
+    def _promote_approved(self) -> list[str]:
         promoted = []
         with db.connect(db.Role.APP) as conn:
             started = conn.execute(SESSION_STARTED).fetchone()
@@ -247,6 +351,8 @@ class HillClimbingRunner:
             baseline = store.baseline_for(conn, active)
         except NoLiveBaseline:
             return None  # approved before its experiment ran in this session: wait for it
+        if not gate_finished(baseline, candidate):
+            return None  # its gate stopped before it confirmed every regression: never guess
         decision = decide(
             baseline,
             candidate,
@@ -254,9 +360,10 @@ class HillClimbingRunner:
             approved_by=approved_by,
             overfit_flags=self.overfit_flags(conn, name, active),
         )
-        store.save_decision(conn, decision)
+        save_decision(conn, decision)
         if decision.verdict == "promoted":
-            self._activate(conn, name, candidate, self._runner())
+            stop = KillSwitchStop(self.kill_switch_engaged)
+            self._activate(conn, name, candidate, self._runner(stop=stop), stop)
         return decision
 
     def _activate(
@@ -265,13 +372,14 @@ class HillClimbingRunner:
         name: str,
         candidate: ExperimentResult,
         runner: ExperimentRunner,
+        stop: KillSwitchStop,
     ) -> eligibility.Clearance:
         clearance = activate(
             conn,
             name,
             candidate,
             items=self.items,
-            rerun=lambda item, times: runner.rerun(item, name, times),
+            rerun=stop.rerun(runner, name),
             scheme=self.scheme,
         )
         log.info(
@@ -284,10 +392,12 @@ class HillClimbingRunner:
         return clearance
 
     # --- helpers --------------------------------------------------------------------------------
-    def _runner(self, *, stream: bool = True) -> ExperimentRunner:
+    def _runner(
+        self, *, stream: bool = True, stop: KillSwitchStop | None = None
+    ) -> ExperimentRunner:
         sink = store.OpsItemSink(self.scheme.holdout_repeats, self.concurrency)
         return ExperimentRunner(
-            target=self.target,
+            target=stop.target(self.target) if stop else self.target,
             evaluator=self.evaluator,
             scheme=self.scheme,
             concurrency=self.concurrency,
@@ -310,23 +420,22 @@ class HillClimbingRunner:
         return active
 
     def tick(self) -> bool:
-        """Claim and run one queued request; False when none was waiting."""
-        for kind in ("experiment", "analyzer"):
-            with db.connect(db.Role.APP) as conn:
-                request = improvement.claim(conn, kind)  # type: ignore[arg-type]
-                conn.commit()
-            if request is None:
-                continue
-            try:
-                result, failed = self.run(request), False
-            except Exception as error:  # the request fails, the runner keeps serving
-                log.exception("request failed", request_id=str(request["request_id"]))
-                result, failed = {"error": f"{type(error).__name__}: {error}"}, True
-            with db.connect(db.Role.APP) as conn:
-                improvement.finish(conn, str(request["request_id"]), result=result, failed=failed)
-                conn.commit()
-            return True
-        return False
+        """Claim and run the oldest queued request, of either kind; False when none was waiting.
+        In order, so an experiment on the candidate queued after the analyzer runs on its draft."""
+        with db.connect(db.Role.APP) as conn:
+            request = improvement.claim_next(conn)
+            conn.commit()
+        if request is None:
+            return False
+        try:
+            result, failed = self.run(request), False
+        except Exception as error:  # the request fails, the runner keeps serving
+            log.exception("request failed", request_id=str(request["request_id"]))
+            result, failed = {"error": f"{type(error).__name__}: {error}"}, True
+        with db.connect(db.Role.APP) as conn:
+            improvement.finish(conn, str(request["request_id"]), result=result, failed=failed)
+            conn.commit()
+        return True
 
     def background(self) -> None:
         """Between requests: promotions after approval, and gold checks of live runs. A failing
@@ -340,6 +449,14 @@ class HillClimbingRunner:
             conn.commit()
 
     def serve(self, stop: threading.Event, poll_seconds: float = 1.0) -> None:
+        """Serve until `stop` is set, holding the runner's lock: a second runner on the same
+        database refuses to start (RunnerAlreadyServing) rather than take requests from this one."""
+        with db.connect(db.Role.APP, autocommit=True) as lock:
+            if not improvement.hold_runner_lock(lock):
+                raise RunnerAlreadyServing(ALREADY_SERVING)
+            self._serve(stop, poll_seconds)
+
+    def _serve(self, stop: threading.Event, poll_seconds: float) -> None:
         def watch() -> None:
             while not stop.is_set():
                 try:
@@ -410,6 +527,30 @@ def failed_dev_items(
     return out
 
 
+def save_decision(conn: psycopg.Connection[Any], decision: GateDecision) -> None:
+    """Record the gate's decision; an approved version it blocked is retired at once
+    (versions.retire_blocked), so it holds no control while it waits for a promotion that cannot
+    come."""
+    store.save_decision(conn, decision)
+    if decision.approved_by and decision.verdict != "promoted":
+        versions.retire_blocked(conn, decision.candidate_version)
+
+
+def gate_finished(active: ExperimentResult, candidate: ExperimentResult) -> bool:
+    """Every apparent regression of the candidate (an item that passed under the active version
+    and failed under the candidate, as find_regressions selects them) has a finished confirmation:
+    confirmed or cleared. A gate the kill switch or an error stopped leaves one unfinished."""
+    for item_id in candidate.results:
+        if item_id not in active.results or not active.passed(item_id):
+            continue
+        if candidate.passed(item_id):
+            continue
+        confirmation = candidate.confirmations.get(item_id)
+        if confirmation is None or confirmation.confirmed is None:
+            return False
+    return True
+
+
 def confirmed_regressions(candidate: ExperimentResult) -> Regressions:
     """The regressions the gate already confirmed on this experiment, read back from its ledger."""
     found = candidate.confirmations.values()
@@ -443,12 +584,30 @@ def activate(
     scheme: Scheme,
 ) -> eligibility.Clearance:
     """Make the version active and clear each metric family of the pack on the confirmed standard;
-    each confirming re-run is written beside its item in the candidate experiment."""
+    each confirming re-run is written beside its item in the candidate experiment.
+
+    The activation commits first, with whatever the caller wrote before it (the gate's decision),
+    so no transaction or row lock is held through the confirming re-runs, which call the model;
+    and a re-run that fails afterwards never rolls the decision back, so the next poll does not
+    decide and spend again. The clearances are written in a second short transaction."""
     versions.activate(conn, name)
-    families = pack_config()["autonomy"]["metric_families"]
-    clearance = eligibility.confirmed_clearance(items, candidate, rerun, scheme, families)
-    for item_id, passes in clearance.reruns.items():
-        store.save_clearance_rerun(conn, candidate.experiment_id, item_id, passes)
-    for family in clearance.cleared:
-        autonomy.mark_eligible(conn, family, name)
+    conn.commit()
+    with clearing():  # the finale waits until the families are written (datapilot.finale)
+        families = pack_config()["autonomy"]["metric_families"]
+        clearance = eligibility.confirmed_clearance(items, candidate, rerun, scheme, families)
+        for item_id, passes in clearance.reruns.items():
+            store.save_clearance_rerun(conn, candidate.experiment_id, item_id, passes)
+        for family in clearance.cleared:
+            autonomy.mark_eligible(conn, family, name)
+        conn.commit()
     return clearance
+
+
+@contextmanager
+def clearing() -> Iterator[None]:
+    """Hold finale.CLEARING_LOCK through the clearance re-runs, on a connection of its own in
+    autocommit, so the promotion's connection holds no transaction through them. The lock goes
+    when this connection closes, even if the process dies."""
+    with db.connect(db.Role.APP, autocommit=True) as lock:
+        lock.execute("SELECT pg_advisory_lock(%s)", (finale.CLEARING_LOCK,))
+        yield

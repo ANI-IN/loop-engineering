@@ -1,4 +1,5 @@
-"""The commit-msg hook refuses a message with shorthand and accepts a clean one; it runs no git."""
+"""The commit-msg hook refuses a message with shorthand or a co-author line and accepts a clean one;
+it runs no git."""
 
 from __future__ import annotations
 
@@ -59,3 +60,23 @@ def test_an_installed_copy_finds_the_checker(tmp_path: Path) -> None:
     )
     assert result.returncode == 1
     assert "shorthand 'repo'" in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize(
+    "trailer",
+    [
+        "Co-Authored-By: Someone <someone@example.com>",
+        "co-authored-by: Someone <someone@example.com>",
+        "CO-AUTHORED-BY: Someone <someone@example.com>",
+    ],
+)
+def test_a_co_author_line_is_refused_in_any_case(tmp_path: Path, trailer: str) -> None:
+    result = _run(tmp_path, f"fix(gate): the console shows the gate line\n\n{trailer}\n")
+    assert result.returncode == 1
+    assert "co-author line" in result.stdout + result.stderr
+
+
+def test_the_co_author_trailer_named_in_prose_is_not_a_trailer(tmp_path: Path) -> None:
+    message = "fix(hook): refuse a message with a line that starts co-authored-by:\n"
+    result = _run(tmp_path, message)
+    assert result.returncode == 0, result.stdout + result.stderr

@@ -1,4 +1,4 @@
-# Secrets: never commit. platform/tests/unit/test_repo_hygiene.py fails if .env is tracked.
+# Secrets: never commit. The repository guards (make guards) fail if a .env file is tracked.
 .env
 .env.*
 !.env.example
@@ -15,9 +15,6 @@ htmlcov/
 *.egg-info/
 build/
 dist/
-
-# Local working notes during the build; deleted at release.
-.dev/
 
 # The spend ledger lives outside the repository (~/.datapilot/); never commit a copy.
 *.sqlite
@@ -39,9 +36,8 @@ test-results/
 .DS_Store
 Thumbs.db
 
-# Agent worktrees for the parallel tracks (each is its own branch).
-.claude/worktrees/
-
-# Generated slide builds and renders (slides/source/build_deck.py, slides/scripts/render_png.ps1).
+# Generated slide builds and renders.
 slides/build/
+
+# Assignment solutions: published at the start of the Thursday review; never commit your own copy.
 section-*/assignment/solution/

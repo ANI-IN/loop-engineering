@@ -82,7 +82,7 @@ Language (SQL).
   query.
 - **Planted bug**: A defect switched on by a flag so a demo shows its failure every time.
 - **Promotion gate**: The check that a new knowledge version must pass before it becomes active.
-- **Regression**: An item that passed under the active version and fails under the candidate.
+- **Regression**: An item that passed under the active version and fails under the candidate, confirmed by re-runs.
 - **Reviewer**: An independent agent that reads the question, SQL, and result after the graders
   pass.
 - **Spine question**: "What was our net revenue in fiscal year 2025?", the question every section

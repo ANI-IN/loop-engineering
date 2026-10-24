@@ -147,7 +147,7 @@ Screenshots are real, from real runs, stored in the repository: section screensh
 `section-N-*/demo/expected/`, shared ones in `docs/images/`. File names are lowercase with hyphens.
 Each image stands on its own line with alt text, then a blank line, then an italic caption that
 says what to notice. Alt text says what the image shows, never a file name or one word such as
-"image". Colour never carries meaning alone. The one remote image allowed is the CI status badge.
+"image". Colour never carries meaning alone. The one remote image allowed is the continuous integration status badge.
 
 ### 12. Code blocks
 
@@ -221,7 +221,7 @@ right next to it, in brackets on either side, and may wrap onto the next line.
 How the check reports, while pages are still being written:
 
 - Shorthand and terms not spelled out on first use are warnings in the default run
-  (`make check-style`, `make check-names`, `make lint`, and CI), like template guidance (rule
+  (`make check-style`, `make check-names`, `make lint`, and continuous integration), like template guidance (rule
   14). They fail under `--strict`: `make check-style-strict` and
   `make check-names CHECK_STYLE_OPTS=--strict`, the release gate.
 - Short forms fail every run.

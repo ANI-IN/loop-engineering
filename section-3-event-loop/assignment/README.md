@@ -70,16 +70,18 @@ Estimated effort: about 2 to 2.5 hours.
 
 **Cost of one full check:** one analyst run, the drill-down question. The check prints its own
 estimate before the model call and the actual tokens and cost at the end. Measured on
-gpt-6-luna in the build's verification on 23 October 2026, from 08:11 Coordinated Universal Time
-(UTC): one full check of a working solution cost 0.23 to 0.40 cents (six checks, 7 to 12 model
-calls each), about 0.3 cents typically. At the caps, with the run using its whole token budget at
+gpt-6-luna in the build's verification on 23 October 2026, one full check of a working solution
+typically costs about 0.3 cents; the measured checks are in the costs table linked below. At the
+caps, with the run using its whole token budget at
 the output price, one check can cost at most 3 cents, below the check's own spend cap of 1.00
 dollar, at which any check stops cleanly ([costs](../../docs/costs.md#assignments)).
 
 ## Step by step
 
-1. With the stack up and seeded and your OpenAI key in `.env` ([setup](../../setup/README.md)),
-   run the live check on the unchanged starter: `make check-assignment NAME=event-loop`. Check:
+1. With your OpenAI key in `.env` ([setup](../../setup/README.md)), run the live check on the
+   unchanged starter: `make check-assignment NAME=event-loop`. The check builds, starts, and
+   seeds a stack of its own, the Compose project `datapilot-assignments`, so it needs no `make up`
+   (that is the class stack, for the demos). Check:
    requirements 1 to 6 read FAIL, each naming its extension point, and the rest did not run.
 2. Read [starter/README.md](starter/README.md), and the digest's schedule and event id in
    `platform/src/datapilot/loop3_events/scheduler.py`. Check: you can say how the digest gets its

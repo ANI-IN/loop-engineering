@@ -138,7 +138,7 @@ SLIDES = [
             "Say: You get your OpenAI key from the operations team. Paste it into your .env file "
             "and never commit it; the file is ignored by git. The recommended limit on your key's "
             "project is 3 dollars, with an alert at 1.50 dollars. That is plenty: one analyst run "
-            "costs about a tenth of a cent, a full experiment of 70 runs about 6 to 8 cents, and "
+            "costs about a tenth of a cent, a full experiment of 70 runs about 6 to 9 cents, and "
             "each assignment check stops at its own spend cap of 1 dollar. Every run shows its "
             "tokens and cost on the console, so you can see what your own experiments spend.",
             "Point at: the never-committed line, then the limit line.",

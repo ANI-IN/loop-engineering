@@ -1,6 +1,8 @@
 # The planted over-broad rule (Assignment 4: Hill-climbing loop). The live check adds it to the rule
 # writer's proposals, so the critic judges it beside the live ones. It claims to fix one
 # repeat-customer item, and it would change every answer that counts, lists, or averages customers.
+# The id below is a placeholder: at check time the evidence becomes your own repeat-customer
+# dev item that failed (else your first one), so your item ids need not match it.
 id: leave-out-one-time-buyers
 title: Leave one-time buyers out of customer metrics
 rule_text: >-

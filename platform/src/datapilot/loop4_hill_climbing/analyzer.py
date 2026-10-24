@@ -17,8 +17,8 @@ one structured-output call through an injectable chat model.
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
-from dataclasses import dataclass, field
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass, field, replace
 from typing import Any, Protocol
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -271,6 +271,18 @@ class AnalyzerTeam:
             planted_active=["BUG_NAIVE_ANALYZER"],
         )
 
+    def stopping(self, check: Callable[[], None]) -> AnalyzerTeam:
+        """The same team with `check` run before each of its model calls: the runner passes its
+        kill switch (KillSwitchStop.check), which raises once the switch is engaged, so a switch
+        engaged during the failure analyst's call sends neither the rule writer's call nor the
+        critic's."""
+        return replace(
+            self,
+            failure_analyst=_Stopping(self.failure_analyst, check),
+            rule_writer=_Stopping(self.rule_writer, check),
+            critic=_Stopping(self.critic, check),
+        )
+
 
 def naive_rules(failed: Sequence[FailedItem]) -> list[ProposedRule]:
     """The naive analyzer's rules (planted), with no model call: one per failed dev item, quoting
@@ -331,3 +343,22 @@ def live_team(
         guard=OverfitGuard.from_pack(items),
         guidance=GuidanceCheck.from_database(),
     )
+
+
+@dataclass(frozen=True)
+class _Stopping:
+    """A model whose every structured call runs `check` first (AnalyzerTeam.stopping)."""
+
+    model: StructuredModel
+    check: Callable[[], None]
+
+    def with_structured_output(self, schema: Any, **kwargs: Any) -> Any:
+        runnable = self.model.with_structured_output(schema, **kwargs)
+        check = self.check
+
+        class _Checked:
+            def invoke(self, messages: Any) -> Any:
+                check()
+                return runnable.invoke(messages)
+
+        return _Checked()

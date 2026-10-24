@@ -523,10 +523,13 @@ SLIDES = [
             "retakes got their gold check.",
             "Demo: unbounded rows.",
             "Starting state: the Agent page; the unbounded rows bug (`BUG_UNBOUNDED_ROWS`) switched "
-            "on, its chip visible on the status line. Reset first: `make reset NAME=agent-loop`.",
+            "on: once the confident wrong answer had posted, `BUG_UNBOUNDED_ROWS=1` was set in `.env` "
+            "and `make up` ran, during its narration, so the first two demos ran on the fixed system; "
+            "its chip shows on the status line once the run starts. Reset first: "
+            "`make reset NAME=agent-loop`.",
             "Do: Agent > Run large query, or `make demo NAME=agent-unbounded-rows`. Then set "
             "`BUG_UNBOUNDED_ROWS=0` in `.env`, run `make up` so the services read it, and run it "
-            "again. Before class the flag was set to 1 the same way.",
+            "again.",
             "Narrate: tie it to concept 2, Context is a budget. With the bug on, a 10,000-row result "
             "goes to the model and every later call carries it. With it off, the tool returns the "
             "row cap, the total count, and the truncation notice.",

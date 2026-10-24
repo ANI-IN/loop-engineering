@@ -312,7 +312,7 @@ def events_scene(conn: Conn, session_id: uuid.UUID) -> dict[str, uuid.UUID]:
         "holding",
         "awaiting_approval",
         8,
-        "Export California customers for the spring campaign",
+        "Export the California customers who may receive marketing, with their email addresses.",
         demo_name="events-approval-survives-restart",
     )
     add_approval(conn, holding)

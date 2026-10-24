@@ -101,9 +101,13 @@ class QueryChecker:
         return checked
 
     def needs_approval(self, sql: str, *, export: bool = False) -> bool:
-        """Deterministic, with no database call (it runs again when an approval resumes): the
-        static graders pass and the personal-data grader routes the query to a human."""
+        """The static graders pass, the personal-data grader routes the query to a human, and the
+        cost grader passes it too, so no query a grader would block is offered for approval (it
+        runs as an ordinary tool call and the block goes back to the agent as feedback). Only a
+        routed query is planned, with EXPLAIN and never executed; it runs again on resume."""
         context = self._context(sql, "", export)
         if any(g.check(context).severity is Severity.BLOCK for g in self.static):
             return False
-        return self.personal.check(context).severity is Severity.ROUTE
+        if self.personal.check(context).severity is not Severity.ROUTE:
+            return False
+        return self.cost.check(context).severity is not Severity.BLOCK

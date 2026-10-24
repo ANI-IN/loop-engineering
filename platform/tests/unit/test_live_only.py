@@ -1,8 +1,9 @@
 """Every demo is live: demo paths never reuse a result from an earlier run.
 
-What is forbidden in demo paths (the datapilot package, the console, the Makefile, and Compose) is
-reusing model outputs, answers, grader verdicts, reviewer verdicts, analyzer proposals, or
-experiment results from earlier runs, and reaching test doubles or replays. Three kinds of check:
+What is forbidden in demo paths (the datapilot package, the console, the Makefile, Compose, and the
+demo scripts section-*/demo/run.sh and final-project/run.sh) is reusing model outputs, answers,
+grader verdicts, reviewer verdicts, analyzer proposals, or experiment results from earlier runs,
+and reaching test doubles or replays. Three kinds of check:
 
 1. An AST import check: no demo path imports test code or a test double.
 2. An AST cache check: no function whose result is one of those result types is cached.
@@ -23,7 +24,13 @@ import pytest
 from datapilot.settings import PLATFORM, REPO
 
 PY_FOLDERS = (PLATFORM / "src" / "datapilot", PLATFORM / "console")
-TEXT_PATHS = ["platform/src", "platform/console", "Makefile", "compose.yaml"]
+# The demo scripts the instructor runs in class sit next to their expected/ folders: every one is
+# read, found by glob so a new section is read too.
+DEMO_SCRIPTS = sorted(
+    p.relative_to(REPO).as_posix()
+    for p in [*REPO.glob("section-*/demo/run.sh"), REPO / "final-project" / "run.sh"]
+)
+TEXT_PATHS = ["platform/src", "platform/console", "Makefile", "compose.yaml", *DEMO_SCRIPTS]
 
 # The result types a demo must always produce fresh.
 RESULT_TYPES = (
@@ -126,6 +133,14 @@ def test_no_result_is_cached_across_runs() -> None:
 def test_demo_paths_never_reach(what: str, repo_scan) -> None:
     hits = [line for line in repo_scan(FORBIDDEN_TEXT[what], *TEXT_PATHS) if not _allowed(line)]
     assert hits == []
+
+
+def test_the_text_checks_read_every_demo_script() -> None:
+    from datapilot.names import SECTIONS_BY_SLUG
+
+    expected = {f"{s.folder}/demo/run.sh" for s in SECTIONS_BY_SLUG.values()}
+    assert expected | {"final-project/run.sh"} <= set(TEXT_PATHS)
+    assert all((REPO / path).is_file() for path in DEMO_SCRIPTS)
 
 
 @pytest.mark.parametrize(

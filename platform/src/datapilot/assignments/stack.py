@@ -7,17 +7,27 @@ live. COMPOSE_PROJECT_NAME, POSTGRES_PORT, API_PORT, and CONSOLE_PORT override t
 override Compose's; the project datapilot itself is refused. With
 DATAPILOT_ASSIGNMENT_STACK=running the check uses services that are already up at the configured
 addresses instead. Either way it then makes sure the warehouses are seeded, a knowledge version is
-active, and a live session is open (it starts one only when none is).
+active, and a live session is open: it starts one only when none is, or, with PURPOSE set (such as
+PURPOSE=thursday-review), when the open one is not a session of that purpose started this Eastern
+time day.
+
+On its own Compose project the check also sets the stack's daily token count back to zero first
+(reset_daily_tokens): the stack is the learner's own, and each check is already held to its own
+spend cap, so one day's earlier checks never end a later check's runs at the daily token budget.
+With DATAPILOT_ASSIGNMENT_STACK=running the stack may be the class stack, and its count is never
+touched.
 """
 
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import tempfile
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
@@ -29,8 +39,9 @@ import yaml
 from datapilot import db
 from datapilot.assignments.report import Stop
 from datapilot.config import active_pack, pack_config
-from datapilot.contracts.live import SessionPurpose
+from datapilot.contracts.live import LiveSession, SessionPurpose
 from datapilot.loop3_events import sessions
+from datapilot.loop3_events.budget import eastern_day
 from datapilot.loop4_hill_climbing.pack_files import load_submodule, pack_root
 from datapilot.observability.background import bounded_client, use_for_tracing
 from datapilot.settings import get_settings
@@ -46,6 +57,79 @@ DEFAULTS = {
     "CONSOLE_PORT": "8502",
 }
 STARTED_BY = "make check-assignment"
+# The host ports compose.yaml gives the class stack when nothing overrides them.
+_PORT_DEFAULT = re.compile(r"\$\{(\w+_PORT):-(\d+)\}")
+RESET_COMMAND = "uv run python -m datapilot.assignments reset {slug}"
+
+
+def class_ports(tree: Path | None = None) -> dict[str, str]:
+    """POSTGRES_PORT, API_PORT, and CONSOLE_PORT as compose.yaml defaults them: the class
+    stack's ports."""
+    from datapilot.settings import REPO
+
+    text = ((tree or REPO) / "compose.yaml").read_text(encoding="utf-8")
+    return dict(_PORT_DEFAULT.findall(text))
+
+
+def refuse_class_ports(tree: Path | None = None) -> None:
+    """The check's own stack never uses a port of the class stack: a check, or the reset of its
+    stack, given one would reach the class stack's Postgres or bind beside its services."""
+    for name, port in class_ports(tree).items():
+        if os.environ.get(name, "").strip() == port:
+            raise Stop(
+                f"{name}={port} is the class stack's port (compose.yaml): the live check and the "
+                f"reset of its stack never use it. Leave {name} unset to use "
+                f"{DEFAULTS[name]}, or give the port of the check's own Compose project."
+            )
+
+
+def reset_command(slug: str) -> str:
+    """The reset of this check's own stack, as a command to copy: with the project and the
+    Postgres port in front whenever they are not the defaults, so it resets this stack and no
+    other (such as the review's datapilot-review beside datapilot-assignments)."""
+    project = os.environ.get("COMPOSE_PROJECT_NAME") or DEFAULTS["COMPOSE_PROJECT_NAME"]
+    port = os.environ.get("POSTGRES_PORT") or DEFAULTS["POSTGRES_PORT"]
+    command = RESET_COMMAND.format(slug=slug)
+    if (project, port) == (DEFAULTS["COMPOSE_PROJECT_NAME"], DEFAULTS["POSTGRES_PORT"]):
+        return command
+    return f"COMPOSE_PROJECT_NAME={project} POSTGRES_PORT={port} {command}"
+
+
+def _host_port(ports: str) -> str | None:
+    """The host port that docker ps shows published for Postgres's 5432, such as
+    "127.0.0.1:55433->5432/tcp"; None when none is."""
+    found = re.search(r":(\d+)->5432/tcp", ports)
+    return found.group(1) if found else None
+
+
+def published_postgres_port(project: str) -> str | None:
+    """The host port the project's running Postgres container publishes, read from Docker;
+    None when the project has no running Postgres."""
+    if shutil.which("docker") is None:
+        raise Stop(
+            "Docker is not available, so the reset cannot confirm that the Postgres on this port "
+            f"belongs to the check's own Compose project {project}; nothing was reset."
+        )
+    done = subprocess.run(
+        [
+            "docker",
+            "ps",
+            "--filter",
+            f"label=com.docker.compose.project={project}",
+            "--filter",
+            "label=com.docker.compose.service=postgres",
+            "--format",
+            "{{.Ports}}",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if done.returncode != 0:
+        raise Stop(f"docker ps failed, so nothing was reset: {done.stderr.strip()[:200]}")
+    for line in done.stdout.splitlines():
+        if port := _host_port(line):
+            return port
+    return None
 
 
 @dataclass(frozen=True)
@@ -130,6 +214,7 @@ def compose_up(tree: Path, activity: str, say) -> str:
             "DATAPILOT_ASSIGNMENT_STACK=running."
         )
     project = project_name()
+    refuse_class_ports(tree)
     override = _override(tree, project, activity)
     files = ["-f", str(tree / "compose.yaml"), "-f", str(override)]
     workers = str(int(pack_config()["evaluation"]["concurrency"]))
@@ -199,13 +284,106 @@ def ensure_knowledge() -> str:
     return "v1"
 
 
+def session_purpose() -> SessionPurpose | None:
+    """The purpose PURPOSE names (make passes PURPOSE=... on its command line to the check), or
+    None when it is unset."""
+    value = os.environ.get("PURPOSE", "").strip()
+    if not value:
+        return None
+    try:
+        return SessionPurpose(value)
+    except ValueError:
+        names = ", ".join(p.value for p in SessionPurpose)
+        raise Stop(f"PURPOSE={value} is not a session purpose; use one of {names}.") from None
+
+
+def keeps_open_session(
+    open_session: LiveSession | None, purpose: SessionPurpose | None, now: datetime | None = None
+) -> bool:
+    """Whether the check runs in the open session: always when no purpose is asked for; with a
+    purpose, only when the open session has it and started this Eastern time day, so a review never
+    runs in an old session of rehearsal days earlier."""
+    if open_session is None:
+        return False
+    if purpose is None:
+        return True
+    return open_session.purpose == purpose and eastern_day(open_session.started_at) == eastern_day(
+        now
+    )
+
+
 def ensure_session() -> UUID:
+    purpose = session_purpose()
     with db.connect(db.Role.APP) as conn:
         session = sessions.open_session(conn)
-    if session is not None:
+    if keeps_open_session(session, purpose):
+        assert session is not None
         return session.session_id
+    if session is not None and running_stack():
+        raise Stop(
+            f"PURPOSE={purpose} asks for a new live session, but with "
+            "DATAPILOT_ASSIGNMENT_STACK=running the stack may be the class stack, whose open "
+            "session the check never ends: start the session there with make preflight."
+        )
     zone = time.strftime("%Z") or "UTC"
-    return sessions.start_session(SessionPurpose.DEVELOPMENT, STARTED_BY, zone).session_id
+    return sessions.start_session(
+        purpose or SessionPurpose.DEVELOPMENT, STARTED_BY, zone
+    ).session_id
+
+
+def reset_daily_tokens(project: str) -> int:
+    """Set this Eastern time day's token count of the check's own stack back to zero; returns the
+    tokens it held. Refused for the class project and for services already running."""
+    if project == CLASS_PROJECT or running_stack():
+        raise Stop("The check resets the daily token count of its own Compose project only.")
+    with db.connect(db.Role.APP) as conn:
+        row = conn.execute(
+            "SELECT tokens_used FROM ops.budgets WHERE day = %s", (eastern_day(),)
+        ).fetchone()
+        conn.execute("UPDATE ops.budgets SET tokens_used = 0 WHERE day = %s", (eastern_day(),))
+        conn.commit()
+    return int(row["tokens_used"]) if row else 0
+
+
+def reset_check_stack(slug: str, activity: str) -> list[str]:
+    """`python -m datapilot.assignments reset <slug>`: the recovery for the check's own stack. It
+    clears the section's run state and releases the kill switch as `make reset` does for the class
+    stack, and sets the daily token count back to zero, on the check's Compose project and ports
+    (the same COMPOSE_PROJECT_NAME and POSTGRES_PORT the check reads), never on the class stack: it
+    refuses the class stack's ports, and any port the project's own Postgres does not publish."""
+    if running_stack():
+        raise Stop(
+            "With DATAPILOT_ASSIGNMENT_STACK=running the services are not the check's own stack: "
+            "reset them where they run."
+        )
+    configure(activity)
+    project = project_name()
+    refuse_class_ports()
+    port = os.environ.get("POSTGRES_PORT", DEFAULTS["POSTGRES_PORT"])
+    published = published_postgres_port(project)
+    if published != port:
+        where = f"publishes Postgres on port {published}" if published else "runs no Postgres"
+        raise Stop(
+            f"Not reset: the Compose project {project} {where}, not on port {port}, so that port "
+            "belongs to another stack. Give the project and the port the check used, as the "
+            "check prints them, such as COMPOSE_PROJECT_NAME=datapilot-review POSTGRES_PORT=55434."
+        )
+    from datapilot.loop3_events.commands import reset
+
+    try:
+        done = reset(slug)
+        held = reset_daily_tokens(project)
+    except psycopg.OperationalError as error:
+        raise Stop(
+            f"The check's stack ({project}, Postgres on port {port}) is not reachable: "
+            f"{str(error).strip()[:200]}. Its services are up while a check runs and after one."
+        ) from None
+    return [
+        f"Reset the check's own stack, Compose project {project} (Postgres on port {port}), "
+        "never the class stack:",
+        *done.lines(),
+        f"daily token count set back to 0 (it held {held:,} today)",
+    ]
 
 
 def bring_up(tree: Path, activity: str, say) -> Stack:
@@ -224,6 +402,13 @@ def bring_up(tree: Path, activity: str, say) -> Stack:
     ensure_seeded(say)
     version = ensure_knowledge()
     session_id = ensure_session()
+    if not running_stack():
+        held = reset_daily_tokens(project)
+        if held:
+            say(
+                f"Stack: the daily token count of {project} was {held:,} today; set back to 0, "
+                "since this check is held to its own spend cap"
+            )
     console = f"http://localhost:{os.environ.get('CONSOLE_PORT', DEFAULTS['CONSOLE_PORT'])}"
     say(
         f"Stack: api {settings.datapilot_api_url}, console {console}, active knowledge {version}, "

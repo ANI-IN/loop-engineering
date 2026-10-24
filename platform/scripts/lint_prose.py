@@ -87,8 +87,15 @@ ALLOW_MARKER = "<!-- lint-prose: allow -->"
 _BANNED = re.compile(
     r"\b(?:" + "|".join(BANNED_WORDS + TIME_WORDS + BANNED_PHRASES) + r")\b", re.IGNORECASE
 )
-# Pictographic emoji and the emoji variation selector. Status symbols such as ✓ ✗ ⚠ ⏳ are allowed.
-_EMOJI = re.compile("[\U0001f000-\U0001faff️]")
+# Emoji: the pictographic planes, the emoji variation selector, and the symbol blocks that hold the
+# common emoji pasted from model output (check mark button, cross mark, sparkles, star, hourglass,
+# fast-forward, alarm clock). The plain status symbols ✓ ✗ ⚠ ⏳ are allowed.
+_EMOJI = re.compile("[\U0001f000-\U0001faff️☀-➿⬀-⯿⌚⌛⏩-⏺]")
+ALLOWED_SYMBOLS = frozenset("✓✗⚠⏳")
+
+
+def _has_emoji(line: str) -> bool:
+    return any(match.group(0) not in ALLOWED_SYMBOLS for match in _EMOJI.finditer(line))
 
 
 def _documents(targets: list[str]) -> list[Path]:
@@ -120,7 +127,7 @@ def lint_text(text: str) -> list[tuple[int, str]]:
             checked = checked.replace(title, "")
         for match in _BANNED.finditer(checked):
             problems.append((number, f"banned word or phrase: '{match.group(0)}'"))
-        if _EMOJI.search(checked):
+        if _has_emoji(checked):
             problems.append((number, "emoji"))
     return problems
 

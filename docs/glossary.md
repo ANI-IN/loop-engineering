@@ -68,6 +68,10 @@ in a code span: the naive guard (`BUG_NAIVE_GUARD`). The list, with what each on
   live session, that the candidate is compared against.
 - **Business date**: The day DataPilot treats as today, 31 January 2026 (`DATAPILOT_BUSINESS_DATE`).
 - **Candidate**: A knowledge version the analyzer team proposed, not yet promoted.
+- **Candidates A and B**: The two rule sets the analyzer team writes from the same failed dev
+  items; the dev split alone picks the one that goes to the gate.
+- **Class-day safeguard**: The live fallback for a wrong finale: the version verified in rehearsal
+  becomes active, and the finale runs again.
 - **Comma-separated values (CSV)**: A plain-text table format, one row per line.
 - **Console**: The Streamlit app that shows every loop live, on four pages.
 - **Coordinated Universal Time (UTC)**: The time zone the services run on; the console shows your
@@ -98,7 +102,7 @@ in a code span: the naive guard (`BUG_NAIVE_GUARD`). The list, with what each on
 - **Lease**: The time a worker owns a claimed job; a job whose lease expires goes back to the
   queue.
 - **Live session**: Everything that runs between one `make preflight` and the next.
-- **Live stamp**: A result's run start time in your local time and its LangSmith trace link.
+- **Live stamp**: A result's run start time and its LangSmith trace: a check prints the time in Coordinated Universal Time (UTC), the console in your local time.
 - **Metric family**: A group of benchmark questions about one kind of measure, such as revenue.
 - **Naive SQL**: The plausible query a model without the business rules writes; a trap makes it
   wrong.
@@ -108,11 +112,13 @@ in a code span: the naive guard (`BUG_NAIVE_GUARD`). The list, with what each on
   human approval.
 - **Planted bug**: A defect switched on by a flag so a demo shows its failure every time.
 - **Promotion gate**: The check that a new knowledge version must pass before it becomes active.
-- **Regression**: An item that passed under the active version and fails under the candidate.
+- **Regression**: An item that passed under the active version and fails under the candidate, confirmed by re-runs.
 - **Reviewer**: An independent agent that reads the question, SQL, and result after the graders
   pass.
 - **Router**: The fixed table from event type to handler and queue; deliberately not an agent.
 - **Row cap**: The most rows a query returns to the model (`limits.row_cap`).
+- **Reset archive**: The copy of every row a hill-climbing reset deletes or retires, kept in
+  `ops.reset_archive_rows`.
 - **Rule writer**: The agent of the analyzer team that proposes rules from the failure analyst's
   diagnoses.
 - **Schema scout**: A stateless helper agent that suggests tables and joins for a question.
@@ -122,6 +128,8 @@ in a code span: the naive guard (`BUG_NAIVE_GUARD`). The list, with what each on
   consistently.
 - **Structured Query Language (SQL)**: The language of every query the analyst writes.
 - **Trace**: The record of one run's steps, each model call and tool call, stored in LangSmith.
+- **Trace sample**: The share of experiment runs that send a trace, about 1 in 5
+  (`tracing.experiment_sample_rate`); a row with none reads "Not traced".
 - **Trap**: A business rule the schema does not reveal, so a plausible query gets it wrong.
 - **Uniform Resource Locator (URL)**: A web address, such as the console's http://localhost:8501.
 - **Verification loop**: Graders check each query and answer, and send failures back to the agent.

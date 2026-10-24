@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import streamlit as st
 from datapilot_console import components, events_view, frame, ops_reads
-from datapilot_console.api_client import webhook_demo
+from datapilot_console.api_client import webhook_demo, webhook_hold
 from datapilot_console.frame import Live
 
 from datapilot import business_date, demo_questions
@@ -85,12 +85,21 @@ def body(live: Live) -> None:
     components.holdout_ledger(ledger, on_start_baseline=lambda: None, key="benchmark-ledger")
 
     # Each button sends its demo's own question, the one `make demo NAME=` sends.
+    # Read on every refresh, never cached on the watermark: the end of the clearance re-runs (an
+    # advisory lock released) may change nothing the watermark reads when no family clears.
+    state = ops_reads.finale_state(live.conn)
     webhook = live.view(
-        "events-webhook-demo", lambda: webhook_demo(ops_reads.family_levels(live.conn))
+        "events-webhook-demo",
+        lambda: webhook_demo(ops_reads.family_levels(live.conn), state),
+        state,
     )
+    # Held while a promotion is pending, and for the finale until its starting state is right.
+    hold = live.view("events-webhook-hold", lambda: webhook_hold(webhook, state), webhook, state)
     st.caption(f"Send webhook question asks: {demo_questions.question_for(webhook)}")
+    if hold:
+        st.caption(f"Not sent yet. {hold}")
     send, three, export, digest, restart = st.columns([1.3, 1.6, 1.4, 1.1, 1])
-    if send.button("Send webhook question", type="primary", key="events-send"):
+    if send.button("Send webhook question", type="primary", key="events-send", disabled=bool(hold)):
         frame.act(lambda: frame.api().ask_demo(webhook))
     if three.button("Send the same event three times", key="events-three"):
         duplicated = demo_questions.question_for("events-duplicate-events")

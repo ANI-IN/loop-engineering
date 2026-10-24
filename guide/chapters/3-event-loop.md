@@ -182,7 +182,7 @@ make demo NAME=events-approval-survives-restart
 > The approval survives → the services did not read `.env`; run `make up` again.
 
 > [!INSTRUCTOR]
-> Set the flag back to `0` and run `make up`. This half has no measured run yet.
+> Set the flag back to `0` and run `make up`. In 3 of 3 measured runs the approval was lost.
 
 ### Step 7: Send the same event three times
 
@@ -240,7 +240,7 @@ make demo NAME=events-duplicate-events
 > Only one post → the services did not read `.env`; run `make up` again.
 
 > [!INSTRUCTOR]
-> Set the flag back to `0` and run `make up`. This half has no measured run yet.
+> Set the flag back to `0` and run `make up`. In 3 of 3 measured runs the same event posted three answers.
 
 ### Step 9: Engage the kill switch on a run in flight
 
@@ -326,14 +326,15 @@ make demo NAME=events-kill-switch-in-flight
 ## Time and cost
 
 Times are wall time from the trigger to the checked result, from the calibration demo pass of 22
-and 23 October 2026 (`docs/calibration-report.md`), each demo run alone with a reset between.
+and 23 October 2026 and the live sessions of 23 October, afternoon and evening
+(`docs/calibration-report.md`), each demo run alone with a reset between.
 
-| Demo | Time, two runs | Shown in calibration | Cap |
+| Demo | Time | Shown in calibration | Cap |
 |---|---|---|---|
-| The webhook question | 46 s | 1 of 2; the other held by the reviewer | 60,000 tokens per run |
-| The approval that survives a restart | 81 to 84 s | 2 of 2 | 60,000 tokens per run |
-| Duplicate events | 57 to 78 s | 2 of 2 | 60,000 tokens per run |
-| The kill switch in flight | 8 to 33 s | 2 of 2 | 60,000 tokens per run |
+| The webhook question | 14 to 46 s | 5 of 6; one held by the reviewer, since fixed | 60,000 tokens per run |
+| The approval that survives a restart | 50 to 84 s | 4 of 4 | 60,000 tokens per run |
+| Duplicate events | 35 to 78 s | 4 of 4 | 60,000 tokens per run |
+| The kill switch in flight | 3 to 33 s | 4 of 4 | 60,000 tokens per run |
 
 The daily cap is 2,000,000 tokens (`budgets.tokens_per_day` in `pack.yaml`), shown as "Tokens
 today" on the status line. One analyst run costs about 0.001 dollars.

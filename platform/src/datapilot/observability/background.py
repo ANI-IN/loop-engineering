@@ -17,11 +17,21 @@ The free plan answers every upload with HTTP 429 once its monthly unique-trace l
   RETRY_AFTER_MAX_SECONDS, and `use_for_tracing` makes it the client LangChain's tracer uses.
 
 `flush` on a sender, and `traces.flush` for the whole process, wait no longer than their bound.
+
+Once the monthly limit is used up, the SDK logs one warning per refused upload, hundreds in one
+command. `bounded_client` also installs `RefusalLog` on the SDK's logger: the first refusal is one
+short line, the rest are counted, and the count is one line when the process exits. The runs a
+refusal for the monthly limit names (the SDK's line ends with "trace=<id>,id=<id>" for each run of
+the refused upload) are kept, so the live smoke check can tell a trace LangSmith refused from one
+that is missing for another reason.
 """
 
 from __future__ import annotations
 
+import atexit
+import logging
 import queue
+import re
 import threading
 import time
 import weakref
@@ -34,6 +44,84 @@ log = structlog.get_logger("feedback")
 SENDER_THREAD = "langsmith-feedback"
 QUEUE_SIZE = 1000
 RETRY_AFTER_MAX_SECONDS = 1  # the SDK's own cap is 6 hours
+SDK_LOGGER = "langsmith.client"  # the SDK's client and its background tracing thread
+MONTHLY_LIMIT_REFUSAL = "trace refused by LangSmith (monthly limit)"
+# How the SDK names each run of an upload it could not send: "trace=<trace id>,id=<run id>".
+REFUSED_RUN = re.compile(r"\b(?:trace|id)=([0-9a-fA-F-]{36})\b")
+
+
+class RefusalLog(logging.Filter):
+    """One line for the first upload LangSmith refused (HTTP 429), a count for the rest."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.refused = 0
+        self.monthly_limit = False
+        self.refused_runs: set[str] = set()  # trace and run ids of uploads refused for the limit
+        self._lock = threading.Lock()
+
+    @staticmethod
+    def is_refusal(text: str) -> bool:
+        lowered = text.lower()
+        return "429" in text or "rate limit" in lowered or "usage limit" in lowered
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        text = record.getMessage()
+        if not self.is_refusal(text):
+            return True
+        limit = "usage limit" in text.lower()
+        with self._lock:
+            self.refused += 1
+            first = self.refused == 1
+            self.monthly_limit = self.monthly_limit or limit
+            if limit:
+                self.refused_runs.update(i.lower() for i in REFUSED_RUN.findall(text))
+        if not first:
+            return False
+        reason = "its monthly trace limit" if self.monthly_limit else "HTTP 429"
+        record.msg = "LangSmith refused a trace upload (%s); later refusals are counted, not shown"
+        record.args = (reason,)
+        return True
+
+    def refused_run(self, run_id: object) -> bool:
+        """True when a refusal for the monthly limit named this run, or the trace it belongs to."""
+        with self._lock:
+            return str(run_id).lower() in self.refused_runs
+
+    def summary(self) -> str | None:
+        if self.refused < 2:
+            return None
+        limit = " for its monthly trace limit" if self.monthly_limit else ""
+        return f"LangSmith refused {self.refused} trace uploads in this process{limit}"
+
+
+_refusals = RefusalLog()
+
+
+def collapse_refusals() -> RefusalLog:
+    """Install the refusal filter on the SDK's logger, once per process."""
+    logger = logging.getLogger(SDK_LOGGER)
+    if _refusals not in logger.filters:
+        logger.addFilter(_refusals)
+        atexit.register(_log_summary)
+    return _refusals
+
+
+def _log_summary() -> None:
+    if line := _refusals.summary():
+        logging.getLogger("datapilot.langsmith").warning(line)
+
+
+def monthly_limit_refused() -> bool:
+    """True once LangSmith refused an upload of this process for its monthly trace limit."""
+    return _refusals.monthly_limit
+
+
+def trace_refused(run_id: object) -> bool:
+    """True when LangSmith refused this run's own upload for its monthly trace limit; a trace
+    missing for any other reason (a wrong project, a tracing bug) is not refused."""
+    return _refusals.refused_run(run_id)
+
 
 _senders: weakref.WeakSet[BackgroundFeedback] = weakref.WeakSet()
 
@@ -122,6 +210,7 @@ def bounded_client(**kwargs: Any) -> Any:
     from langsmith import Client
 
     describe_runtime()
+    collapse_refusals()
     return Client(retry_config=bounded_retry(), **kwargs)
 
 

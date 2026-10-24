@@ -9,21 +9,19 @@ then one part per file, printed on `A4` paper by Playwright Chromium. No model c
 | `template.html` | The page skeleton (`{{title}}`, `{{css}}`, `{{cover}}`, `{{toc}}`, `{{body}}`). |
 | `style.css` | Print styles. Every colour is a CSS variable with a neutral default. |
 | `CONVENTIONS.md` | The Markdown the builder turns into steps, boxes, commands and figures. |
-| `intro.md` | A stub for the guide's introduction. |
-| `guide.example.json` | A configuration file to copy into your guide folder as `guide.json`. |
+| `intro.md` | The guide's introduction. |
 
-## Set up a guide
+## Build this guide
+
+This guide's configuration file is `guide/guide.json`: its titles, output name, palette, and
+parts.
 
 ```bash
-mkdir -p guide/source guide/chapters guide/images
-cp tools/guide/guide.example.json guide/guide.json
-cp tools/guide/intro.md guide/source/intro.md
-# edit guide.json: titles, output name, palette, parts
-uv run python tools/guide/build_pdf.py --config guide/guide.json --images
+uv run python guide/source/build_pdf.py --config guide/guide.json --images
 ```
 
 `--images` first copies the images the Markdown uses from the capture folder (the configuration file's
-`images`, filled by `tools/capture/`) into `guide/images/`, scaled to 2000 px wide, and drops
+`images`, filled by `platform/scripts/kit/capture/`) into `guide/images/`, scaled to 2000 px wide, and drops
 the unused ones. Missing images print as orange placeholder boxes and are listed.
 
 ## Conventions kept from the course this was cut from
@@ -39,4 +37,4 @@ the unused ones. Missing images print as orange placeholder boxes and are listed
 - **Palette:** override any variable from the configuration file's `palette`, for example
   `{"accent": "<your app's accent>"}`, so the guide matches the app on screen.
 
-Scan the finished PDF before you share it: `tools/scan/scan_pdf.py`.
+Scan the finished PDF before you share it: `platform/scripts/kit/scan/scan_pdf.py`.

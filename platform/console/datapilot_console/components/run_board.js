@@ -18,6 +18,10 @@ function fillStrip(node, s, tz) {
     if (s.step_after) step.append(document.createTextNode(s.step_after));
     parts.push(step);
   }
+  if (s.gold) {
+    // The gold check the runner wrote after the answer: the finale's verdict against gold.
+    parts.push(el('div', 'gold ' + s.gold, s.gold_text));
+  }
   parts.push(stampLine(s.stamp, tz));
   if (s.duplicates) {
     parts.push(el('div', 'dups',
@@ -38,17 +42,29 @@ function fillStrip(node, s, tz) {
 }
 // Fit: the status line, the lanes, and the off-the-board row stay on the first screen. When the
 // visible page area is too short (a 1280x600 share), each lane's list scrolls inside the lane;
-// the page itself never has to.
+// the page itself never has to. A scrolling list ends below the last strip that fits whole, so
+// the lane's edge never cuts through a strip or its button.
 function fitLanes(root) {
   const lanes = root.querySelector('.lanes');
   const off = root.querySelector('.offwrap');
   const top = lanes.getBoundingClientRect().top + window.scrollY;
   const heads = Math.max(...[...lanes.querySelectorAll('.lane > h3')].map((h) => h.offsetHeight), 0);
-  const room = window.innerHeight - top - heads - off.offsetHeight - 16;
-  const max = `${Math.max(72, Math.floor(room))}px`;
+  const room = Math.max(72, Math.floor(window.innerHeight - top - heads - off.offsetHeight - 16));
   for (const list of lanes.querySelectorAll('.list')) {
+    const max = `${wholeStrips(list, room)}px`;
     if (list.style.maxHeight !== max) list.style.maxHeight = max;
   }
+}
+function wholeStrips(list, room) {
+  if (list.scrollHeight <= room) return room;
+  let end = 0;
+  for (const child of list.children) {
+    if (child.hidden || !child.offsetHeight) continue;
+    const bottom = child.offsetTop + child.offsetHeight; // the list is the offset parent
+    if (bottom > room) break;
+    end = bottom;
+  }
+  return end ? Math.min(room, end + 4) : room; // 4 px: the list's own bottom padding
 }
 export default function (component) {
   const { parentElement: root, data } = component;

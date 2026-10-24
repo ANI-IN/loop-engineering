@@ -15,7 +15,7 @@ For each page the rules are:
 - no word of 8 or more letters or digits breaks across lines;
 - the page scrolls to its last panel (`panel_selector`).
 
-    uv run python tools/layout-check/layout_check.py --config layout.json [--shots DIR]
+    uv run python platform/scripts/kit/layout-check/layout_check.py --config layout.json [--shots DIR]
 
 Config (JSON): {"pages": [{"name": "home", "url": "http://127.0.0.1:8000/", "root": "body",
 "press": []}], "min_width": 320, "max_width": 2560, "step": 40, "heights": [600, 1000],

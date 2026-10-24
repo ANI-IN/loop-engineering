@@ -7,18 +7,19 @@ filter, the reviewer's verdict on the wrong spine answer, the schema scout and t
 off, experiment wall time at concurrency 8, the confirming re-run, the drift canary, and every core
 demo live twice. It stopped at 00:59 Coordinated Universal Time (UTC) on 23 October 2026, when the OpenAI account ran out of
 credits (every call from then on returned 429, credit_balance_exhausted); the items not run are
-listed below with their projected cost. Total spend from make spend: 1.6833 dollars of the
-10-dollar budget, all within the overnight limit of 6 dollars.
+listed below with their projected cost. The ledger at that stop showed 1.6833 dollars of the
+10-dollar budget; OpenAI's usage page billed 1.78 dollars for the same night, because the ledger
+then priced cache-write tokens as plain input (reconciled on the [costs page](costs.md)). Both
+figures include 0.2712 dollars of assignment verification, and both are within the overnight limit
+of 6 dollars. The per-run and per-experiment costs below were priced before cache writes were
+counted.
 
 Every number below comes from a run of this calibration. Raw results are in the gitignored
 folder `.runs/calibration/` and the run log beside them; traces are in LangSmith under three projects:
 datapilot-development (calibration and preflight runs, tagged track:calibration and a feature tag
 per step), datapilot-live (the worker's demo runs), and datapilot-experiments (the hill-climbing
-runner's experiments, tagged by knowledge version, split, item, and repetition).
-
-[dev]: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/291f0dd4-97cf-49f4-80e1-1b743e49af3d
-[live]: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/7ce7a82b-8edc-4fb1-b6bc-d13fe6070f5e
-[experiments]: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/2e40b196-7ef5-4232-9f7a-cc770ef4aecb
+runner's experiments, tagged by knowledge version, split, item, and repetition). The build's traces
+are private, so each result names its run id in words instead of a trace link.
 
 ## Setup
 
@@ -42,8 +43,11 @@ analyst, 237 schema scout, and 141 reviewer calls in the trap step, all returned
 analyzer team uses OPENAI_ANALYZER_MODEL, which was unset, so it ran gpt-6-luna too; by the decision
 of 23 October, gpt-6-luna serves every agent and the analyzer team.
 
-The rest of the measurement scheme: a dev regression is confirmed only on at least 2 failures of 3
-runs; an apparent holdout regression is re-run 3 more times and confirmed on at least 2 failures.
+The rest of the measurement scheme, as it stood for these runs: a dev regression is confirmed only
+on at least 2 failures of 3 runs; an apparent holdout regression is re-run 3 more times and
+confirmed on at least 2 failures. Since session 3, an apparent dev regression is re-run 2 times
+under each version and counts only when the candidate fails both and the active version passes both
+(`evaluation.dev_regression_reruns` in `pack.yaml`).
 
 ## Model bake-off
 
@@ -71,13 +75,16 @@ top-customers-fiscal-2026 (1 of 3).
 
 Recommendation: keep gpt-6-luna for class. It answers the easy questions (6 or 7 of 7), fails every
 trap under the starting knowledge (99 of 99 trap runs, below), flips 10 of 13 holdout trap items
-after promotion, and finishes the 70-run experiment in 203 to 284 seconds, inside the 5-minute
-budget of the candidate experiment demo. An analyst run costs about 0.001 dollars.
+after promotion, and finishes these two 70-run experiments in 203 and 273 seconds. Over every
+70-run experiment measured, the range is 182 to 459 seconds (see Wall time), and two of them ran
+past the 5-minute budget of the candidate experiment demo. An analyst run costs about 0.001
+dollars.
 
 ## Analyzer comparison
 
-Not run, by decision (gpt-6-luna only). The analyzer team on gpt-6-luna ran five times, each from
-the failed dev items of a v1 experiment in the same session:
+Not run, by decision (gpt-6-luna only). The analyzer team on gpt-6-luna ran four times, each from
+the failed dev items of a v1 experiment in the same session; the first run's candidate, v4, was
+measured twice (rows 1 and 2):
 
 | Run | Rules proposed, kept by the critic, passed the overfit guard | Candidate holdout passes against v1 | Regressions |
 |---|---|---|---|
@@ -89,7 +96,8 @@ the failed dev items of a v1 experiment in the same session:
 
 The rules are general (fiscal calendar, net revenue, eligible orders, New York local dates,
 category rollup, first qualifying order, average order value); the overfit guard rejected none, and
-the critic dropped the business-day holiday rule each time it was proposed. The v3 run scored no
+the critic dropped the business-day holiday rule each time it was proposed in these runs (in
+session 4 the kept candidate, v8, carries one; see below). The v3 run scored no
 better than v1 because a correct query that filters internal accounts by email domain was held for
 human approval; the fix routes only a query that returns a personal column.
 
@@ -110,8 +118,7 @@ call: one analyzer team run (about 0.02 dollars) and one 70-run candidate experi
 no experiment of v1 in the open session it stops before any call and names
 `make calibrate STEP=experiment-starting` (about 0.08 dollars).
 
-Built on track/analyzer (its commit is on the evidence page), decision 3 of session report 2,
-proposed as the fallback if effort high did not narrow the spread, which it did not (2, 9, and 5
+Built after the review of 23 October (its commit is on the evidence page), proposed as the fallback if effort high did not narrow the spread, which it did not (2, 9, and 5
 of 15, below): the analyzer team produces two candidate rule sets from the same failed dev items,
 by two independent runs of the failure analyst, the rule writer, and the critic, each through the overfit guard. Both
 candidates run on the dev split only (25 items once each), compared with the active version's
@@ -129,8 +136,8 @@ experiment's dev result; a dev regression here is apparent, from one run, and th
 kept candidate's regressions with its own re-runs. The kept candidate is saved as the draft for
 approval. Every candidate is a row in `ops.analyzer_candidates` (migration 015), and the Improve
 page shows the choice above the knowledge diff, such as "Candidate A: 14 of 25 dev, 0 regressions,
-7 rules; Candidate B: 12 of 25 dev, 1 regression, 8 rules; chosen: A". Not run live yet (Retakes
-still owed, item 8).
+7 rules; Candidate B: 12 of 25 dev, 1 regression, 8 rules; chosen: A". Run live twice: in session
+4 (v8) and in the capture session of 23 October, evening (v9), both below.
 
 ## Agents on and off
 
@@ -164,28 +171,22 @@ UTC); tokens are the run's input plus output, seconds its wall time.
 | net-revenue-fiscal-2025 (spine) | Both off | 3,669 tokens, 12.4 s |
 
 Gold results were identical in every configuration: the two easy questions pass, the two trap
-questions fail. The scout is rarely called on easy questions; the cost of "on" comes mostly from the
-reviewer's concerns, which send the analyst back and then hold the answer for approval.
+questions fail. Each cell is one run per question, so the table shows what happened, not a cause.
+The extra tokens appear when both agents are on and the reviewer raises a concern, which sends the
+analyst back and then holds the answer: the two held runs are the two largest. With one agent on,
+the reviewer alone added 516 tokens on average over both off, and the scout alone 2,449.
 
 The reviewer's verdict on the wrong spine answer, over every run where the analyst answered with
 Structured Query Language (SQL) under v1 and has a trace below: concern in 6 runs, approve in 1.
 
 | Run | Verdict | Trace |
 |---|---|---|
-| Agents step, scout and reviewer on | concern, held for approval | [cc864ad9][r1] |
-| Agents step, scout off | approve | [ec016e72][r2] |
-| Section 1: Agent loop capture | concern, held | [bd50f9ca][r3] |
-| Section 2: Verification loop capture | concern twice, held | [dc6dfa84][r4] |
-| Demo pass, agent-confident-wrong-answer attempt 1 | concern twice, held | [d36496ca][r5] |
-| Demo pass, verify-graders-pass-still-wrong attempts 1 and 2 | concern | [f13cbb8d][r6], [79647bb1][r7] |
-
-[r1]: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/291f0dd4-97cf-49f4-80e1-1b743e49af3d/r/cc864ad9-45e9-4972-a5f5-f06c16d261c7?poll=true
-[r2]: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/291f0dd4-97cf-49f4-80e1-1b743e49af3d/r/ec016e72-bc52-4180-b2da-812a8b77c0da?poll=true
-[r3]: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/7ce7a82b-8edc-4fb1-b6bc-d13fe6070f5e/r/bd50f9ca-cd1e-4575-b17b-89a8bc033e01?poll=true
-[r4]: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/7ce7a82b-8edc-4fb1-b6bc-d13fe6070f5e/r/dc6dfa84-c787-45d3-af1e-a523d91b30f5?poll=true
-[r5]: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/7ce7a82b-8edc-4fb1-b6bc-d13fe6070f5e/r/d36496ca-93bd-4e47-b7e9-75f3feea4198?poll=true
-[r6]: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/7ce7a82b-8edc-4fb1-b6bc-d13fe6070f5e/r/f13cbb8d-bb52-4626-9e38-f3190c6c54d5?poll=true
-[r7]: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/7ce7a82b-8edc-4fb1-b6bc-d13fe6070f5e/r/79647bb1-ca9f-4cec-a9e9-e5200c5e06c5?poll=true
+| Agents step, scout and reviewer on | concern, held for approval | cc864ad9 |
+| Agents step, scout off | approve | ec016e72 |
+| Section 1: Agent loop capture | concern, held | bd50f9ca |
+| Section 2: Verification loop capture | concern twice, held | dc6dfa84 |
+| Demo pass, agent-confident-wrong-answer attempt 1 | concern twice, held | d36496ca |
+| Demo pass, verify-graders-pass-still-wrong attempts 1 and 2 | concern | f13cbb8d, 79647bb1 |
 
 The premise of Assignment 2: Verification loop (class code guesses at a term no business rule
 defines), from the same step:
@@ -217,8 +218,8 @@ Every trap item 3 times under v1 (calibration step traps, 99 runs, 400.6 s, expe
 No trap item passed in any run, so no trap was strengthened or replaced. The trap labels most
 often attached to the wrong SQL were the missing internal-account filter, the missing status
 filter, the calendar-year range, and UTC truncation. Example traces:
-[net-revenue-fiscal-2025](https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/291f0dd4-97cf-49f4-80e1-1b743e49af3d/r/75a23e63-a985-4000-9629-2878f9657c07?poll=true),
-[top-customers-fiscal-2026](https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/291f0dd4-97cf-49f4-80e1-1b743e49af3d/r/26191448-98e0-484b-afb0-8da334e71caa?poll=true).
+net-revenue-fiscal-2025 (run 75a23e63),
+top-customers-fiscal-2026 (run 26191448).
 
 ## Stability and the holdout
 
@@ -261,9 +262,7 @@ items; with each passing 2 to 5 of 5 under a promoted version, all 4 passed in o
 measurements above, and revenue was cleared in none of the three live promotions (cleared:
 average order value and customers on 22 October; none in demo pass 1; average order value and
 products in demo pass 2). The spine question by webhook was answered correctly (64,015,091.21
-dollars, gold passed, [run 32c5abc0][finale]) but posted at the assisted level.
-
-[finale]: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/7ce7a82b-8edc-4fb1-b6bc-d13fe6070f5e/r/32c5abc0-1cde-4374-a95b-95a8c7fff923?poll=true
+dollars, gold passed, run 32c5abc0) but posted at the assisted level.
 
 Recommendations:
 - N (the minimum holdout items per family before the unattended level, built by Assignment 4: Hill-climbing loop):
@@ -280,7 +279,8 @@ Recommendations:
   (`eligibility.confirmed_clearance`) and writes each re-run beside its item in the candidate
   experiment. The measured numbers above stand: under the earlier rule, revenue clearance depended
   on all 4 revenue items passing in one experiment, which happened once in four measurements. The
-  new standard has not run live yet; the second chain in the retakes below measures it.
+  new standard ran live three times, below: under v5 revenue did not clear; under v8 (session 4)
+  and v9 (the capture session of 23 October, evening) it cleared.
 
 ## Confirming re-run
 
@@ -294,21 +294,21 @@ v4, the item the stability filter had at 2 of 5 (a flaky item, chosen on purpose
 | 23:40:35 | 1 of 3 passed: an apparent regression | 3 of 3 passed | "Not a regression: passed 3 of 3 more runs" |
 
 Traces of the confirming re-runs:
-[809cdfb0](https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/291f0dd4-97cf-49f4-80e1-1b743e49af3d/r/809cdfb0-5e08-4fd8-a1c1-5094c317dce7?poll=true),
-[ee0d768a](https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/291f0dd4-97cf-49f4-80e1-1b743e49af3d/r/ee0d768a-2de5-4d82-b6ee-13973ed4bf09?poll=true),
-[5315a5a3](https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/291f0dd4-97cf-49f4-80e1-1b743e49af3d/r/5315a5a3-1241-4d58-85e7-f97179e34026?poll=true).
-No real apparent regression occurred in the experiments: every comparison had 0 regressions.
+809cdfb0,
+ee0d768a,
+5315a5a3.
+No apparent regression in these calibration experiments was confirmed: each had 0 regressions.
+Across the analyzer team's candidate experiments with an id in this report, 9 of 10 had 0
+regressions; 25d0f021 (analyzer at reasoning effort high, run 1) had 1 dev regression,
+camping-subcategories.
 
 ## Drift canary
 
 Three easy questions must pass and two trap questions must fail under v1. All four canary runs
 passed it: preflight at 21:02 and 22:12 UTC on 22 October, the calibration canary at 23:37 UTC
-(3 easy passed, 2 traps failed, [product-count][c1], [net-revenue-fiscal-2025][c2]), and the first
+(3 easy passed, 2 traps failed, product-count (run bf91c403), net-revenue-fiscal-2025 (run 5401c604)), and the first
 preflight at 20:57, which first scored a correct easy answer as failed because of an event-loop bug
 (fixed the same night) and passed on the re-run.
-
-[c1]: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/291f0dd4-97cf-49f4-80e1-1b743e49af3d/r/bf91c403-be58-4276-a6db-a7508e6e1c94?poll=true
-[c2]: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/291f0dd4-97cf-49f4-80e1-1b743e49af3d/r/5401c604-ae2a-4eeb-a662-fa941af37d25?poll=true
 
 ## Demos
 
@@ -339,7 +339,8 @@ Demos whose guaranteed moment did not appear, and why:
 - agent-confident-wrong-answer (attempt 2) and verify-graders-pass-still-wrong (both): the gold
   check event did not arrive within 90 seconds. Hardened the same night (one run's gold check can never
   block the others, and a failing promotion step no longer stops the gold checks); the retake failed
-  on the exhausted credits.
+  on the exhausted credits. The symptom appeared once more, in the capture session of 23 October,
+  evening (below).
 - events-webhook-question (attempt 2): the reviewer held a correct answer because it did not know
   the business date. Fixed the same night (the reviewer sees the business date); retake not run.
 - improve-baseline-experiment exceeds its 3-minute target (266 and 285 s for 70 runs).
@@ -351,16 +352,23 @@ Demos whose guaranteed moment did not appear, and why:
 
 ## Wall time
 
-The full scheme (70 runs: 25 dev items once, 15 holdout items 3 times) at concurrency 8: 187 to 285
-seconds over 8 experiments (calibration 273.4 and 203.3 s; hill-climbing captures 257.9 and 213.2
-s; demo pass 283.4, 279, 259.9, and 193 s). The 5-minute budget of the candidate experiment demo
-holds in every run; the baseline experiment demo's 3-minute target does not.
+The full scheme (70 runs: 25 dev items once, 15 holdout items 3 times) at concurrency 8: 182 to 459
+seconds over every 70-run experiment in this report. The first 8 (calibration 273.4 and 203.3 s;
+hill-climbing captures 257.9 and 213.2 s; demo pass 283.4, 279, 259.9, and 193 s) took 187 to 285
+seconds. Later: 280.8 s (the starting experiment before the analyzer at effort high), 458.9, 229.4,
+and 403.8 s (the three candidates at effort high), 273.4 and 257.6 s (the chain of 23 October,
+morning), 276.8 and 206.5 s (session 4), and 278.8, 181.9, and 212.4 s (the capture session of 23
+October, evening). Two runs, both candidates at effort high with 10 rules
+each, took 6.8 and 7.6 minutes, past the 5-minute budget of the candidate experiment demo. The
+baseline experiment demo's 3-minute target is missed in every run. Cost per 70-run experiment, where
+recorded: 0.0594 to 0.0914 dollars.
 
 ## Spend
 
-make spend at the end of calibration (23 October, 01:20 UTC):
+make spend at the end of calibration (23 October, 01:20 UTC), with the caps as they stood then
+(the owner changed them later; the current caps are in `pack.yaml`):
 
-| Line | Spent | Cap |
+| Line | Spent | Cap on 23 October, 01:20 UTC |
 |---|---|---|
 | development live checks | 0.7808 dollars | 1.50 |
 | calibration | 0.6313 dollars | 2.50 |
@@ -410,27 +418,25 @@ agent-confident-wrong-answer, verify-graders-pass-still-wrong, and events-webhoo
 The session started at 05:13 UTC on 23 October 2026 with its own limits (development live checks
 0.40 dollars, calibration 1.00, 2.50 in all, shared with the assignment verification track). Live
 work stopped at about 06:50 UTC, during the first live smoke check: LangSmith refused every trace
-with 429, "Monthly unique traces usage limit exceeded". Every result in this report carries a trace
-link, so no further live run was made; the model calls themselves still succeeded.
+with 429, "Monthly unique traces usage limit exceeded". The rule at that time was that every result
+carries a trace link, so no further live run was made; the model calls themselves still succeeded.
+From 07:24 UTC each result is proven by its run id instead (below).
 
 Preflight (session e12c9e88, purpose development): every service healthy, gpt-6-luna, and the drift
 canary as expected, three easy questions passed and two traps failed; traces for
-[product-count](https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/291f0dd4-97cf-49f4-80e1-1b743e49af3d/r/74ff46f4-0072-44e2-b65c-a94b465b54e5)
+product-count (run 74ff46f4)
 and the
-[spine trap](https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/291f0dd4-97cf-49f4-80e1-1b743e49af3d/r/dd99cbfd-24c2-4142-8133-d988559ba06c).
+spine trap (run dd99cbfd).
 
 The live smoke check, five calls (actual 0.0056 dollars against the estimate 0.0264):
 
 | Call | Result | Tokens in (cached), out; cost | Trace |
 |---|---|---|---|
-| Analyst with the scout | answered, gold check passed | 7,604 (1,538), 681; 0.0010 | [32b30a5e][s1] |
-| Spine question | held for approval (below) | 21,855 (12,991), 1,835; 0.0020 | [fb8cef0c][s2] |
+| Analyst with the scout | answered, gold check passed | 7,604 (1,538), 681; 0.0010 | 32b30a5e |
+| Spine question | held for approval (below) | 21,855 (12,991), 1,835; 0.0020 | fb8cef0c |
 | Webhook event | posted: 291 orders on the previous day | 14,158 (2,905), 898; 0.0017 | c1fd7f5c, refused |
 | Analyzer team step | 2 diagnoses, 3 rules kept and guarded | 2,224 (0), 1,199; 0.0008 | f542227f, refused |
 | Refused write | SQLSTATE 25006; the run ended escalated | 743 (0), 33; 0.0001 | bb9c326f, refused |
-
-[s1]: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/291f0dd4-97cf-49f4-80e1-1b743e49af3d/r/32b30a5e-6c7a-42eb-b79c-8bed9abb76fe
-[s2]: https://smith.langchain.com/o/10fe45d9-7a3d-4f39-92ad-8c5dc97653d4/projects/p/291f0dd4-97cf-49f4-80e1-1b743e49af3d/r/fb8cef0c-edde-498d-9931-864e591c22f1
 
 The spine question passed every grader; the reviewer raised a concern that fiscal year 2025 was
 taken as the calendar year, so the answer was held for approval, and the gold check failed (row 1
@@ -462,8 +468,8 @@ Built and tested this session without tokens, for the live checks still owed:
   family", should add that a family is cleared on the gate's confirmed standard (every holdout item
   passes 2 of 3 runs, an item that fell short passing 2 of 3 more runs), not on one experiment.
 
-Commits on track/live-session: 1e9b4f4 (the cap probe and the console's activity header), then the
-docstrings, the code pointer, and this section.
+Commits: 1e9b4f4 (the cap probe and the console's activity header), then the docstrings, the code
+pointer, and this section.
 
 ### Resumed without traces, stopped at the ledger
 
@@ -480,8 +486,11 @@ development); preflight passed again with the drift canary as expected.
 | Budget switch off | 784b7253 | retry cap held: escalated after 3 attempts | 12,348 + 328; 0.0014 |
 | Resumed export | e1853dcd | kept attempt 2 and one concern; ended at the run budget | 108,430 + 950; 0.0113 |
 
-The cap probe's own reason says "after 0 tokens" while the ledger has 14 output tokens for the
-call: the guard reads the cut-off reply's usage as zero. make spend with the switch off printed
+The cap probe's own reason says "after 0 tokens" while the ledger has 14 output tokens: the
+probe makes two analyst calls, an ordinary opening call (715 input, 14 output tokens) and the call
+that is cut off, which reported 0 input and 0 output tokens, the count the guard named (diagnosed
+and fixed in session 4: a cut-off reply that reports zero now reads as no count, with the run's
+total named). make spend with the switch off printed
 "the build budget is off (DATAPILOT_BUILD_BUDGET is not 1): the lines below are not enforced", and
 with it back at 1 the lines are enforced again; the session limit held either way. The console's
 "Send webhook question" sends the spine question, while make demo sends the question about the
@@ -595,16 +604,20 @@ The hill-climbing chain:
    level, labelled verified, 63,986,616.77 dollars against gold 64,015,091.21 (gold check failed,
    trap label missing_internal_filter), 16,291 tokens, 0.0021 dollars. Not forced.
 
-The cause of the finale's wrong answer, confirmed from the saved versions (decision 2 of session
-report 2): internal accounts are known only by their email domain (the gold SQL has
-`lower(c.email) NOT LIKE '%@harborpine.com'`; the data has case variants and look-alike addresses,
-so a loose guess gives a wrong total), and no version stated that predicate. v5's rule "Use the
+The cause of the finale's wrong answer: internal accounts are known only by their email domain
+(the gold SQL has `lower(c.email) NOT LIKE '%@harborpine.com'`; the data has case variants and
+look-alike addresses, so a loose guess gives a wrong total), and no version stated that predicate.
+The finale's SQL did filter internal accounts, but too broadly. A read-only query on the seeded
+warehouse (fiscal year 2025, status not 5, Eastern time) gives 65,592,532.44 with no internal
+filter, the gold 64,015,091.21 with the gold predicate, and exactly the finale's 63,986,616.77 with
+`email NOT ILIKE '%harborpine%'`, which also removes the look-alike addresses. That is why the
+answer is below gold, not above it. The trap label missing_internal_filter does not describe an
+over-broad filter, and how the label was assigned to this run is still to be checked. v5's rule "Use the
 eligible business-order population" gave the SQL guidance `status <> 5 AND <documented
 non-internal-customer predicate>`, a placeholder; v4 and v6 gave `customer_is_internal = false`, a
 column that does not exist. The reference SQL reached the failure analyst, but its diagnoses were
 in general business terms, and the rule writer reads only the diagnoses, so the exact predicate
-never reached a rule. The trap label says the finale's SQL had no filter on the domain at all.
-Fixed in the analyzer, for every rule and not for this one trap, on track/analyzer: the failure
+never reached a rule. Fixed in the analyzer, for every rule and not for this one trap: the failure
 analyst quotes the reference SQL fragment the agent's SQL lacked; the rule writer gets the schema
 and must write guidance that runs over it; and a deterministic check parses each rule's guidance
 with sqlglot against the catalog snapshot, sends a placeholder, an unknown table or column, or prose
@@ -629,7 +642,7 @@ The dev reference SQL carries every convention the holdout items need (the fisca
 internal accounts, status 5, New York time), so the rules generalize. v7 was not approved and is
 retired in ops. Attempt 2 was not run: about 0.08 dollars, and the development line had 0.05 left
 this session. The demo is not ready: its planted item does not guarantee the moment.
-Built on track/analyzer, decision 4 of session report 2: the naive analyzer makes no model call.
+Built after the review of 23 October: the naive analyzer makes no model call.
 It writes one rule per failed dev item, quoting the question word for word with the analyst's
 query that failed, and never reads a reference query, so its rules teach nothing about a holdout
 question. The overfit guard reports on every rule, all flagged, and is not applied; a test proves
@@ -637,10 +650,10 @@ that for any set of failed dev items every naive rule fails the guard. The other
 recommendation is built too: the gate has a fourth condition, every rule the candidate adds to the
 active version passes the overfit guard, so the naive version is blocked whatever its holdout
 count, even one better than the active version's; an honest candidate, whose rules already passed
-the guard, is judged as before. Not run live yet (Retakes still owed, item 4).
+the guard, is judged as before. Run live three times since, blocked each time: twice in session 4
+and once in the capture session of 23 October, evening, both below.
 
-Proposed for the analyzer's variance (built on track/analyzer as the proposal in Analyzer
-comparison, with fewer dev regressions as the first key, then more dev passes): the three
+Proposed for the analyzer's variance (built as the proposal in Analyzer comparison, with fewer dev regressions as the first key, then more dev passes): the three
 measurements at reasoning effort high gave 2, 9, and 5 of 15 holdout items from the same failed dev items. The runner would
 have the analyzer team write two candidate rule sets, run both on the dev split only, and keep the
 one with more dev passes (fewer dev regressions on a tie). Only the kept set runs on the holdout,
@@ -654,10 +667,194 @@ calibration 0.5277 of 1.00, total 1.7609 of 2.50 with the assignment verificatio
 ledger agreed with the run records within a few thousandths of a dollar for each step (the five
 planted halves, about 0.058 in the ledger against 0.063 in the runs).
 
+## Live session of 23 October, afternoon (session 4)
+
+Session ae67ee60 (purpose development) from 16:50 UTC, after the changes of session 3 (two analyzer
+candidates, the SQL guidance check, the gate's fourth condition, the dev re-run of both versions,
+the spend caps, trace sampling). LangSmith still refused every trace (its monthly limit, reset on 1
+November 2026), so each result below is proven by its run id, its record in ops, and the ledger.
+
+Preflight: the drift canary as expected, 3 easy questions passed and 2 traps failed, gpt-6-luna.
+`make live-smoke`: all five calls behaved as designed (an answer whose gold check passed; the spine
+question passing every grader and held by a reviewer concern about the fiscal year; a webhook
+answer of 300 orders, the Eastern time day; an analyzer team step proposing 3 rules, all kept and
+guarded; a refused write ending escalated with SQLSTATE 25006); each is reported as a hard failure
+only because its trace is missing.
+
+Every core demo of Sections 1 to 3, once, triggered as `make demo NAME=` triggers it, the moment
+checked from the run's own record:
+
+| Demo | Fixed system | Planted half |
+|---|---|---|
+| agent-simple-question | shown, 14 s: 405,738 orders (8d53e57c) | |
+| agent-confident-wrong-answer | shown, 52 s: 76,981,355.95 against 64,015,091.21, 4 trap labels (f64f5dfe) | |
+| agent-unbounded-rows | 27,040 tokens, held by the reviewer (c30c0885) | shown: 186,689 tokens, escalated at the run budget (1ae983f2) |
+| verify-malicious-sql | shown, 2 s: guard, guard, then 42501 (e40f9197) | shown: 25006, 25006, then 42501 (0b9814c4) |
+| verify-retry-cap | shown, 20 s: escalated after 3 attempts (386f5a5e) | shown: 11 attempts until the 60,000-token budget (526fe0a2) |
+| verify-graders-pass-still-wrong | shown, 58 s: graders passed, gold failed, two reviewer concerns (6630921f) | |
+| events-webhook-question | shown, 16 s: posted unverified (be76dea9) | |
+| events-approval-survives-restart | shown, 53 s: held, survived the restart, posted (13e0b95d) | shown: the approval lost, the run failed (035816e8) |
+| events-duplicate-events | shown, 35 s: 1 run, 2 duplicates absorbed, 1 digest (c7bd992d) | shown: 3 answers, 2 digests (11e06819) |
+| events-kill-switch-in-flight | shown, 5 s: stopped in flight (b497410b) | shown: posted after the switch was engaged (70235a3e) |
+
+The export run of events-approval-survives-restart (13e0b95d) is the retake owed after the
+2,000-character value cap: 7,670 tokens, against about 109,000 before the cap.
+
+The hill-climbing chain, with the runner's spend on the calibration line:
+
+1. Baseline: experiment 5dba42c6, v1, holdout 2 of 15, dev 4 of 25, 276.8 s.
+2. The analyzer team, two candidates on the dev split only: A 18 of 25 dev, 0 regressions, 11 rules;
+   B 19 of 25 dev, 0 regressions, 8 rules; B kept as v8; the SQL guidance check rejected none of
+   the kept candidate's rules. The overfit guard rejected one rule the critic kept,
+   fiscal-quarter-from-february-start, because it copied gold SQL (20 or more tokens in a row of
+   orders-by-quarter-fiscal-2026), and passed the other 8. 326 s for the whole step.
+3. Candidate experiment 2eb8890c: v8 holdout 14 of 15 against 2, dev 19 of 25, 0 regressions on
+   either split, every new rule passed the overfit guard; 12 of 13 holdout trap items fixed
+   (business-day-orders-november-2025 still fails); gate "Ready for human approval"; 206.5 s.
+4. Human approval, given by the build in place of the instructor and recorded with the approver's name.
+   Families cleared for the unattended level on the confirmed standard: revenue, average order
+   value, customers, and products; orders not cleared. Revenue cleared for the first time, with no
+   re-run: its 4 holdout items each passed 3 of 3 runs in experiment 2eb8890c. Two items passed 2
+   of 3 and needed no re-run (orders-by-quarter-fiscal-2026, app-average-order-value-fiscal-2026).
+   One clearance re-run: business-day-orders-november-2025 failed 3 of 3, then 0 of 3 more, so
+   orders stays below the unattended level.
+5. The finale: the first attempt (c203dc8b) was triggered before the promotion had finished, so it
+   ran under v1 and answered 72,394,572.08 (gold failed, escalated); the cause was the driving
+   script, which did not wait for the activation. Run again under v8 (38f16596): 64,015,091.21
+   dollars, gold passed, posted at the unattended level, 16,624 tokens, 0.0021 dollars; the Events
+   page captured at 1280x720. The class-day safeguard was not needed and could not be shown: it
+   needs a version verified in a rehearsal session.
+
+The naive analyzer, twice (`BUG_NAIVE_ANALYZER`): each time 21 rules quoting the dev questions with
+no model call, all 21 flagged by the overfit guard; the candidate experiment kept the holdout at
+2 of 15 (dev 5 and 6 of 25), and the gate blocked the version on both counts (no holdout gain, and
+the overfit guard on the new rules).
+
+Edge cases: a question naming nothing in the schema ("What is our employee headcount by
+department?") ended needs_clarification with a clarifying question (cfe052c3); the console's "Send
+webhook question" sent exactly `make demo`'s question and posted unverified (f34a518d); the
+output-token cap probe still said "after 0 tokens" (730953ea), which led to the fix above; every
+run went on at its normal speed while LangSmith refused its traces.
+
+The two versions called v8: the hill-climbing reset after the chain removed the session's
+experiments and decisions and then the promoted v8, so the naive analyzer's candidate took the name
+again (a defect, being fixed so that a name is never reused). Its
+experiments are 37eb24f5 and 45fa8a3d; the promoted v8 is experiment 2eb8890c.
+
+Assignment verification in session 4 (assignment verification line):
+
+| Check | Result | Spend |
+|---|---|---|
+| Assignment 1: Agent loop, reference | PASS, 11 of 11 | 0.48 cents |
+| Assignment 2: Verification loop, reference | FAIL, 8 of 9: case 8 of the ambiguity suite ended 0 of 2 (note 1) | 2.16 cents |
+| Assignment 3: Event loop, reference | FAIL, 9 of 10: the drill-down run ended blocked_budget (note 2) | 0.33 cents |
+| Assignment 4: Hill-climbing loop, reference, first check | FAIL, 9 of 10: 1 confirmed regression on an item that passed under v1 | 9.93 cents |
+| Assignment 4: Hill-climbing loop, reference, second check | PASS, 10 of 10 | 8.70 cents |
+| Assignment 4: Hill-climbing loop, alternative one | PASS, 10 of 10 | 14.57 cents |
+| Assignment 4: Hill-climbing loop, alternative two | PASS, 10 of 10 | 13.13 cents |
+| Each starter | FAIL, as designed | 0 cents |
+
+Note 1: case 8 is "How many orders shipped to Texas in January 2026?"; it is being replaced.
+Note 2: the check stack's daily token budget stopped the live run, not the solution; the budget is
+being sized for a day of checks. Both are re-verified after those changes.
+
+The paired comparisons of each loop with its protection off and on are on the
+[benefits page](benefits.md).
+
+## Live session of 23 October, evening (the capture session)
+
+The capture session ran from 21:17 to 21:55 UTC on 23 October 2026, after the fixes of review
+round 1, on gpt-6-luna. LangSmith still refused traces at its monthly limit,
+so each result below is proven by its run id, its record in ops, and the ledger. The console
+captures of the hill-climbing chain, on the
+[Section 4 evidence page](evidence/section-4-hill-climbing-loop.md#captures), come from this chain.
+
+Every core demo of Sections 1 to 3, once, triggered as `make demo NAME=` triggers it, under the
+starting knowledge, the moment checked from the run's own record:
+
+| Demo | Fixed system | Run |
+|---|---|---|
+| agent-simple-question | shown, 14 s: 405,738 orders | 335bcbe5 |
+| agent-confident-wrong-answer | shown, 37 s: 76,981,355.95 against 64,015,091.21, 4 trap labels | 82011f72 |
+| agent-unbounded-rows | 22,862 tokens, held by two reviewer concerns, 26 s | 06c830b5 |
+| verify-malicious-sql | shown, 2 s: guard, guard, then 42501 | 9359dbfe |
+| verify-retry-cap | shown, 14 s: escalated after 3 attempts | 3e0c420d |
+| verify-graders-pass-still-wrong, attempt 1 | not shown: posted with no gold check, 214 s | f467623b |
+| verify-graders-pass-still-wrong, attempt 2 | shown, 52 s: graders passed, gold failed, held | 5e38f424 |
+| events-webhook-question | shown, 14 s: posted unverified | 9f6e1d62 |
+| events-approval-survives-restart | shown, 50 s: held, survived the restart, posted | 85609cb3 |
+| events-duplicate-events | shown, 35 s: 1 run, 2 duplicates absorbed, 1 digest | 44077b18 |
+| events-kill-switch-in-flight | shown, 3 s: stopped in flight, report-only level | bcf92dcb |
+
+The fixed half of agent-unbounded-rows has no moment of its own: the demo registry allows it to end
+held for approval by a reviewer concern, and the token counter is compared with the planted half.
+
+The first attempt of verify-graders-pass-still-wrong (f467623b) did not show its moment: every
+grader of its second attempt passed and the reviewer raised one concern, but the run posted with no
+gold check within the 214 seconds the driving script waited. That is the symptom of calibration's
+two not-shown attempts, which the change of the same night (one run's gold check can never block
+the others) was meant to end. The cause is not confirmed: the run's record was not read again for
+a gold check that arrived later. The second attempt (5e38f424) was shown: the graders of its third
+attempt all passed, the gold check failed on both warehouses (row 1 differs from gold), and two
+reviewer concerns held it for approval. Since the change, the demo was shown in session 4 (6630921f)
+and in this second attempt, with one attempt not shown between them, so it has not yet been shown in
+two consecutive live attempts.
+
+The hill-climbing chain, with the runner's spend on the calibration line:
+
+1. Baseline: experiment 31a76afe, v1, holdout 2 of 15, dev 5 of 25, 278.8 s (281 s from the
+   trigger to the result).
+2. The analyzer team, two candidates on the dev split only, from 20 failed dev items: A 21 of 25
+   dev, 0 regressions, 8 rules; B 10 of 25 dev, 0 regressions, 5 rules; A kept as v9. The critic
+   dropped the December 2024 business-day holiday rule; the overfit guard rejected one rule the
+   critic kept, fiscal-quarter-numbering, because it copied gold SQL (20 or more tokens in a row of
+   orders-by-quarter-fiscal-2026); the SQL guidance check rejected none. 377 s for the whole step.
+3. Candidate experiment a2ba7a5a: v9 holdout 14 of 15 against 2, dev 22 of 25, 0 regressions on
+   either split, every new rule passed the overfit guard; gate "Ready for human approval: v9 passes
+   14 of 15 holdout items against 2, with no regressions."; 181.9 s (186 s from the trigger).
+4. Human approval at 21:41:50 UTC, given by the build in place of the instructor and recorded with
+   the approver's name.
+5. The finale, sent at once: it was held 5 times over 50 seconds, the first time because the
+   promotion of v9 had not finished, the last because its clearance re-runs were still running;
+   both named the step to wait for. Then run c91ebcc0: 64,015,091.21 dollars, gold passed, posted at the
+   unattended level, 10,231 tokens, 0.0006 dollars. Families cleared for the unattended level on
+   the confirmed standard: revenue, average order value, customers, and products; orders not.
+
+The naive analyzer, once (`BUG_NAIVE_ANALYZER`), from one trigger: 20 rules quoting the dev
+questions with no model call, all 20 flagged by the overfit guard, saved as v10; its candidate
+experiment 02de992f kept the holdout at 2 of 15 (dev 4 of 25, 212.4 s), and the gate blocked the
+version on both counts. 285 s from the trigger to the verdict.
+
+With this chain, the two-candidate method has two measurements, v8 in session 4 and v9 here, both
+14 of 15 holdout items against 2. Revenue cleared on the confirmed standard in 2 of 6 live
+promotions (v8 and v9), and the spine question was correct at the unattended level twice (38f16596
+and c91ebcc0). Of the analyzer team's candidate experiments with an id in this report, 9 of 10 had
+0 regressions. The naive analyzer was blocked in 3 of 3 runs since it was made deterministic (211,
+256, and 285 s from the trigger to the verdict).
+
+Assignment verification after the fixes of review round 1 (assignment verification line, checks
+from 21:28 UTC on 23 October 2026, on the assignments stack):
+
+| Check | Result | Spend |
+|---|---|---|
+| Assignment 1: Agent loop, reference | PASS, 11 of 11 | 0.49 cents |
+| Assignment 2: Verification loop, reference | PASS, 10 of 10, with the replaced ambiguity case | 1.86 cents |
+| Assignment 3: Event loop, reference | PASS, 10 of 10, with the daily token budget sized for a day of checks | 0.37 cents |
+| Assignment 2: Verification loop, alternative one, with check_cap_usd set to 0.25 | Stopped cleanly at the cap (note 3) | 1.08 cents |
+| Assignment 4: Hill-climbing loop, reference, first check | PASS, 10 of 10, 895 s | 13.58 cents |
+| Assignment 4: Hill-climbing loop, reference, second check | PASS, 10 of 10, 1,320 s | 23.95 cents |
+
+Note 3: this run proves the cap stop, not the alternative: 7 of 10 requirements passed, 0 failed,
+and 3 were not run. It spent 1.08 cents in 100 model calls, less than the cap, because the check
+starts no new run once the runs under way could take it past the cap, each priced at its whole
+token budget; the kill switch stopped the runs under way and was released again. The
+re-checks of each alternative against the fixed checks (about 1.25 dollars) did not fit this
+session's assignment verification cap and are owed.
+
 ## Retakes still owed
 
 Every live run below is a retake from the "Demos" and "Not run" parts, plus the analyzer measurement
-prepared above. None has run. The costs are projections at the measured 0.0011 dollars per analyst
+prepared above. Each item says whether it has run and where its result is. The costs are projections at the measured 0.0011 dollars per analyst
 run: together about 0.42 dollars, or 0.50 with the starting experiment, against the 1.87 dollars
 left on the calibration line. Demo runs go through the stack's worker and runner, which record under
 "development" (see Spend). Each demo runs twice with `make reset NAME=<section slug>` between the
@@ -677,8 +874,8 @@ two attempts, as the live demo runbook asks. A planted half needs its flag set t
    `make demo NAME=events-approval-survives-restart` with `BUG_MEMORY_CHECKPOINTER`,
    `make demo NAME=events-duplicate-events` with `BUG_NO_IDEMPOTENCY` and `BUG_RANDOM_DIGEST_ID`,
    `make demo NAME=events-kill-switch-in-flight` with `BUG_KILLSWITCH_AT_CLAIM_ONLY`.
-4. [ ] (run once on 23 October, moment not shown, above; owed again after the deterministic naive
-   analyzer of decision 4 on session report 2) `make demo NAME=improve-naive-analyzer-blocked` with
+4. [x] (twice in session 4, blocked both times, above; first run on 23 October, moment not shown,
+   before the deterministic naive analyzer was built) `make demo NAME=improve-naive-analyzer-blocked` with
    `BUG_NAIVE_ANALYZER`, twice (about 142 runs, 0.16 dollars: each attempt is the analyzer and a
    70-run candidate experiment).
 5. [x] (three times, 23 October, above) The analyzer at reasoning effort high: `make calibrate STEP=analyzer-high` (about 0.10
@@ -690,7 +887,7 @@ two attempts, as the live demo runbook asks. A planted half needs its flag set t
    dollars for each holdout item that falls short at clearance; at most 45 such runs, 0.05 dollars).
    Record which families cleared and every clearance re-run.
 7. [x] `make spend`, and the results written into this report.
-8. [ ] (owed after decisions 2 and 3 on session report 2) The finale chain with two
+8. [x] (session 4: v8 at 14 of 15, the finale correct at the unattended level, above) The finale chain with two
    candidates and the SQL guidance check: the baseline experiment if none is open in the session
    (about 0.09 dollars), `make demo NAME=improve-analyzer-team-approve` (two analyzer team runs
    and 50 dev runs, about 0.10 dollars), approve, `make demo NAME=improve-candidate-experiment`
@@ -699,15 +896,15 @@ two attempts, as the live demo runbook asks. A planted half needs its flag set t
    the baseline. Record both candidates, the one kept, the guidance rejections, which families
    cleared, and the spine answer against gold. If the spine answer is wrong, run the class-day
    safeguard live too (`make safeguard-activate BY="<name>"`, then the finale again) and record both.
-9. [ ] (owed after decision 1) `make live-smoke` once (about 0.006 dollars, development live checks).
-10. [ ] (owed after decisions 5 to 8) One live check of each reference solution of Assignments 1,
+9. [x] (session 4, above) `make live-smoke` once (about 0.006 dollars, development live checks).
+10. [x] (session 4, results below) One live check of each reference solution of Assignments 1,
     2, and 3 (about 0.03 dollars in all, assignment verification), then Assignment 4's reference
     twice and each alternative once (about 0.76 dollars, assignment verification).
-11. [ ] (owed after the value cap, 1317f5f) The export run of events-approval-survives-restart
+11. [x] (session 4: 7,670 tokens, run 13e0b95d) The export run of events-approval-survives-restart
     once (about 0.01 dollars, development live checks).
-12. [ ] (owed after decision 8) The output-token cap probe, `make calibrate STEP=output-token-cap`
+12. [ ] (owed) The output-token cap probe, `make calibrate STEP=output-token-cap`
     (about 0.0001 dollars), and the console's "Send webhook question" once (about 0.002 dollars).
-13. [ ] (owed after decision 1, on or after 1 November 2026 at 00:00 UTC, when LangSmith's monthly
+13. [ ] (owed on or after 1 November 2026 at 00:00 UTC, when LangSmith's monthly
     trace limit resets) One baseline experiment and one demo run, to see about one experiment run in
     five arrive whole and every demo run traced (about 0.14 dollars).
 
@@ -765,13 +962,13 @@ a correct answer about the previous day that was held.
 | section-3-event-loop/concepts.md | duplicate event: answers posted | 1 run and 2 duplicates absorbed, twice |
 | section-3-event-loop/concepts.md | approval after a worker restart | the pending approval survived and the export posted after approval, twice |
 | section-3-event-loop/concepts.md | in-flight run after the kill switch | stopped in flight and blocked by the kill switch, twice |
-| slides/outline.md, Section 4: Hill-climbing loop | experiment wall time at concurrency 8 | 187 to 285 s for 70 runs |
+| slides/outline.md, Section 4: Hill-climbing loop | experiment wall time at concurrency 8 | 182 to 459 s for 70 runs (see Wall time) |
 | slides/outline.md and section-4-hill-climbing-loop/concepts.md | items the stability filter replaced | 0 in the end (3 replaced, then restored) |
 | slides/outline.md and section-4-hill-climbing-loop/concepts.md | N | 3 (recommendation; Assignment 4 builds it) |
-| section-4-hill-climbing-loop/concepts.md | holdout passes, active and candidate; regressions | v1 2 of 15; v4 12 of 15 (11 in the capture); 0 regressions |
-| section-4-hill-climbing-loop/concepts.md | naive analyzer verdict | 15 of 15 holdout, not blocked (911423fb, 23 October); owed again |
+| section-4-hill-climbing-loop/concepts.md | holdout passes, active and candidate; regressions | v1 2 of 15; v8 and v9 14 of 15; v4 11 and 12 of 15; 0 regressions in each |
+| section-4-hill-climbing-loop/concepts.md | naive analyzer verdict | blocked in 37eb24f5, 45fa8a3d, 02de992f: holdout 2 of 15, all rules flagged |
 | docs/costs.md | measured cost per run | about 0.001 dollars per analyst run; 0.06 to 0.08 dollars per 70-run experiment |
-| section-4-hill-climbing-loop/demo/README.md | the hill-climbing runner and its measured times | the runner is a Compose service; experiment times above |
+| section-4-hill-climbing-loop/demo/README.md | the hill-climbing runner and its measured times | a Compose service; times in Wall time; the analyzer team step 326 and 377 s |
 
 The measured values in full: gpt-6-luna costs 0.10 dollars input, 0.01 cached input, and 0.50
 output per 1M tokens (pack.yaml). The fixed half of the unbounded rows demo used 17,298 and 19,661

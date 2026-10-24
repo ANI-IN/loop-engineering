@@ -1,9 +1,8 @@
 # style: the prose and page checks
 
-The style tools already live in the skeleton that `scripts/new_module.py` copies into a new
-course, so they are not duplicated here:
+The style tools live in `platform/scripts/`, beside this kit, so they are not duplicated here:
 
-- `platform/scripts/check_style.py`: the page checks (SC01 to SC30),
+- `platform/scripts/check_style.py`: the page checks (SC01 to SC33),
   configured per course in `platform/config/course.toml`. Run `--list-checks` for the full list.
 - `platform/scripts/lint_prose.py`: banned words and phrases, and
   emoji, with the banned list in the same `course.toml`.
@@ -21,9 +20,10 @@ uv run python platform/scripts/lint_prose.py
    internal phrases. Add **time words** that date a page: "tonight", "today's run", "this
    morning", "yesterday", "last week". A page is read for months; write the fact, not when it
    happened.
-2. **Codes only in brackets.** An internal code (a section code such as S1, an assignment code
-   such as A2) never stands bare in prose. Write the plain name, and add the code in brackets
-   only where a reader needs it to find a file: "Section 2: State and sessions (S2)".
+2. **No codes: write the full name.** A short code for a section, an assignment, or a level never
+   appears in prose, code comments, commit messages, or labels, not even in brackets. Write the
+   full name every time it stands alone: "Section 2: Verification loop", "the report-only level".
+   File and folder names use readable slugs instead, such as `section-2-verification-loop/`.
 3. **Full name on first use.** The first mention of a named kind on a page uses its full
    "<Kind> N: <name>" form ("Assignment 1: Instructions"); later mentions may shorten it.
 4. **Quoted line numbers are checked.** When a page quotes a tool's output or a source file
