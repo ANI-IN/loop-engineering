@@ -107,7 +107,8 @@ After class: four assignments, one per section, each checked live; the
 
 Calibration ran every core demo and the benchmark live on 22 and 23 October 2026, on gpt-6-luna,
 with business date 31 January 2026; the live sessions of 23 October, afternoon and evening, ran them
-again on the current code. Each count below is in the [calibration report](docs/calibration-report.md). For each loop measured with its protection off
+again on the code as it stood that evening; the demo and check changes made later that night, with
+no model call, are owed a live re-run. Each count below is in the [calibration report](docs/calibration-report.md). For each loop measured with its protection off
 and on, on the same questions, including where a loop did not help, see
 [what each loop is worth](docs/benefits.md).
 

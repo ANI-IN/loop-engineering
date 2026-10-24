@@ -55,6 +55,19 @@ WHERE session_id = %(session_id)s AND pack = %(pack)s
 ORDER BY started_at DESC
 LIMIT 1
 """
+# The active version's experiment a candidate's gate compares it with, recorded as the gate starts,
+# and read back by the background promotion (runner._decide_approved).
+SET_GATE_BASELINE = """
+UPDATE ops.experiments SET gate_baseline_id = %(baseline_id)s
+WHERE experiment_id = %(experiment_id)s
+"""
+GATE_BASELINE = """
+SELECT b.experiment_id, b.session_id, b.knowledge_version, b.per_example, b.started_at,
+       b.wall_seconds
+FROM ops.experiments c JOIN ops.experiments b ON b.experiment_id = c.gate_baseline_id
+WHERE c.experiment_id = %(experiment_id)s AND b.session_id = %(session_id)s
+  AND b.finished_at IS NOT NULL
+"""
 # Write one item's confirmation into the experiment's per-example data, in place, so the console
 # ledger shows each step as it happens.
 SET_CONFIRMATION = """
@@ -217,6 +230,34 @@ def baseline_for(conn: psycopg.Connection, knowledge_version: str) -> Experiment
             f"no experiment of {knowledge_version} was started in this live session: run the "
             "baseline experiment now"
         )
+    return _result(row)
+
+
+def record_gate_baseline(
+    conn: psycopg.Connection, candidate: ExperimentResult, baseline: ExperimentResult
+) -> None:
+    conn.execute(
+        SET_GATE_BASELINE,
+        {"experiment_id": candidate.experiment_id, "baseline_id": baseline.experiment_id},
+    )
+
+
+def gate_baseline(conn: psycopg.Connection, candidate: ExperimentResult) -> ExperimentResult:
+    """The experiment the candidate's gate compared it with, in the open live session; raises
+    NoLiveBaseline when no gate recorded one, or the reset has removed it."""
+    row = conn.execute(
+        GATE_BASELINE,
+        {"experiment_id": candidate.experiment_id, "session_id": open_session(conn)},
+    ).fetchone()
+    if row is None:
+        raise NoLiveBaseline(
+            f"no gate recorded the baseline of {candidate.knowledge_version}'s experiment in this "
+            "live session"
+        )
+    return _result(row)
+
+
+def _result(row: dict[str, Any]) -> ExperimentResult:
     examples = row["per_example"]
     return ExperimentResult(
         experiment_id=row["experiment_id"],

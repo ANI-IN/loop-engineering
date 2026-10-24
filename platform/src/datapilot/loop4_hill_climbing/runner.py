@@ -279,6 +279,7 @@ class HillClimbingRunner:
         stop = stop or KillSwitchStop(self.kill_switch_engaged)
         with db.connect(db.Role.APP) as conn:
             baseline = store.baseline_for(conn, active)
+            store.record_gate_baseline(conn, candidate, baseline)  # what the promotion decides on
             conn.commit()  # no transaction stays open through the confirming re-runs
             regressions = find_regressions(
                 self.items,
@@ -348,9 +349,13 @@ class HillClimbingRunner:
         active = versions.active_name(conn)
         try:
             candidate = store.baseline_for(conn, name)
-            baseline = store.baseline_for(conn, active)
+            # the experiment its gate compared it with, not the active version's newest one: a
+            # later run of the active version would make the gate read as unfinished (round 3)
+            baseline = store.gate_baseline(conn, candidate)
         except NoLiveBaseline:
-            return None  # approved before its experiment ran in this session: wait for it
+            return None  # approved before its experiment and its gate ran in this session
+        if baseline.knowledge_version != active:
+            return None  # the active version changed since the gate: its comparison is stale
         if not gate_finished(baseline, candidate):
             return None  # its gate stopped before it confirmed every regression: never guess
         decision = decide(

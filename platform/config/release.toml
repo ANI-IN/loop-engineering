@@ -60,11 +60,12 @@ internal_files = ["PLAN.md", "DECISIONS.md", "CLAUDE.md"]
 # The repository guards also read this list: a checkout that holds one of these files is the
 # course's build, where the sole-author and commit-message rules apply.
 build_only = ["platform/scripts/wsl_make.sh"]
+# Patterns no shipped file may match: a link into a LangSmith organization (the build's traces are
+# private; placeholders such as /o/example or /o/{TENANT} in tests do not match). A release into a
+# clone of main also reads every commit already published for them and for the --deny words.
+deny_patterns = ['smith\.langchain\.com/o/[0-9a-f]{8}-[0-9a-f]{4}-']
 # Host-path patterns in public files that are documented examples, not real paths: a placeholder
 # name, the fake user `x` in tests, and the container's own user.
-# Patterns no shipped file may match: a link into a LangSmith organization (the build's traces are
-# private; placeholders such as /o/example or /o/{TENANT} in tests do not match).
-deny_patterns = ['smith\.langchain\.com/o/[0-9a-f]{8}-[0-9a-f]{4}-']
 host_path_examples = ['<[a-z]+>', '/Users/x(/|$)', '/home/datapilot/']
 # The public repository's .gitignore also ignores these, so a learner's copy of the Thursday
 # solutions is never committed by accident. Appended as its own block, with its comment.
@@ -88,3 +89,8 @@ other_markdown = [
     "platform/packs/*/benchmark/business_rules.md",  # a pack's business rules, read by the agent
     "platform/scripts/kit/*/README.md",  # the course kit's tools
 ]
+
+# Published commits whose findings in the history check are known and do not fail a release, each
+# with its reason. Whether to rewrite such a commit is the course owner's decision.
+[accepted_history]
+"a0a23d9b27a4586c4aab2888b360cf398886b294" = "the first release, 23 October 2026, published before the deny patterns existed"

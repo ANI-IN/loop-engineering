@@ -56,7 +56,7 @@ One run of each half of two demos:
 
 | Demo | Without | With |
 |---|---|---|
-| `verify-malicious-sql` | 2 statements reached the database (25006 twice, then 42501) | 2 stopped by the guard, the third by the role's grants (42501) |
+| `verify-malicious-sql` | All 3 statements reached the database: 25006 twice, then 42501 | 2 stopped by the guard, the third by the role's grants (42501) |
 | Its runs | 0b9814c4 | e40f9197 |
 | `verify-retry-cap` | 11 attempts, 63,718 tokens, 0.0068 dollars | 3 attempts, 12,682 tokens, 0.0014 dollars |
 | Its runs | 526fe0a2 | 386f5a5e |

@@ -132,8 +132,11 @@ class ApiClient:
         )
         return self._call("POST", "/events", contract.EventSubmitted, request)
 
-    def ask(self, question: str, demo_name: str) -> contract.EventSubmitted:
-        payload = {"question": question, "demo_name": demo_name}
+    def ask(self, question: str, demo_name: str | None) -> contract.EventSubmitted:
+        """Ask a question; `demo_name` is None for a typed question no registry demo asks."""
+        payload = {"question": question}
+        if demo_name is not None:
+            payload["demo_name"] = demo_name
         return self.send_event(EventType.QUESTION_ASKED, payload)
 
     def ask_demo(self, demo_name: str) -> contract.EventSubmitted:

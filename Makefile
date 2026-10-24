@@ -12,7 +12,8 @@ STEP ?=
 ARGS ?=
 TEST_STACK ?= datapilot-tests
 TEST_POSTGRES_PORT ?= 55432
-# One run at a time on the tests' own database: parallel checkouts queue on this lock.
+# One run at a time on the tests' own database: parallel checkouts queue on this lock, and so
+# does starting it, since a checkout elsewhere recreates the container from its own folder.
 TEST_LOCK ?= /tmp/datapilot-tests-database.lock
 VARIANT ?=
 TREE ?=
@@ -70,7 +71,7 @@ test: ## The zero-token suites (no model calls, no database)
 	$(UV) run pytest -q -m "not integration and not live"
 
 test-stack: ## The tests' own Postgres (Compose project datapilot-tests, port 55432), migrated and seeded
-	POSTGRES_PORT=$(TEST_POSTGRES_PORT) $(COMPOSE) -p $(TEST_STACK) up --detach --wait postgres
+	flock $(TEST_LOCK) env POSTGRES_PORT=$(TEST_POSTGRES_PORT) $(COMPOSE) -p $(TEST_STACK) up --detach --wait postgres
 	flock $(TEST_LOCK) env DATAPILOT_TEST_POSTGRES_PORT=$(TEST_POSTGRES_PORT) $(UV) run python platform/scripts/prepare_tests_database.py
 
 test-stack-down: ## Stop the tests' own Postgres (its volume is kept)

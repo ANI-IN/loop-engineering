@@ -15,7 +15,8 @@ Coordinated Universal Time (UTC).
 ## Results
 
 From the calibration of 22 and 23 October 2026 and the live session of 23 October, afternoon
-(session 4), and the capture session of 23 October, 21:27 to 21:55 UTC, whose rows name it, all in
+(session 4), and the capture session of 23 October, 21:17 to 21:55 UTC (its hill-climbing chain from 21:27), whose
+rows name it, all in
 the [calibration report](../calibration-report.md). Experiment ids are in
 ops.experiments; the build's LangSmith traces are private, and from 06:48 UTC on 23 October
 LangSmith refused traces at its monthly limit, so later rows are proven by run id, ops record, and

@@ -63,9 +63,9 @@ def set_state(conn: psycopg.Connection[Any], action: Action, *, by: str) -> str:
     )
     if new == "engaged":
         autonomy.demote(conn, DemotionReason.KILL_SWITCH, by=by)
-        held = conn.execute(
-            "SELECT run_id FROM ops.runs WHERE status = 'awaiting_approval'"
-        ).fetchall()
+        # Locked as read, so a decision committing now is waited for and its run, moved on, left
+        # out: engaging never fails on it (review round 3).
+        held = conn.execute(HELD_RUNS_LOCKED).fetchall()
         for row in held:
             run_id = str(row["run_id"])
             lifecycle.transition(conn, run_id, RunStatus.BLOCKED_KILLSWITCH, by="api: kill switch")
@@ -114,6 +114,9 @@ class KillSwitchMiddleware(AgentMiddleware):
 
 
 # What engaging the switch does to a run that was waiting for approval (set_state, above).
+# FOR UPDATE waits for a transaction that holds the run's row, as POST /approvals/{run_id} does
+# while it decides, then reads the row again and leaves it out if it is no longer awaiting approval.
+HELD_RUNS_LOCKED = "SELECT run_id FROM ops.runs WHERE status = 'awaiting_approval' FOR UPDATE"
 PARKED_JOB_DONE = (
     "UPDATE ops.jobs SET status = 'done', updated_at = now() WHERE event_id = "
     "(SELECT event_id FROM ops.runs WHERE run_id = %s) AND status = 'parked'"

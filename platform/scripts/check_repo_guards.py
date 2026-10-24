@@ -100,9 +100,12 @@ def common_git_dir(repo: Path) -> Path:
     return gitdir
 
 
-def config_keys(config_file: Path) -> list[str]:
-    """Every key in a git config file, as section[.subsection].name, lower-cased."""
+def config_keys(config_file: Path, _seen: frozenset[Path] = frozenset()) -> list[str]:
+    """Every key in a git config file, as section[.subsection].name, lower-cased, and every key of
+    the files it includes (include.path and includeIf.<condition>.path, whatever the condition:
+    git may apply it), so a core.worktree set in an included file is found too (review round 3)."""
     keys, section = [], ""
+    seen = _seen | {config_file.resolve()}
     for raw in config_file.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if not line or line.startswith(("#", ";")):
@@ -111,8 +114,14 @@ def config_keys(config_file: Path) -> list[str]:
         if header:
             section = header.group(1).lower() + (f".{header.group(2)}" if header.group(2) else "")
             continue
-        name = line.split("=", 1)[0].strip().lower()
-        keys.append(f"{section}.{name}")
+        name, _, value = (part.strip() for part in line.partition("="))
+        keys.append(f"{section}.{name.lower()}")
+        if section.split(".", 1)[0] in ("include", "includeif") and name.lower() == "path":
+            included = Path(_native(os.path.expanduser(value.strip('"'))))
+            if not included.is_absolute():
+                included = config_file.parent / included
+            if included.is_file() and included.resolve() not in seen:
+                keys += config_keys(included, seen)
     return keys
 
 

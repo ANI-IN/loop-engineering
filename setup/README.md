@@ -17,13 +17,13 @@ key comes from the operations team; your LangSmith account is your own.
 | Item | Why you need it | Version or plan |
 |---|---|---|
 | OpenAI key from the operations team | The analyst, the schema scout, the reviewer, and the analyzer team | gpt-6-luna enabled on it (`.env.example`) |
-| LangSmith account | A trace of every run | Free Developer plan, no card |
+| LangSmith account | A trace of every demo and check run, and about 1 experiment run in 5 | Free Developer plan, no card |
 | WSL2 and Ubuntu (Windows only) | A Linux shell for every course command | Current Ubuntu from `wsl --install` |
-| Docker Engine and the Compose plugin | Postgres, the api, the worker, the scheduler, and the console | Postgres `18.6-bookworm` (`compose.yaml`) |
+| Docker Engine and the Compose plugin | Postgres, the api, worker, scheduler, hill-climbing runner, and console | Postgres `18.6-bookworm` (`compose.yaml`) |
 | git, uv, make | Clone the repository, install Python and the packages, run the targets | uv 0.13.1 (`platform/ops/docker/Dockerfile`), Python 3.12 (`.python-version`) |
 
 uv installs the pinned Python and every pinned package from `uv.lock`, so you never install
-Python yourself. Docker builds one image for the four DataPilot services and pulls the Postgres
+Python yourself. Docker builds one image for the five DataPilot services and pulls the Postgres
 image the first time you run `make up`.
 
 Model calls cost money on the key from the operations team; the [costs page](../docs/costs.md)

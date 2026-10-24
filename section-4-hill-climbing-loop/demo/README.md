@@ -82,13 +82,14 @@ so it runs first and stays across a `make reset NAME=hill-climbing-loop`. The na
 with `BUG_NAIVE_ANALYZER=1` in `.env` (then `make up`); its `make demo` queues the analyzer and then
 the candidate experiment, which the runner takes in that order. The analyzer team runs with the
 flag back at `0`. Approve the candidate in the knowledge diff before the candidate experiment's
-verdict can pass, then wait until the Improve page says the version is the active version and the
-clearance re-runs finish: the status line then names the families cleared, or reads Not cleared
-for every family when none cleared (the finale then posts at the assisted level), and the finale's
-trigger stops refusing. From the promotion on, Events > Send webhook question sends the spine
-question, and the finale's strip shows its gold check once the runner writes it. Before the finale, set the unattended level:
-`make autonomy LEVEL=unattended BY="<your name>"`, or Improve > Set the unattended level; until
-then the finale's trigger refuses and says why. The over-broad rule runs only after a candidate
+verdict can pass. Wait until the Improve page says the version is the active version, and set the
+unattended level at once: `make autonomy LEVEL=unattended BY="<your name>"`, or Improve > Set the
+unattended level (every reset sets the report-only level, and at that level the finale's trigger
+refuses and says why). Then wait for the clearance re-runs to finish: the status line names the
+families cleared, or reads Not cleared for every family when none cleared (the finale then posts at
+the assisted level), and the finale's trigger stops refusing. From the promotion on, Events > Send
+webhook question sends the spine question, and the finale's strip shows its gold check once the
+runner writes it. The over-broad rule runs only after a candidate
 has been promoted.
 
 The hill-climbing runner that claims these requests is a Compose service, `hill-climbing-runner`,

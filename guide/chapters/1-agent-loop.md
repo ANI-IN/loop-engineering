@@ -209,7 +209,7 @@ and 23 October 2026 and the live sessions of 23 October, afternoon and evening
 |---|---|---|---|
 | The simple question | 14 to 39 s | 0.0003 dollars | 60,000 tokens per run |
 | The confident wrong answer | 37 to 76 s | 0.0025 dollars | 60,000 tokens per run |
-| Unbounded rows | Planted half 18 to 19 s; fixed half 26 s | Fixed half: 17,298 to 27,040 tokens | 60,000 tokens per run |
+| Unbounded rows | Planted half 18 to 19 s; fixed half 26 and 48 s | Fixed half: 17,298 to 27,040 tokens | 60,000 tokens per run |
 
 ## What to say in class
 

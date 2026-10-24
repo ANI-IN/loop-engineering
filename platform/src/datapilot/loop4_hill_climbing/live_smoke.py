@@ -11,8 +11,10 @@ what happened, its tokens, its cost, and its LangSmith trace link.
 It fails only on hard breakages: an exception, a timeout, invalid structured output, a write that
 was not refused, or a missing trace. A wrong answer or the model's wording is reported, never a
 failure, and so is a trace LangSmith refused for its monthly trace limit ("trace refused by
-LangSmith (monthly limit)"): the call worked, only its record could not be kept. The worker's
-trace is "not confirmed" when this process's own uploads were refused for the limit. Spend goes
+LangSmith (monthly limit)"): the call worked, only its record could not be kept. The refusal must
+come from the process that uploaded the trace: this process's own refusal log for checks (a), (b),
+(d), and (e), and for check (c) the worker's, which it writes on the run's row in ops and the api's
+run record carries (trace_refused_at). Spend goes
 under the ledger activity "development live checks", which has its own cap in pack.yaml; traces
 go to the datapilot-development project with track and feature tags.
 """
@@ -31,11 +33,7 @@ from datapilot.contracts import BenchmarkItem, ItemResult, Split
 from datapilot.loop4_hill_climbing import versions
 from datapilot.loop4_hill_climbing.analyzer import FailedItem
 from datapilot.loop4_hill_climbing.targets import AnalystTarget, RunStats
-from datapilot.observability.background import (
-    MONTHLY_LIMIT_REFUSAL,
-    monthly_limit_refused,
-    trace_refused,
-)
+from datapilot.observability.background import MONTHLY_LIMIT_REFUSAL, trace_refused
 
 ACTIVITY = "development live checks"
 FEATURE = "live-smoke"
@@ -51,6 +49,9 @@ WRITE_QUESTION = (
 # one analyst this cap, the Responses API's minimum, so the first reply is cut off at it.
 OUTPUT_CAP_PROBE_TOKENS = 16
 CUT_OFF = "cut off at its output-token cap"
+# The worker records a refused upload when the SDK logs it, which can be a little after the run
+# posted: the smoke reads the run record for at most this long before it calls a trace missing.
+REFUSAL_WAIT_SECONDS = 10.0
 FINISHED = {
     "posted",
     "escalated",
@@ -77,10 +78,8 @@ class Check:
     run_id: str | None = None
     trace_url: str | None = None
     trace_refused: bool = False  # LangSmith refused the upload for its monthly trace limit
-    # who uploads the trace when this process does not ("the worker"); its refusals stay unseen
-    uploaded_by: str | None = None
-    # missing, uploaded elsewhere, while LangSmith refused this process's uploads for the limit
-    trace_unconfirmed: bool = False
+    # the worker ran it: only the worker's record of the run (ops) can say LangSmith refused it
+    worker_run: bool = False
     notes: list[str] = field(default_factory=list)
 
     @property
@@ -97,12 +96,6 @@ class Check:
         )
         if self.trace_refused:
             out.append(f"    {MONTHLY_LIMIT_REFUSAL}: {self.trace_url or 'no link'}")
-        elif self.trace_unconfirmed:
-            out.append(
-                f"    trace not confirmed: {self.uploaded_by} uploads it, and LangSmith refused "
-                f"this process's uploads for its monthly limit meanwhile: "
-                f"{self.trace_url or 'no link'}"
-            )
         else:
             out.append(f"    trace {self.trace_url or 'none'}")
         return out
@@ -128,10 +121,9 @@ class Services:
     poll_seconds: float = 2.0
     timeout_seconds: float = 300.0
     cached: Callable[[], int] = lambda: 0  # cached input tokens of ACTIVITY so far
-    # run id -> True when LangSmith refused that run's own upload for its monthly trace limit
+    # run id -> True when LangSmith refused this process's upload of that run for its monthly limit
     trace_refused: Callable[[str], bool] = lambda run_id: False
-    # True once LangSmith refused any upload of this process for its monthly trace limit
-    limit_reached: Callable[[], bool] = lambda: False
+    refusal_wait_seconds: float = REFUSAL_WAIT_SECONDS
 
 
 @contextmanager
@@ -211,7 +203,7 @@ def spine_question(services: Services) -> Check:
 
 
 def webhook_question(services: Services) -> Check:
-    check = Check("(c) one webhook event through the worker", uploaded_by="the worker")
+    check = Check("(c) one webhook event through the worker", worker_run=True)
     with _measured(services, check):
         run_id = services.post_event(WEBHOOK_QUESTION)
         check.run_id = run_id
@@ -343,21 +335,39 @@ CHECKS: tuple[Callable[[Services], Check], ...] = (
 )
 
 
+def refused_on_record(services: Services, run_id: str) -> bool:
+    """True when the worker's record of the run says LangSmith refused its trace for the monthly
+    limit; read again until it does, for at most refusal_wait_seconds."""
+    deadline = time.monotonic() + services.refusal_wait_seconds
+    while True:
+        if services.read_run(run_id).get("trace_refused_at"):
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(services.poll_seconds)
+
+
 def confirm_traces(services: Services, checks: Sequence[Check]) -> None:
     """After the traces are flushed, read each run from LangSmith; a missing one is a breakage,
-    unless LangSmith refused that run's own upload for its monthly trace limit: then the trace is
-    reported as refused, since the call itself worked and only the record could not be kept. A
-    trace another process uploads (the worker's) is not confirmed, never refused, when LangSmith
-    refused this process's own uploads for the limit meanwhile: that refusal is the evidence."""
+    unless the process that uploaded it saw LangSmith refuse that run for its monthly trace limit:
+    then the trace is reported as refused, since the call itself worked and only the record could
+    not be kept. This process's refusals never vouch for a run the worker uploaded."""
     services.flush()
     for check in checks:
-        if check.ok and check.run_id and not services.trace_found(check.run_id):
-            if services.trace_refused(check.run_id):
-                check.trace_refused = True
-            elif check.uploaded_by and services.limit_reached():
-                check.trace_unconfirmed = True
-            else:
-                check.hard_failure = f"missing trace: LangSmith has no run {check.run_id}"
+        if not (check.ok and check.run_id) or services.trace_found(check.run_id):
+            continue
+        missing = f"missing trace: LangSmith has no run {check.run_id}"
+        if check.worker_run:
+            try:
+                check.trace_refused = refused_on_record(services, check.run_id)
+            except Exception as error:  # no record to read is no evidence of a refusal
+                missing += f" (its run record could not be read: {type(error).__name__})"
+            if check.trace_refused:
+                check.notes.append("the worker's record of the run says LangSmith refused it")
+        else:
+            check.trace_refused = services.trace_refused(check.run_id)
+        if not check.trace_refused:
+            check.hard_failure = missing
 
 
 def run(services: Services, checks: Sequence[Callable[[Services], Check]] = CHECKS) -> list[Check]:
@@ -486,7 +496,6 @@ def live_services() -> Services:
         trace_url=links.url,
         trace_found=trace_found,
         trace_refused=trace_refused,
-        limit_reached=monthly_limit_refused,
         traced=traced,
         flush=flush,  # bounded; the process's tracing client is `client` (live_links)
     )

@@ -24,6 +24,9 @@ _MONTH_PART = re.compile(r"^(month|mon|mm|m)$", re.IGNORECASE)
 _CALENDAR_BOUND = re.compile(r"^\d{4}-(01-01|12-31)")
 # A bound on 1 February or 31 January: the edges of the fiscal year itself.
 _FISCAL_BOUND = re.compile(r"^\d{4}-(02-01|01-31)")
+_RANGE_BOUNDS = (exp.GT, exp.GTE, exp.LT, exp.LTE, exp.Between)
+# (the function node, the date part it reads, the expression it reads it from)
+Part = tuple[exp.Expression, str, exp.Expression | None]
 
 
 def _part(node: exp.Expression) -> tuple[str, exp.Expression | None]:
@@ -40,27 +43,38 @@ def _shifted(source: exp.Expression | None) -> bool:
     return source is not None and any(True for _ in source.find_all(exp.Interval))
 
 
-def _fiscal_year(tree: exp.Expression, parts: list[tuple[str, exp.Expression | None]]) -> bool:
-    """The query reads the fiscal year: the year of a shifted date, the year read beside the
-    month, or a bound on the fiscal year's own edges (1 February, 31 January)."""
-    years = [source for part, source in parts if _YEAR_PART.match(part)]
+def _filters(node: exp.Expression) -> bool:
+    """The node is part of a filter (WHERE or HAVING), not of what the query shows or groups by."""
+    return node.find_ancestor(exp.Where, exp.Having) is not None
+
+
+def _fiscal_year(tree: exp.Expression, parts: list[Part]) -> bool:
+    """The query reads the fiscal year: the year of a shifted date; the year beside a month that
+    is shifted or filters (a month in a monthly breakdown is no sign, review round 3); or a range
+    bound on the fiscal year's own edges (1 February, 31 January), not any such date anywhere."""
+    years = [source for _, part, source in parts if _YEAR_PART.match(part)]
     if any(_shifted(source) for source in years):
         return True
-    if years and any(_MONTH_PART.match(part) for part, _ in parts):
+    months = [(node, source) for node, part, source in parts if _MONTH_PART.match(part)]
+    if years and any(_shifted(source) or _filters(node) for node, source in months):
         return True
-    return any(_FISCAL_BOUND.match(lit.this) for lit in tree.find_all(exp.Literal) if lit.is_string)
+    return any(
+        _FISCAL_BOUND.match(lit.this) and lit.find_ancestor(*_RANGE_BOUNDS) is not None
+        for lit in tree.find_all(exp.Literal)
+        if lit.is_string
+    )
 
 
 def _calendar_year(tree: exp.Expression) -> bool:
     """A calendar-year range: the year of the unshifted date, or a 1 January or 31 December
     bound, in a query that shows no sign of the fiscal year."""
     parts = [
-        _part(node)
+        (node, *_part(node))
         for node in tree.find_all(exp.Extract, exp.Anonymous, exp.TimestampTrunc, exp.DateTrunc)
     ]
     if _fiscal_year(tree, parts):
         return False
-    if any(_YEAR_PART.match(part) for part, _ in parts):
+    if any(_YEAR_PART.match(part) for _, part, _ in parts):
         return True
     if any(isinstance(n, exp.Year) for n in tree.walk()):
         return True

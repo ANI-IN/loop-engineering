@@ -153,6 +153,14 @@ FISCAL_YEAR_SQL = {
         "(EXTRACT(YEAR FROM order_ts) = 2024 AND EXTRACT(MONTH FROM order_ts) >= 2) "
         "OR (EXTRACT(YEAR FROM order_ts) = 2025 AND EXTRACT(MONTH FROM order_ts) = 1)"
     ),
+    "a fiscal range with a monthly breakdown": (
+        "SELECT date_trunc('month', order_ts), sum(subtotal_cents) FROM orders "
+        "WHERE order_ts >= '2024-02-01' AND order_ts < '2025-02-01' GROUP BY 1"
+    ),
+    "the fiscal month beside the year of the shifted date": (
+        "SELECT EXTRACT(MONTH FROM order_ts - INTERVAL '1 month') m, sum(subtotal_cents) "
+        "FROM orders WHERE EXTRACT(YEAR FROM order_ts + INTERVAL '11 months') = 2025 GROUP BY 1"
+    ),
 }
 
 
@@ -167,6 +175,14 @@ def test_a_fiscal_year_range_is_not_labelled_a_calendar_year(case: str) -> None:
         "SELECT 1 FROM orders WHERE EXTRACT(YEAR FROM order_ts) = 2025",
         "SELECT 1 FROM orders WHERE date_trunc('year', order_ts) = DATE '2025-01-01'",
         "SELECT 1 FROM orders WHERE order_ts >= '2025-01-01' AND order_ts < '2026-01-01'",
+        # Review round 3 (R3A-04): a monthly breakdown is not a fiscal year, and 1 February in a
+        # test that is not a bound of the range is not a fiscal edge.
+        "SELECT EXTRACT(MONTH FROM order_ts) m, sum(total_cents) FROM orders "
+        "WHERE EXTRACT(YEAR FROM order_ts) = 2025 GROUP BY 1",
+        "SELECT date_trunc('month', order_ts), sum(total_cents) FROM orders "
+        "WHERE date_trunc('year', order_ts) = '2025-01-01' GROUP BY 1",
+        "SELECT sum(total_cents) FROM orders WHERE order_ts >= '2025-01-01' "
+        "AND order_ts < '2026-01-01' AND order_ts <> '2025-02-01'",
     ],
 )
 def test_a_calendar_year_range_keeps_its_label(sql: str) -> None:

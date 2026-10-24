@@ -646,6 +646,10 @@ async def _main() -> str:
         )
         # every run carries its LangSmith link (its run id is its trace id), for the live stamp
         found = live_links(settings, settings.langsmith_project)
+        if found:  # a trace LangSmith refuses for its monthly limit is noted on the run's row
+            from datapilot.loop3_events.trace_refusals import record_refusals
+
+            record_refusals()
         worker = Worker(
             base,
             models_for=lambda run_id, activity: openai_factory(run_id=run_id, activity=activity),

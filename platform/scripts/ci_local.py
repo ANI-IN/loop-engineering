@@ -1,30 +1,44 @@
-"""Run the continuous integration workflow's own commands in a clean clone, as GitHub runs them.
+"""Run the continuous integration workflow's own commands in clean clones, as GitHub runs them.
 
     uv run python platform/scripts/ci_local.py --repo CLONE          # every job, at CLONE's HEAD
     uv run python platform/scripts/ci_local.py --repo CLONE --job lint --job test
 
 Run it in Linux (WSL) on the release commit before every push of the public repository: a push is
-made only when this exits with 0. It clones the commit into a temporary folder (the whole history,
-as the lint job fetches it), sets the git configuration that actions/checkout writes (gc.auto and
-an authorization header, with a placeholder value), and runs each `run:` step of
-.github/workflows/ci.yml in order with `bash -e`, as the runner does.
+made only when this exits with 0. It reads .github/workflows/ci.yml from that commit and, for each
+job, as a runner would:
 
-Each step gets a minimal environment, never this shell's: HOME, PATH, LANG, the variables GitHub
-sets (GITHUB_ACTIONS, CI), and the step's own `env:`. So no API key, no .env setting, and no
-UV_PROJECT_ENVIRONMENT reaches it, and no build-only or internal file is in the clone unless the
-commit ships it. A step that uses an action (checkout, setup-uv) is reported and skipped: the clone
-is the checkout, and uv is this machine's. The integration job starts the tests' own database
-(Compose project datapilot-tests, port 55432), the same one `make test-integration` uses.
+- clones the commit afresh, at the depth the job's actions/checkout step asks for (`fetch-depth`,
+  1 when absent, 0 for the whole history), and sets the git configuration the checkout writes
+  (gc.auto and an authorization header, with a placeholder value);
+- refuses a setup-uv step whose pinned version differs from this machine's uv;
+- runs each `run:` step with the shell GitHub uses: `bash -e` by default, and `bash --noprofile
+  --norc -eo pipefail` for `shell: bash`; in its `working-directory`; with the workflow's, the
+  job's and the step's `env:`.
+
+Each step gets a minimal environment, never this shell's: PATH, LANG, a fresh empty HOME, the
+variables GitHub sets (GITHUB_ACTIONS, CI), and uv's own cache and Python folders, so nothing is
+downloaded again. No API key, no .env setting and no UV_PROJECT_ENVIRONMENT reaches a step, and no
+build-only or internal file is in a clone unless the commit ships it. A key or an action this
+script does not run as GitHub does (`if:`, a matrix, a service container, another action) fails
+the run rather than being skipped.
+
+A job that starts a Compose project (`docker compose -p NAME`, the integration job's tests'
+database on port 55432) holds the lock `make test-integration` holds, and starts from an empty
+volume, as a fresh runner does: the project is taken down with its volumes before the job and
+after it. The next `make test-stack` builds the tests' database again.
 """
 
 from __future__ import annotations
 
 import argparse
+import fcntl
 import os
+import re
 import subprocess
 import sys
 import tempfile
-from dataclasses import dataclass
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
@@ -36,72 +50,189 @@ CHECKOUT_CONFIG = {
     "http.https://github.com/.extraheader": "AUTHORIZATION: basic placeholder",
 }
 GITHUB_ENV = {"GITHUB_ACTIONS": "true", "CI": "true"}
-PASSED_THROUGH = ("HOME", "PATH", "LANG")
+PASSED_THROUGH = ("PATH", "LANG")
+CHECKOUT, SETUP_UV = "actions/checkout", "astral-sh/setup-uv"
+JOB_KEYS = {"runs-on", "steps", "env", "name", "timeout-minutes"}
+STEP_KEYS = {"name", "run", "uses", "with", "env", "shell", "working-directory", "id"}
+SHELLS = {
+    None: ["bash", "-e", "-c"],
+    "bash": ["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c"],
+}
+TEST_LOCK = Path("/tmp/datapilot-tests-database.lock")  # the Makefile's TEST_LOCK
+COMPOSE_PROJECT = re.compile(r"docker compose\b[^\n]*?\s-p\s+([\w.-]+)")
 
 
 @dataclass
 class Step:
     job: str
     name: str
-    run: str | None  # None: an action, skipped
+    run: str | None  # None: an action
     env: dict[str, str]
+    uses: str | None = None
+    shell: str | None = None
+    directory: str | None = None
+    with_: dict[str, str] = field(default_factory=dict)
+    unsupported: list[str] = field(default_factory=list)  # what ci_local cannot run as GitHub does
 
 
-def steps(workflow: Path, jobs: list[str] | None = None) -> list[Step]:
-    """The workflow's steps in order, job by job; `jobs` keeps only those jobs, in the file's
-    order, and an unknown job name is an error."""
+@dataclass
+class Job:
+    name: str
+    steps: list[Step]
+    unsupported: list[str] = field(default_factory=list)
+
+    @property
+    def fetch_depth(self) -> int:
+        """The checkout's depth: 1 when absent, as actions/checkout; 0 is the whole history."""
+        for step in self.steps:
+            if step.uses and step.uses.split("@")[0] == CHECKOUT:
+                return int(step.with_.get("fetch-depth", 1))
+        return 1
+
+    @property
+    def compose_projects(self) -> list[str]:
+        return sorted({p for s in self.steps if s.run for p in COMPOSE_PROJECT.findall(s.run)})
+
+
+def _text(value: object) -> str:
+    return (
+        str(value).lower() if isinstance(value, bool) else str(value)
+    )  # YAML reads `true` as bool
+
+
+def jobs(workflow: Path, only: list[str] | None = None) -> list[Job]:
+    """The workflow's jobs in the file's order; `only` keeps those jobs, and an unknown name is an
+    error. Workflow, job and step `env:` are merged into each step's environment."""
     spec = yaml.safe_load(workflow.read_text(encoding="utf-8"))
     names = list(spec["jobs"])
-    unknown = sorted(set(jobs or []) - set(names))
+    unknown = sorted(set(only or []) - set(names))
     if unknown:
         raise SystemExit(f"x no such job in {workflow}: {', '.join(unknown)}")
+    top_env = {k: _text(v) for k, v in (spec.get("env") or {}).items()}
     out = []
-    for job in names:
-        if jobs and job not in jobs:
+    for name in names:
+        if only and name not in only:
             continue
-        for step in spec["jobs"][job]["steps"]:
-            run = step.get("run")
-            run = None if run is None else str(run).lower() if isinstance(run, bool) else str(run)
-            name = step.get("name") or (run.strip().splitlines()[0] if run else step["uses"])
-            env = {k: str(v) for k, v in (step.get("env") or {}).items()}
-            out.append(Step(job, name, run, env))
+        body = spec["jobs"][name]
+        job_env = {**top_env, **{k: _text(v) for k, v in (body.get("env") or {}).items()}}
+        found = []
+        for raw in body["steps"]:
+            run = None if raw.get("run") is None else _text(raw["run"])
+            label = raw.get("name") or (run.strip().splitlines()[0] if run else raw["uses"])
+            step = Step(
+                job=name,
+                name=label,
+                run=run,
+                env={**job_env, **{k: _text(v) for k, v in (raw.get("env") or {}).items()}},
+                uses=raw.get("uses"),
+                shell=raw.get("shell"),
+                directory=raw.get("working-directory"),
+                with_={k: _text(v) for k, v in (raw.get("with") or {}).items()},
+                unsupported=sorted(set(raw) - STEP_KEYS),
+            )
+            if step.shell not in SHELLS:
+                step.unsupported.append(f"shell: {step.shell}")
+            if step.uses and step.uses.split("@")[0] not in (CHECKOUT, SETUP_UV):
+                step.unsupported.append(f"the action {step.uses}")
+            found.append(step)
+        extra = sorted(set(body) - JOB_KEYS)
+        if spec.get("defaults") or body.get("defaults"):
+            extra.append("defaults")
+        out.append(Job(name, found, extra))
     return out
 
 
-def environment(step: Step, parent: dict[str, str] | None = None) -> dict[str, str]:
-    """The step's whole environment: nothing of the parent but HOME, PATH and LANG."""
+def environment(step: Step, home: Path, parent: dict[str, str] | None = None) -> dict[str, str]:
+    """The step's whole environment: of the parent only PATH, LANG, and uv's own folders."""
     parent = os.environ if parent is None else parent
     env = {k: parent[k] for k in PASSED_THROUGH if k in parent}
-    return {**env, **GITHUB_ENV, **step.env}
+    for key in ("UV_CACHE_DIR", "UV_PYTHON_INSTALL_DIR"):
+        if key in parent:
+            env[key] = parent[key]
+    return {**env, "HOME": str(home), **GITHUB_ENV, **step.env}
 
 
-def clone(repo: Path, dest: Path) -> None:
-    subprocess.run(["git", "clone", "--quiet", "--no-local", str(repo), str(dest)], check=True)
+def uv_folders() -> dict[str, str]:
+    """This machine's uv cache and Python folders, so a fresh HOME downloads nothing again."""
+    out = {}
+    for key, args in (
+        ("UV_CACHE_DIR", ["cache", "dir"]),
+        ("UV_PYTHON_INSTALL_DIR", ["python", "dir"]),
+    ):
+        done = subprocess.run(["uv", *args], capture_output=True, text=True)
+        if done.returncode == 0 and done.stdout.strip():
+            out[key] = done.stdout.strip()
+    return out
+
+
+def uv_version() -> str:
+    done = subprocess.run(["uv", "--version"], capture_output=True, text=True, check=True)
+    return done.stdout.split()[1]
+
+
+def clone(repo: Path, dest: Path, depth: int) -> None:
+    deep = [] if depth == 0 else ["--depth", str(depth)]
+    subprocess.run(
+        ["git", "clone", "--quiet", "--no-local", *deep, repo.as_uri(), str(dest)], check=True
+    )
     for key, value in CHECKOUT_CONFIG.items():
         subprocess.run(["git", "-C", str(dest), "config", "--local", key, value], check=True)
 
 
-def run(repo: Path, jobs: list[str] | None = None) -> int:
-    with tempfile.TemporaryDirectory(prefix="ci-local-") as tmp:
-        work = Path(tmp) / "checkout"
-        clone(repo, work)
-        head = subprocess.run(
-            ["git", "-C", str(work), "log", "-1", "--format=%h %s"],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-        print(f"continuous integration, locally, at {head}")
-        failed = []
-        for step in steps(work / WORKFLOW, jobs):
-            label = f"{step.job}: {step.name}"
+@contextmanager
+def empty_compose_projects(projects: list[str], work: Path):
+    """Hold the tests' database lock, and run the job on empty volumes, as a fresh runner does."""
+    if not projects:
+        yield
+        return
+    with TEST_LOCK.open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        down = [
+            ["docker", "compose", "-p", p, "down", "--volumes", "--remove-orphans"]
+            for p in projects
+        ]
+        try:
+            for command in down:
+                subprocess.run(command, cwd=work, capture_output=True, check=True)
+            yield
+        finally:
+            for command in down:
+                subprocess.run(command, cwd=work, capture_output=True)
+
+
+def run_job(repo: Path, job: Job, root: Path, parent: dict[str, str]) -> list[str]:
+    """Run one job in its own clone; the labels of its failed steps."""
+    failed = []
+    if job.unsupported:
+        print(f"  FAIL  {job.name}: not run as GitHub runs it: {', '.join(job.unsupported)}")
+        return [f"{job.name}: {', '.join(job.unsupported)}"]
+    work, home = root / job.name / "checkout", root / job.name / "home"
+    home.mkdir(parents=True)
+    clone(repo, work, job.fetch_depth)
+    with empty_compose_projects(job.compose_projects, work):
+        for step in job.steps:
+            label = f"{job.name}: {step.name}"
+            if step.unsupported:
+                failed.append(label)
+                print(f"  FAIL  {label}: not run as GitHub runs it: {', '.join(step.unsupported)}")
+                continue
+            if step.uses and step.uses.split("@")[0] == SETUP_UV:
+                pinned, have = step.with_.get("version"), uv_version()
+                if pinned and pinned != have:
+                    failed.append(label)
+                    print(
+                        f"  FAIL  {label}: the workflow pins uv {pinned}; this machine has {have}"
+                    )
+                else:
+                    print(f"  PASS  {label} (uv {have})")
+                continue
             if step.run is None:
-                print(f"  skip  {label} (an action)")
+                print(f"  skip  {label} (the clone is the checkout, depth {job.fetch_depth})")
                 continue
             done = subprocess.run(
-                ["bash", "-e", "-c", step.run],
-                cwd=work,
-                env=environment(step),
+                [*SHELLS[step.shell], step.run],
+                cwd=work / (step.directory or "."),
+                env=environment(step, home, parent),
                 capture_output=True,
                 text=True,
             )
@@ -112,6 +243,29 @@ def run(repo: Path, jobs: list[str] | None = None) -> int:
                 print(f"  FAIL  {label} (exit {done.returncode})")
                 tail = (done.stdout + done.stderr).strip().splitlines()[-30:]
                 print("\n".join(f"        {line}" for line in tail))
+    return failed
+
+
+def run(repo: Path, only: list[str] | None = None) -> int:
+    parent = {**os.environ, **uv_folders()}
+    with tempfile.TemporaryDirectory(prefix="ci-local-") as tmp:
+        root = Path(tmp)
+        head = subprocess.run(
+            ["git", "-C", str(repo), "log", "-1", "--format=%h %s"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        workflow = root / "ci.yml"
+        workflow.write_bytes(
+            subprocess.run(
+                ["git", "-C", str(repo), "show", f"HEAD:{WORKFLOW.as_posix()}"],
+                capture_output=True,
+                check=True,
+            ).stdout
+        )
+        print(f"continuous integration, locally, at {head}")
+        failed = [f for job in jobs(workflow, only) for f in run_job(repo, job, root, parent)]
         if failed:
             print(f"continuous integration, locally: {len(failed)} steps FAILED; do not push")
             return 1

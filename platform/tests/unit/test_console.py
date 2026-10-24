@@ -14,6 +14,7 @@ from typing import Any
 import httpx
 import pytest
 
+from datapilot import demo_questions
 from datapilot.config import pack_config
 from datapilot.contracts import registries
 from datapilot.settings import PLATFORM
@@ -212,6 +213,23 @@ def test_each_action_is_one_documented_api_call() -> None:
     }
     assert [c[2]["action"] for c in calls[3:5]] == ["arm", "engage"]
     assert calls[5][2]["plus_rule"] == "knowledge-v2-overbroad"
+
+
+def test_agent_ask_labels_a_typed_question_with_the_demo_that_asks_it_or_none() -> None:
+    # Review round 3 (R3B-05): Agent > Ask labelled every typed question the simple-question
+    # demo. A question a Section 1 demo asks carries that demo's name; any other carries none.
+    agent = demo_questions.AGENT_ASK_DEMOS
+    simple = demo_questions.question_for("agent-simple-question")
+    assert demo_questions.demo_asking(f"  {simple} ", agent) == "agent-simple-question"
+    texas = demo_questions.question_for("agent-texas-last-quarter")
+    assert demo_questions.demo_asking(texas, agent) == "agent-texas-last-quarter"
+    spine = demo_questions.SPINE_QUESTION
+    assert demo_questions.demo_asking(spine, agent) == "agent-confident-wrong-answer"
+    assert demo_questions.demo_asking("How many customers live in Ohio?", agent) is None
+    calls: list[tuple[str, str, Any]] = []
+    _client(calls).ask("How many customers live in Ohio?", None)
+    assert calls[0][2]["payload"] == {"question": "How many customers live in Ohio?"}
+    assert calls[0][2]["event_id"].startswith("console:console:")
 
 
 def test_the_client_uses_the_contract_table_and_has_no_endpoint_list_of_its_own() -> None:

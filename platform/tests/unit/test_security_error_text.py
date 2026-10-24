@@ -37,11 +37,55 @@ def test_no_quoted_value_reaches_the_agent_or_the_reason(sqlstate: str, message:
 
 
 def test_the_kind_of_error_and_its_sqlstate_stay() -> None:
+    """Review round 3 changed what stays: a data exception keeps a fixed kind of error keyed by
+    its SQLSTATE, never the database's message (before, its redacted message stayed)."""
     error = ExecutionError("22P02", 'invalid input syntax for type integer: "a@b.com"')
     assert error.sqlstate == "22P02"
-    assert error.message == 'invalid input syntax for type integer: "<redacted>"'
-    assert "invalid input syntax for type integer" in error.feedback
+    assert error.message == "a text value is not valid input for its type"
+    assert "a text value is not valid input for its type" in error.feedback
+    assert "SQLSTATE 22P02" in error.feedback
     assert "cast" in error.feedback.lower()
+
+
+# Review round 3, reviewer A: PostgreSQL 18's messages for a value it shows outside any quote, as
+# bytes ("bar" is 0x62 0x61 0x72) or as character codes (98 is "b", 66 is "B", 50 is "2").
+UNQUOTED = [
+    ("22021", 'invalid byte sequence for encoding "UTF8": 0xf0 0x62 0x61 0x72'),
+    ("22021", 'invalid byte sequence for encoding "UTF8": 0xf0 0x42 0x61 0x72'),
+    ("22008", "date field value out of range: 2024-01-98"),
+    ("22008", "time field value out of range: 66:00:00"),
+    ("22008", "date field value out of range: 2024-01-50"),
+    ("22P05", 'character with byte sequence 0x62 0x61 in encoding "UTF8" has no equivalent'),
+    ("2200X", "a data exception with no kind of its own: 0x62 98"),
+    ("XX000", "invalid memory alloc request size 98"),
+    ("54000", "requested length too large: 98"),
+]
+
+
+@pytest.mark.parametrize(("sqlstate", "message"), UNQUOTED)
+def test_a_value_outside_any_quote_never_reaches_the_agent_or_the_reason(
+    sqlstate: str, message: str
+) -> None:
+    error = ExecutionError(sqlstate, message)
+    result = ExecutionGrader().check(GraderContext(question="", extra={"execution_error": error}))
+    for text in (error.message, str(error), error.feedback, result.reason):
+        assert "0x" not in text, text
+        assert not any(code in text for code in ("98", "66", "50", "2024")), text
+    assert result.reason.startswith(f"SQLSTATE {sqlstate}: ")
+    assert f"SQLSTATE {sqlstate}" in error.feedback
+
+
+def test_a_data_exception_names_its_kind() -> None:
+    assert ExecutionError("22021", "x").message == "a byte sequence is not valid in the encoding"
+    assert ExecutionError("22008", "x").message == "a date or time field is out of range"
+    assert ExecutionError("2200X", "x").message == (
+        "a value could not be converted, or is out of range"
+    )
+
+
+def test_an_error_about_a_name_keeps_its_redacted_message() -> None:
+    error = ExecutionError("42703", 'column "emial" does not exist')
+    assert error.message == 'column "<redacted>" does not exist'
 
 
 def test_a_message_with_no_quoted_part_is_unchanged() -> None:

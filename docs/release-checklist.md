@@ -47,7 +47,9 @@ starts at No; tick a row only after you have seen it pass.
 | Private vulnerability reporting is on, as `SECURITY.md` says | The **Security** tab offers **Report a vulnerability** (note below) | No |
 | Nothing is pushed until the course owner confirms name and visibility | Written confirmation | No |
 
-The publishing command, run by the course owner; every later release keeps `--with-solutions`:
+The publishing command, run by the course owner; every later release keeps `--with-solutions`,
+and adds `--deny WORD` for each word the owner keeps out of public files (the list is kept
+privately, so the words are never published):
 
 ```bash
 uv run python platform/scripts/build_release.py --repo . --ref dev --with-solutions --into <clone of main>

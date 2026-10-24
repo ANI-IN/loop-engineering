@@ -6,6 +6,7 @@ import asyncio
 import time
 import uuid
 from collections.abc import Callable, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from typing import Any
 
@@ -18,7 +19,7 @@ from loops_support import call, human_messages, query_then_answer
 from datapilot import db
 from datapilot.contracts import RunStatus
 from datapilot.contracts.live import NoLiveSession, SessionPurpose
-from datapilot.loop3_events import approvals, autonomy, killswitch, scheduler, sessions
+from datapilot.loop3_events import approvals, autonomy, killswitch, lifecycle, scheduler, sessions
 from datapilot.loop3_events.api.app import app
 from datapilot.loop3_events.worker import DbHooks, Worker, WorkerSettings
 from datapilot.observability import spend
@@ -571,6 +572,48 @@ def test_engaging_blocks_runs_waiting_for_approval(client, make_worker) -> None:
         ("reject", "kill switch, engaged by console")
     ]
     assert closed[0]["decided_at"] is not None
+
+
+def waiting_on_a_lock(timeout_s: float = 10.0) -> bool:
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        if sql("SELECT count(*) AS n FROM pg_locks WHERE NOT granted")[0]["n"]:
+            return True
+        time.sleep(0.05)
+    return False
+
+
+def test_engaging_while_a_rejection_commits_still_engages(client, make_worker) -> None:
+    """Review round 3 (R3A-02): connection A rejects the held run, as POST /approvals/{run_id}
+    does, and has not committed; connection B engages the switch, waits on the run's row lock, then
+    read rejected and failed on rejected -> blocked_killswitch. The switch stayed armed. Now B
+    leaves a run decided in the meantime alone and the switch engages."""
+    submitted = export(client)
+    drain(make_worker(EXPORT_SCRIPT))
+    run_id = submitted["run_id"]
+    assert run(client, run_id)["status"] == "awaiting_approval"
+    assert client.post("/control/kill-switch", json={"action": "arm"}).status_code == 200
+
+    def engage_on_its_own_connection() -> str:
+        with db.connect(db.Role.APP) as conn:
+            new = killswitch.set_state(conn, "engage", by="test: connection B")
+            conn.commit()
+        return new
+
+    with db.connect(db.Role.APP) as deciding, ThreadPoolExecutor(max_workers=1) as pool:
+        lifecycle.current_status(deciding, run_id, lock=True)
+        approvals.decide(deciding, run_id, "reject", by="test: connection A")
+        lifecycle.transition(deciding, run_id, RunStatus.REJECTED, by="test: connection A")
+        engaging = pool.submit(engage_on_its_own_connection)
+        assert waiting_on_a_lock(), "connection B never waited on the run's row lock"
+        deciding.commit()
+        assert engaging.result(timeout=10) == "engaged"
+    assert client.get("/control").json()["kill_switch"] == "engaged"
+    detail = run(client, run_id)
+    assert detail["status"] == "rejected"
+    assert not any(e["kind"] == "killswitch_blocked" for e in detail["events"])
+    decided = sql("SELECT decision, decided_by FROM ops.approvals")
+    assert [(a["decision"], a["decided_by"]) for a in decided] == [("reject", "test: connection A")]
 
 
 def test_the_daily_budget_blocks_before_claim(client, make_worker) -> None:

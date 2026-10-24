@@ -354,7 +354,7 @@ Demos whose guaranteed moment did not appear, and why:
 
 The full scheme (70 runs: 25 dev items once, 15 holdout items 3 times) at concurrency 8: 182 to 459
 seconds over every 70-run experiment in this report. The first 8 (calibration 273.4 and 203.3 s;
-hill-climbing captures 257.9 and 213.2 s; demo pass 283.4, 279, 259.9, and 193 s) took 187 to 285
+hill-climbing captures 257.9 and 213.2 s; demo pass 283.4, 279, 259.9, and 193 s) took 193 to 283
 seconds. Later: 280.8 s (the starting experiment before the analyzer at effort high), 458.9, 229.4,
 and 403.8 s (the three candidates at effort high), 273.4 and 257.6 s (the chain of 23 October,
 morning), 276.8 and 206.5 s (session 4), and 278.8, 181.9, and 212.4 s (the capture session of 23
@@ -658,8 +658,8 @@ measurements at reasoning effort high gave 2, 9, and 5 of 15 holdout items from 
 have the analyzer team write two candidate rule sets, run both on the dev split only, and keep the
 one with more dev passes (fewer dev regressions on a tie). Only the kept set runs on the holdout,
 once, for the gate. The holdout is never used to choose between the two, so the gate's measurement
-stays unbiased. Cost: one more analyzer team step and one more 25-run dev experiment, about 0.04
-dollars.
+stays unbiased. Cost as proposed: one more analyzer team step and one more 25-run dev experiment, about 0.04
+dollars; as built, both candidates run on the dev split (50 runs), about 0.08 dollars (Analyzer comparison).
 
 make spend at the end (09:40 UTC): development live checks 1.1290 of 1.50 (the correction row
 included), calibration 1.1590 of 2.50, reserve 0; this session, development 0.3482 of 0.40,
@@ -688,7 +688,7 @@ checked from the run's own record:
 |---|---|---|
 | agent-simple-question | shown, 14 s: 405,738 orders (8d53e57c) | |
 | agent-confident-wrong-answer | shown, 52 s: 76,981,355.95 against 64,015,091.21, 4 trap labels (f64f5dfe) | |
-| agent-unbounded-rows | 27,040 tokens, held by the reviewer (c30c0885) | shown: 186,689 tokens, escalated at the run budget (1ae983f2) |
+| agent-unbounded-rows | 27,040 tokens, held by the reviewer, 48 s (c30c0885) | shown: 186,689 tokens, escalated at the run budget (1ae983f2) |
 | verify-malicious-sql | shown, 2 s: guard, guard, then 42501 (e40f9197) | shown: 25006, 25006, then 42501 (0b9814c4) |
 | verify-retry-cap | shown, 20 s: escalated after 3 attempts (386f5a5e) | shown: 11 attempts until the 60,000-token budget (526fe0a2) |
 | verify-graders-pass-still-wrong | shown, 58 s: graders passed, gold failed, two reviewer concerns (6630921f) | |
@@ -710,7 +710,7 @@ The hill-climbing chain, with the runner's spend on the calibration line:
    orders-by-quarter-fiscal-2026), and passed the other 8. 326 s for the whole step.
 3. Candidate experiment 2eb8890c: v8 holdout 14 of 15 against 2, dev 19 of 25, 0 regressions on
    either split, every new rule passed the overfit guard; 12 of 13 holdout trap items fixed
-   (business-day-orders-november-2025 still fails); gate "Ready for human approval"; 206.5 s.
+   (business-day-orders-november-2025 still fails); gate "Ready for human approval"; 206.5 s (211 s from the trigger).
 4. Human approval, given by the build in place of the instructor and recorded with the approver's name.
    Families cleared for the unattended level on the confirmed standard: revenue, average order
    value, customers, and products; orders not cleared. Revenue cleared for the first time, with no
@@ -957,7 +957,7 @@ a correct answer about the previous day that was held.
 | | | with the scout off: 3,853 tokens and 12.8 s (mean of 4 questions) |
 | slides/outline.md, the confident wrong answer | the mismatch, confirmed by calibration | 76,981,355.95 against gold 64,015,091.21 (below) |
 | slides/outline.md, the malicious SQL codes | the SQLSTATE codes | fixed system: guard, guard, 42501; naive guard: 25006, 25006, then 42501 |
-| slides/outline.md and Section 2 notes, the retry cap | attempt count and cost per attempt | escalated after 3 attempts, 69 to 79 s |
+| slides/outline.md and Section 2 notes, the retry cap | attempt count and cost per attempt | escalated after 3 attempts, 14 to 79 s |
 | slides/outline.md and section-2-verification-loop/concepts.md, the reviewer | the reviewer's verdict on the baseline spine answer | concern in 6 runs, approve in 1 |
 | section-3-event-loop/concepts.md | duplicate event: answers posted | 1 run and 2 duplicates absorbed, twice |
 | section-3-event-loop/concepts.md | approval after a worker restart | the pending approval survived and the export posted after approval, twice |
@@ -967,7 +967,7 @@ a correct answer about the previous day that was held.
 | slides/outline.md and section-4-hill-climbing-loop/concepts.md | N | 3 (recommendation; Assignment 4 builds it) |
 | section-4-hill-climbing-loop/concepts.md | holdout passes, active and candidate; regressions | v1 2 of 15; v8 and v9 14 of 15; v4 11 and 12 of 15; 0 regressions in each |
 | section-4-hill-climbing-loop/concepts.md | naive analyzer verdict | blocked in 37eb24f5, 45fa8a3d, 02de992f: holdout 2 of 15, all rules flagged |
-| docs/costs.md | measured cost per run | about 0.001 dollars per analyst run; 0.06 to 0.08 dollars per 70-run experiment |
+| docs/costs.md | measured cost per run | about 0.001 dollars per analyst run; 0.0594 to 0.0914 per 70-run experiment |
 | section-4-hill-climbing-loop/demo/README.md | the hill-climbing runner and its measured times | a Compose service; times in Wall time; the analyzer team step 326 and 377 s |
 
 The measured values in full: gpt-6-luna costs 0.10 dollars input, 0.01 cached input, and 0.50

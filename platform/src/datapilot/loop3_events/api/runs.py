@@ -20,9 +20,9 @@ api = APIRouter()
 RUN_COLUMNS = (
     "r.run_id, r.event_id, r.session_id, r.demo_name, r.question, r.metric_family, r.status, "
     "r.autonomy_level_applied, r.knowledge_version, r.model, r.planted_active, r.tokens_in, "
-    "r.tokens_out, r.cost_usd, r.langsmith_url, r.answer, r.created_at, r.started_at, "
-    "r.finished_at, (SELECT count(*) FROM ops.event_duplicates d WHERE d.event_id = r.event_id) "
-    "AS duplicates_ignored"
+    "r.tokens_out, r.cost_usd, r.langsmith_url, r.trace_refused_at, r.answer, r.created_at, "
+    "r.started_at, r.finished_at, (SELECT count(*) FROM ops.event_duplicates d "
+    "WHERE d.event_id = r.event_id) AS duplicates_ignored"
 )
 
 

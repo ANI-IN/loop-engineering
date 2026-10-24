@@ -139,6 +139,8 @@ class RunSummary(Response):
     tokens_out: int
     cost_usd: float
     langsmith_url: str | None
+    # when LangSmith refused the run's trace for its monthly limit, as the worker saw it
+    trace_refused_at: datetime | None = None
     answer: dict[str, Any] | None
     created_at: datetime
     started_at: datetime | None

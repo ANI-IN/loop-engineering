@@ -89,6 +89,25 @@ def test_a_saved_experiment_reads_back_and_feeds_the_gate(conn) -> None:
     assert store.save_decision(conn, decision) > 0
 
 
+def test_the_gate_baseline_is_the_one_the_gate_used_not_the_newest(conn) -> None:
+    """Review round 3 (R3A-03): a later run of the active version is the newest baseline, but the
+    background promotion reads back the experiment the candidate's gate compared it with."""
+    session_id = _open_session(conn)
+    gate_used = _experiment(session_id, "test-v1", False)
+    candidate = _experiment(session_id, "test-v2", True)
+    for saved in (gate_used, candidate):
+        store.save_experiment(conn, saved, holdout_repeats=3, concurrency=8)
+    with pytest.raises(NoLiveBaseline):
+        store.gate_baseline(conn, candidate)  # no gate has run on it yet
+    store.record_gate_baseline(conn, candidate, gate_used)
+    newer = _experiment(session_id, "test-v1", True)
+    newer.started_at = datetime.now(UTC)
+    store.save_experiment(conn, newer, holdout_repeats=3, concurrency=8)
+    assert store.baseline_for(conn, "test-v1").experiment_id == newer.experiment_id
+    read = store.gate_baseline(conn, candidate)
+    assert read.experiment_id == gate_used.experiment_id and read.results == gate_used.results
+
+
 def test_confirmation_steps_are_written_live_into_the_experiment() -> None:
     with db.connect(db.Role.APP) as conn:
         session_id = _open_session(conn)

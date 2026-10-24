@@ -111,6 +111,44 @@ def _git(repo: Path, *args: str) -> str:
     ).stdout
 
 
+def history_problems(clone: Path, cfg: make_release.Config, accepted: dict[str, str]) -> list[str]:
+    """Every commit already in the clone, read for the deny words and the deny patterns: a public
+    history keeps what it published, so a leak there is reported like one in the new tree. A
+    commit the release list accepts (`accepted_history`, with its reason) is read and its finding
+    printed, but does not fail the release. The report names the commit, the file, and the word's
+    or pattern's number, never the text."""
+    out = []
+    checks = [("-F", "-i", w, f"deny word #{n}") for n, w in enumerate(cfg.deny, start=1)]
+    checks += [("-E", "", p, f"deny pattern #{n}") for n, p in enumerate(cfg.deny_patterns, 1)]
+    for rev in _git(clone, "rev-list", "--all").split():
+        reason = next((why for c, why in accepted.items() if rev.startswith(c)), None)
+        for mode, case, needle, label in checks:
+            found = subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(clone),
+                    "grep",
+                    "-I",
+                    "-l",
+                    mode,
+                    *([case] if case else []),
+                    "-e",
+                    needle,
+                    rev,
+                ],
+                capture_output=True,
+                text=True,
+            )
+            for hit in found.stdout.splitlines():
+                path = hit.split(":", 1)[1]
+                if reason:
+                    print(f"! history {rev[:9]} {path}: {label} (accepted: {reason})")
+                else:
+                    out.append(f"history {rev[:9]} {path}: {label}")
+    return out
+
+
 def update_clone(
     repo: Path,
     cfg: make_release.Config,
@@ -129,6 +167,7 @@ def update_clone(
             "--with-solutions, or this release would delete them"
         )
         return res
+    res.problems += history_problems(clone, cfg, _listed(repo, ref).get("accepted_history", {}))
     included, excluded = make_release.select(make_release.tracked(repo, ref), cfg)
     blobs = {p: make_release.blob(repo, ref, p) for p in included}
     texts = {}

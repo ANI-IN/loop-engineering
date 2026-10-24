@@ -27,9 +27,11 @@ Each demo sends real events to the DataPilot services, and a worker runs each jo
 the analyst with real model calls, traced to LangSmith. The run board shows each run moving across
 its lanes; the channel shows what was posted and at which autonomy level.
 
-Times and cost, measured live on 22 and 23 October 2026, each demo twice with a reset between
-and once more on the current code: the webhook question 16 to 46 s, the approval across a restart
-53 to 84 s, duplicates 35 to 78 s, the kill switch 5 to 33 s. An analyst run costs about 0.001
+Times and cost, measured live on 22 and 23 October 2026: each demo twice with a reset between in
+calibration, then once in each live session of 23 October, afternoon and evening, on the code as it
+stood that day (later changes, made with no model call, are owed a live re-run): the webhook question
+14 to 46 s, the approval across a restart 50 to 84 s, duplicates 35 to 78 s, the kill switch 3 to
+33 s. An analyst run costs about 0.001
 dollars. The runs are on the [evidence page](../../docs/evidence/section-3-event-loop.md), and
 `run.sh` states the most a run can cost at the caps in `platform/packs/datapilot_us/pack.yaml`.
 

@@ -77,6 +77,18 @@ ITEMS = [
 ]
 
 
+WEBHOOK_RUN = {
+    "status": "posted",
+    "tokens_in": 900,
+    "tokens_out": 90,
+    "cost_usd": 0.002,
+    "langsmith_url": "https://smith.example/r/webhook",
+    "trace_refused_at": None,
+    "answer": {"envelope": {"answer_text": "There were 1,203 orders."}},
+}
+REFUSED_ON_RECORD = WEBHOOK_RUN | {"trace_refused_at": "2026-10-24T09:00:00+00:00"}
+
+
 def _services(**overrides: Any) -> smoke.Services:
     spent = {"tokens_in": 0, "tokens_out": 0, "cost": 0.0}
 
@@ -85,21 +97,13 @@ def _services(**overrides: Any) -> smoke.Services:
         spent["cost"] += 0.001
         return spent["tokens_in"], spent["tokens_out"], spent["cost"]
 
-    run = {
-        "status": "posted",
-        "tokens_in": 900,
-        "tokens_out": 90,
-        "cost_usd": 0.002,
-        "langsmith_url": "https://smith.example/r/webhook",
-        "answer": {"envelope": {"answer_text": "There were 1,203 orders."}},
-    }
     parts: dict[str, Any] = {
         "target": _Target(),
         "items": ITEMS,
         "evaluate": lambda i, a: ItemResult(item_id=i.id, passed=False, reason="row 1 differs"),
         "team": _Team,
         "post_event": lambda question: "webhook-run",
-        "read_run": lambda run_id: run,
+        "read_run": lambda run_id: WEBHOOK_RUN,
         "write_refused": lambda sql: "25006",
         "orders": lambda: 2000,
         "ledger": ledger,
@@ -109,6 +113,7 @@ def _services(**overrides: Any) -> smoke.Services:
         "flush": lambda: None,
         "poll_seconds": 0.0,
         "timeout_seconds": 0.0,
+        "refusal_wait_seconds": 0.0,
     }
     return smoke.Services(**(parts | overrides))
 
@@ -147,9 +152,14 @@ def test_a_missing_trace_is_a_hard_breakage() -> None:
 
 def test_a_trace_refused_for_the_monthly_limit_is_reported_not_failed() -> None:
     """Live, 23 October: LangSmith's free plan refused every upload once its monthly limit was
-    used up, and live-smoke reported each check as a hard failure (review round 1, F015)."""
+    used up, and live-smoke reported each check as a hard failure (review round 1, F015). The
+    worker's refusal of check (c) comes from its record of the run."""
     checks = smoke.run(
-        _services(trace_found=lambda run_id: False, trace_refused=lambda run_id: True)
+        _services(
+            trace_found=lambda run_id: False,
+            trace_refused=lambda run_id: True,
+            read_run=lambda run_id: REFUSED_ON_RECORD,
+        )
     )
     assert all(c.ok for c in checks), [c.hard_failure for c in checks]
     refused = [c for c in checks if c.trace_refused]
@@ -169,41 +179,85 @@ def test_a_trace_missing_for_any_other_reason_stays_a_hard_breakage() -> None:
 def test_only_the_run_langsmith_refused_reads_as_refused() -> None:
     """Review round 2: after one refusal for the monthly limit, every missing trace of the
     command was reported as refused; now only a run the refusal named is."""
+    scout = next(i.question for i in ITEMS if i.id == smoke.SCOUT_ITEM)
     checks = smoke.run(
         _services(
-            trace_found=lambda run_id: False, trace_refused=lambda run_id: run_id == "webhook-run"
+            target=_Target(outcomes={scout[:20]: {"run_id": "scout-run"}}),
+            trace_found=lambda run_id: False,
+            trace_refused=lambda run_id: run_id == "scout-run",
         )
     )
-    assert [c.trace_refused for c in checks] == [False, False, True, False, False]
-    assert [c.ok for c in checks] == [False, False, True, False, False]
-    assert checks[0].hard_failure and checks[0].hard_failure.startswith("missing trace")
+    assert [c.trace_refused for c in checks] == [True, False, False, False, False]
+    assert [c.ok for c in checks] == [True, False, False, False, False]
+    assert checks[1].hard_failure and checks[1].hard_failure.startswith("missing trace")
 
 
-def test_the_workers_trace_is_not_confirmed_when_this_process_was_refused_at_the_limit() -> None:
+def test_the_workers_trace_reads_refused_when_its_run_record_says_so() -> None:
     """Live, 24 October: the worker uploads the webhook run's trace, so this process never sees
-    that refusal; with this process's own uploads refused for the monthly limit, check (c) read
-    as a hard failure although its run posted. It reads as not confirmed, never as refused."""
+    that refusal. The worker writes it on the run's row, and the api's run record carries it."""
     checks = smoke.run(
         _services(
-            trace_found=lambda run_id: False,
-            trace_refused=lambda run_id: run_id != "webhook-run",
-            limit_reached=lambda: True,
+            trace_found=lambda run_id: run_id != "webhook-run",
+            read_run=lambda run_id: REFUSED_ON_RECORD,
         )
     )
     assert all(c.ok for c in checks), [c.hard_failure for c in checks]
     webhook = checks[2]
-    assert not webhook.trace_refused and webhook.trace_unconfirmed
-    assert any(
-        line.startswith("    trace not confirmed: the worker uploads it")
-        for line in webhook.lines()
+    assert [c.trace_refused for c in checks] == [False, False, True, False, False]
+    assert "    trace refused by LangSmith (monthly limit): https://smith.example/r/webhook" in (
+        webhook.lines()
     )
 
 
-def test_the_workers_missing_trace_stays_a_breakage_without_a_refusal_at_the_limit() -> None:
+def test_the_workers_missing_trace_is_a_hard_failure_even_when_this_process_was_refused() -> None:
+    """The owner's rule: a refusal this process saw never vouches for the worker's trace; without
+    the worker's record of a refusal, check (c) is a missing trace."""
     checks = smoke.run(
-        _services(trace_found=lambda run_id: run_id != "webhook-run", limit_reached=lambda: False)
+        _services(
+            trace_found=lambda run_id: run_id != "webhook-run",
+            trace_refused=lambda run_id: True,
+        )
     )
+    webhook = checks[2]
     assert [c.ok for c in checks] == [True, True, False, True, True]
+    assert not webhook.trace_refused
+    assert webhook.hard_failure == "missing trace: LangSmith has no run webhook-run"
+
+
+def test_the_workers_refusal_is_read_again_until_it_arrives() -> None:
+    reads: list[str] = []
+
+    def read_run(run_id: str) -> dict[str, Any]:
+        reads.append(run_id)
+        return REFUSED_ON_RECORD if len(reads) > 3 else WEBHOOK_RUN
+
+    services = _services(trace_found=lambda run_id: False, read_run=read_run)
+    services.refusal_wait_seconds = 30.0
+    assert smoke.refused_on_record(services, "webhook-run") and len(reads) == 4
+
+
+def test_the_wait_for_the_workers_refusal_is_bounded() -> None:
+    services = _services(read_run=lambda run_id: WEBHOOK_RUN, poll_seconds=0.01)
+    services.refusal_wait_seconds = 0.05
+    assert not smoke.refused_on_record(services, "webhook-run")
+
+
+def test_an_unreadable_run_record_leaves_the_workers_trace_missing() -> None:
+    reads = {"count": 0}
+
+    def read_run(run_id: str) -> dict[str, Any]:
+        reads["count"] += 1
+        if reads["count"] > 1:  # the check itself read it; the read after the flush fails
+            raise ConnectionError("api down")
+        return WEBHOOK_RUN
+
+    checks = smoke.run(
+        _services(trace_found=lambda run_id: run_id != "webhook-run", read_run=read_run)
+    )
+    assert checks[2].hard_failure == (
+        "missing trace: LangSmith has no run webhook-run "
+        "(its run record could not be read: ConnectionError)"
+    )
 
 
 def test_a_write_the_database_did_not_refuse_is_a_hard_breakage() -> None:

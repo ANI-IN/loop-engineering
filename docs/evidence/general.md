@@ -94,11 +94,13 @@ Note 6: the spend cap was set to 0.25 dollars for that one check; with 24 cents 
 runs under way, it started no new run past 1.08 cents, and its live requirements read NOT RUN. It
 is the live proof of the stop at the cap.
 
-So every reference solution passes on the current check. The alternatives are not yet verified on
-it, and the review of 24 October changed the checks again with no model call (each check's own
-spend activity, the reset's port guard, Assignment 4's minimum-holdout requirement, its shared
-baseline, and its kill switch): each solution is owed its live checks again, and the captures
-published with the solutions predate these checks, as each captured folder's README says.
+So every reference solution passed on the check code as it stood from 21:28 UTC on 23 October
+2026; the alternatives were not verified on it. After that session, commit 92ea29b (23:55 UTC the
+same night, part of the review of 24 October) changed the checks again with no model call (each
+check's own spend activity, the reset's port guard, Assignment 4's minimum-holdout requirement,
+its shared baseline, and its kill switch), so no solution has yet passed a live check on the check
+code that ships: each solution is owed its live checks again, and the captures published with the
+solutions predate these checks, as each captured folder's README says.
 
 LangSmith refused traces from about 06:48 UTC, at the free plan's monthly limit of unique traces,
 so most captures of these passes show the trace id without a link; the run ids, live stamps, and

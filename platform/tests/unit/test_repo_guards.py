@@ -152,6 +152,26 @@ def test_a_clone_or_continuous_integration_key_is_allowed_only_in_a_public_copy(
     assert any("core.worktree" in p for p in guards.config_problems(config, public_copy=True))
 
 
+@pytest.mark.parametrize("section", ["include", 'includeIf "gitdir:~/"'])
+def test_a_core_worktree_in_an_included_file_is_found(
+    guards, throwaway_repo, tmp_path, section: str
+) -> None:
+    """Review round 3 (R3D-06): git follows include.path, so the guards read the included file."""
+    _commit(throwaway_repo, "feat: first")
+    other = tmp_path / "other.cfg"
+    other.write_text("[core]\n\tworktree = /mnt/c/somewhere/else\n", encoding="utf-8")
+    config = guards.common_git_dir(_repo(throwaway_repo)) / "config"
+    with config.open("a", encoding="utf-8") as f:
+        f.write(f"[{section}]\n\tpath = {other.as_posix()}\n")
+    assert any("core.worktree" in p for p in guards.config_problems(config, public_copy=True))
+
+
+def test_an_include_that_includes_itself_is_read_once(guards, tmp_path) -> None:
+    config = tmp_path / "config"
+    config.write_text(f"[include]\n\tpath = {config.as_posix()}\n", encoding="utf-8")
+    assert guards.config_keys(config) == ["include.path"]
+
+
 # Ordinary local git settings a learner may have in a copy of the course: the one `git pull` itself
 # suggests, an editor, an alias, a credential helper, and so on. None of them breaks a checkout.
 LEARNER_SETTINGS = [

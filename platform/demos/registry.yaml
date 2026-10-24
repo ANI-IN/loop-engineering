@@ -59,7 +59,12 @@
     gets a confident, wrong answer; the answer-versus-gold ledger shows the mismatch and the
     annotated SQL names each trap behind the wrong fragments.
   expected_outcome: "A mismatch against gold with at least one trap annotation on the SQL."
-  can_vary: ["which traps the SQL hits", "the wrong value", "wording"]
+  can_vary:
+    - "which traps the SQL hits"
+    - "the wrong value"
+    - "wording"
+    - "held for approval by a reviewer concern (leave it held: the gold check still shows)"
+    - "no number, so no gold check: reset Section 1 and ask again"
   target_minutes: 5
   code:
     - {path: platform/src/datapilot/loop1_agent/analyst.py, lines: "56-58"}

@@ -59,12 +59,12 @@ SLIDES = [
             "showed beside each. Under the starting rules no trap item passed in 99 runs. No "
             "malicious statement changed a warehouse row, and the retry cap ended the run escalated "
             "after 3 attempts. The event loop absorbed 2 duplicates and kept an approval across a "
-            "worker restart. The latest promoted rules, v8, moved the holdout from 2 of 15 to 14 of "
-            "15, fixing 12 of 13 holdout trap items with 0 regressions; earlier promotions reached 10 "
+            "worker restart. The latest promoted rules, v9, and v8 before them, each moved the holdout "
+            "from 2 of 15 to 14 of 15, fixing 12 of 13 holdout trap items with 0 regressions; earlier promotions reached 10 "
             "to 12 of 15. Say plainly where a result was weaker than hoped: the same analyzer input "
             "also gave candidates of 2, 3, 5, 6, and 9 of 15, which is why the analyzer now writes two "
-            "and keeps the better on dev, measured once so far; revenue cleared on the confirmed "
-            "standard in one promotion of five; and 15 holdout items rest on few questions per family.",
+            "and keeps the better on dev, measured twice so far; revenue cleared on the confirmed "
+            "standard in 2 of 6 live promotions; and 15 holdout items rest on few questions per family.",
             "Re-check after live runs: every count on the slide against the calibration report and "
             "the evidence pages.",
             "Point at: the hill-climbing row.",

@@ -39,6 +39,9 @@ def test_the_finale_waits_for_a_pending_promotion_first() -> None:
     assert said is not None and said.startswith("v8 is approved, and its promotion has not")
     # Review round 2 (R2B-18): the Improve page says "v8 is the active version", not "is active".
     assert "Wait until the Improve page says v8 is the active version" in said
+    # Review round 3 (R3A-03): a stopped gate never decides, so the wait names its way out.
+    assert "Run experiment on the candidate" in said
+    assert "make reset NAME=hill-climbing-loop" in said
 
 
 def test_the_finale_waits_for_the_clearance_re_runs_after_the_activation() -> None:
@@ -55,6 +58,28 @@ def test_the_wait_for_the_clearance_ends_even_when_no_family_clears() -> None:
         assert said is not None and finale.UNTIL_CLEARED in said
     assert "Not cleared for every family" in finale.UNTIL_CLEARED
     assert "posts at the assisted level" in finale.UNTIL_CLEARED
+
+
+def test_the_wait_at_the_report_only_level_names_the_level_step_first() -> None:
+    # Review round 3 (R3B-01): after the reset of Section 4 the system is at the report-only
+    # level, so the end of the re-runs alone never turns the button on. The wait says to set the
+    # unattended level now, and its promise of the button names both conditions.
+    clearing = finale.FinaleState("released", "report_only", None, clearing="v9")
+    said = webhook_hold("improve-cleared-unattended", clearing)
+    assert said is not None and said.startswith("v9 is the active version, and its clearance")
+    assert "The system is at the report-only level: set the unattended level now" in said
+    assert "Improve > Set the unattended level" in said
+    assert "once the re-runs finish and the system is at the unattended level" in said
+    pending = finale.refusal(finale.FinaleState("released", "report_only", "v9"))
+    assert pending is not None
+    assert "then set the unattended level" in pending
+    # at the unattended level the wait names no level step
+    ready = finale.refusal(finale.FinaleState("released", "unattended", None, clearing="v9"))
+    assert ready is not None and "set the unattended level" not in ready
+    # promoted, re-runs finished, still at the report-only level: the level step is all that is left
+    done = finale.FinaleState("released", "report_only", None, None, "v9")
+    level = webhook_hold("improve-cleared-unattended", done)
+    assert level is not None and "at the report-only level" in level
 
 
 def test_the_finale_needs_the_kill_switch_released_and_the_unattended_level() -> None:

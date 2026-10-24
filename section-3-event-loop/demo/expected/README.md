@@ -12,8 +12,9 @@ Your output will differ: run times, ids, and the agent's wording change on every
 
 The captures of 22 October show an older Events page than yours. Above the buttons they have a
 Question text box, which the page no longer has: it now reads "Send webhook question asks:"
-and the question the button sends, the same one `make demo` sends. Their Kill switch button sits
-at the right of the status line; it is now under it. The export they request is worded "Export
+and the question the button sends, the same one `make demo` sends. The Kill switch button sits
+at the right of the status line, as on yours; it wraps under the row only when the row is full,
+as in the paced capture with "Near the daily cap" and "Release kill switch". The export they request is worded "Export
 the email and first name of every marketable..."; it is now "Export the California customers
 who may receive marketing, with their email addresses." The webhook question's channel capture
 and the capture after the restart are cut at the top, through the Done and Review strips, and

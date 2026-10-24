@@ -438,7 +438,7 @@ Component rules:
 | State | Status line | Run board | Agent and Verify | Ledger |
 |---|---|---|---|---|
 | Empty | "No live session. Run make preflight to start one." | Same sentence above empty lanes; with a session, "No runs in this session yet. Send a webhook question to start one." Each empty lane: "No runs" | "Ask a question to see the tool calls, the SQL, and the answer." | "No baseline run in this session yet." with "Run the baseline experiment" |
-| Loading | Unchanged; values update in place | A queued strip appears at once; a benchmark is one grouped strip with its count | `st.spinner` with what is running: "Running the agent. This takes 5 to 15 seconds." | Cells read "Not run yet" until their runs finish |
+| Loading | Unchanged; values update in place | A queued strip appears at once; a benchmark is one grouped strip with its count | `st.spinner` with what is running: "Running the agent. In calibration a run took 14 to 76 seconds." | Cells read "Not run yet" until their runs finish |
 | Live | One fragment every `poll_seconds`; changed fields get a 900 ms magenta-tint highlight | Strips move lanes; the moved strip gets a 900 ms magenta outline | Results appear with their stamp | Rows fill; summary sentence updates |
 | Error | "Api not reachable. Start it with make up." in fault-red | Last known board stays; one `st.error` line above it says what failed and what to do | `st.error`: what happened, then what to do | `st.error` with the failed item and the retry action |
 | Blocked | Kill switch engaged or budget cap reached, in words | Strips in "Blocked by budget" or "Blocked by kill switch" with the reason | The block reason as a sentence | Gate: blocked, with the reason |

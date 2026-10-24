@@ -23,11 +23,21 @@ SET_UNATTENDED = (
     'Improve > Set the unattended level, or make autonomy LEVEL=unattended BY="<your name>"'
 )
 
-# The end of the wait, whether a family cleared or none did: the hold ends by itself.
+# The end of the wait, whether a family cleared or none did, true at either level: the re-runs
+# end by themselves, and the finale also needs the unattended level, which every reset undoes
+# (review round 3, R3B-01). `level_step` adds the step when the system is below that level.
 UNTIL_CLEARED = (
-    "The wait ends when the re-runs finish: Send webhook question turns on (and make demo sends "
-    "the finale), and the status line names each family cleared or, when none cleared, reads "
-    "Not cleared for every family, and the finale posts at the assisted level."
+    "When the re-runs finish, the status line names each family cleared or, when none cleared, "
+    "reads Not cleared for every family, and the finale posts at the assisted level. Send webhook "
+    "question turns on (and make demo sends the finale) once the re-runs finish and the system is "
+    "at the unattended level."
+)
+# A gate the kill switch or an error stopped part way never decides the version, and neither does
+# a gate run under an earlier active version: the runner never guesses (review round 3).
+UNDECIDED_WAY_OUT = (
+    "If the Improve page shows no request running and the version is still not decided (its gate "
+    "was stopped part way, or the active version changed since), Improve > Run experiment on the "
+    "candidate again (its gate then decides it), or make reset NAME=hill-climbing-loop."
 )
 
 # The runner holds this advisory lock (a fixed key no other code uses) while it runs the clearance
@@ -104,21 +114,41 @@ def read(conn: psycopg.Connection[Any], pack: str) -> FinaleState:
     )
 
 
+def _level(state: FinaleState) -> str:
+    return state.autonomy_level.replace("_", "-")
+
+
 def waiting_for_promotion(state: FinaleState) -> str | None:
     """Why nothing may be sent through the finale's control yet: an approved version whose
-    promotion has not finished, or a promoted version whose clearance re-runs still run."""
+    promotion has not finished, or a promoted version whose clearance re-runs still run. Below
+    the unattended level it also names that step: during the re-runs it can be done at once (the
+    Improve page's control is off only while the promotion is pending)."""
+    below = state.autonomy_level != UNATTENDED
     if state.clearing:
+        now = (
+            f" The system is at the {_level(state)} level: set the unattended level now, "
+            f"{SET_UNATTENDED}."
+            if below
+            else ""
+        )
         return (
             f"{state.clearing} is the active version, and its clearance re-runs are still "
-            f"running: the families it clears are written when they finish. {UNTIL_CLEARED}"
+            f"running: the families it clears are written when they finish.{now} {UNTIL_CLEARED}"
         )
     version = state.pending_promotion
     if version is None:
         return None
+    then = (
+        f" The system is at the {_level(state)} level: then set the unattended level, "
+        f"{SET_UNATTENDED}."
+        if below
+        else ""
+    )
     return (
         f"{version} is approved, and its promotion has not finished: the hill-climbing runner "
         f"decides it, makes {version} the active version, then runs the clearance re-runs. "
-        f"Wait until the Improve page says {version} is the active version. {UNTIL_CLEARED}"
+        f"Wait until the Improve page says {version} is the active version.{then} {UNTIL_CLEARED} "
+        f"{UNDECIDED_WAY_OUT}"
     )
 
 
@@ -134,9 +164,8 @@ def refusal(state: FinaleState) -> str | None:
             f"{SET_UNATTENDED}."
         )
     if state.autonomy_level != UNATTENDED:
-        level = state.autonomy_level.replace("_", "-")
         return (
-            f"The system is at the {level} level, so the finale would post at that level whatever "
-            f"its family cleared: set the unattended level first, {SET_UNATTENDED}."
+            f"The system is at the {_level(state)} level, so the finale would post at that level "
+            f"whatever its family cleared: set the unattended level first, {SET_UNATTENDED}."
         )
     return None

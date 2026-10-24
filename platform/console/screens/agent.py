@@ -8,6 +8,7 @@ from datapilot_console import components, frame, run_view, widgets
 from datapilot_console.api_client import SPINE_QUESTION
 from datapilot_console.frame import Live
 
+from datapilot import demo_questions
 from datapilot.contracts.api import EventSubmitted
 
 ss = st.session_state
@@ -15,7 +16,9 @@ ss.setdefault("agent-run", None)
 frame.check_api()
 
 EMPTY = "Ask a question to see the tool calls, the SQL, and the answer."
-RUNNING = "Running the agent. This takes 5 to 15 seconds."
+# Measured in calibration (docs/calibration-report.md): 14 to 39 seconds for the simple question,
+# 37 to 76 for the confident wrong answer.
+RUNNING = "Running the agent. In calibration a run took 14 to 76 seconds."
 
 
 def started(reply: EventSubmitted | None) -> None:
@@ -24,10 +27,15 @@ def started(reply: EventSubmitted | None) -> None:
 
 
 def body(live: Live) -> None:
-    question = st.text_input("Question", key="agent-question", placeholder=SPINE_QUESTION)
+    # The placeholder is the simple question's own words, the question `make demo` sends.
+    question = st.text_input(
+        "Question", key="agent-question", placeholder=demo_questions.DEFAULT_QUESTION
+    )
     ask, spine, large, _ = st.columns([0.6, 1.4, 1.2, 3])
     if ask.button("Ask", type="primary", key="agent-ask", disabled=not question.strip()):
-        started(frame.act(lambda: frame.api().ask(question, "agent-simple-question")))
+        # Labelled with the Section 1 demo that asks these words, or with no demo.
+        typed = demo_questions.demo_asking(question, demo_questions.AGENT_ASK_DEMOS)
+        started(frame.act(lambda: frame.api().ask(question, typed)))
     if spine.button("Ask the spine question", key="agent-spine"):
         started(frame.act(lambda: frame.api().ask(SPINE_QUESTION, "agent-confident-wrong-answer")))
     if large.button("Run large query", key="agent-large"):

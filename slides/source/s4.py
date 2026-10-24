@@ -616,7 +616,7 @@ SLIDES = [
             "Expected live result: a holdout pass count for the starting version with the trap items "
             "failed. Measured: 2 of 15 holdout passes, 0 of 13 holdout trap items, in 285 and 266 "
             "seconds for 70 runs; that is past the registry's 3-minute target, which is why it runs "
-            "through the poll and the break. One experiment costs about 0.06 to 0.08 dollars.",
+            "through the poll and the break. One experiment cost 0.0594 to 0.0914 dollars where recorded.",
             "May vary: which non-trap items pass, and the wall time. If it does, say: the trap items are "
             "the ones that must fail, and they are guaranteed by the planted traps; the others vary run "
             "to run, which is why holdout items run three times and calibration removes unstable ones.",
@@ -700,7 +700,7 @@ SLIDES = [
             "Expected live result: holdout flips marked against this session's baseline, no regressions, "
             "and the gate verdict passed once approved. Measured: the two latest candidates, each kept "
             "from two, v8 and then v9, each scored 14 of 15 against 2, fixing 12 of 13 holdout trap items "
-            "with 0 regressions, in 206.5 and 181.9 seconds; the version promoted on 22 October scored 12 "
+            "with 0 regressions, in 211 and 186 seconds from the trigger; the version promoted on 22 October scored 12 "
             "of 15. A 70-run experiment took 182 to 459 seconds; two, at reasoning effort high, ran past the 5-minute budget. The same input also gave candidates of 3, 6, and 11 of 15, and at "
             "reasoning effort high 2, 9, and 5 of 15, so higher effort did not narrow the spread; the "
             "best of those three passed 10 of 15 against 2 with 0 regressions when it was measured "
@@ -714,17 +714,18 @@ SLIDES = [
             "If it stalls: reset and run it again, `make reset NAME=hill-climbing-loop`, then the same "
             "trigger.",
             "Demo: cleared for the unattended level.",
-            "Starting state: the candidate is promoted and active: after approval, wait until the "
-            "Improve page says the version is the active version and the note under the Events "
-            "buttons goes away, when the clearance re-runs finish (50 seconds, measured once). The "
-            "status line then names the families cleared, or reads Not cleared for every family when "
-            "none cleared, and the finale posts at the assisted level. Send webhook question sends "
-            "the spine question from the promotion on. The kill switch is released. No reset.",
-            "Do: set the unattended level, Improve > Set the unattended level, or `make autonomy "
-            'LEVEL=unattended BY="<your name>"`; then Events > Send webhook question, or '
-            "`make demo NAME=improve-cleared-unattended`. Both refuse, saying which step is "
-            "missing, while the promotion is pending, the kill switch is engaged, or the level is "
-            "lower.",
+            "Starting state: the candidate is promoted and active: after approval, as soon as the "
+            "Improve page says the version is the active version, set the unattended level, Improve "
+            '> Set the unattended level, or `make autonomy LEVEL=unattended BY="<your name>"` (every '
+            "reset sets the report-only level). Then wait until the note above "
+            "the Events buttons goes away, when the clearance re-runs finish (50 seconds, measured "
+            "once). The status line then names the families cleared, or reads Not cleared for every "
+            "family when none cleared, and the finale posts at the assisted level. Send webhook "
+            "question sends the spine question from the promotion on. The kill switch is released. "
+            "No reset.",
+            "Do: Events > Send webhook question, or `make demo NAME=improve-cleared-unattended`. "
+            "Both refuse, saying which step is missing, while the promotion is pending or its "
+            "re-runs still run, the kill switch is engaged, or the level is lower.",
             "Narrate: Concept 4, Autonomy is earned per metric family. The spine question, net revenue in "
             "fiscal year 2025, arrives as a webhook under the promoted version. The moment is the "
             "correct answer, posted at the level its family has earned: without approval when revenue "

@@ -40,8 +40,8 @@ build the PDF with the command at the end of this page.
 ## Time and cost
 
 The times are wall time from the trigger to the checked result, from the calibration demo pass of
-22 and 23 October 2026 and the live session of 23 October, afternoon, each demo run alone with a
-reset between ([calibration report](../docs/calibration-report.md)). A range spans the runs that
+22 and 23 October 2026 and the live sessions of 23 October, afternoon and evening, each demo run
+alone with a reset between ([calibration report](../docs/calibration-report.md)). A range spans the runs that
 showed the demo's moment; a single value means one run did. The malicious Structured Query Language
 (SQL) demo makes no model call.
 
@@ -54,9 +54,10 @@ showed the demo's moment; a single value means one run did. The malicious Struct
 
 Section 4's analyzer team writes two candidates and measures each on the dev split, so its step
 took 326 and 377 s; with one candidate it took 62 to 98 s. The candidate experiment demo took 186
-and 211 s with two candidates, and candidate experiments ran 182 to 459 s over every measurement.
+and 211 s with two candidates, and 70-run experiments ran 182 to 459 s of experiment wall time over
+every measurement.
 The naive analyzer, blocked, took 211 to 285 s from the trigger to the verdict. The fixed half of
-Section 1's unbounded rows demo took 26 s, once.
+Section 1's unbounded rows demo took 26 and 48 s, two runs.
 
 Part 0's preflight asks the drift canary's five questions, each one agent run (about 40 model
 calls, under a cent). Setting up a new

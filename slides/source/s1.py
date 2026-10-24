@@ -478,8 +478,8 @@ SLIDES = [
             "Demo: the simple question.",
             "Starting state: the Agent page, knowledge version v1 active, no planted item on, the "
             "status line at the report-only level. Reset first: `make reset NAME=agent-loop`.",
-            "Do: Agent > Ask, type a plain count question such as how many orders shipped to Texas "
-            "in fiscal year 2025, then Run; or `make demo NAME=agent-simple-question`.",
+            'Do: on the Agent page type "How many orders have been placed in total?", the question '
+            "`make demo` sends, and press Ask; or `make demo NAME=agent-simple-question`.",
             "Narrate: this is the loop working as designed. Tie it to concept 1, Schema linking: "
             "watch the analyst list tables, describe one, and see types, samples, and distinct "
             "values before it writes SQL. Tie it to concept 3, Structured output is a contract: the "
@@ -520,10 +520,12 @@ SLIDES = [
             "If it stalls: reset and run it again, `make reset NAME=agent-loop`, then the same "
             "trigger. In calibration the second attempt got no gold check within 90 seconds; the gold "
             "checks were hardened the same night so one run can never block another, and both "
-            "retakes got their gold check.",
+            "retakes got their gold check. A run that gives no number gets no gold check: reset and "
+            "ask again.",
             "Demo: unbounded rows.",
             "Starting state: the Agent page; the unbounded rows bug (`BUG_UNBOUNDED_ROWS`) switched "
-            "on: once the confident wrong answer had posted, `BUG_UNBOUNDED_ROWS=1` was set in `.env` "
+            "on: once the confident wrong answer's gold check showed, `BUG_UNBOUNDED_ROWS=1` was set "
+            "in `.env` "
             "and `make up` ran, during its narration, so the first two demos ran on the fixed system; "
             "its chip shows on the status line once the run starts. Reset first: "
             "`make reset NAME=agent-loop`.",

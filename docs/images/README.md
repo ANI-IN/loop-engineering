@@ -33,8 +33,7 @@ Your output will differ: run times, ids, and the agent's wording change on every
 ## Section 3: Event loop
 
 These captures, of 22 October, show an older Events page: a Question text box above the
-buttons, which the page no longer has, and the Kill switch button at the right of the status
-line. Two are cut at the top. The section's demo/expected/ page says what changed.
+buttons, which the page no longer has. Two are cut at the top. The section's demo/expected/ page says what changed.
 
 ![The answer posted at the report-only level, labelled unverified](events-webhook-question-channel.png)
 

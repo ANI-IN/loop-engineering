@@ -225,6 +225,53 @@ def test_a_database_error_never_carries_a_personal_value(checker, sql: str) -> N
         assert "@" not in text and not any(v in text for v in values), text
 
 
+@pytest.mark.parametrize(
+    ("sql", "sqlstate"),
+    [
+        (
+            "SELECT count(*) FROM customers WHERE customer_id = 1 AND convert_from('\\xf0'::bytea"
+            " || convert_to(substr(email, 1, 3), 'UTF8'), 'UTF8') IS NULL",
+            "22021",
+        ),
+        (
+            "SELECT count(*) FROM customers WHERE customer_id = 1 AND convert_from('\\xf0'::bytea"
+            " || convert_to(substr(first_name, 1, 3), 'UTF8'), 'UTF8') IS NULL",
+            "22021",
+        ),
+        (
+            "SELECT count(*) FROM customers WHERE customer_id = 1"
+            " AND make_date(2024, 1, ascii(substr(email, 1, 1))) IS NULL",
+            "22008",
+        ),
+        (
+            "SELECT count(*) FROM customers WHERE customer_id = 1"
+            " AND make_time(ascii(substr(first_name, 1, 1)), 0, 0) IS NULL",
+            "22008",
+        ),
+        (
+            "SELECT count(*) FROM orders o JOIN customers c ON c.customer_id = o.customer_id"
+            " WHERE make_date(2024, 1, ascii(substr(c.phone, 2, 1))) IS NULL",
+            "22008",
+        ),
+    ],
+)
+def test_a_database_error_never_carries_a_personal_value_as_bytes_or_codes(
+    checker, sql: str, sqlstate: str
+) -> None:
+    """Review round 3, reviewer A ran these on the tests' database: PostgreSQL put the value's
+    bytes (0x62 0x61 0x72 is "bar") or a character's code (make_date's day 98 is "b") in the
+    message, outside any quote. The agent's feedback and the grader's reason name the SQLSTATE and
+    the kind of error only: no byte, no number but the SQLSTATE."""
+    checked = checker.check(sql)
+    assert not checked.personal_data
+    failure = checked.failure
+    assert failure is not None and failure.grader == "execution", failure
+    assert failure.reason.startswith(f"SQLSTATE {sqlstate}: ")
+    for text in (failure.reason, failure.feedback_for_agent or ""):
+        rest = text.replace(f"SQLSTATE {sqlstate}", "")
+        assert "0x" not in rest and not any(ch.isdigit() for ch in rest), text
+
+
 def test_a_personal_data_query_the_cost_guard_blocks_is_feedback_not_an_approval(
     services_for,
 ) -> None:

@@ -1,7 +1,7 @@
 # Module: Loop Engineering - Expected output for Section 4: Hill-climbing loop
 
-Real captures from one live session on 23 October 2026, 21:27 to 21:55 Coordinated Universal
-Time (business date 31 January 2026), for comparison after class. They are never shown in class:
+Real captures from the hill-climbing chain of one live session on 23 October 2026, 21:27 to 21:55
+Coordinated Universal Time (business date 31 January 2026), for comparison after class. They are never shown in class:
 in class, every demo runs live. The approval was given by the build, standing in for the
 instructor. The capturing browser ran in Coordinated Universal Time, so every time on the captures
 is in Coordinated Universal Time; the console shows your own local time. The build's LangSmith

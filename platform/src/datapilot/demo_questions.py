@@ -35,3 +35,19 @@ QUESTIONS = {
 def question_for(demo_id: str) -> str:
     """The question demo `demo_id` sends; a demo with no question of its own asks the default."""
     return QUESTIONS.get(demo_id, DEFAULT_QUESTION)
+
+
+# The demos the Agent page starts from a typed question: Agent > Ask is their registry trigger
+# (the spine question also has its own button).
+AGENT_ASK_DEMOS = (
+    "agent-simple-question",
+    "agent-texas-last-quarter",
+    "agent-confident-wrong-answer",
+)
+
+
+def demo_asking(question: str, demo_ids: tuple[str, ...]) -> str | None:
+    """The demo among `demo_ids` that asks `question` word for word (spaces around it ignored),
+    or None: a typed question no demo asks is labelled as no demo, never as one it is not."""
+    typed = question.strip()
+    return next((d for d in demo_ids if QUESTIONS.get(d) == typed), None)

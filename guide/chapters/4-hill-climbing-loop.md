@@ -4,8 +4,8 @@ The analyst still lacks the business rules. This loop measures it on the benchma
 team write rules from the failed dev items, and lets a gate on the holdout items and a person decide
 whether the new knowledge version goes live. You watch the Improve page's holdout ledger, the
 knowledge diff, and the gate, then the spine question on the Events page. Every screenshot in
-this chapter comes from one live session on 23 October 2026, 21:27 to 21:55 Coordinated Universal
-Time (business date 31 January 2026), and every time range from the calibration of 22 and 23
+this chapter comes from the hill-climbing chain of one live session on 23 October 2026, 21:27 to
+21:55 Coordinated Universal Time (business date 31 January 2026), and every time range from the calibration of 22 and 23
 October 2026.
 
 > Your output will differ: run times, ids, and the agent's wording change on every run.

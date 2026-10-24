@@ -91,18 +91,20 @@ other's calls. A check stopped at the cap:
 Typical is what one full check of a solution cost in the build's verification on 23 October 2026,
 on gpt-6-luna. This table is the one source of these figures: each assignment page and each check's
 "Typical" line quote it. The ranges are what was measured, not bounds: your checks can cost more or
-less. The latest checks, on the current check code, ran from 21:28 Coordinated Universal Time (UTC)
-that day.
+less. The latest checks ran from 21:28 Coordinated Universal Time (UTC) that day, on the check code
+as it stood then; a change later that night (23:55 UTC) reworked how each check counts its spend and
+judges, with no model call, so these figures predate the checks that ship and each is owed a live
+re-run.
 
 | Assignment | What the check runs live | Typical, one full check |
 |---|---|---|
 | Assignment 1: Agent loop | Questions with informal or misspelled names | Typically about 0.4 cents (0.34 to 0.49, eight checks; the latest 0.49) |
-| Assignment 2: Verification loop | The ambiguity suite, the leak cases, an approved export | About 2 cents (1.86 and 135 model calls, the current check; note 1) |
+| Assignment 2: Verification loop | The ambiguity suite, the leak cases, an approved export | About 2 cents (1.86 and 135 model calls, the check of 21:28 UTC; note 1) |
 | Assignment 3: Event loop | The alert job, a late order, the kill switch, the drill-down | Typically about 0.3 cents (0.23 to 0.40, eight checks; the latest 0.37) |
 | Assignment 4, first check of a live session | The baseline and the candidate experiment, the analyzer team, two candidates | About 38 cents, an estimate (note 2) |
 | Assignment 4, each later check | The candidate experiment, the analyzer team, two candidates | About 14 to 24 cents (13.58 and 23.95, two checks) |
 
-Note 1: one check of the current Assignment 2 check, whose case 8 was reworded; before that
+Note 1: one check of the Assignment 2 check as of 21:28 UTC, whose case 8 was reworded; before that
 change, seven checks cost 1.84 to 2.28 cents (149 to 172 model calls each).
 
 Note 2: a first check with two candidates is not yet measured. With one candidate it cost 30.66

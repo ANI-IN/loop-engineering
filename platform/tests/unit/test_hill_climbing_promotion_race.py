@@ -15,6 +15,7 @@ import pytest
 from loop4_doubles import answered, experiment, item
 
 from datapilot.contracts import AnswerEnvelope, ItemResult, Split
+from datapilot.contracts.live import NoLiveBaseline
 from datapilot.loop4_hill_climbing import runner as runner_module
 from datapilot.loop4_hill_climbing import store, versions
 from datapilot.loop4_hill_climbing.experiment import Confirmation
@@ -76,6 +77,8 @@ def decisions(monkeypatch: pytest.MonkeyPatch) -> list[GateDecision]:
     monkeypatch.setattr(versions, "retire_blocked", lambda conn, name: RETIRED.append(name))
     monkeypatch.setattr(HillClimbingRunner, "overfit_flags", lambda self, conn, name, active: [])
     monkeypatch.setattr(HillClimbingRunner, "_activate", lambda self, *args: None)
+    # Unless a test says otherwise, the gate used the active version's experiment the test gives.
+    monkeypatch.setattr(store, "gate_baseline", lambda conn, c: store.baseline_for(conn, "v1"))
     return saved
 
 
@@ -154,3 +157,48 @@ def test_no_background_promotion_runs_while_the_gate_of_an_experiment_runs(monke
     monkeypatch.setattr(HillClimbingRunner, "gate", gate)
     hill.experiment({"knowledge_version": "v2", "split": "all"}, uuid.uuid4())
     assert polled == [[]] and reads == [], "the watcher waited for the gate"
+
+
+def test_the_background_promotion_decides_against_the_baseline_its_gate_used(
+    monkeypatch, decisions
+) -> None:
+    """Review round 3 (R3A-03): the promotion compared the candidate with the active version's
+    newest experiment. A re-run of the active version after the candidate's gate passed d1, which
+    the candidate fails and the gate never had to confirm, so the gate read as unfinished and the
+    approved version was never decided. The gate's own baseline decides it now."""
+    gate_used = experiment("v1", {"d1": False, "h1": True, "h2": False, "h3": False}, SPLITS)
+    newer = experiment("v1", {"d1": True, "h1": True, "h2": False, "h3": False}, SPLITS)
+    candidate = experiment("v2", {"d1": False, "h1": False, "h2": True, "h3": True}, SPLITS)
+    candidate.confirmations["h1"] = Confirmation("h1", Split.HOLDOUT, confirmed=False)
+    assert not gate_finished(newer, candidate) and gate_finished(gate_used, candidate)
+    found = {"v1": newer, "v2": candidate}
+    monkeypatch.setattr(store, "baseline_for", lambda conn, name: found[name])
+    monkeypatch.setattr(store, "gate_baseline", lambda conn, c: gate_used)
+    decision = _hill()._decide_approved(object(), "v2", "instructor")  # type: ignore[arg-type]
+    assert decision is not None and decision.verdict == "promoted"
+    assert [d.candidate_version for d in decisions] == ["v2"]
+
+
+def test_an_approved_version_whose_gate_left_no_baseline_waits(monkeypatch, decisions) -> None:
+    """No recorded gate baseline (the gate never started): never guess. The hold message names
+    the way out (finale.waiting_for_promotion)."""
+    active, candidate = _pair(False)
+    found = {"v1": active, "v2": candidate}
+    monkeypatch.setattr(store, "baseline_for", lambda conn, name: found[name])
+
+    def no_gate(conn: Any, c: Any) -> Any:
+        raise NoLiveBaseline("no gate ran on this experiment")
+
+    monkeypatch.setattr(store, "gate_baseline", no_gate)
+    assert _hill()._decide_approved(object(), "v2", "instructor") is None  # type: ignore[arg-type]
+    assert decisions == []
+
+
+def test_a_gate_baseline_of_a_version_no_longer_active_waits(monkeypatch, decisions) -> None:
+    """The active version changed after the gate: its comparison is not the one to promote on."""
+    active, candidate = _pair(False)
+    found = {"v1": active, "v2": candidate}
+    monkeypatch.setattr(store, "baseline_for", lambda conn, name: found[name])
+    monkeypatch.setattr(versions, "active_name", lambda conn: "v0")
+    assert _hill()._decide_approved(object(), "v2", "instructor") is None  # type: ignore[arg-type]
+    assert decisions == []

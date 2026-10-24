@@ -63,8 +63,9 @@ Estimated effort: about 2 hours.
 model, and a third only for a case whose first two runs disagree. The two questions your grader
 stops make no model call at all. The check prints its own estimate before the first model call and
 the actual tokens and cost at the end. Measured on gpt-6-luna in the build's verification on
-23 October 2026, one full check of a working solution typically costs about 2 cents (the current
-check: 1.86 cents in 135 model calls); the measured checks are in the costs table linked below.
+23 October 2026, one full check of a working solution typically costs about 2 cents (the latest
+measured check, that evening, before a change later that night to how checks count their spend:
+1.86 cents in 135 model calls); the measured checks are in the costs table linked below.
 At the caps, with every run using its whole
 token budget at the output price, its runs would come to 108 cents, but the check stops cleanly at
 its own spend cap of 1.00 dollar, so one check costs at most 100 cents

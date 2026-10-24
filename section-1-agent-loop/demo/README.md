@@ -29,9 +29,10 @@ Each demo is one real run of the analyst against the warehouse, with real model 
 LangSmith. The analyst writes SQL, runs it through `run_query`, and
 returns an answer envelope that the console shows with its SQL, tokens, cost, and trace link.
 
-Times and cost, measured live on 22 and 23 October 2026, each demo twice with a reset between
-and once more on the current code: the simple question 14 to 39 s, the confident wrong answer 52
-to 76 s. An analyst run costs about 0.001 dollars. The runs are on the
+Times and cost, measured live on 22 and 23 October 2026: each demo twice with a reset between in
+calibration, then once in each live session of 23 October, afternoon and evening, on the code as it
+stood that day (later changes, made with no model call, are owed a live re-run): the simple question 14
+to 39 s, the confident wrong answer 37 to 76 s. An analyst run costs about 0.001 dollars. The runs are on the
 [evidence page](../../docs/evidence/section-1-agent-loop.md), and `run.sh` states the most a run
 can cost at the caps in `platform/packs/datapilot_us/pack.yaml`.
 
@@ -132,7 +133,7 @@ and what may differ from run to run.
 - **Guaranteed by**: the near-empty knowledge version v1; the tempting total_cents column; the undocumented order status codes; the five traps in the seeded data
 - **What appears**: Under knowledge version v1, the spine question "What was our net revenue in fiscal year 2025?" gets a confident, wrong answer; the answer-versus-gold ledger shows the mismatch and the annotated SQL names each trap behind the wrong fragments.
 - **Expected live outcome**: A mismatch against gold with at least one trap annotation on the SQL.
-- **What can vary**: which traps the SQL hits; the wrong value; wording
+- **What can vary**: which traps the SQL hits; the wrong value; wording; held for approval by a reviewer concern (leave it held: the gold check still shows); no number, so no gold check: reset Section 1 and ask again
 - **Recovery**: `make reset NAME=agent-loop`, then the same trigger again
 
 ### Unbounded rows

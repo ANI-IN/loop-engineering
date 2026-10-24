@@ -23,18 +23,22 @@ command. `bounded_client` also installs `RefusalLog` on the SDK's logger: the fi
 short line, the rest are counted, and the count is one line when the process exits. The runs a
 refusal for the monthly limit names (the SDK's line ends with "trace=<id>,id=<id>" for each run of
 the refused upload) are kept, so the live smoke check can tell a trace LangSmith refused from one
-that is missing for another reason.
+that is missing for another reason. A process can also hand each such refusal on as it happens
+(`on_refused_runs`): the worker records it on the run's row in ops, where another process (the live
+smoke check) reads it.
 """
 
 from __future__ import annotations
 
 import atexit
+import contextlib
 import logging
 import queue
 import re
 import threading
 import time
 import weakref
+from collections.abc import Callable
 from typing import Any
 
 import structlog
@@ -58,6 +62,8 @@ class RefusalLog(logging.Filter):
         self.refused = 0
         self.monthly_limit = False
         self.refused_runs: set[str] = set()  # trace and run ids of uploads refused for the limit
+        # each gets the ids of one refused upload, on the SDK's thread, so it must not block
+        self.listeners: list[Callable[[frozenset[str]], None]] = []
         self._lock = threading.Lock()
 
     @staticmethod
@@ -70,12 +76,17 @@ class RefusalLog(logging.Filter):
         if not self.is_refusal(text):
             return True
         limit = "usage limit" in text.lower()
+        named = frozenset(i.lower() for i in REFUSED_RUN.findall(text)) if limit else frozenset()
         with self._lock:
             self.refused += 1
             first = self.refused == 1
             self.monthly_limit = self.monthly_limit or limit
-            if limit:
-                self.refused_runs.update(i.lower() for i in REFUSED_RUN.findall(text))
+            self.refused_runs.update(named)
+            listeners = list(self.listeners)
+        if named:
+            for listener in listeners:
+                with contextlib.suppress(Exception):  # a record of a refusal never breaks logging
+                    listener(named)
         if not first:
             return False
         reason = "its monthly trace limit" if self.monthly_limit else "HTTP 429"
@@ -115,6 +126,14 @@ def _log_summary() -> None:
 def monthly_limit_refused() -> bool:
     """True once LangSmith refused an upload of this process for its monthly trace limit."""
     return _refusals.monthly_limit
+
+
+def on_refused_runs(listener: Callable[[frozenset[str]], None]) -> None:
+    """Hand `listener` the run and trace ids of every upload LangSmith refuses for its monthly
+    limit from now on (once per listener). It runs on the SDK's thread: it must only queue."""
+    with _refusals._lock:
+        if listener not in _refusals.listeners:
+            _refusals.listeners.append(listener)
 
 
 def trace_refused(run_id: object) -> bool:
