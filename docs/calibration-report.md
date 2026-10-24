@@ -841,8 +841,8 @@ from 21:28 UTC on 23 October 2026, on the assignments stack):
 | Assignment 2: Verification loop, reference | PASS, 10 of 10, with the replaced ambiguity case | 1.86 cents |
 | Assignment 3: Event loop, reference | PASS, 10 of 10, with the daily token budget sized for a day of checks | 0.37 cents |
 | Assignment 2: Verification loop, alternative one, with check_cap_usd set to 0.25 | Stopped cleanly at the cap (note 3) | 1.08 cents |
-| Assignment 4: Hill-climbing loop, reference, first check | PASS, 10 of 10, 895 s | 13.58 cents |
-| Assignment 4: Hill-climbing loop, reference, second check | PASS, 10 of 10, 1,320 s | 23.95 cents |
+| Assignment 4: Hill-climbing loop, reference, later check 1 (note 4) | PASS, 10 of 10, 895 s | 13.58 cents |
+| Assignment 4: Hill-climbing loop, reference, later check 2 (note 4) | PASS, 10 of 10, 1,320 s | 23.95 cents |
 
 Note 3: this run proves the cap stop, not the alternative: 7 of 10 requirements passed, 0 failed,
 and 3 were not run. It spent 1.08 cents in 100 model calls, less than the cap, because the check
@@ -850,6 +850,10 @@ starts no new run once the runs under way could take it past the cap, each price
 token budget; the kill switch stopped the runs under way and was released again. The
 re-checks of each alternative against the fixed checks (about 1.25 dollars) did not fit this
 session's assignment verification cap and are owed.
+
+Note 4: both Assignment 4 checks shared the session's baseline experiment 1c933bea, which an
+earlier check had run, so in the check's terms both are later checks; neither ran a baseline of
+its own. A first check, which runs the baseline too, is not in this table.
 
 ## Retakes still owed
 

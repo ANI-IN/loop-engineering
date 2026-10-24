@@ -83,7 +83,8 @@ leaves out a family item or lets `aov` reach the unattended level, still fail it
 
 None of these changes exists in a class code path: the course build's boundary test keeps the
 family out of the pack and the extension points inert on the class branch, so the unchanged
-starter fails this check.
+starter fails this check. Once your work is in place, those tests fail in your copy by design; the
+README lists them under "Tests that pin the starter". Every other test of `make test` still passes.
 
 ## Live check
 
@@ -92,7 +93,9 @@ starter fails this check.
 key, and then runs requirements 9 and 10 in this process, against the real Postgres and the real
 model. The baseline experiment of the active version is the open live session's: the first check in
 a session runs it, and every later check in that session shares it, because the class gate compares
-experiments of one live session. Each live step prints its LangSmith trace link and its live stamp;
+experiments of one live session, unless an item changed since that baseline measured it (its
+question, gold SQL, split, or tolerance). Then the check runs a new baseline, and it prints the
+reason and the first-check estimate before its first model call. Each live step prints its LangSmith trace link and its live stamp;
 at the end the check prints the actual tokens and cost, and puts back the knowledge version that was
 active. If the check reaches its spend cap of 1.00 dollar (`assignments.check_cap_usd` in pack.yaml), it stops cleanly: it starts no new run, every requirement it did not reach reads NOT RUN, and it exits 2. A missing or rejected key stops the check with "Live checks need your OpenAI key from the
 operations team"; it never falls back to anything offline. When requirement 1 fails, the live

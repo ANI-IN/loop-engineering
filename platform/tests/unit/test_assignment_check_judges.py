@@ -457,3 +457,56 @@ def test_a_first_check_prints_its_own_typical_cost() -> None:
     assert "13.58 and 23.95" in hill_climbing_loop.typical(first=False)
     assert "30.66" in hill_climbing_loop.typical(first=True)
     assert hill_climbing_loop.typical(first=True) != hill_climbing_loop.typical(first=False)
+
+
+class _PlanContext:
+    """Records what the check prints and when it reaches the live gate, the point after which
+    spending can start."""
+
+    analyzer_model = agent_model = "gpt-6-luna"
+
+    def __init__(self) -> None:
+        self.events: list[tuple[str, Any]] = []
+        self.report = SimpleNamespace(say=lambda text="": self.events.append(("say", text)))
+
+    def live_gate(self, planned, **kwargs) -> None:
+        self.events.append(("live gate", (planned, kwargs)))
+
+
+def _plan(monkeypatch: pytest.MonkeyPatch, shared: object, why: str) -> _PlanContext:
+    monkeypatch.setattr(hill_climbing_loop, "session_baseline", lambda items: (shared, why))
+    ctx = _PlanContext()
+    items = [_item("a", Split.DEV), _item("b", Split.HOLDOUT)]
+    hill_climbing_loop.plan_live(ctx, items, ["live nine", "live ten"])
+    return ctx
+
+
+def test_a_new_baseline_gives_its_reason_and_the_first_check_estimate_before_spending(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    why = "the session's baseline 1c933bea measured these items otherwise than they are now: b"
+    ctx = _plan(monkeypatch, None, why)
+    kinds = [kind for kind, _ in ctx.events]
+    said = [text for kind, text in ctx.events if kind == "say"]
+    reason = next(i for i, (kind, text) in enumerate(ctx.events) if why in str(text))
+    assert reason < kinds.index("live gate"), "the reason comes before the gate, before any spend"
+    assert f"Baseline: this check runs a new baseline experiment, since {why}." in said
+    planned, kwargs = ctx.events[kinds.index("live gate")][1]
+    benchmark = next(p for p in planned if "for the benchmark" in p.what)
+    assert "the baseline and the candidate" in benchmark.what
+    per_experiment = 1 + 3  # the dev item once, the holdout item three times
+    assert benchmark.runs == 2 * per_experiment
+    assert kwargs["typical"] == hill_climbing_loop.typical(first=True)
+    assert kwargs["typical_estimated"] is True
+
+
+def test_a_shared_baseline_plans_the_candidate_only_at_the_measured_typical_cost(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ctx = _plan(monkeypatch, object(), "")
+    assert not any("Baseline:" in str(text) for kind, text in ctx.events if kind == "say")
+    planned, kwargs = next(value for kind, value in ctx.events if kind == "live gate")
+    benchmark = next(p for p in planned if "for the benchmark" in p.what)
+    assert "the candidate only" in benchmark.what and benchmark.runs == 1 + 3
+    assert kwargs["typical"] == hill_climbing_loop.typical(first=False)
+    assert kwargs["typical_estimated"] is False

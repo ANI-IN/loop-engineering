@@ -64,10 +64,12 @@ class Context:
         none_because: str = "",
         live: Sequence[tuple[int, str]] = (),
         typical: str = "",
+        typical_estimated: bool = False,
     ) -> None:
         """Before the first model call: print the estimate and the spend cap, then check the OpenAI
         key. `live` names the live requirements, so a stop at the cap prints each one; `typical` is
-        what a check of a working solution spent in the build's verification."""
+        what a check of a working solution spent in the build's verification, or, with
+        `typical_estimated`, what it is estimated to spend where that was not measured."""
         say = self.report.say
         say()
         cap_usd = check_cap_usd() if planned else None
@@ -75,7 +77,9 @@ class Context:
         self.live = list(live)
         if planned:
             try:
-                lines = estimate_lines(planned, cap_usd=cap_usd, typical=typical)
+                lines = estimate_lines(
+                    planned, cap_usd=cap_usd, typical=typical, typical_estimated=typical_estimated
+                )
                 headroom = headroom_usd(planned)
             except KeyError as error:  # a model without a price in pack.yaml
                 raise Stop(str(error).strip("'\"")) from None

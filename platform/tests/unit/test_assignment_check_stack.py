@@ -290,6 +290,16 @@ def test_the_estimate_prints_the_typical_cost_beside_it() -> None:
     assert not any("Typical:" in line for line in cost.estimate_lines(planned))
 
 
+def test_an_estimated_typical_cost_is_never_printed_as_spent() -> None:
+    planned = [cost.Planned("analyst runs", 12, "gpt-6-luna")]
+    lines = cost.estimate_lines(planned, typical="about 38 cents", typical_estimated=True)
+    typical = [line for line in lines if line.strip().startswith("Typical:")]
+    assert len(typical) == 1
+    assert "is estimated at about 38 cents" in typical[0] and "has spent" not in typical[0]
+    measured = cost.estimate_lines(planned, typical="about 0.4 cents")
+    assert any("has spent about 0.4 cents" in line for line in measured)
+
+
 @pytest.mark.parametrize("slug", sorted(SECTIONS_BY_SLUG))
 def test_every_check_states_its_typical_cost(slug: str) -> None:
     source = assignment(slug).check_file.read_text(encoding="utf-8")

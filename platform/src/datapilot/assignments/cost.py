@@ -114,6 +114,7 @@ def estimate_lines(
     *,
     cap_usd: float | None = None,
     typical: str = "",
+    typical_estimated: bool = False,
 ) -> list[str]:
     pack = pack or pack_config()
     budget = int(pack["budgets"]["tokens_per_run"])
@@ -137,7 +138,12 @@ def estimate_lines(
         f"(budgets.tokens_per_run, {budget:,} tokens) at the input rate in pack.yaml; with every "
         f"extra run, at the output rate, the ceiling is {top}. Most runs use far less."
     )
-    if typical:
+    if typical and typical_estimated:
+        lines.append(
+            f"  Typical: a check of a working solution is estimated at {typical}, from the "
+            "build's verification (docs/costs.md), far below the figure above."
+        )
+    elif typical:
         lines.append(
             f"  Typical: a check of a working solution has spent {typical} in the build's "
             "verification (docs/costs.md), far below the figure above."

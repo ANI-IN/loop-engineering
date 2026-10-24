@@ -106,6 +106,91 @@ def test_each_solution_applies_onto_the_starter(slug: str, variant: str, tmp_pat
         assert done.returncode == 0, done.stderr
 
 
+def _module(name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# (slug, variant) -> why its code still names Harbor & Pine. Each is reported to the lead as
+# remaining work: with one of these applied, test_no_class_pack_literals fails in the copy. An entry
+# that no longer names anything fails, so the list only shrinks.
+NAMES_THE_CLASS_PACK_FOR_NOW = {
+    ("agent-loop", "reference"): "the lookup tools name the products and categories tables",
+    ("agent-loop", "alternative-one"): "the lookup tools name the products and categories tables",
+    ("agent-loop", "alternative-two"): "the lookup tools name the products and categories tables",
+    ("verification-loop", "reference"): "the ambiguity terms explain themselves with orders",
+    ("verification-loop", "alternative-two"): "the clarifying question names orders",
+    ("event-loop", "reference"): "the net revenue query reads the orders table",
+    ("event-loop", "alternative-one"): "the net revenue query reads the orders table",
+    ("event-loop", "alternative-two"): "the net revenue query reads the orders table",
+    ("hill-climbing-loop", "alternative-one"): "the screen's reasons name customers and orders",
+    ("hill-climbing-loop", "alternative-two"): "the reach table repeats the router's keywords",
+}
+
+
+@pytest.mark.skipif(solutions_withheld(), reason=WITHHELD_REASON)
+@pytest.mark.parametrize("variant", VARIANTS)
+@pytest.mark.parametrize("slug", SLUGS)
+def test_each_solutions_code_names_no_class_pack_literal(slug: str, variant: str) -> None:
+    """A solution follows the rule the course teaches and test_no_class_pack_literals enforces: the
+    platform code it adds names nothing of Harbor & Pine, so `make test` in a copy with the solution
+    applied does not fail that test. The solutions listed above are the exceptions still owed."""
+    scan = PLATFORM / "tests" / "unit" / "test_no_class_pack_literals.py"
+    literals = _module("pack_literals", scan)
+    regex, files = literals.pattern(), assignment(slug).solution(variant) / "files"
+    found = []
+    for path in sorted(files.rglob("*.py")):
+        rel = path.relative_to(files).as_posix()
+        if not rel.startswith(literals.SCANNED) or rel in literals.ALLOWED:
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        found += [
+            f"{rel}:{node.lineno}: {match.group(0)}"
+            for node in literals.literals(tree)
+            if (match := regex.search(node.value))
+        ]
+    if (slug, variant) in NAMES_THE_CLASS_PACK_FOR_NOW:
+        assert found, f"remove {slug} {variant} from NAMES_THE_CLASS_PACK_FOR_NOW: it names none"
+        return
+    assert found == [], "move these names into the pack's files:\n" + "\n".join(found)
+
+
+@pytest.mark.skipif(solutions_withheld(), reason=WITHHELD_REASON)
+@pytest.mark.parametrize("variant", VARIANTS)
+@pytest.mark.parametrize("slug", SLUGS)
+def test_each_solutions_new_pack_settings_reach_the_template(
+    slug: str, variant: str, tmp_path: Path
+) -> None:
+    """Every pack needs every setting the platform reads (use-in-your-repo/check_pack.py), so a
+    solution that adds a setting to the class pack adds it to the template pack too, and the
+    template still passes check_pack with the solution applied."""
+    patch = assignment(slug).solution(variant) / "changes.patch"
+    if not patch.is_file():
+        return
+    class_pack = "platform/packs/datapilot_us/pack.yaml"
+    template = "platform/packs/_template/pack.yaml"
+    for rel in {*_patched_paths(patch), class_pack, template}:
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(REPO / rel, tmp_path / rel)
+    done = subprocess.run(
+        ["git", "apply", "--whitespace=nowarn", str(patch)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert done.returncode == 0, done.stderr
+    check_pack = _module("check_pack", REPO / "use-in-your-repo" / "check_pack.py")
+
+    def settings(rel: str) -> set[str]:
+        return set(check_pack.key_paths(yaml.safe_load((tmp_path / rel).read_text("utf-8"))))
+
+    missing = sorted(settings(class_pack) - settings(template))
+    assert missing == [], f"add these settings to {template} in changes.patch: {missing}"
+
+
 @pytest.mark.parametrize("slug", SLUGS)
 def test_each_assignment_has_its_check(slug: str) -> None:
     # check.py is the file a learner runs: it ships in every copy, the public one included.

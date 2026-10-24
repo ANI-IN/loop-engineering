@@ -72,11 +72,13 @@ RUNNER = ReadOnlyRunner()
 # What a check of a working solution spent in the build's verification, as docs/costs.md gives it
 # (the Assignments table there is the one source of these figures). A later check of a live session
 # was measured on 23 October 2026 with two candidates, 13.58 and 23.95 cents; a first check, which
-# also runs the baseline, was measured only with one candidate, 30.66 cents.
+# also runs the baseline, was measured only with one candidate, 30.66 cents, so its figure is an
+# estimate, and the check prints it as one. A later check whose items changed since the session's
+# baseline runs a new baseline too, and costs as a first check does.
 TYPICAL_LATER = "about 14 to 24 cents (13.58 and 23.95, two later checks with two candidates)"
 TYPICAL_FIRST = (
-    "about 38 cents as a first check (30.66 measured with one candidate, and about 7 more for the "
-    "second candidate's 56 dev runs)"
+    "about 38 cents for a check that runs the baseline (30.66 measured with one candidate, and "
+    "about 7 more for the second candidate's 56 dev runs)"
 )
 
 
@@ -657,19 +659,30 @@ def run(ctx) -> None:
         for offset, text in enumerate(texts):
             report.not_run(9 + offset, text, "requirement 1 failed first")
         return
-    items = load_benchmark()
+    plan_live(ctx, load_benchmark(), texts)
+    report.add(_benchmark(ctx))
+
+
+def plan_live(ctx, items: list[BenchmarkItem], texts: list[str]) -> None:
+    """The estimate, before any model call. Whether this check shares the session's baseline or
+    runs a new one is decided here, and the reason for a new one is printed before the estimate, so
+    a learner who changed an item knows why this check costs as a first check does."""
+    report = ctx.report
     scheme = Scheme.from_pack()
     per_experiment = sum(scheme.repeats(i.split) for i in items)
-    experiments = 1 if session_baseline(items)[0] else 2
+    shared, why = session_baseline(items)
+    experiments = 1 if shared else 2
     written = candidates.count()
     dev_items = sum(i.split is Split.DEV for i in items)
     selection = dev_items * written if written > 1 else 0
     which = (
         "the candidate only: this live session's baseline is shared"
         if experiments == 1
-        else ("the baseline and the candidate")
+        else "the baseline and the candidate"
     )
     report.say()
+    if not shared:
+        report.say(f"Baseline: this check runs a new baseline experiment, since {why}.")
     report.say("The benchmark is the costly part of this check; its estimate is given on its own.")
     ctx.live_gate(
         [
@@ -701,5 +714,5 @@ def run(ctx) -> None:
         ],
         live=list(enumerate(texts, start=9)),
         typical=typical(first=experiments == 2),
+        typical_estimated=experiments == 2,
     )
-    report.add(_benchmark(ctx))

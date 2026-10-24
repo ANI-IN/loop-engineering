@@ -64,7 +64,9 @@ apart from the rest. One experiment is 82 analyst runs (28 dev items once, 18 ho
 each), and every apparent regression is confirmed by re-runs. The first check in a live session
 runs the baseline experiment and the candidate experiment, 164 runs; every later check in the same
 session shares that session's baseline, as the class gate does, and runs only the candidate, 82
-runs. As in class, the analyzer team writes two candidates, 3 calls each, and each candidate runs on
+runs, unless one of your items changed since that baseline measured it (its question, gold SQL,
+split, or tolerance). Then the check runs a new baseline and costs as a first check does; it prints
+that reason, and the first-check estimate, before its first model call. As in class, the analyzer team writes two candidates, 3 calls each, and each candidate runs on
 the 28 dev items once, 56 analyst runs, before one is kept. The check prints its own estimate before
 the first model call and the actual tokens and cost at the end. Measured on gpt-6-luna in the
 build's verification on 23 October 2026 with two candidates, each later check in a live session
@@ -108,12 +110,34 @@ leaves out a family item or lets `aov` reach the unattended level, still fail it
    requirements 1 to 4 read PASS.
 4. Add the family to `autonomy.metric_families` in `platform/packs/datapilot_us/pack.yaml`, and the
    benchmark's composition test in `platform/tests/unit/test_benchmark.py` to the new counts.
-   Check: requirement 5 reads PASS, and `make test` passes.
+   Check: requirement 5 reads PASS, and `uv run pytest platform/tests/unit/test_benchmark.py`
+   passes. Do not expect all of `make test` to pass from here on (see "Tests that pin the
+   starter" below).
 5. Improve the critic at `hill-climbing-loop-2`, in its guidance, its screen, or both. Check: it
    can still only keep, narrow, or drop.
 6. Add the minimum-holdout rule at `hill-climbing-loop-3`, with the minimum in `pack.yaml`. Check:
    requirements 6 to 8 read PASS, and the live requirements 9 and 10 run and read PASS, with their
    trace links and live stamps.
+
+**Tests that pin the starter.** The class branch keeps the starter unchanged, and some of its
+tests pin exactly that, so they fail once your work is in place. That is expected, not a sign your
+work is wrong. With every step done, `make test` fails these, and only these, for that reason:
+
+- `test_assignment_boundaries.py::test_the_hill_climbing_loop_extension_points_are_inert`: the
+  extension points are no longer inert, and the family and its items now exist.
+- `test_boundaries.py::test_no_assignment_capability_exists_in_class_code`, for the
+  repeat-customer family and the minimum holdout rule: it finds them in the pack, where you put
+  them.
+- `test_assignment_check_judges.py::test_the_starter_fails_every_requirement_with_nothing_to_judge`:
+  the family now has items to judge.
+- Four tests of `test_family_clearance.py`, such as
+  `test_the_class_rule_has_no_minimum_so_one_passing_item_clears_its_family`: they judge families
+  with fewer than three holdout items under the class rule, which has no minimum.
+
+Every other test still passes. If another one fails, such as
+`test_no_class_pack_literals.py` (a name of Harbor & Pine's tables in platform code) or
+`test_template_pack.py` (a setting in the class pack that the template pack lacks), the cause is
+in your change: the reference solution passes both.
 
 ## Grading criteria (100 points)
 

@@ -50,9 +50,11 @@ class ClientDouble:
 
 def test_a_new_dataset_gets_every_item_as_inputs_and_outputs() -> None:
     client = ClientDouble()
-    report = sync_benchmark(client, load_benchmark())
-    assert report.created == 40 and report.updated == 0
+    items = load_benchmark()  # its size is test_benchmark.py's to pin, which Assignment 4 updates
+    report = sync_benchmark(client, items)
+    assert report.created == len(items) and report.updated == 0
     examples = client.calls[-1][2]["examples"]
+    assert len(examples) == len(items)
     assert set(examples[0]) == {"inputs", "outputs", "metadata"}
     assert "reference_outputs" not in examples[0]
 

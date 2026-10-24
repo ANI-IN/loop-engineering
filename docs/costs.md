@@ -110,7 +110,10 @@ change, seven checks cost 1.84 to 2.28 cents (149 to 172 model calls each).
 Note 2: a first check with two candidates is not yet measured. With one candidate it cost 30.66
 cents (one check), and the second candidate's 56 dev runs add about 7 cents, at about 0.12 cents a
 run. The Assignment 4 checks before 21:28 UTC all wrote one candidate, as the check did then: each
-later check cost 8.70 to 20.56 cents (nine checks).
+later check cost 8.70 to 20.56 cents (nine checks). A later check whose items changed since the
+session's baseline measured them (a question, gold Structured Query Language (SQL) query, split, or
+tolerance) runs a new baseline, so it costs as a first check does; the check prints that reason,
+and the first-check estimate, before its first model call.
 
 Without the cap is every run using its whole token budget, 60,000 tokens, at the output price. The
 ceiling is what the check prints: the smaller of that and the spend cap.
@@ -127,9 +130,9 @@ ceiling is what the check prints: the smaller of that and the spend cap.
 
 Recommended: a spending limit of 3 dollars on each learner's key, in a dedicated OpenAI project,
 with an alert at 1.50 dollars. From the typical costs above, a learner who runs every check five
-times while working, with Assignment 4 over two live sessions, spends about 1.45 dollars:
+times while working, with Assignment 4 over two live sessions, spends about 1.47 dollars:
 Assignment 1 about 2 cents, Assignment 2 about 10 cents, Assignment 3 about 1.5 cents, and
-Assignment 4 about 1.31 dollars (two first checks at about 38 cents and three later ones at about
+Assignment 4 about 1.33 dollars (two first checks at about 38 cents and three later ones at about
 19 cents). The alert comes just past that, so it marks spending beyond the typical; the limit
 leaves more than as much again for class demos and extra checks. A runaway check stops at its own
 1.00-dollar cap, so the limit is the backstop across checks, never the first stop.
