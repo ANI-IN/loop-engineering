@@ -97,22 +97,150 @@ def test_every_svg_embeds_its_font(sources: list[Path]) -> None:
         assert "@font-face" in svg and "data:font/woff2;base64," in svg, source.name
 
 
-def test_every_diagram_is_a_1920_by_1080_panel_with_labels_of_20_pixels_or_more(
+# A slide diagram is 1920 by 791, the shape of the deck's diagram panel of 12.13 by 5.0 inches,
+# where 40 pixels are 18.2 points; a page-only reference diagram is 1920 by 1080 with labels of 20
+# pixels or more. The deck rebuild of 26 October 2026 set the 18-point rule, first on a 1920 by 848
+# canvas (a panel of 12 by 5.3 inches), then on 1920 by 791 once the real panel was measured;
+# before it every diagram was a 1920 by 1080 panel with labels of 20 pixels or more.
+MIN_LABEL = {791: 40, 1080: 20}
+
+
+def test_every_diagram_is_a_slide_or_page_panel_with_labels_of_its_minimum_size(
     sources: list[Path],
 ) -> None:
     for source in sources:
         elements = _scene(source)["elements"]
         panel = elements[0]
-        assert (panel["x"], panel["y"], panel["width"], panel["height"]) == (0, 0, 1920, 1080)
+        height = panel["height"]
+        assert (panel["x"], panel["y"], panel["width"]) == (0, 0, 1920), source.name
+        assert height in MIN_LABEL, source.name
         assert panel["backgroundColor"] == "#F0F3F6", source.name
         for element in elements:
             if element["type"] == "text":
-                assert element["fontSize"] >= 20, (source.name, element["text"])
+                assert element["fontSize"] >= MIN_LABEL[height], (source.name, element["text"])
             points = element.get("points") or [[0, 0], [element["width"], element["height"]]]
             xs = [element["x"] + p[0] for p in points]
             ys = [element["y"] + p[1] for p in points]
             assert min(xs) >= 0 and max(xs) <= 1920, element["id"]
-            assert min(ys) >= 0 and max(ys) <= 1080, element["id"]
+            assert min(ys) >= 0 and max(ys) <= height, element["id"]
+
+
+# docs/diagrams/README.md, "Diagram style": the values every source must keep.
+STYLE_FILLS = {
+    "#3896D2",  # Agent loop
+    "#0097A7",  # Verification loop
+    "#FFAB40",  # Event loop
+    "#EEFF41",  # Hill-climbing loop
+    "#FFFFFF",
+    "#EEEEEE",
+    "#F0F3F6",
+    "transparent",
+}
+STYLE_STROKES = {"#212121", "#78909C", "transparent"}
+
+
+def test_every_element_follows_the_diagram_style(sources: list[Path]) -> None:
+    """Roughness 0, Nunito for labels and the code font for code, dark text, three stroke widths,
+    one arrow style, and fills from the four loop colours and the neutrals only."""
+    for source in sources:
+        for element in _scene(source)["elements"]:
+            where = (source.name, element["id"])
+            assert element["roughness"] == 0, where
+            if element["type"] == "text":
+                assert element["fontFamily"] in (6, 8), where  # Nunito, Comic Shanns
+                assert element["strokeColor"] == "#212121", where
+                continue
+            assert element["strokeWidth"] in (2, 3, 4), where
+            assert element["strokeColor"] in STYLE_STROKES, where
+            assert element["backgroundColor"] in STYLE_FILLS, where
+            if element["type"] in ("arrow", "line"):
+                assert element["strokeWidth"] == 3 and element["strokeStyle"] == "solid", where
+            if element["type"] == "arrow":
+                assert element["endArrowhead"] == "triangle", where
+                assert element["startArrowhead"] in (None, "triangle"), where
+
+
+def test_the_four_loop_map_has_one_variant_per_section(sources: list[Path]) -> None:
+    """Each variant keeps every label of the map and mutes the other loops: no fill in another
+    loop's colour, and the highlighted loop's colour still there."""
+    by_name = {s.stem: s for s in sources}
+    full = sorted(_texts(by_name["four-loops"]))
+    colours = {
+        "agent": "#3896D2",
+        "verification": "#0097A7",
+        "event": "#FFAB40",
+        "hill-climbing": "#EEFF41",
+    }
+    for loop, colour in colours.items():
+        variant = by_name[f"four-loops-{loop}-loop"]
+        assert sorted(_texts(variant)) == full, variant.name
+        fills = {e["backgroundColor"] for e in _scene(variant)["elements"]}
+        assert colour in fills, variant.name
+        assert not fills & (set(colours.values()) - {colour}), variant.name
+
+
+def test_every_page_png_is_its_panel_at_scale_2(exporter: ModuleType, sources: list[Path]) -> None:
+    """The export page takes the scale from getDimensions; before 26 October 2026 it set only
+    appState.exportScale, which this Excalidraw build ignores, so every PNG came out at scale 1."""
+    for source in sources:
+        panel = _scene(source)["elements"][0]
+        png = source.with_suffix(".png").read_bytes()
+        assert exporter.png_size(png) == (panel["width"] * 2, panel["height"] * 2), source.name
+
+
+def test_the_png_size_comes_from_the_header(exporter: ModuleType) -> None:
+    header = b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\x0dIHDR" + (5760).to_bytes(4, "big")
+    assert exporter.png_size(header + (2373).to_bytes(4, "big") + b"\x08\x06") == (5760, 2373)
+    with pytest.raises(ValueError):
+        exporter.png_size(b"GIF89a" + bytes(30))
+
+
+def test_the_deck_scene_leaves_out_only_the_panel_fill(exporter: ModuleType) -> None:
+    source = exporter.REPO / "docs" / "diagrams" / "four-loops.excalidraw"
+    scene = _scene(source)
+    deck = exporter.deck_scene(scene)
+    panel = deck["elements"][0]
+    assert panel["backgroundColor"] == "transparent" and panel["strokeColor"] == "transparent"
+    assert (panel["width"], panel["height"]) == (1920, 791), "the export keeps the panel's size"
+    assert deck["elements"][1:] == scene["elements"][1:]
+    assert scene["elements"][0]["backgroundColor"] == "#F0F3F6", "the source is unchanged"
+
+
+def test_the_deck_check_notices_a_missing_or_stale_export(
+    exporter: ModuleType, tmp_path: Path
+) -> None:
+    folder = tmp_path / "docs" / "diagrams"
+    folder.mkdir(parents=True)
+    panel = {"x": 0, "y": 0, "width": 1920, "height": 791}
+    slide = folder / "slide.excalidraw"
+    slide.write_text(json.dumps({"elements": [panel]}), encoding="utf-8")
+    page = folder / "page.excalidraw"
+    page.write_text(json.dumps({"elements": [{**panel, "height": 1080}]}), encoding="utf-8")
+    step = folder / "slide-step-1.excalidraw"
+    step.write_text(json.dumps({"elements": [panel]}), encoding="utf-8")
+    assert exporter.deck_sources(tmp_path) == [slide], "slide diagrams only, no step frames"
+    assert exporter.deck_problems(tmp_path) == [], "no deck assets folder: nothing to check"
+
+    deck = tmp_path / exporter.DECK.relative_to(exporter.REPO)
+    deck.mkdir(parents=True)
+    rel = deck.relative_to(tmp_path).as_posix()
+    assert exporter.deck_problems(tmp_path) == [f"{rel}/slide.png: never exported for the deck"]
+    (deck / "slide.png").write_bytes(b"png")
+    entry = {
+        "from": "docs/diagrams/slide.excalidraw",
+        "source": exporter.sha256(slide),
+        "png": exporter.sha256(deck / "slide.png"),
+    }
+    exporter.write_deck_manifest(deck, {"excalidraw": "0.18.1", "renders": {"slide": entry}})
+    assert exporter.deck_problems(tmp_path) == []
+    assert exporter.deck_stale(tmp_path) == []
+    slide.write_text(json.dumps({"elements": [panel, {}]}), encoding="utf-8")
+    (deck / "stray.png").write_bytes(b"png")
+    assert exporter.deck_problems(tmp_path) == [
+        f"{rel}/slide.png: its source changed since the export",
+        f"{rel}/stray.png: not recorded in renders.json",
+    ]
+    assert exporter.deck_stale(tmp_path) == [slide]
 
 
 def test_step_frames_count_up_from_one_and_end_at_the_full_diagram(sources: list[Path]) -> None:

@@ -1,105 +1,95 @@
-"""The two breaks and the poll."""
+"""The two breaks and the poll, one slide each, at their fixed clock times: the first break
+1:45-1:55, the poll 2:50-2:55, the second break 2:55-3:05. Short notes form (Purpose, What to
+say, Do lines, Transition); the Do lines name the instructor's commands, so allow_commands is on.
+"""
 
+RULES = "design system"
+
+BREAK_TITLE = "Time for a Break"
 BREAK_TEXT = (
     "A 10-minute break is starting now. Please return when the timer ends to continue "
     "the presentation"
 )
-R = "<!-- refresh after the session: {} -->"
+POLL_TITLE = "Live Zoom Poll"
+POLL_TEXT = "We are launching a poll on Zoom. Please take 2 minutes to fill out the form."
 
 BLOCKS = {
     "break1": [
-        {
-            "kind": "break",
-            "title": "Time for a Break",
-            "layout": "blank",
-            "minutes": 10,
-            "says": "A 10-minute break is starting now. Please return when the timer ends to "
-            "continue the presentation",
-            "src": "-",
-            "on_slide": [
-                "Time for a Break",
-                "A 10-minute break is starting now. Please return when the timer ends to "
-                "continue the presentation",
+        dict(
+            kind="break",
+            title=BREAK_TITLE,
+            minutes=10,
+            says=BREAK_TEXT,
+            src="docs/instructor-guide.md, Break (1:45-1:55)",
+            allow_commands=True,
+            on_slide=[BREAK_TITLE, BREAK_TEXT],
+            notes=[
+                "Purpose: Give a 10-minute break after Section 2: Verification loop, and get the "
+                "event loop ready for Section 3.",
+                "What to say: Time for a 10-minute break. I will write the return time in the "
+                "chat now. Questions you post during the break are answered when we return.",
+                "Do: Write the return time, the local time 10 minutes from now, in the chat.",
+                "Do: Reset the event loop during the break, so Section 3 starts clean: make reset "
+                "NAME=event-loop.",
+                "Do: Read Tokens today on the console's status line and note it.",
+                "Transition: Welcome back. Answers are now checked; next, who asks, when, and who "
+                "may approve: the event loop.",
             ],
-            "notes": [
-                "Say: Write the return time, 1:55, in the chat and on the slide.",
-                "During the break, reset the event loop section so Section 3: Event loop "
-                "starts clean.",
-                "Point at: the timer.",
-                'Likely question: "Can I run the demos now?" Answer: after class is better; '
-                "your runs use your own key.",
-                "Transition: Welcome back. Answers are now safe and bounded. Next: who "
-                "asks, when, and who may approve.",
-            ],
-            "container": "fixed template slide",
-        }
+        )
     ],
     "poll": [
-        {
-            "kind": "poll",
-            "title": "Live Zoom Poll",
-            "layout": "blank",
-            "minutes": 5,
-            "says": "We are launching a poll on Zoom. Please take 2 minutes to fill out the form.",
-            "src": "docs/instructor-guide.md",
-            "allow_commands": True,
-            "on_slide": [
-                "Live Zoom Poll",
-                "We are launching a poll on Zoom. Please take 2 minutes to fill out the form.",
+        dict(
+            kind="poll",
+            title=POLL_TITLE,
+            minutes=5,
+            says=POLL_TEXT,
+            src="docs/instructor-guide.md, Poll (2:50-2:55)",
+            allow_commands=True,
+            on_slide=[POLL_TITLE, POLL_TEXT],
+            notes=[
+                "Purpose: Ask which autonomy level learners would grant, before Section 4 shows "
+                "the evidence each level should need.",
+                "What to say: One poll before the break: which autonomy level would you grant "
+                "the revenue digest today, and why: the report-only level, the assisted level, or "
+                "the unattended level? You have two minutes. Here is the result. Keep that answer "
+                "in mind; Section 4: Hill-climbing loop reads it back against what revenue and "
+                "orders actually earned.",
+                "Do: Before you launch the poll, start the class session's baseline experiment: "
+                "Improve > Run experiment on the active version, or make demo "
+                "NAME=improve-baseline-experiment. The console accepts no baseline from another "
+                "session, so never skip this step.",
+                "Do: Launch the Zoom poll, then check that the benchmark progress strip on the "
+                "run board is counting up.",
+                "Transition: A 10-minute break now; the experiments keep running through it.",
             ],
-            "notes": [
-                "Say: Before you launch the poll, start the baseline experiment on the "
-                "Improve page so it runs through the break. It is the class session's "
-                "baseline; the console accepts no baseline from another session.",
-                "Instructor reference: Improve > Run experiment on the active version, or "
-                "`make demo NAME=improve-baseline-experiment`.",
-                'Then launch the poll: "Which autonomy level would you grant the revenue '
-                'digest today, and why?" Options: the report-only level, the assisted level, '
-                "the unattended level. Read the result aloud. Keep it for Section 4: "
-                "Hill-climbing loop, which shows what evidence the unattended level should "
-                "need.",
-                "Point at: the poll window, then the benchmark progress strip on the run board.",
-                'Likely question: "Is there a right answer?" Answer: without holdout '
-                "evidence, the report-only or the assisted level; Section 4 shows how a "
-                "metric family earns more.",
-                "Transition: A 10-minute break; the baseline keeps running.",
-            ],
-            "container": "fixed template slide",
-        }
+        )
     ],
     "break2": [
-        {
-            "kind": "break",
-            "title": "Time for a Break",
-            "allow_commands": True,
-            "layout": "blank",
-            "minutes": 10,
-            "says": "A 10-minute break is starting now. Please return when the timer ends to "
-            "continue the presentation",
-            "src": "-",
-            "on_slide": [
-                "Time for a Break",
-                "A 10-minute break is starting now. Please return when the timer ends to "
-                "continue the presentation",
+        dict(
+            kind="break",
+            title=BREAK_TITLE,
+            minutes=10,
+            says=BREAK_TEXT,
+            src="docs/instructor-guide.md, Break (2:55-3:05)",
+            allow_commands=True,
+            on_slide=[BREAK_TITLE, BREAK_TEXT],
+            notes=[
+                "Purpose: Give a 10-minute break while the baseline experiment runs, and queue "
+                "the naive analyzer for Section 4.",
+                "What to say: Time for a 10-minute break. I will write the return time in the "
+                "chat now. The experiments keep running while we are away, so Section 4 starts "
+                "with real results.",
+                "Do: Write the return time, the local time 10 minutes from now, in the chat.",
+                "Do: At the start of the break, queue the naive analyzer and its candidate "
+                "experiment behind the baseline: make demo NAME=improve-naive-analyzer-blocked "
+                "PLANTED=1, or Improve > Run the naive analyzer (planted). Its verdict took 211 to "
+                "580 seconds from the trigger in its 6 measured runs, so both experiments are "
+                "usually finished when Section 4 opens by reading them.",
+                "Do: Check once that the grouped benchmark progress strip on the run board is "
+                "counting up.",
+                "Transition: Welcome back. The poll asked how much autonomy to grant; now we earn "
+                "it, with the hill-climbing loop.",
             ],
-            "notes": [
-                "Do, at the start of the break, in the demo terminal: `make demo "
-                "NAME=improve-naive-analyzer-blocked PLANTED=1`. It queues the naive analyzer and "
-                "its candidate experiment behind the baseline, with the planted bug on for those two "
-                "requests only. The command plants it with or without PLANTED=1. The console's "
-                "Improve > Run the naive analyzer (planted), shown while demo controls are allowed, "
-                "queues the same two requests; its Run analyzer button runs the analyzer team.",
-                "Say: Write the return time, 3:05, in the chat. Check once that the grouped "
-                "benchmark progress strip on the run board is counting up.",
-                "Point at: the timer.",
-                'Likely question: "Will the experiment finish in time?" Answer: yes; at '
-                "concurrency 8 a 70-run experiment took 171.3 to 459 seconds of experiment wall time, "
-                "and the baseline 236 to 386 seconds from the trigger, the longest on a shared "
-                "machine, inside the poll and the break.",
-                "Transition: Welcome back. The poll asked how much autonomy to grant; now "
-                "we earn it.",
-            ],
-            "container": "fixed template slide",
-        }
+        )
     ],
 }

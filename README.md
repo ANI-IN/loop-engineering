@@ -88,13 +88,13 @@ only. Logs: `make logs NAME=<service>`. The [architecture page](docs/architectur
 
 | Section | Folder | What you see in class | Time |
 |---|---|---|---|
-| Section 1: Agent loop | [section-1-agent-loop/](section-1-agent-loop/README.md) | The simple question, the confident wrong answer, unbounded rows | 0:10-0:55 |
-| Section 2: Verification loop | [section-2-verification-loop/](section-2-verification-loop/README.md) | Malicious SQL, the retry cap, every grader passes, still wrong | 0:55-1:45 |
+| Section 1: Agent loop | [section-1-agent-loop/](section-1-agent-loop/README.md) | The simple question, the confident wrong answer, unbounded rows | 0:25-1:03 |
+| Section 2: Verification loop | [section-2-verification-loop/](section-2-verification-loop/README.md) | Malicious SQL, the retry cap, every grader passes, still wrong | 1:03-1:45 |
 | Section 3: Event loop | [section-3-event-loop/](section-3-event-loop/README.md) | The webhook question, the approval across a restart, duplicates, the kill switch | 1:55-2:50 |
-| Section 4: Hill-climbing loop | [section-4-hill-climbing-loop/](section-4-hill-climbing-loop/README.md) | The baseline and candidate experiments, the analyzer team, the gate, the finale | 3:05-3:50 |
+| Section 4: Hill-climbing loop | [section-4-hill-climbing-loop/](section-4-hill-climbing-loop/README.md) | The baseline and candidate experiments, the analyzer team, the gate, the finale | 3:05-3:48 |
 
-There are two breaks, 1:45-1:55 and 2:55-3:05. The minute-by-minute plan is in the
-[instructor guide](docs/instructor-guide.md); every live demo, step by step, is in [guide/](guide/README.md).
+Before Section 1, the design segment, Designing text-to-SQL, runs 0:10-0:25; there are two breaks,
+1:45-1:55 and 2:55-3:05. The minute-by-minute plan is in the [instructor guide](docs/instructor-guide.md); every live demo, step by step, is in [guide/](guide/README.md).
 
 ### What you build
 
@@ -219,9 +219,9 @@ The most common lines; every other one, with its cause, is on [troubleshooting](
 
 ## Where next
 
-Start with [Section 1: Agent loop](section-1-agent-loop/README.md). Look things up in
-[architecture](docs/architecture.md), [reference](docs/reference.md), and the [frequently asked
-questions](docs/faq.md). Never share your `.env` or a key.
+Start with [Section 1: Agent loop](section-1-agent-loop/README.md). To build text-to-SQL on your own warehouse, follow [designing text-to-SQL for your own warehouse](docs/text-to-sql-design.md).
+Every outside source the slides cite is on the [sources page](docs/sources.md). Look things up in [architecture](docs/architecture.md),
+[reference](docs/reference.md), and the [frequently asked questions](docs/faq.md). Never share your `.env` or a key.
 
 ### Repository layout
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import re
 import subprocess
@@ -198,3 +199,31 @@ def test_words_that_only_look_like_finding_ids_are_not_found(line: str, tmp_path
 def test_finding_ids_stay_allowed_on_the_evidence_pages(tmp_path: Path) -> None:
     page = "# Evidence: Part\n\nReview finding R3D-01, milestone B5, decision D8b, finding F071.\n"
     assert _finding_lines(page, "docs/evidence/general.md", tmp_path) == []
+
+
+def test_a_diagram_render_needs_its_source_beside_it_or_named_in_its_folder_record(
+    tmp_path: Path,
+) -> None:
+    """SC20: a render under a diagrams/ folder has its .excalidraw beside it, or, for an export
+    kept apart from its source (the deck's), a renders.json entry whose "from" names it."""
+    check_style = _load("check_style")
+    pages = tmp_path / "docs" / "diagrams"
+    pages.mkdir(parents=True)
+    (pages / "loop.excalidraw").write_text("{}\n", encoding="utf-8")
+    (pages / "loop.png").write_bytes(b"png")
+    exports = tmp_path / "deck" / "diagrams"
+    exports.mkdir(parents=True)
+    for name in ("loop", "orphan", "elsewhere"):
+        (exports / f"{name}.png").write_bytes(b"png")
+    record = {
+        "renders": {
+            "loop": {"from": "docs/diagrams/loop.excalidraw"},
+            "elsewhere": {"from": "docs/diagrams/gone.excalidraw"},
+        }
+    }
+    (exports / "renders.json").write_text(json.dumps(record), encoding="utf-8")
+    found = [(p.path, p.check) for p in check_style.diagram_problems(tmp_path)]
+    assert found == [
+        ("deck/diagrams/elsewhere.png", "SC20"),
+        ("deck/diagrams/orphan.png", "SC20"),
+    ]

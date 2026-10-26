@@ -3,34 +3,34 @@
   "excalidraw": "0.18.1",
   "renders": {
     "verification-layers": {
-      "source": "b11bd500f08fcc69ce4186982801bd258e462c7b105bfb219d97511e69c15a12",
-      "svg": "5dadbffe5a227390fdeabcf493fe309a4839efde73a65156f4a2d44ea5bc9bab",
-      "png": "221e7789d7219c4c820abb3dcce800db32570c5027cf92372b3d753e37a93026"
+      "source": "340842af065f99ec50c253a2e189933a0f26c4b7774c6f3d03bd0cf8d81e61ad",
+      "svg": "812340413566a97cd6fa1c07aa1c10843a5e1c46fcf5d34cfb3ffe76a4666d76",
+      "png": "ad0fa350fc053061d3602c8a4cdf19bb164f90ab06bc974b452ce3b40d4696b8"
     },
     "verification-layers-step-1": {
-      "source": "41415fe38ab1d40cd73bc3e22a6d23bb476cad5854eddba344e25803328f69e0",
-      "svg": "f70198fb295424240bed48c0a77da5d9423163a44fef0b269d592a0cf307632d",
-      "png": "a11c83f0c7df11ef767d3da43a7406aa6f8d65ad35b8558f2c074dd93e962942"
+      "source": "4f5b6789a4667cca1d2b6941fa83f99dd14eb6501fa2b62300785104ee28e49a",
+      "svg": "e9259e32c57b084027e429a258a17ba23826e684868cc401be2adb9a1cf9edbc",
+      "png": "be614691e30d3448e033d84232d8f9e0d81b4db9ed666536cc574dcbd7781cb8"
     },
     "verification-layers-step-2": {
-      "source": "c7454cadfdfbab462d4e3806b5aa405f5a5afae6bfca5d97597c7c8e9bc2a085",
-      "svg": "4f57b08fcd5c7c4b5b89da4a7da2192cc583e77586bc9f3a93a0cde2a22d8369",
-      "png": "9654e3a7e0d8375d49e10df1de025dd8ac3ad2acc90c7c9fc1892b65a1d3cfb2"
+      "source": "2a860b941f75c56addea6b97eecca4a37fb9e7bc873a98ffca76c8763adb214d",
+      "svg": "892ae591740cb293211cec75564da7562496f9a28f46a8ad354fefdbb0eb56a8",
+      "png": "35d946be66682de82c177b82a08edacdad2dd6eea6ae1c244f800576ae4e32b7"
     },
     "verification-layers-step-3": {
-      "source": "2b2dee895f64787423d0a4dae104925f0363aadb85e8cfbd4cd328e18d07b800",
-      "svg": "9c1309d1dc41fc8f33d15f895cbaee7ce58e297bd7b4d7f65a1ed927ccd539b7",
-      "png": "71a2d8ab2e681533972c015b8998782bb354bcaa83a926d36c0d2762f6d7243d"
+      "source": "ed422de20709cdd087b6b75a20a27795c9f7d803c554069e05b33180f5a33e47",
+      "svg": "1666a36aa20c21548440de61c1f5fd7afa47b5b20802315e68fff698458f4d7a",
+      "png": "c7eb95fbfb955b129df449a1be222521f3c1b84ebdabd3d47becba94867d28ce"
     },
     "verification-layers-step-4": {
-      "source": "c68cbef9e431aae87272c86e93e69ac4a4cd7812d9aa1b70cfbb4e4f090d54b3",
-      "svg": "a9ac8b8e3eaa2d165cd6f93f99805ead835fd18ba0d899662cb1af938e465a5a",
-      "png": "1b5617f059f2c788ffb2a202b5183d7fdd3e4337452e0d9ac7ce6e9f6bdd13ac"
+      "source": "94322c51ca4098554a22610e930fbf77676d086f12f92ddcb114f4d396bfffdf",
+      "svg": "3083239f2e142319a4b13fb08614f5062515e9d9b65d33eab7c2ff9c1297a967",
+      "png": "a9dddafaf015c70886bd4ba267aa15ee1aff2c31e3b725001b19e061cd52c80f"
     },
     "verification-layers-step-5": {
-      "source": "b11bd500f08fcc69ce4186982801bd258e462c7b105bfb219d97511e69c15a12",
-      "svg": "5dadbffe5a227390fdeabcf493fe309a4839efde73a65156f4a2d44ea5bc9bab",
-      "png": "221e7789d7219c4c820abb3dcce800db32570c5027cf92372b3d753e37a93026"
+      "source": "340842af065f99ec50c253a2e189933a0f26c4b7774c6f3d03bd0cf8d81e61ad",
+      "svg": "812340413566a97cd6fa1c07aa1c10843a5e1c46fcf5d34cfb3ffe76a4666d76",
+      "png": "ad0fa350fc053061d3602c8a4cdf19bb164f90ab06bc974b452ce3b40d4696b8"
     }
   }
 }

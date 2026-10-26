@@ -23,7 +23,7 @@ other stacks the tests and the assignment checks start.
 
 *Notice that the API, the worker, and the runner never call each other: they meet in the ops schema, and the agents read the warehouse through a read-only role.*
 
-![The four loops nested: the agent loop inside the verification loop inside the event loop, with the hill-climbing loop beside them feeding a promoted knowledge version back to the analyst; six agents drawn as ellipses, and a dashed ellipse under the router, where there is deliberately no agent](diagrams/four-loops.svg)
+![The four loops nested: the agent loop, with the analyst and the schema scout, inside the verification loop, with the seven graders and the reviewer, inside the event loop, with the router, the jobs table, the kill switch, human approval, and the post; beside them the hill-climbing loop, from the benchmark through the analyzer team and the promotion gate to the active knowledge version, which goes back to the analyst](diagrams/four-loops.svg)
 
 *Notice where the agents are and where there are none: the router, the graders, the overfit guard, and the gate are code, and a person approves.*
 
@@ -234,8 +234,8 @@ In workflow order, each step in `loop4_hill_climbing/`:
    one is saved as a draft.
 3. **Candidate experiment and gate.** The gate records the baseline experiment it compares with
    (`ops.experiments.gate_baseline_id`), then confirms each apparent regression with re-runs. It
-   needs more holdout passes, zero confirmed regressions, every new rule through the overfit guard,
-   and human approval.
+   needs more holdout passes, zero confirmed regressions, human approval, and every new rule
+   through the overfit guard.
 4. **Approval and promotion.** `POST /knowledge/{version}/approve` marks the draft approved. The
    runner decides it against the recorded baseline, only while the active version is unchanged and
    the gate has finished, so an approval given earlier waits for the gate.

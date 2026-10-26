@@ -75,7 +75,7 @@ JavaScript Object Notation (JSON), and Coordinated Universal Time (UTC) by their
 - **Where**: `platform/src/datapilot/loop3_events/api/events.py`
 - **Trigger**: `make demo NAME=events-duplicate-events PLANTED=1` (its own events only)
 - **Symptom**: The same event three times gives three answers in the channel.
-- **Fix**: INSERT ... ON CONFLICT (event_id) DO NOTHING; one answer and "2 duplicates ignored".
+- **Fix**: INSERT ... ON CONFLICT (event_id) DO NOTHING; one answer and "2 duplicates absorbed".
 - **Demos**: Duplicate events (`events-duplicate-events`)
 
 ### The random digest id
@@ -114,7 +114,7 @@ JavaScript Object Notation (JSON), and Coordinated Universal Time (UTC) by their
 - **Section**: Section 3: Event loop
 - **Where**: `platform/src/datapilot/loop3_events/worker.py`
 - **Trigger**: BUG_LOCK_DURING_LLM=1, then kill the worker during a run
-- **Symptom**: The claim transaction stays open through the model call; killing the worker leaves a stuck job.
+- **Symptom**: The claim transaction stays open through the model call, so the running job looks queued; killing the worker rolls the claim back and the job is queued again with no attempt counted, so it runs again and an attempt cap never stops it.
 - **Fix**: Short claim transaction with a lease, heartbeats, and a reaper that requeues expired leases.
 - **Optional**: shown only when the section runs ahead of time
 

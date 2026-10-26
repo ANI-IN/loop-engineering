@@ -118,7 +118,7 @@ measured times.
 |---|---|---|
 | The webhook question | Events page | One strip moving from Queued to Done; one post labelled unverified |
 | The approval that survives a restart | Events page | The approval dialog with the exact query and row count |
-| Duplicate events | Events page | One post and the count of duplicates ignored |
+| Duplicate events | Events page | One post and the count of duplicates absorbed |
 | The kill switch in flight | Status line and Events page | The strip in Blocked by kill switch; the report-only level |
 
 Each demo's entry below comes from the demo registry: how to start it, what guarantees its moment,
@@ -159,7 +159,7 @@ and what may differ from run to run. The approval dialog states the Structured Q
 - **Tier**: core
 - **Start it**: Events > Send the same event three times in the console, or `make demo NAME=events-duplicate-events`
 - **Guaranteed by**: the missing idempotency (`BUG_NO_IDEMPOTENCY`); the random digest id (`BUG_RANDOM_DIGEST_ID`)
-- **What appears**: The same event is sent three times. With the missing idempotency, three answers are posted; with idempotency, one answer and "2 duplicates ignored". Firing the digest twice shows the same with the random digest id.
+- **What appears**: The same event is sent three times. With the missing idempotency, three answers are posted; with idempotency, one answer and "2 duplicates absorbed". Firing the digest twice shows the same with the random digest id.
 - **Expected live outcome**: One answer posted, two duplicates absorbed, and one digest on the board.
 - **What can vary**: timing of the duplicates
 - **Recovery**: `make reset NAME=event-loop`, then the same trigger again

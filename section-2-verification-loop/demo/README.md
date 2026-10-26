@@ -127,7 +127,7 @@ and what may differ from run to run.
 - **Tier**: core
 - **Start it**: Verify > Send malicious SQL in the console, or `make demo NAME=verify-malicious-sql`
 - **Guaranteed by**: the naive guard (`BUG_NAIVE_GUARD`)
-- **What appears**: With the naive guard, "SELECT 1; DELETE FROM orders" and a data-modifying CTE pass the guard and the read-only role refuses them (SQLSTATE 25006); with the syntax-tree guard, its parse step stops the stacked statements and its statement policy the data-modifying CTE, before execution. A raw DELETE as the agent role is refused by the role.
+- **What appears**: With the naive guard, "SELECT 1; DELETE FROM orders" and a data-modifying common table expression pass the guard and the read-only role refuses them (error code 25006); with the syntax-tree guard, its parse step stops the stacked statements and its statement policy the data-modifying common table expression, before execution. A raw DELETE as the agent role is refused by the role.
 - **Expected live outcome**: The defense-layer panel shows which layer stopped each statement; no warehouse row changes.
 - **What can vary**: nothing in the outcome; timings only
 - **Recovery**: `make reset NAME=verification-loop`, then the same trigger again
@@ -137,7 +137,7 @@ and what may differ from run to run.
 - **Tier**: optional, cut first when the section runs late
 - **Start it**: Verify > Send cartesian query in the console, or `make demo NAME=verify-cost-guard`
 - **Guaranteed by**: the missing cost guard (`BUG_NO_COST_GUARD`)
-- **What appears**: With the missing cost guard, a cartesian join runs until the statement timeout; with the cost grader, EXPLAIN rejects it at once with feedback for the agent.
+- **What appears**: With the missing cost guard, a cartesian join runs until the statement timeout; with the cost grader, the plan estimate (EXPLAIN) rejects it at once with feedback for the agent.
 - **Expected live outcome**: A timeout with the bug on; an instant rejection with its reason with it off.
 - **What can vary**: the EXPLAIN cost figure; timings
 - **Recovery**: `make reset NAME=verification-loop`, then the same trigger again
@@ -157,7 +157,7 @@ and what may differ from run to run.
 - **Tier**: core
 - **Start it**: Verify > Ask the spine question in the console, or `make demo NAME=verify-graders-pass-still-wrong`
 - **Guaranteed by**: the near-empty version 1 of the knowledge (the starting version); the five traps in the seeded data
-- **What appears**: Under version 1 of the knowledge (the starting version), the fiscal year 2025 revenue question passes every deterministic grader and the checklist turns all green, while the gold check on both databases fails. The reviewer's verdict is shown beside it, whichever way it goes.
+- **What appears**: Under version 1 of the knowledge (the starting version), the fiscal year 2025 revenue question passes every deterministic grader and the checklist turns all green, while the gold check on both databases fails (6 of 7 recorded live attempts; in the other, no gold check arrived in time, cause not confirmed). The reviewer's verdict is shown beside it, whichever way it goes.
 - **Expected live outcome**: An all-green checklist beside a failed gold check.
 - **What can vary**: the reviewer's verdict; the wrong value
 - **Recovery**: `make reset NAME=verification-loop`, then the same trigger again

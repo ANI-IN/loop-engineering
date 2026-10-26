@@ -128,7 +128,7 @@ and what may differ from run to run.
 - **Tier**: optional, cut first when the section runs late
 - **Start it**: Agent > Ask in the console, or `make demo NAME=agent-texas-last-quarter`
 - **What appears**: A multi-join question across orders, order items, products, and categories for customers in Texas over the last completed fiscal quarter (August to October 2025, against the business date of 31 January 2026), with the join path visible in the SQL.
-- **Expected live outcome**: An answer whose SQL joins four tables. No benchmark item asks this question, so the run gets no gold check; the date range in the SQL shows whether the fiscal-quarter trap is hit.
+- **Expected live outcome**: An answer whose SQL joins four tables. No benchmark question asks this question, so the run gets no gold check; the date range in the SQL shows whether the fiscal-quarter trap is hit.
 - **What can vary**: join order; whether the fiscal-quarter trap is hit; latency
 - **Recovery**: `make reset NAME=agent-loop`, then the same trigger again
 

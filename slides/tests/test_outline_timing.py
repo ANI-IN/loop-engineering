@@ -1,8 +1,10 @@
 """Zero-token checks on the deck's timings: every slide's minutes add up to the 240-minute class,
 and each block starts and ends where the run of show in docs/instructor-guide.md says it does.
 
-The minutes live in slides/source/build.py (APPROVED, one list per block) and in each slide's
-`minutes`; the speaker notes' "Time:" lines and slides/outline.md are generated from them.
+The outline is built under one of two rule sets (slides/source/build.py). Under the first
+outline's rules the minutes are fixed per position (APPROVED); under the design system each block
+has a total (BLOCK_PLAN, the rebuild's block plan of 26 October 2026) and its slides add up to it.
+The speaker notes' "Time:" or "Timing:" lines and slides/outline.md are generated from the minutes.
 
 uv run pytest -q slides/tests
 """
@@ -21,7 +23,24 @@ OUTLINE = SLIDES_DIR / "outline.md"
 CLASS_MINUTES = 240
 # A block heading of the run of show, such as "### Section 1: Agent loop (0:10-0:55)".
 BLOCK_HEADING = re.compile(r"^### (?P<name>.+?) \((?P<start>\d:\d\d)-(?P<end>\d:\d\d)\)$", re.M)
-TIME_LINE = re.compile(r"^Time: (?P<minutes>[\d.]+) minutes? \((?P<start>[\d:]+)-(?P<end>[\d:]+)\)")
+TIME_LINE = re.compile(
+    r"^Tim(?:e|ing): (?P<minutes>[\d.]+) minutes? \((?P<start>[\d:]+)-(?P<end>[\d:]+)\)"
+)
+# The rebuild's block plan as the lead fixed it (name, start, end, slides at most): the design
+# system's BLOCK_PLAN must say the same, and the guide's run of show follows it once the outline is
+# built under the design system.
+REBUILD_PLAN = [
+    ("Opening", "0:00", "0:10", 10),
+    ("Designing text-to-SQL", "0:10", "0:25", 6),
+    ("Section 1: Agent loop", "0:25", "1:03", 13),
+    ("Section 2: Verification loop", "1:03", "1:45", 13),
+    ("Break", "1:45", "1:55", 1),
+    ("Section 3: Event loop", "1:55", "2:50", 13),
+    ("Poll", "2:50", "2:55", 1),
+    ("Break", "2:55", "3:05", 1),
+    ("Section 4: Hill-climbing loop", "3:05", "3:48", 13),
+    ("Closing", "3:48", "4:00", 10),
+]
 
 
 def _load(name: str, path: Path):
@@ -45,28 +64,58 @@ def _clock(text: str) -> int:
 
 def _blocks() -> list[tuple[str, int, int]]:
     """(block name, start, end) in seconds, from the outline data, in class order."""
+    names = outline_builder.block_names()
     out, t = [], 0
-    for name in outline_builder.APPROVED:
+    for name in outline_builder.block_order():
         seconds = sum(int(round(s["minutes"] * 60)) for s in outline_builder.load(name))
-        out.append((outline_builder.BLOCK_NAMES[name], t, t + seconds))
+        out.append((names[name], t, t + seconds))
         t += seconds
     return out
 
 
+def test_the_outline_builds_under_one_rule_set():
+    rules, sets = outline_builder.outline_rules()
+    assert rules is not None, f"the block modules follow two rule sets: {sets}"
+
+
 def test_every_slide_minutes_add_up_to_the_class_length():
     minutes = [
-        s["minutes"] for name in outline_builder.APPROVED for s in outline_builder.load(name)
+        s["minutes"] for name in outline_builder.block_order() for s in outline_builder.load(name)
     ]
     assert all(m > 0 for m in minutes), "every slide has time"
     assert sum(minutes) == CLASS_MINUTES
 
 
-def test_each_block_matches_the_approved_minutes():
-    for name, approved in outline_builder.APPROVED.items():
-        assert [s["minutes"] for s in outline_builder.load(name)] == approved, name
+def test_each_block_matches_its_plan():
+    """First outline: the approved minutes per position. Design system: each block's slides add
+    up to its total, within its slide cap."""
+    rules, _sets = outline_builder.outline_rules()
+    if rules == outline_builder.FIRST_OUTLINE:
+        for name, approved in outline_builder.APPROVED.items():
+            assert [s["minutes"] for s in outline_builder.load(name)] == approved, name
+        return
+    for key, _name, minutes, most in outline_builder.BLOCK_PLAN:
+        slides = outline_builder.load(key)
+        assert sum(s["minutes"] for s in slides) == minutes, key
+        assert len(slides) <= most, key
+
+
+def test_the_design_system_plan_is_the_rebuild_plan():
+    """BLOCK_PLAN holds the lead's block plan: names, contiguous clock times, slide caps."""
+    plan = outline_builder.BLOCK_PLAN
+    assert [name for _k, name, _m, _c in plan] == [row[0] for row in REBUILD_PLAN]
+    assert [most for *_rest, most in plan] == [row[3] for row in REBUILD_PLAN]
+    t = 0
+    for (_key, name, minutes, _most), (_n, start, end, _c) in zip(plan, REBUILD_PLAN, strict=True):
+        assert (_clock(start), _clock(end)) == (t, t + minutes * 60), name
+        t += minutes * 60
+    assert t == CLASS_MINUTES * 60
+    assert outline_builder.MAX_SLIDES == 85
 
 
 def test_blocks_match_the_run_of_show_in_the_instructor_guide():
+    """The guide's run of show has one "### <block> (h:mm-h:mm)" heading per block, in order, as
+    the outline's rule set times them. Under the design system that is REBUILD_PLAN above."""
     guide = [
         (m["name"], _clock(m["start"]), _clock(m["end"]))
         for m in BLOCK_HEADING.finditer(GUIDE.read_text(encoding="utf-8"))
@@ -81,7 +130,8 @@ def test_outline_time_lines_are_contiguous_and_add_up():
         for line in OUTLINE.read_text(encoding="utf-8").splitlines()
         if (m := TIME_LINE.match(line))
     ]
-    assert len(lines) == sum(len(outline_builder.load(n)) for n in outline_builder.APPROVED)
+    count = sum(len(outline_builder.load(n)) for n in outline_builder.block_order())
+    assert len(lines) == count
     position = 0
     for m in lines:
         start, end = _clock(m["start"]), _clock(m["end"])

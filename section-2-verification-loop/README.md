@@ -35,6 +35,10 @@ passes every check and is still wrong.
 
 ## How this section fixes it
 
+![The four-loop map with the verification loop highlighted: seven graders and the reviewer around the agent loop, inside the event loop, beside the hill-climbing loop, both muted](../docs/diagrams/four-loops-verification-loop.svg)
+
+*Where this section sits: the verification loop is highlighted; the other three loops stay in view.*
+
 The verification loop wraps the agent loop in layers. A syntax-tree guard, a schema allowlist, a
 read-only role, and a statement timeout each assume the layer above them fails. Graders run
 before execution, after execution, and on the final answer, and send their reasons back to the
@@ -43,9 +47,9 @@ the answer. A write the database
 refuses is never sent back: the run ends at once as escalated, with no retry. After every grader
 passes, an independent reviewer reads the result.
 
-![Two stages of checks. Stage 1: each query passes the parse, statement policy, schema, cost, and personal data graders, then the read-only executor and the execution grader; a block sends feedback to the analyst, personal data goes to a person, and a write the database refuses ends the run at once. Stage 2: the answer envelope's query runs through graders 1 to 6 again, then the final-answer grader, then the reviewer agent; a failure retries, up to 3 attempts. A red band on top: the stop before every model call and every tool call](diagrams/verification-layers.svg)
+![Two stages of checks. Every query: graders 1 to 5, parse, SELECT only, schema, cost estimate, and personal data, then the read-only executor and grader 6, execution; a block sends the reason back to the analyst, personal data goes to human approval, and a write the database refuses ends the run. The answer: graders 1 to 6 again, then grader 7, final answer, then the reviewer agent, which can hold the answer for a person; a failure retries and is escalated after 3 attempts. A stop box: before every model call and every tool call, the kill switch and the budgets](diagrams/verification-layers.svg)
 
-*Notice the order: the reviewer only ever sees an answer that every grader passed, and the stop before the model call can end the run at any point.*
+*Notice the order: the reviewer only ever sees an answer that every grader passed, and the stop before every call can end the run at any point.*
 
 The section ends with the fiscal year 2025 revenue question passing every grader and failing the
 gold check. Graders prove a query is safe and well formed, not that it means what the business

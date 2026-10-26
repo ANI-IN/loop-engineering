@@ -45,8 +45,9 @@ The PostgreSQL documentation describes `SKIP LOCKED` as skipping rows that canno
 once ([PostgreSQL SELECT](https://www.postgresql.org/docs/current/sql-select.html)). The result is
 not strictly first in, first out, and delivery is at least once: a crash after the work but before
 the job is marked done runs it again ([You don't need a job queue: Postgres already has SKIP LOCKED](https://www.prisma.io/blog/you-dont-need-a-job-queue-postgres-already-has-skip-locked)). The lock held
-during the model call (`BUG_LOCK_DURING_LLM`) is a planted bug with no class demo: a long claim
-transaction leaves a stuck job when the worker dies.
+during the model call (`BUG_LOCK_DURING_LLM`) is a planted bug with no class demo: the running job
+looks queued, and when the worker dies the claim rolls back, so the job runs again with no attempt
+counted and an attempt cap never stops it.
 
 Key idea: a job in a table survives what a process does not.
 
@@ -91,7 +92,7 @@ switch at claim only (`BUG_KILLSWITCH_AT_CLAIM_ONLY`) checks once, when the job 
 
 Key idea: the stop must reach the run that is already running.
 
-![Events arrive by webhook, scheduler, or console at POST /events, which inserts once per event_id; a fixed router picks the queue; the worker claims jobs from the jobs table with a lease and a heartbeat, the reaper requeues expired leases, and the daily budget and the kill switch are checked; a person approves through POST /approvals, and the paused run waits in its checkpoint](diagrams/event-loop.svg)
+![The event pipeline: a webhook, the scheduler, or the console sends an event to POST /events, which inserts once per event_id; a fixed router, with no agent, picks the queue in the jobs table; the worker claims a job with a lease and a heartbeat, the reaper requeues an expired lease, and the daily budget is checked at claim; the autonomy policy posts at once or holds the run, which waits as a parked job with its checkpoint until a person approves; the kill switch is checked at claim and before every model call and every tool call](diagrams/event-loop.svg)
 
 *Notice that every safeguard here is a row in Postgres, not memory: the event id, the lease, the parked job, and the checkpoint, so a restart loses nothing.*
 

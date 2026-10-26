@@ -8,7 +8,7 @@ and [the four loops as one system](../../docs/diagrams/README.md#the-four-loops-
 
 ### The agent loop
 
-![The analyst agent between its prompt and its tools list_tables, describe_table, run_query, and scout_schema; run_query goes through the checker and returns at most 50 rows; scout_schema starts a schema scout agent inside a dashed tool boundary with only list_tables and describe_table; the run ends in an answer envelope; a red box lists the stops: 12 model calls, 16 tool calls, 60,000 tokens](./agent-loop.svg)
+![The analyst agent between its prompt, which carries the business date and the active knowledge version, and its tools list_tables, describe_table, run_query, and scout_schema; run_query goes through the checker and returns at most 50 rows; scout_schema starts a schema scout agent inside a dashed tool boundary with only list_tables and describe_table; the run ends in an answer envelope; a stop box lists the limits of every run: 12 model calls, 16 tool calls, 60,000 tokens](./agent-loop.svg)
 
 *Notice the schema scout's boundary: it can read the catalog but has no run_query, and every answer arrives as one structured envelope.*
 
@@ -16,7 +16,7 @@ The snippet for this folder's README or the section's `concepts.md` (both sit on
 `diagrams/`):
 
 ```markdown
-![The analyst agent between its prompt and its tools list_tables, describe_table, run_query, and scout_schema; run_query goes through the checker and returns at most 50 rows; scout_schema starts a schema scout agent inside a dashed tool boundary with only list_tables and describe_table; the run ends in an answer envelope; a red box lists the stops: 12 model calls, 16 tool calls, 60,000 tokens](diagrams/agent-loop.svg)
+![The analyst agent between its prompt, which carries the business date and the active knowledge version, and its tools list_tables, describe_table, run_query, and scout_schema; run_query goes through the checker and returns at most 50 rows; scout_schema starts a schema scout agent inside a dashed tool boundary with only list_tables and describe_table; the run ends in an answer envelope; a stop box lists the limits of every run: 12 model calls, 16 tool calls, 60,000 tokens](diagrams/agent-loop.svg)
 
 *Notice the schema scout's boundary: it can read the catalog but has no run_query, and every answer arrives as one structured envelope.*
 ```
@@ -25,9 +25,9 @@ The snippet for this folder's README or the section's `concepts.md` (both sit on
   active knowledge version, `run_query` never touches the database itself, the schema scout is a
   stateless helper with a narrower tool set, and the run ends in an answer envelope or a stop.
 - **Slide topic**: the agent loop, at the start of Section 1: Agent loop.
-- **Files**: `agent-loop`, with step frames `agent-loop-step-1` (question, prompt, analyst),
-  `-step-2` (the tools and the row cap), `-step-3` (the schema scout's tool boundary), `-step-4`
-  (the answer envelope), and `-step-5` (the stops for every run).
+- **Files**: `agent-loop`, with step frames `agent-loop-step-1` (the question, the prompt, the
+  analyst), `-step-2` (the tools, the checker, and the row cap), `-step-3` (the schema scout's
+  tool boundary), `-step-4` (the answer envelope), and `-step-5` (the stops for every run).
 - **Source in the code**: `platform/src/datapilot/loop1_agent/analyst.py` (the prompt, the limits,
   the structured output), `tools.py` (the three tools and the row cap), `scout.py` (the schema
   scout and its catalog tools), `platform/src/datapilot/contracts/answer.py` (the envelope), and

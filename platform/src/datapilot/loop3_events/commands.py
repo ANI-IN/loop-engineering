@@ -543,8 +543,9 @@ def _close_running_requests(conn: psycopg.Connection[Any]) -> list[str]:
         raise ResetRefused(
             f"not reset: the hill-climbing runner is running the {named}, and the reset would "
             "delete its experiment while it still writes to it. Wait until the Improve page shows "
-            "it finished, then reset; or stop it first with docker compose restart "
-            "hill-climbing-runner, then reset."
+            "it finished, then reset; or end it: docker compose stop hill-climbing-runner, "
+            "then reset, then docker compose start hill-climbing-runner (a restarted runner "
+            "keeps serving, so the reset would refuse again)."
         )
     conn.execute(CLOSE_ORPHANED_SQL, (ORPHANED,))
     return [str(r["request_id"]) for r in running]

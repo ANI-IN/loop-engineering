@@ -32,9 +32,9 @@ The tempting question is: if every grader passes, is the answer right? No. Grade
 is safe and well formed. They cannot prove it means what the business means. That gap is what the
 last demo of this section shows.
 
-![Two stages of checks. Stage 1: each query passes the parse, statement policy, schema, cost, and personal data graders, then the read-only executor and the execution grader; a block sends feedback to the analyst, personal data goes to a person, and a write the database refuses ends the run at once. Stage 2: the answer envelope's query runs through graders 1 to 6 again, then the final-answer grader, then the reviewer agent; a failure retries, up to 3 attempts. A red band on top: the stop before every model call and every tool call](diagrams/verification-layers.svg)
+![Two stages of checks. Every query: graders 1 to 5, parse, SELECT only, schema, cost estimate, and personal data, then the read-only executor and grader 6, execution; a block sends the reason back to the analyst, personal data goes to human approval, and a write the database refuses ends the run. The answer: graders 1 to 6 again, then grader 7, final answer, then the reviewer agent, which can hold the answer for a person; a failure retries and is escalated after 3 attempts. A stop box: before every model call and every tool call, the kill switch and the budgets](diagrams/verification-layers.svg)
 
-*Notice the order: the reviewer only ever sees an answer that every grader passed, and the stop before the model call can end the run at any point.*
+*Notice the order: the reviewer only ever sees an answer that every grader passed, and the stop before every call can end the run at any point.*
 
 ### 1) Defense in layers
 

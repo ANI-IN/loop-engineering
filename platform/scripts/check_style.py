@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import json
 import os
 import re
 import sys
@@ -556,14 +557,30 @@ def final_project_problems(root: Path) -> list[Problem]:
     return _missing(root, "final-project", FINAL_ITEMS)
 
 
+def _recorded_source(root: Path, render: Path) -> bool:
+    """The deck's exports (its private diagrams folder) sit apart from their sources: the folder's
+    renders.json names, for each export, the .excalidraw it came from ("from")."""
+    manifest = render.parent / "renders.json"
+    if not manifest.is_file():
+        return False
+    try:
+        entry = json.loads(manifest.read_text(encoding="utf-8")).get("renders", {})[render.stem]
+        origin = entry["from"]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return False
+    source = root / origin
+    return origin.endswith(f"/{render.stem}.excalidraw") and source.is_file()
+
+
 def diagram_problems(root: Path) -> list[Problem]:
-    """SC20: every .png or .svg under a diagrams/ folder has a .excalidraw file with its stem."""
+    """SC20: every .png or .svg under a diagrams/ folder has a .excalidraw file with its stem,
+    beside it or named as its source in the folder's renders.json."""
     out: list[Problem] = []
     for path in _tree_files(root, _SKIP_DIRS, dot_files=True):
         rel = path.relative_to(root)
         if path.suffix.lower() in DIAGRAM_SUFFIXES and "diagrams" in rel.parts[:-1]:
             source = path.with_suffix(".excalidraw")
-            if not source.is_file():
+            if not source.is_file() and not _recorded_source(root, path):
                 message = f"no source {source.name} next to it"
                 out.append(Problem(rel.as_posix(), 0, "SC20", ERROR, message))
     return out

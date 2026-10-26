@@ -46,6 +46,7 @@ exclude = [
     "slides/scripts/",
     "slides/source/build_deck.py",
     "slides/tests/test_build_deck.py",
+    "slides/tests/test_deck_diagrams.py",  # checks the deck's diagram exports in slides/assets/
     "slides/outline-template.md",
     "slides/slide-review.md",
     # The guide kit's template configuration (placeholders); guide/guide.json is this guide's.
@@ -92,6 +93,7 @@ pages = ["setup", "section-*", "final-project", "use-in-your-repo", "guide", "do
 other_markdown = [
     "SECURITY.md",  # the security policy, shown by GitHub
     "slides/outline.md",  # generated from slides/source/; also read by `make check-names`
+    "slides/design-system.md",  # the deck's design system and the schema of slides/source/
     "platform/README.md",  # the map of the platform folder
     "platform/console/DESIGN.md",  # the console's design notes
     "platform/packs/_template/README.md",  # the domain pack template

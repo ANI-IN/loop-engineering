@@ -36,12 +36,16 @@ a board deck, and nobody can say where it came from.
 
 ## How this section fixes it
 
+![The four-loop map with the agent loop highlighted: the analyst and the schema scout inside the verification, event, and hill-climbing loops, which are shown muted](../docs/diagrams/four-loops-agent-loop.svg)
+
+*Where this section sits: the agent loop is highlighted; the other three loops stay in view.*
+
 The agent loop gets better tools before it gets more rules. `describe_table` returns types,
 sample rows, and distinct values, and `run_query` caps what reaches the model. The answer comes
 back as an answer envelope with the SQL it used. One helper, the schema scout, suggests tables
 and joins and keeps no state.
 
-![The analyst agent between its prompt and its tools list_tables, describe_table, run_query, and scout_schema; run_query goes through the checker and returns at most 50 rows; scout_schema starts a schema scout agent inside a dashed tool boundary with only list_tables and describe_table; the run ends in an answer envelope; a red box lists the stops: 12 model calls, 16 tool calls, 60,000 tokens](diagrams/agent-loop.svg)
+![The analyst agent between its prompt, which carries the business date and the active knowledge version, and its tools list_tables, describe_table, run_query, and scout_schema; run_query goes through the checker and returns at most 50 rows; scout_schema starts a schema scout agent inside a dashed tool boundary with only list_tables and describe_table; the run ends in an answer envelope; a stop box lists the limits of every run: 12 model calls, 16 tool calls, 60,000 tokens](diagrams/agent-loop.svg)
 
 *Notice the schema scout's boundary: it can read the catalog but has no run_query, and every answer arrives as one structured envelope.*
 

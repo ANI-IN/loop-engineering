@@ -118,8 +118,12 @@ Bring that line to the instructor.
 | You see | Cause | Fix |
 |---|---|---|
 | `x improve-cleared-unattended not sent: ...` | A promotion or its re-runs still run, the kill switch is on, or the level is low | Do the step the rest of the line names (`finale.py`) |
-| `not reset: the hill-climbing runner is running the ...` | A reset would delete the experiment the runner still writes to | Wait until the Improve page shows it finished, then reset; or `docker compose restart hill-climbing-runner`, then reset |
+| `not reset: the hill-climbing runner is running the ...` | A reset would delete the experiment the runner still writes to | Wait for the Improve page; or stop the runner, reset, start it (below) |
 | `another hill-climbing runner already serves this database: ...` from `make hill-climbing-runner` | `make up` already runs the runner as a service, and one runner serves a database | Use the service; read it with `make logs NAME=hill-climbing-runner` |
+
+To end a running request: `docker compose stop hill-climbing-runner`, then
+`make reset NAME=hill-climbing-loop`, then `docker compose start hill-climbing-runner`, about 20
+seconds in all. A restarted runner keeps serving, so a reset after a restart refuses again.
 
 ## The console
 

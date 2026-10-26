@@ -71,7 +71,7 @@
   location: platform/src/datapilot/loop3_events/api/events.py
   trigger: "`make demo NAME=events-duplicate-events PLANTED=1` (its own events only)"
   symptom: The same event three times gives three answers in the channel.
-  fix: INSERT ... ON CONFLICT (event_id) DO NOTHING; one answer and "2 duplicates ignored".
+  fix: INSERT ... ON CONFLICT (event_id) DO NOTHING; one answer and "2 duplicates absorbed".
   demos: [events-duplicate-events]
 
 - id: BUG_RANDOM_DIGEST_ID
@@ -114,7 +114,7 @@
   section: event-loop
   location: platform/src/datapilot/loop3_events/worker.py
   trigger: "BUG_LOCK_DURING_LLM=1, then kill the worker during a run"
-  symptom: The claim transaction stays open through the model call; killing the worker leaves a stuck job.
+  symptom: The claim transaction stays open through the model call, so the running job looks queued; killing the worker rolls the claim back and the job is queued again with no attempt counted, so it runs again and an attempt cap never stops it.
   fix: Short claim transaction with a lease, heartbeats, and a reaper that requeues expired leases.
   demos: []
   optional: true

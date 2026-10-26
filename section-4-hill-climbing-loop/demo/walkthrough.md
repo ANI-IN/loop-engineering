@@ -18,7 +18,7 @@ team may read and keep, and how the promotion gate decides.
 
 An experiment runs every benchmark item under one knowledge version, each repetition a fresh live
 run, and scores each answer locally against the gold Structured Query Language (SQL) result. The
-analyzer team reads only the failed development items: the failure analyst diagnoses them, the rule
+analyzer team reads only the failed development questions: the failure analyst diagnoses them, the rule
 writer proposes rules, the critic keeps, narrows, or drops each one, a rule whose SQL guidance does
 not run over the schema is dropped, and the overfit guard rejects any that quote a question or copy
 gold SQL. The team writes two candidates this way; each runs on the development split only, and one

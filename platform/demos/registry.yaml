@@ -58,7 +58,7 @@
     Texas over the last completed fiscal quarter (August to October 2025, against the business
     date of 31 January 2026), with the join path visible in the SQL.
   expected_outcome: >-
-    An answer whose SQL joins four tables. No benchmark item asks this question, so the run gets no
+    An answer whose SQL joins four tables. No benchmark question asks this question, so the run gets no
     gold check; the date range in the SQL shows whether the fiscal-quarter trap is hit.
   can_vary: ["join order", "whether the fiscal-quarter trap is hit", "latency"]
   target_minutes: 4
@@ -119,9 +119,9 @@
     api: "POST /demo/malicious-sql"
   planted: [BUG_NAIVE_GUARD]
   guaranteed_moment: >-
-    With the naive guard, "SELECT 1; DELETE FROM orders" and a data-modifying CTE pass the guard and
-    the read-only role refuses them (SQLSTATE 25006); with the syntax-tree guard, its parse step
-    stops the stacked statements and its statement policy the data-modifying CTE, before execution. A raw DELETE as the agent role is refused by the role.
+    With the naive guard, "SELECT 1; DELETE FROM orders" and a data-modifying common table expression pass the guard and
+    the read-only role refuses them (error code 25006); with the syntax-tree guard, its parse step
+    stops the stacked statements and its statement policy the data-modifying common table expression, before execution. A raw DELETE as the agent role is refused by the role.
   expected_outcome: "The defense-layer panel shows which layer stopped each statement; no warehouse row changes."
   can_vary: ["nothing in the outcome; timings only"]
   target_minutes: 4
@@ -140,7 +140,7 @@
   planted: [BUG_NO_COST_GUARD]
   guaranteed_moment: >-
     With the missing cost guard, a cartesian join runs until the statement timeout; with the cost
-    grader, EXPLAIN rejects it at once with feedback for the agent.
+    grader, the plan estimate (EXPLAIN) rejects it at once with feedback for the agent.
   expected_outcome: "A timeout with the bug on; an instant rejection with its reason with it off."
   can_vary: ["the EXPLAIN cost figure", "timings"]
   target_minutes: 3
@@ -178,8 +178,9 @@
   guaranteed_moment: >-
     Under version 1 of the knowledge (the starting version), the fiscal year 2025 revenue question
     passes every deterministic grader and the
-    checklist turns all green, while the gold check on both databases fails. The reviewer's
-    verdict is shown beside it, whichever way it goes.
+    checklist turns all green, while the gold check on both databases fails (6 of 7 recorded live
+    attempts; in the other, no gold check arrived in time, cause not confirmed). The reviewer's verdict is shown
+    beside it, whichever way it goes.
   expected_outcome: "An all-green checklist beside a failed gold check."
   can_vary: ["the reviewer's verdict", "the wrong value"]
   target_minutes: 4
@@ -257,7 +258,7 @@
   planted: [BUG_NO_IDEMPOTENCY, BUG_RANDOM_DIGEST_ID]
   guaranteed_moment: >-
     The same event is sent three times. With the missing idempotency, three answers are posted;
-    with idempotency, one answer and "2 duplicates ignored". Firing the digest twice shows the same
+    with idempotency, one answer and "2 duplicates absorbed". Firing the digest twice shows the same
     with the random digest id.
   expected_outcome: "One answer posted, two duplicates absorbed, and one digest on the board."
   can_vary: ["timing of the duplicates"]
@@ -299,13 +300,13 @@
     api: "POST /experiments/run"
   planted: [knowledge-v1-empty, data-traps]
   guaranteed_moment: >-
-    Started at the poll, the experiment runs the 40 benchmark items under version 1 of the knowledge
+    Started at the poll, the experiment runs the 40 benchmark questions under version 1 of the knowledge
     (the starting version);
-    the trap items fail and the holdout ledger fills in locally, each row stamped with its run's
+    the trap questions fail and the holdout ledger fills in locally, each row stamped with its run's
     start time and linked to its LangSmith trace when the trace sample took one of its runs (about
     1 run in 5), otherwise marked "Not traced". This run is the session's baseline.
-  expected_outcome: "The number of holdout items version 1 passes, with the trap items failed."
-  can_vary: ["which non-trap items pass", "wall time"]
+  expected_outcome: "The number of holdout questions version 1 passes, with the trap questions failed."
+  can_vary: ["which non-trap questions pass", "wall time"]
   target_minutes: 3
   code:
     - {path: platform/src/datapilot/loop4_hill_climbing/experiment.py, lines: "192-194"}
@@ -329,14 +330,14 @@
     only while demo controls are allowed; its Run analyzer button runs the analyzer team, never
     the naive analyzer. The naive analyzer, with no model call, writes
     one rule per failed development question, quoting it word for word with the analyst's query that
-    failed, and never reads a reference query. It skips the critic and applies no overfit guard:
+    failed, and never reads a gold query. It skips the critic and applies no overfit guard:
     the guard flags every rule and the Improve page says so, yet the knowledge diff keeps them all.
     Then the candidate experiment runs, and the gate blocks the version because the overfit guard
     rejects its rules, whatever its holdout count.
   expected_outcome: >-
     The overfit guard flags every rule, not applied by the analyzer; the gate verdict reads
     blocked, naming the rules the overfit guard rejects.
-  can_vary: ["how many development questions failed", "how many development questions pass", "how many holdout items pass", "the time from the trigger to the verdict (211 to 580 seconds in 6 measured runs; the longest on a machine shared with assignment checks)"]
+  can_vary: ["how many development questions failed", "how many development questions pass", "how many holdout questions pass", "the time from the trigger to the verdict (211 to 580 seconds in 6 measured runs; the longest on a machine shared with assignment checks)"]
   target_minutes: 4
   code:
     - {path: platform/src/datapilot/loop4_hill_climbing/analyzer.py, lines: "206-210"}
@@ -353,10 +354,10 @@
   planted: [knowledge-v2-overbroad]
   guaranteed_moment: >-
     Run only after a candidate has been promoted. The active version plus one pre-authored rule,
-    "exclude discounted orders from revenue", breaks revenue items that pass under the active
+    "exclude discounted orders from revenue", breaks revenue questions that pass under the active
     version; the ledger marks the regressions and the gate blocks it.
   expected_outcome: "Regressions marked on the ledger and a blocked verdict."
-  can_vary: ["which items regress"]
+  can_vary: ["which questions regress"]
   target_minutes: 4
   code:
     - {path: platform/src/datapilot/loop4_hill_climbing/gate.py, lines: "117-135"}
@@ -393,16 +394,17 @@
     api: "POST /experiments/run"
   planted: []
   guaranteed_moment: >-
-    The candidate version flips holdout trap items with zero regressions on either split. The live
-    holdout ledger in the console, scored locally against this session's
-    baseline, marks the flips; then the LangSmith trace list of datapilot-experiments, filtered by
-    knowledge version, shows the candidate's traced runs, a sample of about 1 run in 5. The gate
-    reads ready for human approval; once approved, the runner makes the version active and runs the clearance
+    The gate decides against this session's baseline, every time: ready for human approval, or
+    blocked with its reasons. The live holdout ledger in the console, scored locally against this
+    session's baseline, marks the holdout trap questions the candidate flips (a majority flipped with
+    zero regressions in 6 of 10 measured runs); then the LangSmith trace list of datapilot-experiments, filtered by
+    knowledge version, shows the candidate's traced runs, a sample of about 1 run in 5. When the gate
+    reads ready and a person approves, the runner makes the version active and runs the clearance
     re-runs (50 seconds after the approval, measured once). In class it is queued at once after
     the analyzer (Improve > Run analyzer, then Improve > Run experiment on the candidate); trigger
     it again only if it never started, since a second press queues a second experiment.
   expected_outcome: "Holdout flips marked against this session's baseline, no regressions, gate verdict ready for human approval."
-  can_vary: ["which items flip", "how many flip: 0 to 12 of 13 holdout trap items in the measured runs, a majority in 6 of 10 measured runs, so check the candidate in rehearsal", "wall time: 171.3 to 459 seconds; confirming re-runs of an apparent regression lengthen it"]
+  can_vary: ["which questions flip", "how many flip: 0 to 12 of 13 holdout trap questions in the measured runs, a majority in 6 of 10 measured runs, so check the candidate in rehearsal", "wall time: 171.3 to 459 seconds; confirming re-runs of an apparent regression lengthen it"]
   target_minutes: 5
   code:
     - {path: platform/src/datapilot/loop4_hill_climbing/experiment.py, lines: "192-194"}
@@ -425,7 +427,7 @@
     engaged, or the level is lower. The fiscal year 2025 revenue question arrives as a
     webhook and is answered correctly under the new active version; it posts at the unattended
     level when the promotion cleared its metric family on the gate's own confirmed standard (every
-    holdout item at 2 of 3 runs, an item that fell short passing 2 of 3 more runs), and at the
+    holdout question at 2 of 3 runs, a question that fell short passing 2 of 3 more runs), and at the
     assisted level when the family fell short. From the promotion on, Events > Send webhook
     question sends this question whether a family cleared or none did. Its strip on the
     Events page then shows the gold check the runner writes after the post: "Gold check passed",

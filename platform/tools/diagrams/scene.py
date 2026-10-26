@@ -1,12 +1,20 @@
 """A small builder for Excalidraw scenes on the course canvas (authoring time only).
 
-Every diagram is a 1920 by 1080 rounded panel. Shapes carry one of the fixed kinds below, so the
-colour, the shape, and the outline always mean the same thing (docs/diagrams/README.md, "Colours
-and shapes"). Labels are measured in the browser with the real font before the scene is written,
-so a label is centred in its shape exactly as Excalidraw itself would place it.
+Every diagram is a rounded panel 1920 pixels wide. A slide diagram is 1920 by 791, the shape of the
+deck's diagram panel (12.13 by 5.0 inches), so 40 pixels on the canvas are 18.2 points on a
+slide; a page-only reference diagram is 1920 by 1080 with labels of 20 pixels or more. The style
+is fixed here and written down in docs/diagrams/README.md, "Diagram style": roughness 0 (the
+"architect" setting), Nunito for labels and Excalidraw's code font for code, three stroke widths,
+one arrow style, and the four loop colours as fills with dark text.
+
+A shape's kind fixes its shape and outline; its loop fixes its fill. Labels are measured in the
+browser with the real font before the scene is written, so a label is centred in its shape
+exactly as Excalidraw itself would place it.
 
 Elements are tagged with a step number; `Scene.frame(n)` keeps the elements of steps 1 to n, which
 gives the "-step-N" build-up frames, all on the same panel so nothing moves between frames.
+`Scene.frame(highlight=loop)` mutes every other loop (white fill, blue-grey outline, the labels
+still dark), which gives the per-section variants of the four-loop map.
 """
 
 from __future__ import annotations
@@ -15,56 +23,75 @@ import hashlib
 from dataclasses import dataclass, field
 from typing import Any
 
-WIDTH, HEIGHT = 1920, 1080
-PANEL = "#F0F3F6"
-DARK = "#212121"
-FONT_FAMILY = 5  # Excalifont, the Excalidraw hand-drawn font, embedded in every SVG
-LINE_HEIGHT = 1.25
-MIN_FONT_SIZE = 20
+WIDTH = 1920
+SLIDE_HEIGHT = 791  # 1920 by 791 is the 12.13 by 5.0 inch panel: 40 pixels are 18.2 points
+PAGE_HEIGHT = 1080  # a page-only reference diagram, too dense for a slide
+MIN_FONT_SIZE = {SLIDE_HEIGHT: 40, PAGE_HEIGHT: 20}
 
-AMBER = "#FFAB40"
-BLUE = "#3896D2"
-GREY = "#78909C"
-GREEN = "#43A047"
-RED = "#E46962"
+PANEL = "#F0F3F6"
+DARK = "#212121"  # every label, every outline, every arrow
 WHITE = "#FFFFFF"
+STOP_FILL = "#EEEEEE"  # the template's light grey: a stop, a failure, a trap
+MUTED = "#78909C"  # the template's blue-grey: the outline of a muted loop
+
+LABEL_FONT = 6  # Nunito, Excalidraw's "Normal" font
+CODE_FONT = 8  # Comic Shanns, Excalidraw's "Code" font
+LINE_HEIGHT = 1.25
+ROUGHNESS = 0  # "architect": straight, clean lines
+OUTLINE = 2  # every shape
+EMPHASIS = 4  # a person decides, a stop, the highlighted loop
+ARROW = 3  # every arrow and line
+ARROWHEAD = "triangle"
+
+# The four loop colours, one per section (the deck's wayfinding), each with dark text on it.
+LOOPS: dict[str, tuple[str, str]] = {
+    "agent": ("Agent loop", "#3896D2"),
+    "verification": ("Verification loop", "#0097A7"),
+    "event": ("Event loop", "#FFAB40"),
+    "hill-climbing": ("Hill-climbing loop", "#EEFF41"),
+}
+LOOP_FILLS = {fill for _name, fill in LOOPS.values()}
+FILLS = LOOP_FILLS | {WHITE, STOP_FILL, PANEL, "transparent"}
+STROKE_WIDTHS = {OUTLINE, EMPHASIS, ARROW}
 
 
 @dataclass(frozen=True)
 class Kind:
-    """What a shape means: its colour, its shape, and its outline, fixed for every diagram."""
+    """What a shape means: its shape and its outline, fixed for every diagram. A fill of "loop"
+    takes the colour of the shape's loop (white when it belongs to none)."""
 
     shape: str  # rectangle, ellipse, or diamond
-    stroke: str
     fill: str
     rounded: bool = True
-    stroke_width: int = 2
+    stroke_width: int = OUTLINE
     stroke_style: str = "solid"
 
 
 KINDS: dict[str, Kind] = {
     # An agent: a model decides what happens next.
-    "agent": Kind("ellipse", AMBER, AMBER + "4D", stroke_width=3),
+    "agent": Kind("ellipse", "loop"),
     # Deterministic code: the same input gives the same result.
-    "code": Kind("rectangle", BLUE, BLUE + "3D"),
-    # Stored state: a database, a table, a file, a record.
-    "store": Kind("rectangle", GREY, GREY + "33", rounded=False),
-    # A person decides.
-    "human": Kind("diamond", GREEN, GREEN + "33", stroke_width=3),
+    "code": Kind("rectangle", "loop"),
+    # Stored state: a database, a table, a file, a record. Square corners.
+    "store": Kind("rectangle", "loop", rounded=False),
+    # A person decides. White, with a thick outline.
+    "human": Kind("diamond", WHITE, stroke_width=EMPHASIS),
     # A stop, a failure, or a trap that makes an answer wrong. The label says which.
-    "stop": Kind("rectangle", RED, RED + "33", stroke_width=4),
+    "stop": Kind("rectangle", STOP_FILL, stroke_width=EMPHASIS),
     # Deliberately no agent here: a dashed, empty ellipse where an agent could have been.
-    "no-agent": Kind("ellipse", DARK, "transparent", stroke_width=2, stroke_style="dashed"),
-    # Outside DataPilot: a sender, a service. Sharp corners, white.
-    "outside": Kind("rectangle", DARK, WHITE, rounded=False),
-    # A state of a run that goes on: rounded, white, a thin outline.
-    "state": Kind("rectangle", DARK, WHITE),
-    # The boundary of a loop or a process: an outline with its name on top.
-    "boundary": Kind("rectangle", DARK, "transparent", stroke_width=2),
+    "no-agent": Kind("ellipse", "transparent", stroke_style="dashed"),
+    # Outside DataPilot: a sender, a service. Square corners, white, a dashed outline.
+    "outside": Kind("rectangle", WHITE, rounded=False, stroke_style="dashed"),
+    # A state of a run that goes on: rounded, white.
+    "state": Kind("rectangle", WHITE),
+    # A terminal state of the run lifecycle: white, a thick outline.
+    "terminal": Kind("rectangle", WHITE, stroke_width=EMPHASIS),
+    # The boundary of a loop or a process: an outline, with its name on top.
+    "boundary": Kind("rectangle", "transparent"),
     # A tool boundary: what a helper agent may call, and nothing else.
-    "fence": Kind("rectangle", DARK, "transparent", stroke_width=2, stroke_style="dashed"),
-    # A terminal state of the run lifecycle: a thick dark outline.
-    "terminal": Kind("rectangle", DARK, WHITE, stroke_width=4),
+    "fence": Kind("rectangle", "transparent", stroke_style="dashed"),
+    # A loop's name tag: the loop's colour, with its name in words.
+    "chip": Kind("rectangle", "loop"),
 }
 
 _B62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -87,7 +114,7 @@ class Label:
     """A text whose size is measured later; `place` positions it once the size is known."""
 
     element: dict[str, Any]
-    anchor: str  # "center", "left", or "arrow"
+    anchor: str  # "container", "center", "left", or "arrow"
     cx: float = 0.0
     cy: float = 0.0
 
@@ -95,23 +122,33 @@ class Label:
 @dataclass
 class Scene:
     name: str
+    height: int = SLIDE_HEIGHT
     elements: list[dict[str, Any]] = field(default_factory=list)
     steps: dict[str, int] = field(default_factory=dict)
+    loops: dict[str, str | None] = field(default_factory=dict)
+    kinds: dict[str, str] = field(default_factory=dict)
     labels: list[Label] = field(default_factory=list)
     _count: int = 0
     step: int = 1
+    loop: str | None = None  # the loop of the shapes drawn next
 
     def __post_init__(self) -> None:
-        panel = self._base("rectangle", "panel", 0, 0, WIDTH, HEIGHT)
+        if self.height not in MIN_FONT_SIZE:
+            raise ValueError(f"{self.name}: a panel is 1920 by 791 (slide) or 1920 by 1080 (page)")
+        panel = self._base("rectangle", "panel", 0, 0, WIDTH, self.height)
         panel.update(
             strokeColor="transparent",
             backgroundColor=PANEL,
-            roughness=0,
-            strokeWidth=1,
+            strokeWidth=OUTLINE,
             roundness={"type": 3, "value": 48},
             locked=True,
         )
         self.steps[panel["id"]] = 0
+        self.loops[panel["id"]] = None
+
+    @property
+    def min_font(self) -> int:
+        return MIN_FONT_SIZE[self.height]
 
     # --- elements ------------------------------------------------------------------------------
     def _id(self, kind: str) -> str:
@@ -131,9 +168,9 @@ class Scene:
             "strokeColor": DARK,
             "backgroundColor": "transparent",
             "fillStyle": "solid",
-            "strokeWidth": 2,
+            "strokeWidth": OUTLINE,
             "strokeStyle": "solid",
-            "roughness": 1,
+            "roughness": ROUGHNESS,
             "opacity": 100,
             "groupIds": [],
             "frameId": None,
@@ -150,6 +187,8 @@ class Scene:
         }
         self.elements.append(element)
         self.steps[element_id] = self.step
+        self.loops[element_id] = self.loop
+        self.kinds[element_id] = kind
         return element
 
     def shape(
@@ -161,16 +200,24 @@ class Scene:
         h: float,
         label: str = "",
         *,
-        size: int = 28,
+        size: int | None = None,
         align: str = "center",
         valign: str = "middle",
+        code: bool = False,
+        loop: str | None = "",
     ) -> dict[str, Any]:
-        """A shape of a fixed kind, with an optional label inside it."""
+        """A shape of a fixed kind, with an optional label inside it. `loop` overrides the scene's
+        current loop for this shape (None: no loop)."""
         style = KINDS[kind]
+        saved = self.loop
+        if loop != "":
+            self.loop = loop
         element = self._base(style.shape, kind, x, y, w, h)
+        fill = style.fill
+        if fill == "loop":
+            fill = LOOPS[self.loop][1] if self.loop else WHITE
         element.update(
-            strokeColor=style.stroke,
-            backgroundColor=style.fill,
+            backgroundColor=fill,
             strokeWidth=style.stroke_width,
             strokeStyle=style.stroke_style,
         )
@@ -179,19 +226,26 @@ class Scene:
         elif style.shape != "rectangle":
             element["roundness"] = {"type": 2}
         if label:
-            self._bound_text(element, label, size=size, align=align, valign=valign)
+            self._bound_text(
+                element, label, size=size or self.min_font, align=align, valign=valign, code=code
+            )
+        self.loop = saved
         return element
 
-    def _text_element(self, text: str, size: int, align: str, color: str = DARK) -> dict:
-        if size < MIN_FONT_SIZE:
-            raise ValueError(f"{self.name}: label {text!r} is below {MIN_FONT_SIZE} pixels")
+    def chip(self, x: float, y: float, w: float, h: float, loop: str, text: str = "") -> dict:
+        """A loop's name tag in the loop's colour: its name in words, so colour is never alone."""
+        return self.shape("chip", x, y, w, h, text or LOOPS[loop][0], loop=loop)
+
+    def _text_element(self, text: str, size: int, align: str, *, code: bool = False) -> dict:
+        if size < self.min_font:
+            raise ValueError(f"{self.name}: label {text!r} is below {self.min_font} pixels")
         element = self._base("text", "text", 0, 0, 0, 0)
         element.update(
-            strokeColor=color,
+            strokeColor=DARK,
             text=text,
             originalText=text,
             fontSize=size,
-            fontFamily=FONT_FAMILY,
+            fontFamily=CODE_FONT if code else LABEL_FONT,
             textAlign=align,
             verticalAlign="middle",
             containerId=None,
@@ -206,9 +260,9 @@ class Scene:
         container["boundElements"] = bound
 
     def _bound_text(
-        self, container: dict, text: str, *, size: int, align: str, valign: str
+        self, container: dict, text: str, *, size: int, align: str, valign: str, code: bool
     ) -> None:
-        element = self._text_element(text, size, align)
+        element = self._text_element(text, size, align, code=code)
         element["containerId"] = container["id"]
         element["verticalAlign"] = valign
         self._bind(container, element, "text")
@@ -220,60 +274,56 @@ class Scene:
         y: float,
         text: str,
         *,
-        size: int = 24,
+        size: int | None = None,
         align: str = "left",
-        color: str = DARK,
+        code: bool = False,
     ) -> dict[str, Any]:
         """A free label. With align "left", (x, y) is its top-left corner; with "center", (x, y)
         is its centre."""
-        element = self._text_element(text, size, align, color)
+        element = self._text_element(text, size or self.min_font, align, code=code)
         anchor = "center" if align == "center" else "left"
         self.labels.append(Label(element, anchor, x, y))
         return element
 
-    def line(self, points: list[tuple[float, float]], *, color: str = DARK, width: int = 2) -> dict:
-        return self._linear("line", points, color=color, width=width, head=None)
+    def line(self, points: list[tuple[float, float]]) -> dict:
+        return self._linear("line", points, head=None)
 
     def arrow(
         self,
         points: list[tuple[float, float]],
         label: str = "",
         *,
-        color: str = DARK,
-        dashed: bool = False,
         both: bool = False,
-        size: int = 22,
+        size: int | None = None,
         label_at: float | None = None,
     ) -> dict[str, Any]:
         """An arrow through absolute points; a label sits on its middle, over a gap in the line.
-        For a straight arrow, `label_at` moves the label along it (0.5 is the middle)."""
+        For a straight arrow, `label_at` moves the label along it (0.5 is the middle); a labelled
+        straight arrow always gets that middle point, which is where Excalidraw cuts the gap."""
+        if label and label_at is None:
+            label_at = 0.5
         if label_at is not None and len(points) == 2:
             (x0, y0), (x1, y1) = points
             mid = (x0 + (x1 - x0) * label_at, y0 + (y1 - y0) * label_at)
             points = [points[0], mid, points[1]]
-        element = self._linear("arrow", points, color=color, width=2, head="arrow")
-        if dashed:
-            element["strokeStyle"] = "dashed"
+        element = self._linear("arrow", points, head=ARROWHEAD)
         if both:
-            element["startArrowhead"] = "arrow"
+            element["startArrowhead"] = ARROWHEAD
         if label:
-            text = self._text_element(label, size, "center")
+            text = self._text_element(label, size or self.min_font, "center")
             text["containerId"] = element["id"]
             self._bind(element, text, "text")
             self.labels.append(Label(text, "arrow"))
         return element
 
-    def _linear(
-        self, etype: str, points: list[tuple[float, float]], *, color: str, width: int, head: Any
-    ) -> dict[str, Any]:
+    def _linear(self, etype: str, points: list[tuple[float, float]], *, head: Any) -> dict:
         x0, y0 = points[0]
         relative = [[round(px - x0, 2), round(py - y0, 2)] for px, py in points]
         xs = [p[0] for p in relative]
         ys = [p[1] for p in relative]
         element = self._base(etype, etype, x0, y0, max(xs) - min(xs), max(ys) - min(ys))
         element.update(
-            strokeColor=color,
-            strokeWidth=width,
+            strokeWidth=ARROW,
             points=relative,
             lastCommittedPoint=None,
             startBinding=None,
@@ -294,7 +344,7 @@ class Scene:
                 self.shape(kind, x, top - 4, 56, 40)
             else:
                 self.shape(kind, x, top, 56, 32)
-            self.text(x + 72, top - 1, meaning, size=22)
+            self.text(x + 72, top - 1, meaning)
 
     # --- measuring, placing, and writing -------------------------------------------------------
     def measure_requests(self) -> list[dict[str, Any]]:
@@ -302,7 +352,7 @@ class Scene:
             {
                 "text": label.element["text"],
                 "fontSize": label.element["fontSize"],
-                "fontFamily": FONT_FAMILY,
+                "fontFamily": label.element["fontFamily"],
                 "lineHeight": LINE_HEIGHT,
             }
             for label in self.labels
@@ -340,7 +390,7 @@ class Scene:
             else:
                 x, y = label.cx, label.cy
             element["x"], element["y"] = round(x, 2), round(y, 2)
-            if not (x >= 0 and x + w <= WIDTH and y >= 0 and y + h <= HEIGHT):
+            if not (x >= 0 and x + w <= WIDTH and y >= 0 and y + h <= self.height):
                 problems.append(f"{self.name}: label {element['text']!r} leaves the panel")
         if problems:
             raise ValueError("\n".join(problems))
@@ -351,6 +401,8 @@ class Scene:
             inner_w, inner_h = inner_w * 0.76, inner_h * 0.76
         elif box["type"] == "diamond":
             inner_w, inner_h = inner_w * 0.56, inner_h * 0.56
+        if element["textAlign"] == "left" and box["type"] == "rectangle":
+            inner_w -= 2 * (12 + 8)
         if w > inner_w - 8 or h > inner_h - 4:
             return [
                 f"{self.name}: label {element['text']!r} ({w:.0f} by {h:.0f}) does not fit its "
@@ -358,8 +410,10 @@ class Scene:
             ]
         return []
 
-    def frame(self, upto: int | None = None) -> dict[str, Any]:
-        """The scene with the elements of steps 1 to `upto` (all steps when None)."""
+    def frame(self, upto: int | None = None, *, highlight: str | None = None) -> dict[str, Any]:
+        """The scene with the elements of steps 1 to `upto` (all steps when None). With
+        `highlight`, every other loop is muted: a white fill and a blue-grey outline, its labels
+        still dark and readable; the highlighted loop's boundary gets the thick outline."""
         kept = [e for e in self.elements if upto is None or self.steps[e["id"]] <= upto]
         kept_ids = {e["id"] for e in kept}
         out = []
@@ -369,6 +423,14 @@ class Scene:
             if copy["boundElements"]:
                 copy["boundElements"] = [b for b in copy["boundElements"] if b["id"] in kept_ids]
                 copy["boundElements"] = copy["boundElements"] or None
+            loop = self.loops[element["id"]]
+            if highlight is not None and loop is not None and copy["type"] != "text":
+                if loop != highlight:
+                    if copy["backgroundColor"] in LOOP_FILLS:
+                        copy["backgroundColor"] = WHITE
+                    copy["strokeColor"] = MUTED
+                elif self.kinds[element["id"]] == "boundary":
+                    copy["strokeWidth"] = EMPHASIS
             out.append(copy)
         return {
             "type": "excalidraw",

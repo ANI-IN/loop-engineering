@@ -1,477 +1,790 @@
-"""Section 3: Event loop. Slides and speaker notes (density pass)."""
+"""Section 3: Event loop, 1:55-2:50, 55 minutes, 13 slides, under the design system.
 
-FAILURE = "Work that arrives as events runs twice, waits for a person in memory that dies with the process, and keeps running after someone presses stop."
+Every course number comes from the calibration report, the paired measurements page, and the
+evidence page of this section; every source marker uses the deck's numbered sources list. The
+run of show inside the block: concepts and code to 2:14, the five demos and a 2-minute reserve
+from 2:14 to 2:38, then evidence, design, apply, pitfalls, and the recap to 2:50, when the poll
+starts.
+"""
 
-DEMOS = [
-    "events-webhook-question",
-    "events-approval-survives-restart",
-    "events-duplicate-events",
-    "events-kill-switch-in-flight",
-]
+RULES = "design system"
 
-R = "<!-- refresh after the session: {} -->"
-MEASURED = (
-    "in calibration, each core demo twice with a reset between: the webhook question shown in 46 "
-    "seconds, posted unverified, and in the second attempt held by "
-    "a reviewer concern about the date (fixed the same night: the reviewer sees the business date); "
-    "the approval that survives a restart shown in 84 and 81 seconds; duplicate events shown in 57 "
-    "and 78 seconds, 1 run, 2 duplicates absorbed, 1 digest; the kill switch in flight shown in 33 "
-    "and 8 seconds, stopped in flight. Retaken on 23 October: the webhook question twice, both "
-    "posted unverified, 300 orders (the day in Eastern time) and 291 (the day in Coordinated "
-    "Universal Time), both approved by the reviewer; every planted half twice, each shown: the "
-    "approval lost with the in-memory checkpointer, 3 answers and 2 digests with both duplicate bugs, "
-    "and a post after the kill switch with the check at claim only. In the paired measurement of 23 "
-    "October, one run of each half of three demos: 3 answers and 2 digests, then 1 answer, 2 "
-    "duplicates absorbed, and 1 digest; the approval lost, then approved after the restart and "
-    "posted; a post after the switch, then stopped in flight. In the live session of 24 October "
-    "every core and optional demo showed its moment, both halves."
-)
-
-NUMBERS = [
-    "Demotion after 3 consecutive escalations: from `autonomy.demote_after_consecutive_escalations` in pack.yaml.",
-    "Default autonomy level report-only: from `autonomy.default_level` in pack.yaml.",
-    "Business date 31 January 2026: from the business-date setting (the warehouse ends there).",
-    "Morning digest at 8 a.m. Eastern time: from the demo registry (the digest now).",
-    'Approval decisions limited to approve and reject; `interrupt_mode="per_call"` from langchain 1.4.6: Source 16, verified locally.',
-    "Two duplicates ignored after three identical events: the registry's guaranteed moment; measured 1 run and 2 duplicates absorbed, twice: docs/calibration-report.md, Demos.",
-    "Approval across a worker restart and the kill switch stopping a run in flight, each shown twice: docs/calibration-report.md, Demos; their planted halves, each shown twice (approval lost, 3 answers and 2 digests, a post after the kill switch): docs/calibration-report.md, Resumed after the ledger correction.",
-    "The webhook question about the previous day, 300 orders in Eastern time and 291 in Coordinated Universal Time, both posted unverified and approved by the reviewer: docs/calibration-report.md, Resumed without traces; the teaching point: docs/instructor-guide.md, Section 3: Event loop.",
-    "Retry cap 3 (`limits.max_retries`), model call limit 12, tool call limit 16: from pack.yaml (referenced in the kill switch concept).",
-    "Lease 30 seconds, heartbeat every 10 seconds: from the worker settings; at most 3 attempts: the jobs table default.",
-    "One run of each half of three demos: duplicate events, 3 answers and 2 digests, then 1 answer, 2 duplicates absorbed, 1 digest; the approval lost and the run failed, then approved after the restart and posted; a post after the kill switch, then stopped in flight: docs/benefits.md, Section 3: Event loop.",
-    "Every core and optional demo of the section showed its moment, both halves: the live session of 24 October 2026.",
-]
-
-QA = "No Question Is Too Small Every Question Deserves an Answer!!"
+DEMO_PAGE = "https://github.com/ANI-IN/loop-engineering/tree/main/section-3-event-loop/demo"
+EXPECTED = "section-3-event-loop/demo/expected/"
 
 SLIDES = [
+    # 1 section opener --------------------------------------------------------------------------
     dict(
-        kind="agenda",
-        title="Agenda (Section 3 highlighted)",
-        layout="concept",
-        minutes=0.5,
-        says="Section 3: Event loop: the same agent, now driven by events, schedules, and people",
+        kind="opener",
+        title="Section 3: Event loop",
+        minutes=1,
+        says="The event loop fixes work that runs twice, waits in memory, or ignores a stop",
         src="section-3-event-loop/README.md",
-        container="step cards: four sections, the third highlighted",
         on_slide=[
-            "1. Agent loop",
-            "2. Verification loop",
-            "3. Event loop (now): how work arrives, waits for a person, and stops",
-            "4. Hill-climbing loop",
+            "Fixes: answers posted twice, approvals lost in a restart, and a stop that misses "
+            "the running job",
+            "Insight: Every safeguard around the model is a row in Postgres; kept in memory, the "
+            "approval was lost in 6 of 6 restarts.",
         ],
         notes=[
-            "Say: Welcome back. So far every run started because I pressed a button and watched it. That is not how agents run at work. At work, a question arrives as a webhook from a chat tool, a digest fires on a schedule, an export waits for a person, and nobody is watching the screen. Section 3: Event loop is about that shift. The agent does not change in this section. The analyst, the schema scout, the graders, and the reviewer are exactly what you saw in Sections 1 and 2. What changes is everything around them: how work arrives, how it is claimed, how it waits for a human, and how it is stopped. This section also adds no new agent, and that is a deliberate design choice we will defend in a few minutes. The concepts are four: idempotent effects under at-least-once delivery, a queue that lives in a table, approvals that survive a restart, and a router plus a stop that reaches running work. Then four live demos and a short code walkthrough.",
-            "Point at: the highlighted third row, and the fact that rows one and two stay in place: we keep everything we built.",
-            'Likely question: "Is the event loop another agent framework feature?" Answer: No. It is ordinary distributed-systems engineering around an agent: a queue, keys, durable state, and policy. The agent framework gives you the pause and resume hooks; the rest is yours.',
-            "Transition: First, a story of what goes wrong when the loop around the agent is naive.",
+            "Purpose: Open Section 3 and name the failures it fixes once nobody watches each run.",
+            "What to say: Welcome back. Until now someone pressed a button and watched every "
+            "answer. At work, questions arrive as webhooks, the digest fires on a schedule, an "
+            "export waits for a person, and nobody reads each answer before it posts. That is "
+            "the event loop. The agent does not change: same analyst, graders and reviewer, no "
+            "new agent. What changes is how work arrives, waits for a person, and stops.",
+            "The point to land: The event loop adds no intelligence; it adds the plumbing that "
+            "makes unattended runs safe.",
+            "Example: The morning digest posts at 8 a.m. Eastern time, whether or not anyone is "
+            "awake.",
+            'Ask the room: "Which of your agents runs from a schedule or a webhook today?" '
+            "Expect: report bots, ticket triage, a few say none yet.",
+            "Misconceptions: That event-driven agents need a new framework. They need a queue, "
+            "keys, durable state, and a stop, which you already know how to build.",
+            "Transition: First, what the measured failures had in common.",
         ],
     ),
+    # 2 insight: the opening insight ------------------------------------------------------------
+    dict(
+        kind="insight",
+        title="Every planted bug failed every run",
+        minutes=3,
+        says="A one-line bug breaks every time its trigger happens: 17 of 17 planted runs failed",
+        src="docs/evidence/section-3-event-loop.md, Results; docs/benefits.md, Section 3; "
+        "section-3-event-loop/demo/expected/events-approval-lost-after-restart.png "
+        "(run 712fce2f)",
+        image={
+            "path": EXPECTED + "events-approval-lost-after-restart.png",
+            "alt": "The California export's card in the Failed lane, with the in-memory "
+            "checkpointer planted: the pending approval was lost, started 14:56:54, run 712fce2f",
+            "crop": (0.24, 0.38, 0.585, 0.455),
+            "callouts": [(0.29, 0.17, 1)],
+        },
+        on_slide=[
+            "Insight: A one-line bug breaks every time its trigger happens; no evaluation of the "
+            "model will see it.",
+            "Evidence: Forced live: 17 of 17 planted runs failed while the model answered "
+            "normally.",
+            "1. Failed: the pending approval was lost",
+        ],
+        notes=[
+            "Purpose: Land the section's opening insight: around the model, one-line bugs in "
+            "delivery, state, and control fail every time, and no model evaluation sees them.",
+            "What to say: This card is from a live run on 25 October. The California export "
+            "returned customer emails, so it held for approval. Then the worker restarted, and a "
+            "person approved. Marker one: the Failed lane. The run sits there, not in Holding "
+            "for approval, and its card starts the pending approval was lost. The words about "
+            "the trace on the card only say the build had used up its tracing quota that day; "
+            "they are not part of the failure. In that run the pause lived in the worker's memory, so the restart "
+            "erased it, and the approval found nothing to resume. Now the insight behind it. In "
+            "this section we planted three bugs, each one line of ordinary code, and forced "
+            "each trigger live: a resent event, a restart during a hold, a stop during a run. With the event key missing, one event sent three times posted 3 answers "
+            "and 2 digests, in all 5 planted runs. With the approval kept in memory, a worker "
+            "restart lost it, in all 6. With the kill switch checked only at claim, the running "
+            "job posted after the switch, in all 6. That is 17 of 17, while the model answered "
+            "normally. Be careful what that proves. In production these bugs do not fire every "
+            "run: a duplicate needs a sender to retry, a lost approval needs a restart during "
+            "a hold. That is exactly why they hide. They pass every unit test that never "
+            "forces the trigger, and no evaluation of the model can see them. The model still "
+            "makes its own mistakes in this section, and you may see one in the demo; those are "
+            "the other loops' job.",
+            "The point to land: A one-line bug around the model breaks every time its trigger "
+            "happens, so force the trigger; no evaluation of the model will see it.",
+            "Example: The run on screen used the same analyst as Section 1: Agent loop; only the "
+            "place where the pause was saved changed.",
+            'Ask the room: "Where does a paused run of your agent live today?" Expect: in '
+            "memory, or nowhere because nothing pauses.",
+            "Misconceptions: That a better model makes unattended runs safe. The model never saw "
+            "the duplicate, the restart, or the switch.",
+            "Transition: Here is the failure that teams meet first, from a real run.",
+        ],
+    ),
+    # 3 problem story ---------------------------------------------------------------------------
     dict(
         kind="story",
-        title="Failure story: the digest that posted twice",
-        layout="diagram",
-        minutes=2,
-        says="Illustrative: a retried digest posts twice, an export runs unwatched, stop misses a running job",
-        src="section-3-event-loop/concepts.md",
-        container="step cards: four numbered beats, then a lesson bar",
-        on_slide=[
-            "Illustrative",
-            "1. **Two digests**: at 8 a.m. Eastern time a worker times out, the retry posts a second digest, and the numbers differ because two late orders arrived in between.",
-            "2. **Unwatched export**: a California customer list with emails goes out while nobody watches.",
-            "3. **A stop for new work**: someone presses stop; no new jobs start.",
-            "4. **The run in flight**: the run already running finishes and still posts.",
-            "Lesson: none of these is a model failure; everything that went wrong was around the model.",
-        ],
-        notes=[
-            "Say: This story is illustrative, and every name in it is invented. Beat one, two digests. Harbor & Pine's morning digest of the previous day's net revenue posts at 8 a.m. Eastern time. One morning the worker times out halfway, the scheduler retries, and the channel shows a second digest. The two disagree, because two late orders arrived between the first run and the retry. Now finance trusts neither number. Beat two, the unwatched export. Priya in marketing asks for a list of California customers for a campaign. The query reads email addresses, which is personal data. Nobody is watching the run, so the export goes out. Beat three, a stop for new work. Someone notices and presses stop. The flag is checked when a worker claims a job, so no new runs start. Beat four, the run in flight. The run that is already running keeps going, finishes its last tool call, and posts. Each beat is a different failure: a duplicate effect, a missing human decision, and a stop that does not reach running work. None of these is a model failure; everything that went wrong was around the model.",
-            "Point at: the four beat labels, then the lesson bar.",
-            'Likely question: "Would a smarter model avoid any of this?" Answer: No. Every beat is about delivery, state, and control, which live outside the model.',
-            "Transition: So the tempting fix is smarter routing. Let us test that idea.",
-        ],
-    ),
-    dict(
-        kind="question",
-        title="Event loop: should an agent route the events?",
-        layout="concept",
+        title="Delivered again, posted again: two digests for one day",
         minutes=2.5,
-        says="KEY IDEA: No. Routing a closed set of event types is a lookup; a table is testable and auditable",
-        src="section-3-event-loop/README.md",
-        container="key-idea box with three reason points",
+        says="Without a stored event key, repeats became two digests and repeated answers",
+        src="section-3-event-loop/demo/expected/events-duplicate-events-no-idempotency-"
+        "channel.png (25 October 2026, runs on docs/evidence/section-3-event-loop.md)",
+        image={
+            "path": EXPECTED + "events-duplicate-events-no-idempotency-channel.png",
+            "alt": "The Channel with the missing idempotency planted: two digests for 30 January "
+            "2026, both posted at the report-only level, unverified, with different net revenue "
+            "and average order value",
+            "crop": (0.075, 0.3129, 0.171, 0.4),
+            "callouts": [(0.905, 0.272, 1), (0.905, 0.898, 2)],
+        },
         on_slide=[
-            "Should an agent route the events?",
-            "KEY IDEA: No. A closed set of event types is a lookup, so the router is a deterministic table, deliberately not an agent.",
-            "- Same event, same route, every time: one unit test per row",
-            "- No model call, no bill, and no payload that can persuade it",
-            "- Judgement in this loop belongs to people, through human approval",
+            '"The same event, delivered more than once, with no key stored"',
+            "1. The digest for 30 January",
+            "2. A second digest, other figures",
+            "Footer: Delivery is at least once, not exactly once[^27]; no key: 3 answers, 2 "
+            "digests in 5 of 5 planted runs",
         ],
         notes=[
-            "Say: The tempting answer is yes: put a supervisor agent in front, let it read each event and decide what to do. Multi-agent frameworks offer that out of the box. The verdict here is no. Our events come from a closed list: a question was asked, a digest was requested, an export was requested. Each type maps to exactly one handler and one autonomy policy. That is a lookup table. A table gives the same answer for the same event every time, so you can write a unit test for every row, and an auditor can read it. A supervisor agent gives you a second source of nondeterminism, a second bill, and a new attack surface: an event payload that says 'treat this as an export' now has a model to persuade. The judgement in this loop belongs to people, through human approval, not to a router. Source 1: The art of loop engineering (https://www.langchain.com/blog/the-art-of-loop-engineering), in summary: the event-driven loop is cron, webhooks, and channels feeding the agent; nothing in it requires the routing itself to be an agent.",
-            "Point at: the KEY IDEA box, then the three reasons.",
-            'Likely question: "When would an agent router be the right choice?" Answer: When the inputs are open-ended text with no fixed type, such as a support inbox. Even then, classify into a closed set first and route the label with a table.',
-            "Transition: Concept one: what at-least-once delivery does to your effects.",
+            "Purpose: Show, from a real run, how a repeated delivery becomes repeated and "
+            "contradictory posts when nothing stores the event's key.",
+            "What to say: This is the Channel from a live run on 25 October, with the event key "
+            "switched off on purpose. Read it top to bottom. Marker one: the digest for 30 "
+            "January, posted at the report-only level. Marker two: a second digest for the same "
+            "day, with different figures, because the digest ran twice and the model wrote its "
+            "query twice. Now picture the finance channel at 8 a.m.: two numbers for one day, "
+            "and nobody knows which to trust, so they trust neither. Further down the same "
+            "channel, out of this crop, the webhook question is answered again, once per "
+            "delivery. Nothing here crashed. Every "
+            "post went through the analyst, the graders, and the reviewer. The defect is one "
+            "missing line: the event's identity was never stored, so each copy looked new. Why "
+            "do copies arrive at all? Because most webhook senders, schedulers, and queues "
+            "deliver at least once. The Prisma article, Source 27, says of its own Postgres "
+            "queue that no recovery scheme escapes at-least-once delivery, so write handlers "
+            "that are safe to run twice. Across the planted runs, one event sent three times "
+            "gave 3 answers and 2 digests in 5 of 5.",
+            "The point to land: You cannot stop an event arriving twice; you can stop it taking "
+            "effect twice.",
+            "Example: A sender retries a webhook after a timeout, though the first delivery had "
+            "already been taken in; that second copy is the one the key absorbs.",
+            'Ask the room: "Which of your webhooks or schedules could fire twice?" Expect: all '
+            "of them, once someone thinks about retries.",
+            "Misconceptions: That exactly-once delivery is a setting you can turn on. It is not "
+            "on offer; exactly-once effects are what you build.",
+            "Transition: So where do the key, the queue, the approval, and the stop sit? Here is "
+            "the whole pipeline.",
         ],
     ),
+    # 4 concept: the event pipeline -------------------------------------------------------------
     dict(
         kind="concept",
-        title="1) At-least-once delivery needs idempotent effects",
-        layout="diagram",
-        minutes=5,
-        says="Key idea: delivery repeats, so every effect needs a deterministic key and a conflict rule",
-        src="Sources 13 to 15 (Postgres queue caveats); platform/planted/registry.yaml",
-        container="two-column cards: how it works | worked example, then a key-idea bar",
-        on_slide=[
-            "Principle: assume every event arrives more than once; its effect must happen once.",
-            "Why it matters: a retried digest posts twice with different numbers, and finance "
-            "trusts neither.",
-            "| How it works in DataPilot | Worked example |",
-            "|---|---|",
-            "| Key from what the event means, never from arrival time | Webhook: the sender's event id |",
-            "| Insert under a unique constraint; a conflict is a duplicate | Digest: job name plus business date |",
-            "| Pick the conflict rule: ignore, update, or reject | A repeated question: ignore it |",
-            "Evidence: one event sent three times posted 3 answers without the key; with it, 1 "
-            "answer and 2 duplicates absorbed.",
-            "At work: for payments, emails, and tickets, name each effect's key and its "
-            "second-arrival rule.",
-            "Key idea: delivery repeats; effects must not.",
-        ],
+        title="The event pipeline, from router to kill switch",
+        minutes=3,
+        says="Events are inserted once, routed by a table, claimed with a lease, held, and stopped",
+        src="section-3-event-loop/diagrams/event-loop.png (section-3-event-loop/diagrams/"
+        "event-loop.excalidraw); section-3-event-loop/concepts.md",
+        figure={
+            "diagram": "event-loop",
+            "alt": "The event pipeline: a webhook, the scheduler, or the console sends an event, "
+            "inserted once per event id; a fixed router, with no agent, picks the queue in the "
+            "jobs table; the worker claims a job with a lease and a heartbeat, the reaper "
+            "requeues an expired lease, and the daily budget is checked at claim; the autonomy "
+            "policy posts at once or holds the run as a parked job with a checkpoint until a "
+            "person approves; the kill switch is checked at claim, before every model call, and "
+            "before every tool call",
+        },
+        on_slide=[],
         notes=[
-            "Trade-offs, said aloud: a key too coarse merges events; a key too fine lets duplicates through.",
-            "Plain explanation: Every queue, webhook, and scheduler you will use delivers at least once. Senders retry on timeouts, workers crash after doing the work but before marking it done, and schedulers fire again after a restart. Exactly-once delivery is not on offer. What you can build is exactly-once effects: the event may arrive three times, but the answer is posted once. The tool for that is an idempotency key: a value that is the same every time the same logical event arrives, stored under a unique constraint.",
-            "Concrete example from DataPilot: A question arrives as a webhook with the sender's event id. The api inserts the event with `INSERT ... ON CONFLICT (event_id) DO NOTHING`. The second and third copies hit the conflict, create no job, and are counted as duplicates ignored on the run board. The morning digest has no sender, so its key is built from the job name and the business date, `digest:YYYY-MM-DD`. Two planted bugs show the failure: the missing idempotency (`BUG_NO_IDEMPOTENCY`) posts three answers, and the random digest id (`BUG_RANDOM_DIGEST_ID`) posts two digests.",
-            "Under the hood: The key must be derived from the meaning of the event, never generated at arrival. A random id per arrival defeats the constraint because every copy looks new. A key from wall-clock time breaks the other way: a retry a second later gets a new key. Business identity is the rule: who sent it and what it is about, or which job for which business date. The constraint lives in the database, not in application memory, so it holds across workers and restarts. The conflict rule is a choice: do nothing for a repeated question; update the existing post when a late order changes a daily alert, which is what Assignment 3: Event loop builds.",
-            "Source 15: You don't need a job queue: Postgres already has SKIP LOCKED (https://www.prisma.io/blog/you-dont-need-a-job-queue-postgres-already-has-skip-locked), in summary: a crash after the side effect but before the job is marked done can run a job twice, so handlers must be idempotent.",
-            "Transfer: Use the same pattern for payments, emails, ticket creation, and any agent tool with a side effect. Ask of every effect: what is its business key, and what happens on the second arrival: ignore, update, or reject.",
-            "Evidence from this course: in the paired measurement of 24 October, one run of each half, the same event sent three times posted 3 answers, and the digest fired twice posted 2 digests, with both planted bugs on; with the key and the conflict rule, 1 answer, 2 duplicates absorbed, and 1 digest. The pair of 23 October showed the same.",
-            "Point at: the why line, the two columns row by row, the evidence line, then the trade-off line: too coarse or too fine.",
-            "Re-check after live runs: 3 answers and 2 digests, then 1 answer, 2 duplicates, and 1 digest, against the paired measurements page.",
-            'Ask: "What key would you use for an email an agent sends after a ticket closes?" Expected: the ticket id plus the email type, not a timestamp or a random id.',
-            'Likely question: "Why not deduplicate in the worker with a cache?" Answer: A cache is lost on restart and is not shared across workers; the unique constraint is both.',
-            'Likely question: "What if two different events legitimately share a key?" Answer: Then the key is too coarse. Add the field that tells them apart, such as the question text hash or the business date.',
-            'Likely question: "Does the key slow the insert?" Answer: It is one unique index lookup per event, which is negligible next to a model call.',
-            "Transition: The key stops duplicates at the door. Next: how workers take work without taking the same job twice.",
+            "Purpose: Give the mental model of the whole event loop in one picture before any "
+            "code.",
+            "What to say: The idea on this slide: an event fires and the agent runs, in Source "
+            "1's words; here, every safeguard around it is a row in Postgres, not memory. "
+            "Walk the diagram with me, top left first. An event arrives from a "
+            "webhook, the scheduler, or the console. Box two: it is inserted once per event id; "
+            "a repeated id inserts nothing. Box three: the router, a fixed table from event type "
+            "to handler and queue. Notice the dashed oval under it: no agent. We have three event "
+            "types, a question, an export, and a digest, so routing is a lookup you can unit test "
+            "and audit, and no payload can talk a table into a different route. Box four: the "
+            "jobs table is the queue. Box five: a worker claims one job with a lease and keeps it "
+            "alive with a heartbeat. Under the queue, the reaper puts a job back when its lease "
+            "runs out, and under the worker the daily token budget is checked at claim. Now down "
+            "the right edge to the bottom row, read right to left. The autonomy policy decides: "
+            "post at once, or hold. A held run becomes a parked job with a checkpoint, which "
+            "survives a restart, and waits at the diamond for a person to approve. Then it posts "
+            "to the channel. Last, the grey box on the left: the kill switch, checked at claim, "
+            "before every model call, and before every tool call. Every safeguard is a row in "
+            "the database, so a crash or a deploy loses nothing.",
+            "The point to land: Put every piece of event-loop state in the database: the key, "
+            "the lease, the pending approval, and the switch.",
+            "Example: In Section 4 this same pipeline carries the fiscal year 2025 revenue "
+            "question: it arrives as a webhook, and the autonomy policy decides whether it posts "
+            "at once or waits.",
+            'Ask the room: "Which box would you be tempted to turn into an agent?" Expect: the '
+            "router; answer that a closed set of types is a lookup.",
+            "Misconceptions: That a supervisor agent should route events. It adds a model call, "
+            "a bill, and an injection target to a decision a table makes the same way every "
+            "time.",
+            "Transition: Now the code, starting where an event comes in.",
         ],
     ),
+    # 5 mechanism: insert once, route, claim with a lease ---------------------------------------
     dict(
-        kind="concept",
-        title="2) The queue is a table: claim, lease, reap",
-        layout="diagram",
-        minutes=4.5,
-        says="Key idea: a job in a table survives what a process does not",
-        src="Sources 13 to 15 (Postgres queue); platform/src/datapilot/contracts/lifecycle.py",
-        container="two-column cards: how it works | why, then evidence, trade-offs, at-work lines and a key-idea bar",
-        allow_example=True,
+        kind="mechanism",
+        title="Insert once, route by table, claim with a lease",
+        minutes=3,
+        says="The insert absorbs a repeated id; a table routes; one statement claims a job",
+        src="platform/src/datapilot/loop3_events/api/events.py lines 37-44; "
+        "platform/src/datapilot/loop3_events/worker.py lines 70-81",
+        code={
+            "language": "python",
+            "origin": "platform/src/datapilot/loop3_events/api/events.py lines 37-40 (the line "
+            "inserted = conn.execute( left out at the first ..., the placeholders and arguments "
+            "of the insert shortened to ...; lines 41-44, which record a duplicate, are in the "
+            "notes), then the claim statement of platform/src/datapilot/loop3_events/worker.py "
+            "lines 70-81, rewrapped, with lease_owner, updated_at, the queue filter, and the "
+            "returned columns left out",
+            "lines": [
+                "route = router.route(type, payload)",
+                "...",
+                '    "INSERT INTO ops.events (event_id, source, type, payload) VALUES (...) "',
+                '    "ON CONFLICT (event_id) DO NOTHING RETURNING event_id", ...).fetchone()',
+                "...",
+                "UPDATE ops.jobs SET status = 'running', attempts = attempts + 1, ...",
+                "    lease_until = now() + make_interval(secs => %(lease)s), ...",
+                "WHERE job_id = (SELECT job_id FROM ops.jobs WHERE status = 'queued' ...",
+                "    ORDER BY run_after, job_id FOR UPDATE SKIP LOCKED LIMIT 1)",
+            ],
+            "marks": [
+                (0, "router.route(type, payload)", 1),
+                (3, "ON CONFLICT (event_id) DO NOTHING", 2),
+                (6, "lease_until", 3),
+                (8, "FOR UPDATE SKIP LOCKED", 4),
+            ],
+        },
         on_slide=[
-            "Principle: keep the claim short; a lease, not a lock, covers the long work.",
-            "Why it matters: a lock held through a model call bloats the table; a killed worker "
-            "strands its job.",
-            "| How it works in DataPilot | Why |",
-            "|---|---|",
-            "| One statement claims a queued job | Skips locked rows: workers never wait |",
-            "| Commit at once; a 30-second lease | No lock through the model call |",
-            "| 10-second heartbeat; reaper requeues | A dead worker's job reruns |",
-            "| Finish only with owner and attempt | A stale worker cannot overwrite |",
-            "Evidence: in a local run, two workers claimed different jobs and the reaper requeued "
-            "an expired lease.",
-            "At work: any long agent task fits this shape.",
-            "Key idea: a job in a table outlives its process.",
+            "Idea: the database decides what is new, and who owns each job",
+            "1. A fixed table picks the handler",
+            "2. A repeated id inserts nothing[^29]",
+            "3. A 30-second lease, no held lock",
+            "4. Skip rows other workers hold[^28]",
         ],
         notes=[
-            "Trade-offs, said aloud: not strictly first in first out; open transactions bloat it.",
-            "Plain explanation: You do not need a message broker to run agent jobs. A jobs table in the same Postgres as your data gives you durability, transactions, and visibility. The pattern has four parts: a claim, a lease, a heartbeat, and a reaper. The claim takes one queued job in a short transaction. The lease says who owns it and until when. The heartbeat extends the lease while the model works. The reaper finds expired leases and puts those jobs back in the queue.",
-            "Concrete example from DataPilot: The worker claims with `UPDATE ops.jobs SET status = 'running', attempts = attempts + 1, lease_owner = ..., lease_until = now() + 30 seconds WHERE job_id = (SELECT job_id FROM ops.jobs WHERE status = 'queued' AND run_after <= now() ORDER BY run_after, job_id FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING ...` and commits at once. The lease is 30 seconds and the heartbeat runs every lease divided by three, 10 seconds, from the worker's settings. A job is dead after 3 attempts, the default `max_attempts` of the jobs table. The finish and the heartbeat both match the row only `WHERE lease_owner` is this worker `AND attempts` is the attempt it claimed. A worker can finish or extend a job only while it holds the lease and the attempt number still matches, so a stale worker can neither finish nor extend a re-claimed job, whoever re-claimed it. In a local run, two concurrent workers claimed different rows and the reaper requeued an expired lease.",
-            "Under the hood: `SKIP LOCKED` lets each worker skip rows another worker holds, so claims never wait on each other. Two caveats. First, it is not strictly first in first out: skipping locked rows means a later job can start before an earlier one, so never rely on queue order for correctness. Second, long transactions bloat the queue: a transaction held open keeps dead row versions alive, and the claim query slows as they pile up. That is why the planted lock held during the model call (`BUG_LOCK_DURING_LLM`) matters: it bloats the table and leaves a stuck job when the worker is killed. Fencing the finish and the heartbeat on owner and attempt is what makes at-least-once safe. Dead letters keep a poison job from looping forever.",
-            "Source 13: PostgreSQL SELECT (https://www.postgresql.org/docs/current/sql-select.html), in summary: with SKIP LOCKED, rows that cannot be locked immediately are skipped, which gives an inconsistent view of the data that suits queue-like tables.",
-            "Transfer: Any long-running agent task, from code review bots to report generators, fits this shape. Keep claims short, put the long work under a lease, fence every finish and heartbeat, and give every job a maximum attempt count and a dead-letter state you alert on.",
-            "Evidence from this course: the claim, the lease, and the reaper were checked in a local run with no model call, two workers claiming at once; in class, every webhook run, the finale included, passes through this one claim. The webhook question went from Queued to Done again live on 24 October.",
-            "Point at: the why line, then the four rows: the claim, commit at once, heartbeat every 10 seconds, and the fenced finish; then the evidence line.",
-            'Ask: "What happens if a worker freezes for longer than its lease?" Expected: the reaper requeues the job, a second worker claims it, and the frozen worker can neither finish nor extend it: its attempt number no longer matches.',
-            'Likely question: "Why not Kafka or SQS?" Answer: You can. The table wins when jobs, approvals, and answers must commit together; a broker adds a second system to keep in step.',
-            'Misconception: "FOR UPDATE SKIP LOCKED gives exactly-once processing." Correction: It gives exclusive claims. A crash after the effect still repeats the job, which is why concept one comes first.',
-            "Transition: Some jobs cannot finish without a person. Where does a run wait?",
+            "Purpose: Show the real code that makes an event take effect once and lets workers "
+            "claim jobs without colliding.",
+            "What to say: Two pieces of code, the way an event travels. Marker one: the router. "
+            "One line, a lookup in a fixed table of three event types; there is no model call "
+            "in the event loop's own code. Marker two: the insert. The event id goes in under a "
+            "unique constraint, and a repeated id hits the conflict and inserts nothing. The "
+            "database decides, not the code, so two workers or two web processes cannot both "
+            "think an event is new. The repeat is recorded as a duplicate, which is the count "
+            "you will see on the run board. Where does the id come from? From the event's "
+            "meaning: the sender's id for a webhook, the job name and the business date for the "
+            "digest, never the arrival time and never a random value. Amazon's Builders' "
+            "Library, Source 29, prefers exactly this: a caller-provided request id in the "
+            "contract. The second piece is the claim, one statement. Marker three: the lease. "
+            "The claim commits at once and the lease, 30 seconds, says who owns the job; a "
+            "heartbeat every 10 seconds extends it while the model works. The finish and the "
+            "heartbeat match only the lease owner and the attempt number, so a frozen worker "
+            "cannot overwrite a job someone else re-claimed. Marker four: skip locked rows, so "
+            "many workers claim at once without waiting on each other; the Postgres "
+            "documentation, Source 28, describes it for queue-like tables.",
+            "The point to land: Key every effect by what the event means, and let a unique "
+            "constraint, not application code, decide what is new.",
+            "Example: The digest's key is the word digest plus the business day, so firing it "
+            "twice for 30 January is one digest.",
+            'Ask the room: only if ahead of the clock: "What key would you give the email an '
+            "agent sends when a ticket "
+            'closes?" Expect: the ticket id plus the email type, not a timestamp.',
+            "Misconceptions: That skip locked gives exactly-once processing. It gives exclusive "
+            "claims; a crash after the effect still repeats the job, which is why the key comes "
+            "first.",
+            "Transition: Some jobs cannot finish without a person. Where does such a run wait?",
         ],
     ),
+    # 6 mechanism: the approval checkpoint ------------------------------------------------------
     dict(
-        kind="concept",
-        title="3) Durable approval: pause where state lives",
-        layout="diagram",
-        minutes=4.5,
-        says="Key idea: a pending approval is state, so it lives in the checkpointer, not in memory",
-        src="Source 16 (human approval, checkpointer); platform/packs/datapilot_us/pack.yaml",
-        container="two-column cards: how it works | worked example, then a key-idea bar",
+        kind="mechanism",
+        title="A pending approval is state: keep it in Postgres",
+        minutes=3.5,
+        says="Approval is decided from the query's columns and saved in a Postgres checkpoint",
+        src="platform/src/datapilot/loop2_verification/loop.py lines 210-221; "
+        "platform/src/datapilot/loop3_events/approvals.py lines 44-47; pack.yaml personal_data",
+        code={
+            "language": "python",
+            "origin": "platform/src/datapilot/loop2_verification/loop.py lines 210-221 "
+            "(rewrapped; the already-approved test of the condition and the description left "
+            "out), then platform/src/datapilot/loop3_events/approvals.py line 47 (the planted "
+            "in-memory branch, lines 44-46, left out at the second ... line and described in "
+            "the notes)",
+            "lines": [
+                'approvals = HumanInTheLoopMiddleware({"run_query": {',
+                '    "allowed_decisions": ["approve", "reject"],',
+                '    "when": lambda req: self.checker.needs_approval(',
+                '        str(req.tool_call["args"].get("sql", "")), export=request.export)',
+                "    ...}})",
+                "...",
+                "from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver",
+            ],
+            "marks": [
+                (1, '"allowed_decisions": ["approve", "reject"]', 1),
+                (2, '"when": lambda req:', 2),
+                (3, 'req.tool_call["args"].get("sql", "")', 3),
+                (6, "AsyncPostgresSaver", 4),
+            ],
+        },
         on_slide=[
-            "Principle: a pending approval is state; store it where a restart cannot reach it.",
-            "Why it matters: held in memory, a pending approval dies with the next deploy.",
-            "| How it works in DataPilot | Worked example |",
-            "|---|---|",
-            "| The pause is a checkpoint keyed by the run | California export: emails, so it holds |",
-            "| Approver sees the exact query and rows | Worker restarts; the run stays held |",
-            "| Decisions: approve or reject, never edit | Approve resumes the same run |",
-            "| The condition re-runs on resume | So it reads the query and column tags |",
-            "Evidence: in Postgres the held export survived a restart and posted; in memory, it "
-            "was lost.",
-            "At work: refunds, deploys, outbound email, exports.",
-            "Key idea: put the pause where state lives.",
+            "Idea: the pause is state, so it lives where state survives a restart",
+            "1. No edits: an edit skips the graders",
+            "2. Checked again on resume: no model opinion",
+            "3. Held by the tagged columns it returns",
+            "4. Saved in Postgres; memory loses it[^10]",
         ],
         notes=[
-            "Trade-offs, said aloud: batched approval saves time; per-call gives an exact audit.",
-            "Plain explanation: Human approval turns a run into something that can wait for hours. A run that waits is state: the conversation so far, the pending tool call, and who must decide. If that state lives in the worker's memory, a deploy or a crash erases the request, and nobody knows a decision is owed. Durable approval means the pause is a checkpoint in a database, keyed by the run, and approving resumes from it on any worker.",
-            'Concrete example from DataPilot: A query that touches a personal-data column, such as customer email or phone, holds for human approval. The dialog states the exact SQL and the row count. The run\'s state lives in the Postgres checkpointer, `AsyncPostgresSaver` in its own schema `lg`, with the thread id equal to the run id. Approval resumes with `Command(resume={"decisions": [{"type": "approve"}]})`. Decisions are limited to approve and reject; an edit raises an error, so nobody rewrites SQL in a dialog. The planted in-memory checkpointer (`BUG_MEMORY_CHECKPOINTER`) loses the pending approval on a worker restart.',
-            "Analogy: A signed paper form in a filing cabinet, not a sticky note on a monitor. The cabinet survives the night shift.",
-            'Under the hood: The approval condition is a predicate, the `when` argument of the human-approval middleware. On resume, the framework re-runs it to find the call it paused. So the predicate must be deterministic for the same call: decide from the SQL and the column tags, never from a model judgement or the clock, or the resumed run may not find its own pause. Batched versus per-call is a real trade-off: batching asks one question for several tool calls and saves a person\'s time, while `interrupt_mode="per_call"`, available from langchain 1.4.6, asks once per call and gives an exact audit. Setup detail: the Postgres checkpointer needs one setup run that creates indexes concurrently, so it needs autocommit connections, and it has no schema option, so a dedicated pool sets the search path.',
-            "Source 16: LangChain human-in-the-loop (https://docs.langchain.com/oss/python/langchain/human-in-the-loop), in summary: the middleware interrupts on configured tool calls and resumes with a list of decisions such as approve or reject.",
-            "Transfer: Use this for refunds, deploys, outbound emails, and data exports. Store the pause durably, show the approver the exact action, restrict decisions to approve or reject, and keep the trigger a pure function of the action.",
-            "Evidence from this course: in the paired measurement of 24 October, one run of each half, with the Postgres checkpointer the held California export was approved after a worker restart and posted; with the in-memory checkpointer the approval was lost and the run failed. The pair of 23 October showed the same.",
-            "Point at: the why line, then the last row of the table: the condition re-runs on resume, so it is decided from the SQL and the column tags; then the evidence line.",
-            "Ask: \"Why is 'ask the reviewer agent whether this needs approval' a bad condition?\" Expected: it can answer differently on resume, and the run loses track of its pause.",
-            'Likely question: "What if nobody ever approves?" Answer: The run stays held and visible on the board; the kill switch can block it, and you can add an expiry that rejects.',
-            'Likely question: "Why forbid edits?" Answer: An edited query skips every grader that passed the original; reject and ask again instead.',
-            'Misconception: "The approval is just a user interface dialog." Correction: The dialog is a view; the approval is a durable checkpoint plus a decision record.',
-            "Transition: Approvals decide single actions. Who decides what may run unattended at all, and how do we stop everything?",
+            "Purpose: Show how a run waits for a person durably, and why the hold condition must "
+            "be deterministic.",
+            "What to say: When a generated query returns personal data, the run must wait for a "
+            "person, maybe for hours. A run that waits is state: the conversation so far, the "
+            "pending tool call, and the decision owed. Four markers, and two of them are about "
+            "agents, not databases. Marker one: the decisions are approve and reject only. An "
+            "edit is not offered, because an edited query never went through the graders that "
+            "passed the original; if it is wrong, reject it and let the agent ask again. Marker "
+            "two: this condition is evaluated again when the run resumes, to find the call it "
+            "paused. So it must give the same answer twice: a pure function of the query and "
+            "the tags, never a model's judgement and never the clock. Ask a model whether to "
+            "hold, and on resume it may say no, and the run loses its own pause. Marker three: "
+            "the condition asks the checker whether this exact query returns a column tagged as "
+            "personal data in the pack: customer email, phone, first name, last name. A filter "
+            "on those columns does not hold, because those values never come back. Marker four: "
+            "where the pause lives. The "
+            "Postgres checkpointer keeps it in its own schema, keyed by the run id, so any worker "
+            "can resume it after a restart. The dots above it hide the planted branch, which "
+            "swaps in the in-memory saver, which dies with the process. The LangChain human-in-the-loop page, Source "
+            "10, says the same in its own words: in production, use a persistent checkpointer. "
+            "Measured: with Postgres the approval survived the restart and posted in 7 of 7 "
+            "runs; in memory it was lost in every planted run.",
+            "The point to land: Store the pause durably, show the exact action, allow approve or "
+            "reject only, and decide the hold from data.",
+            "Example: The California marketing export returns customer emails, so it holds; the "
+            "dialog states the exact query and about 5,261 rows.",
+            'Ask the room: only if ahead of the clock: "Which action of your agent would you '
+            "hold for a person, and what "
+            'data decides it?" Expect: refunds, outbound email, exports; decided by amount, '
+            "recipient, or column.",
+            "Misconceptions: That the approval is a dialog in the user interface. The dialog is a "
+            "view; the approval is a durable checkpoint and a decision record.",
+            "Transition: Approvals stop one action. What stops everything, including the run "
+            "already in flight?",
         ],
     ),
+    # 7 mechanism: the kill switch --------------------------------------------------------------
     dict(
-        kind="concept",
-        title="4) A router, levels, and a stop for running work",
-        layout="diagram",
-        minutes=4.5,
-        says="Key idea: policy is a table, autonomy is a level, and the stop is checked before every step",
-        src="platform/src/datapilot/contracts/autonomy.py; Source 17 (autonomy levels and the kill switch)",
-        container="two-column cards: how it works | worked example, then evidence, trade-offs, at-work lines and a key-idea bar",
+        kind="mechanism",
+        title="Check the kill switch before every step",
+        minutes=3,
+        says="Middleware checks the switch before each model call and each tool call",
+        src="platform/src/datapilot/loop3_events/killswitch.py lines 89-107; Source 8 (custom "
+        "middleware); Source 2 (levels and the kill switch)",
+        code={
+            "language": "python",
+            "origin": "platform/src/datapilot/loop3_events/killswitch.py lines 89-107; each "
+            "... marks lines left out: the planted check at claim only (lines 90-91), the last "
+            "return and the decorator (95-97), and the asynchronous twin and the tool wrapper's "
+            "first two lines (100-106); the stop record on the run guard (line 93, between the "
+            "check and return True) is left out without a ... line and described in the notes; "
+            "the stop message is shortened",
+            "lines": [
+                "def _check(self) -> bool:",
+                "    ...",
+                "    if self.is_engaged():",
+                "        return True",
+                "...",
+                "def before_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:",
+                '    return {"jump_to": "end"} if self._check() else None',
+                "...",
+                '        return stopped_message(request, "Run stopped: ...")',
+            ],
+            "marks": [
+                (2, "self.is_engaged()", 1),
+                (6, '{"jump_to": "end"}', 2),
+                (8, "stopped_message(request", 3),
+            ],
+        },
         on_slide=[
-            "Principle: the stop must reach the run that is already running.",
-            "Why it matters: a stop checked only when a job is claimed lets the run in flight "
-            "finish and post.",
-            "| How it works in DataPilot | Worked example |",
-            "|---|---|",
-            "| Router: event type to handler and policy | Three event types, no model call |",
-            "| Kill switch: checked before each step | Every model call and tool call |",
-            "| Engaging it forces the report-only level | Answers post labelled unverified |",
-            "| Assisted: personal data needs approval | California export: held for approval |",
-            "Evidence: checked at claim, the running job posted; before each step, it stopped.",
-            "At work: write policy as data; start at the lowest level.",
-            "Key idea: check before the model call.",
+            "Idea: a model call already running finishes; the next step ends the run",
+            "1. Checked at every step, not only at claim",
+            "2. Before a model call: end the run[^8]",
+            "3. Before a tool call: skip the tool",
         ],
         notes=[
-            "Trade-offs, said aloud: a stop ends new steps; committed effects stay.",
-            "Plain explanation: Three pieces of control sit around the agent. The router is a table from event type to handler and policy. The autonomy level says how much may happen without a person. The kill switch stops everything, including runs already in flight, and drops the system to the most restrictive level.",
-            "Concrete example from DataPilot: The class starts at the report-only level, from `autonomy.default_level` in pack.yaml. The level demotes on its own after 3 consecutive escalations, from `autonomy.demote_after_consecutive_escalations`, and on the kill switch. The kill switch is checked in two places: a `before_model` hook that jumps to the end of the run, and a tool wrapper that returns a message without calling the tool. The planted bug the kill switch at claim only (`BUG_KILLSWITCH_AT_CLAIM_ONLY`) checks only when a worker claims a job, which is exactly the failure from the story.",
-            "Analogy: A train's emergency brake works on a moving train, not only at the station.",
-            "Under the hood: Where a stop lives decides whether it works. We verified with fake models that a kill switch inside a tool wrapper that returns a jump to the end does not end the run: control goes back to the model, which can call another tool. A hook that runs before every model call and returns a jump to the end does stop it, and the tool short-circuit covers calls already decided. So the run stops at its next step, not at its next job. The three levels and the kill switch that drops the system to the report-only level come from Cobus Greyling's loop engineering patterns. Router versus supervisor: a supervisor agent decides who acts next by reading state; a router reads a type. Use a supervisor when the next step depends on open-ended content; use a table when the input set is closed.",
-            "Source 17: Loop engineering (https://cobusgreyling.github.io/loop-engineering/), in summary: autonomy moves from report-only to assisted to unattended; an incident or cost spike drops unattended back to assisted, and the kill switch drops either level to report-only.",
-            "Source 11: LangChain custom middleware (https://docs.langchain.com/oss/python/langchain/middleware/custom), in summary: hooks run before and after model calls and around tool calls, and a `before_model` hook can jump to the end of the run.",
-            "Transfer: For any agent at work, write the policy as data, start at the lowest level, list your demotion triggers, and put the stop check before the model call, the one step every loop iteration passes through.",
-            "The levels, for the room: at the report-only level answers post labelled unverified and no export runs; at the assisted level answers post and anything touching personal data, or an export, needs approval; the unattended level is for eligible metric families only, which Section 4 earns.",
-            "Evidence from this course: in the paired measurement of 24 October, one run of each half, with the kill switch at claim only the run in flight posted after the switch was engaged; with the check before every model and tool call, it stopped in flight. The pair of 23 October showed the same.",
-            "Point at: the why line, the four rows, then the evidence line.",
-            'Ask: "Why check before the model call and not after it?" Expected: before is the last point where nothing new has been decided or spent.',
-            'Likely question: "Does the kill switch roll back what already ran?" Answer: No. It stops new steps; effects already committed stay, which is why concept one\'s keys and approvals matter.',
-            'Likely question: "Who can raise the level again?" Answer: A person, after evidence. Section 4: Hill-climbing loop shows how a metric family earns the unattended level.',
-            "Transition: The four moves on one slide.",
+            "Purpose: Show where the stop is checked, and why checking at claim alone fails.",
+            "What to say: This is the kill switch middleware, and it is short. Marker one: the "
+            "check. If the switch is engaged, the run guard records the stop with its reason, "
+            "a line the slide leaves out, and the check returns true, so the run ends as blocked by the kill switch, not as "
+            "a failure. The first dots hide the planted line, which returns false before this "
+            "check: that is what checking only at claim means, and a run claimed before the "
+            "switch never looks again. Marker two: the "
+            "check runs before every model call, and when it fires it jumps to the end of the "
+            "run. The LangChain custom middleware page, Source 8, documents exactly this hook "
+            "and its jump to the end. Marker three: the same check wraps every tool call and "
+            "returns a message instead of calling the tool, which covers a tool call the model "
+            "had already decided on. Together they stop the run at its next step, not at its "
+            "next job. What about the step already running? A model call in flight is not cut "
+            "off: it finishes, and the check before the next step ends the run. A query in "
+            "flight is bounded by the 5-second statement timeout. That is why the measured stop "
+            "is seconds, not instant. "
+            "Engaging the switch also forces the system to the report-only level, the framing "
+            "of Cobus Greyling's loop engineering patterns, Source 2, where the kill switch "
+            "drops any level straight to report-only. Measured: checked before every step, the "
+            "run in flight stopped in 9 of 9 runs, in 3 to 33 seconds; checked at claim only, "
+            "it posted after the switch in every planted run.",
+            "The point to land: Check the stop before the model call, the one step every loop "
+            "iteration passes through.",
+            "Example: A train's emergency brake works on the moving train, not only at the "
+            "station.",
+            'Ask the room: only if ahead of the clock: "Does your stop button reach a job that '
+            'has already started?" Expect: '
+            "most check at the start of a job only.",
+            "Misconceptions: That the kill switch rolls back what already ran. It stops new "
+            "steps; committed effects stay, which is why the keys and approvals matter.",
+            "Transition: Time to see all of it live.",
         ],
     ),
-    dict(
-        kind="cheat",
-        title="Cheat sheet: the event loop in four moves",
-        layout="table",
-        minutes=0.5,
-        says="Key every effect, claim with leases, pause durably, route by table and stop before each step",
-        src="section-3-event-loop/README.md",
-        container="table: move, principle, anti-pattern, check question",
-        on_slide=[
-            "| Move | Principle | Anti-pattern it prevents | Check question |",
-            "|---|---|---|---|",
-            "| Key every effect | Delivery repeats; effects must not | Random ids per arrival | What happens on the second arrival? |",
-            "| Claim, lease, reap | Short claims; leases cover work | A lock held through the model call | Can a frozen worker overwrite a job? |",
-            "| Durable approval | The pause is state | Approvals held in memory | Does a pending approval survive a deploy? |",
-            "| Router, levels, stop | The stop reaches running work | A stop checked only at claim | Can your stop end a run mid-flight? |",
-        ],
-        notes=[
-            "Say: Read the four rows as a checklist you can take to any agent that runs on events. Each row pairs a move with its principle, the anti-pattern it prevents, and a question you can ask of your own system on Monday. Two of these anti-patterns you are about to see switched on and off live: the missing key and the stop checked only at claim. The lock held through the model call is in the code and its tests; the approval held in memory is shown only on request.",
-            "Point at: the check-question column, bottom row first: can your stop end a run mid-flight?",
-            'Likely question: "Which move would you add first to an existing system?" Answer: Keys, because duplicates are silent and the fix is one constraint.',
-            'Likely question: "Where is the router?" Answer: In the last row, and implicitly in every row: it picks the handler and policy for each event type.',
-            "Transition: Now all four, live.",
-        ],
-    ),
+    # 8 demo ------------------------------------------------------------------------------------
     dict(
         kind="demo",
-        title="Section 3: Event loop - Implementation Notes: The kill switch in flight",
-        layout="demo",
-        minutes=22,
-        says="Badge DEMO - 3, what to watch for, the guaranteed moment, and the demo page link; the demos and code walkthrough are in the notes",
-        src="section-3-event-loop/demo/walkthrough.md; platform/demos/registry.yaml",
-        container="demo layout: laptop and badge, what to watch for, guaranteed moment, link",
+        title="Live: events, approvals, duplicates, and the kill switch",
+        minutes=24,
+        says="Five event-loop demos, live; the kill switch stops a run in flight",
+        src="platform/demos/registry.yaml (section event-loop); section-3-event-loop/demo/"
+        "README.md; docs/instructor-guide.md, Section 3: Event loop",
         on_slide=[
             "Badge: DEMO - 3",
             "What to watch for:",
-            "- The webhook question: one strip from Queued to Done, one post labelled unverified",
-            "- The approval that survives a restart: the export stays held across the restart",
-            "- Duplicate events: three deliveries, one answer, two duplicates ignored",
-            "- The kill switch in flight: the running strip moves to Blocked by kill switch",
-            "Guaranteed moment: with the check before every model and tool call, the run in "
-            "flight stops at its next step and the system is held at the report-only level.",
-            "Link: Demo page on GitHub | https://github.com/ANI-IN/loop-engineering/tree/main/"
-            "section-3-event-loop/demo#the-kill-switch-in-flight",
+            "- One webhook, one strip from Queued to Done",
+            "- A held export surviving a worker restart",
+            "- Three deliveries, one answer, two duplicates absorbed",
+            "Guaranteed moment: the kill switch stops the run in flight at its next step, and "
+            "the system drops to the report-only level.",
+            "Link: Demo page on GitHub | " + DEMO_PAGE,
         ],
         notes=[
-            "Run sheet: four core demos, about 15 minutes, in the order below; then the code walkthrough, about 7 minutes. Share the console Events page full screen: the run board on top, the channel below. Optional, cut first: the digest now. Every core demo's moment has been shown live, in calibration retakes and again on 24 October, both halves and the optional digest included; rehearse each twice in a row with a reset between before class (instructor guide, the day before, step 4). The measured times are under each demo. A planted half is `make demo NAME=<demo> PLANTED=1`, its bugs on for its own runs only; `.env` stays as it is. The slide's link opens the section's demo page on GitHub.",
+            "Purpose: Run every event-loop demo live, both halves where a planted bug exists, "
+            "so each safeguard is seen failing and then holding.",
+            "What to say: Let's watch the event loop run with nobody pressing Ask. Everything "
+            "you see is live, against the same model as in the earlier sections, and every strip carries "
+            "its start time and its trace link, so you can check it just happened. Three of "
+            "these demos run twice: first with one line of the code switched to the broken "
+            "version, then with the fix. Watch for the difference between the two halves, "
+            "because the model is the same in both. Keep an eye on the run board at the top: "
+            "each strip is one run moving from Queued to Done, and the lanes off the board, "
+            "Failed and Blocked by kill switch, are where the planted halves end up. The "
+            "channel at the bottom is what a finance team would read. When a run is waiting, I "
+            "will ask you to predict what happens next; put your answer in the chat before the "
+            "strip moves.",
             "Demo: The webhook question.",
-            "Starting state: the Events page is empty, the status line shows the report-only level and the class session's start time, and no planted item is on. Reset first: `make reset NAME=event-loop`.",
-            "Do: Events > Send webhook question, or `make demo NAME=events-webhook-question`.",
-            "Narrate: This is the same analyst as Section 1: Agent loop, but nobody pressed Ask. A webhook became an event row and a job row, and a worker claimed it with the short claim from concept 2, the queue is a table.",
-            "Point at, in order: the strip appearing in Queued, moving to Running, Verifying, and Done; the channel post labelled unverified because we are at the report-only level (concept 4); and last the live stamp: the run's start time in your local time and its trace link.",
-            "Expected live result: one strip moves from Queued to Done and one post appears, labelled unverified. Measured: 46 seconds; run twice more after the reviewer was given the business date, both posted unverified. Shown again live on 24 October.",
-            "May vary: the time in each lane, the answer's wording, and the count. The question asks for the orders of the previous day, 30 January 2026 against the business date. In calibration it answered 300 orders, the day in Eastern time, which is right, and 291, the same day counted in UTC, which is the Eastern time trap; the reviewer approved both. Keep a 291 on screen and teach it: the reviewer has the same starting knowledge, with no time-zone rule, and this is why the orders family posts at the report-only level, labelled unverified. Section 4: Hill-climbing loop earns the rule. Do not reset for a better number.",
-            "If it stalls: reset and run it again, `make reset NAME=event-loop`, then the same trigger.",
+            "Command: 2:14 to 2:17, the registry's 3 minutes. make demo "
+            "NAME=events-webhook-question, or Events > Send webhook question in the console.",
+            "Point at: the strip appearing in Queued and moving to Running, Verifying, and Done; "
+            "then the channel post labelled unverified; then the live stamp.",
+            "Expected output: one strip from Queued to Done and one post labelled unverified, in "
+            "12 to 46 seconds in the recorded runs. The count is 300 orders, the Eastern time "
+            "day, or 291, the same day in Coordinated Universal Time; the reviewer approved both "
+            "in calibration. Keep a 291 on screen and teach it; do not reset for a better "
+            "number.",
+            "While it runs: say that nobody pressed Ask: a webhook became an event row and a job "
+            "row, and a worker claimed it with the claim from the code slide.",
+            "If it fails: run make reset NAME=event-loop (about 7 seconds; 6.4 to 6.9 measured on "
+            "the class stack), then the same trigger again; a missing trace link is not a "
+            "failure. The same rule for every demo here: a retry spends the 2-minute reserve, "
+            "then the 3 minutes of the optional digest demo; start no retry after 2:36. Past "
+            "that, skip it, say so, and name that demo for the Thursday review.",
+            "Backup screenshot: " + EXPECTED + "events-webhook-question-board.png, the strip in "
+            "Done; point at it only while you reset and run again, never instead of the run.",
             "Demo: The approval that survives a restart.",
-            "Starting state: the board is clear after the first demo. Reset first if anything is held: `make reset NAME=event-loop`.",
-            "Do: Events > Request California export, or `make demo NAME=events-approval-survives-restart`. When the strip reaches Holding for approval, restart the worker from the console's control, then click Approve in the dialog.",
-            "Narrate: The query touches customer emails, so the policy routes it to human approval (concept 3, durable approval). The pause is a checkpoint in Postgres, keyed by the run. Restarting the worker is the deploy or crash from the story.",
-            "Point at, in order: the dialog's exact SQL and row count; the strip staying in Holding for approval while the worker restarts; the strip moving to Done after Approve; and last the live stamp: the run's start time in your local time and its trace link.",
-            "Expected live result: the pending approval survives the restart, and approving resumes the same run to Done. Measured: shown in 84 and 81 seconds. With the in-memory checkpointer (`BUG_MEMORY_CHECKPOINTER`), measured twice, the approval after the restart found nothing to resume: the pending approval was lost, and the run failed. Shown again live on 24 October, both halves.",
-            "May vary: the row count wording and how long the restart takes. If it does, say: what matters is that the same run id resumes.",
-            "If it stalls: reset and run it again, `make reset NAME=event-loop`, then the same trigger.",
+            "Command: 2:17 to 2:23, 6 minutes: the registry's 5 for one half, plus the planted "
+            "half. Planted half first, measured twice, 41 seconds both times (24 and 25 "
+            "October): make demo "
+            "NAME=events-approval-survives-restart PLANTED=1 (the in-memory checkpointer; the "
+            "command restarts the worker with it and waits for the run to end). When the strip "
+            "reaches Holding for approval, press Restart worker, then Approve: the approval "
+            "finds no checkpoint to resume and the run fails. Wait for the terminal's line "
+            "Restarting worker without the demo's flags, then make reset NAME=event-loop (about "
+            "7 seconds) and the fixed half: make demo NAME=events-approval-survives-restart, or Events > Request "
+            "California export; at Holding for approval press Restart worker, wait for the "
+            "worker to come back (its restart time is not measured on its own; the whole demo "
+            "took 50 to 84 seconds), then approve in the dialog.",
+            "Point at: planted half, the line that the pending approval was lost and the run in "
+            "Failed; fixed half, the dialog's exact query and row count, the strip staying in "
+            "Holding for approval across the restart, and Done after Approve.",
+            "Expected output: the strip stays in Holding for approval across the restart, then "
+            "moves to Done, in 50 to 84 seconds in the recorded runs; the planted half fails "
+            "the run with the pending approval lost.",
+            "While it runs: say that restarting the worker is the deploy or the crash of a "
+            "normal Tuesday, and that the pause is a checkpoint in Postgres keyed by the run.",
+            "If it fails: run make reset NAME=event-loop (about 7 seconds), then the same trigger "
+            "again, no retry after 2:36; if the Restart worker button does nothing, demo controls are off, so take the next demo "
+            "and return to this one after the section.",
+            "Backup screenshot: " + EXPECTED + "events-approval-after-restart.png, the export "
+            "still held after the restart; point at it only while you reset and run again.",
             "Demo: Duplicate events.",
-            "Starting state: the Events page. Reset first: `make reset NAME=event-loop`.",
-            "Do: `make demo NAME=events-duplicate-events PLANTED=1`, the missing idempotency (`BUG_NO_IDEMPOTENCY`) and the random digest id (`BUG_RANDOM_DIGEST_ID`) on for its own events; then reset, and Events > Send the same event three times, or `make demo NAME=events-duplicate-events`, with them off.",
-            "Narrate: Delivery is at least once, and here are three deliveries of one event (concept 1, idempotent effects). Without a key, three effects; with the key and the conflict rule, one.",
-            "Point at, in order: the repeated posts in the channel with the bug on, three answers to one question and two digests for one day; then one post and the count of two duplicates ignored with it off; and last the live stamp: the run's start time in your local time and its trace link.",
-            "Expected live result: one post and two absorbed duplicates on the board. Measured: 1 run, 2 duplicates absorbed, and 1 digest, in 57 and 78 seconds. With both planted bugs on (`BUG_NO_IDEMPOTENCY` and `BUG_RANDOM_DIGEST_ID`), measured twice: 3 answers posted for one event, and the digest fired twice ran twice. Shown again live on 24 October, both halves.",
-            "May vary: the timing of the duplicates. If it does, say: order does not matter; the key decides.",
-            "If it stalls: reset and run it again, `make reset NAME=event-loop`, then the same trigger.",
+            "Command: 2:23 to 2:27, 4 minutes: the registry's 3 for one half, plus the planted "
+            "half. make demo NAME=events-duplicate-events PLANTED=1 first (the missing "
+            "idempotency and the random digest id); then make reset NAME=event-loop and Events > "
+            "Send the same event three times, or make demo NAME=events-duplicate-events.",
+            "Point at: with the bugs on, the repeated answers and the two digests in the "
+            "channel; with them off, one post and the strip's 2 duplicates absorbed; then the "
+            "live stamp.",
+            "Expected output: one answer posted, two duplicates absorbed, and one digest, in 35 "
+            "to 78 seconds in the recorded runs; the planted half posts 3 answers and 2 "
+            "digests.",
+            "While it runs: ask the room to predict the count on the board before it appears; "
+            "the order of the three deliveries does not matter, the key decides.",
+            "If it fails: run make reset NAME=event-loop (about 7 seconds), then the same trigger "
+            "again, no retry after 2:36.",
+            "Backup screenshot: " + EXPECTED + "events-duplicate-events-board.png, the strip "
+            "marked 2 duplicates absorbed; point at it only while you reset and run again.",
             "Demo: The kill switch in flight.",
-            "Starting state: the Events page. `make demo` switches demo pacing (`DEMO_PACING`) on for its own run, so the run moves slowly between steps, and sends the webhook question and engages the switch while it is in Running. Reset first: `make reset NAME=event-loop`.",
-            "Do: `make demo NAME=events-kill-switch-in-flight PLANTED=1`, the kill switch at claim only (`BUG_KILLSWITCH_AT_CLAIM_ONLY`) on for that run; then `make reset NAME=event-loop`, since the first half leaves the switch engaged and an engaged switch blocks the next run at claim; then `make demo NAME=events-kill-switch-in-flight`, with it off. End with `make reset NAME=event-loop`: the switch stays engaged until a release, and it would block every later run, the finale included.",
-            "Narrate: With the check at claim only, no new job starts, but the running one keeps going: that is beat four of the story. With the check before every model and tool call (concept 4), the run stops at its next step.",
-            "Point at, in order: the strip still moving with the bug on; with it off, the strip moving to Blocked by kill switch; the kill switch indicator on the status line, with the level held at report-only; and last the live stamp: the run's start time in your local time and its trace link.",
-            "Expected live result: the in-flight strip moves to Blocked by kill switch, and the status line shows the report-only level. Measured: stopped in flight in 33 and 8 seconds. With the check at claim only, measured twice: the in-flight run posted after the kill switch was engaged. Shown again live on 24 October, both halves.",
-            "May vary: which step the run stops at. If it does, say: any step is correct as long as no model call starts after the stop.",
-            "If it stalls: reset and run it again, `make reset NAME=event-loop`, then the same trigger.",
-            "Optional, cut first: The digest now (Events > Run digest now, or `make demo NAME=events-digest-now`): the morning digest runs on demand under its business-date key and posts once.",
-            "Code walkthrough: `make open-code NAME=event-loop` opens the files below, in the order of the section's demo walkthrough page.",
-            "Open `platform/src/datapilot/loop3_events/api/events.py` lines 35-44: implements concept 1, idempotent effects, the duplicate events demo. Say: the database decides, not the code; `ON CONFLICT (event_id) DO NOTHING` returns no row for a repeat, and the repeat is recorded as a duplicate instead of a new job; with `BUG_NO_IDEMPOTENCY` on, a random suffix makes every delivery look new.",
-            "Open `platform/src/datapilot/loop3_events/worker.py` lines 70-81: implements concept 2, the queue is a table, the webhook question demo. Say: the claim is one statement, the shape on the slide; `FOR UPDATE SKIP LOCKED` lets several workers claim at once without taking the same job; the lease, not an open transaction, marks the job as taken, so the claim commits at once and no lock is held through the model calls.",
-            "Open `platform/src/datapilot/loop3_events/approvals.py` lines 44-47: implements concept 3, durable approval, the restart demo. Say: the pending approval is a LangGraph interrupt, and the checkpointer is where it lives; the Postgres saver keeps it across a worker restart; with `BUG_MEMORY_CHECKPOINTER` on, the in-memory saver loses it.",
-            "Open `platform/src/datapilot/loop3_events/killswitch.py` lines 89-95: implements concept 4, the stop, the kill switch demo. Say: the middleware calls this check before each model call and each tool call; when the switch is engaged, the run guard records the stop and the run ends blocked by the kill switch at its next step; with `BUG_KILLSWITCH_AT_CLAIM_ONLY` on, a run that has started keeps going.",
-            "Transition: Questions, then the poll.",
+            "Command: 2:27 to 2:33, 6 minutes: the registry's 4 for one half, plus the planted "
+            "half and two resets. make demo NAME=events-kill-switch-in-flight PLANTED=1 (the kill "
+            "switch at claim only), then make reset NAME=event-loop, then make demo "
+            "NAME=events-kill-switch-in-flight, then make reset NAME=event-loop again (each reset "
+            "about 7 seconds). Run both "
+            "halves from the terminal: the console's button sends no demo pacing.",
+            "Point at: with the bug on, the strip still moving after the switch and the post; "
+            "with it off, the strip moving to Blocked by kill switch and the status line at the "
+            "report-only level.",
+            "Expected output: the in-flight strip moves to Blocked by kill switch and the status "
+            "line shows the report-only level, in 3 to 33 seconds in the recorded runs; the "
+            "planted half posts after the switch.",
+            "While it runs: say which step the run stops at does not matter, as long as no model "
+            "call starts after the stop.",
+            "If it fails: run make reset NAME=event-loop (about 7 seconds), then the same trigger "
+            "again, no retry after 2:36; if the run finished before the switch, it was sent without pacing, so use the make command.",
+            "Backup screenshot: " + EXPECTED + "events-kill-switch-in-flight-board.png, the run "
+            "under Blocked by kill switch; point at it only while you reset and run again.",
+            "Demo: The digest now.",
+            "Command: 2:33 to 2:36, the registry's 3 minutes; optional, cut it first when the "
+            "section runs late. make demo NAME=events-digest-now, or Events > Run digest now. "
+            "The last 2 minutes, 2:36 to 2:38, are a reserve for one reset and run again; if "
+            "none is needed, take questions.",
+            "Point at: the one digest post with the previous business day's key figures.",
+            "Expected output: one digest post; no measured time is on the evidence page, and the "
+            "class plan gives it 3 minutes.",
+            "While it runs: say that the 8 a.m. Eastern time schedule fires the same job, keyed "
+            "by the business day and the firing.",
+            "If it fails: run make reset NAME=event-loop (about 7 seconds) and try once more "
+            "only before 2:36, or cut it.",
+            "Backup screenshot: none is captured for this optional demo; describe the single "
+            "digest post while you reset, or move on.",
+            "The point to land: Each safeguard failed live with its bug on and held with it off; "
+            "that pair is the evidence.",
+            "Example: In the paired measurement, one event sent three times gave 3 answers "
+            "without the key and 1 answer with it.",
+            'Ask the room: "Which of the four would have hurt your team most last quarter?" '
+            "Expect: duplicates from retries.",
+            "Misconceptions: That the planted half is a staged failure. The model runs for real "
+            "in both halves; only one line of code differs.",
+            "Transition: Those were single runs. Here is what every recorded run showed.",
         ],
     ),
+    # 9 evidence: without and with --------------------------------------------------------------
     dict(
-        kind="questions",
-        title="Questions",
-        layout="concept",
-        minutes=6,
-        says="Fixed question slide; likely: why not a message broker, and what if nobody approves",
-        src="-",
-        container="fixed question slide",
+        kind="comparison",
+        title="Measured: each bug failed every time, each fix held",
+        minutes=2,
+        says="Duplicates 7 of 7, approval 7 of 7, kill switch 9 of 9; each planted bug failed",
+        src="docs/evidence/section-3-event-loop.md, Results; docs/benefits.md, Section 3; "
+        "section-3-event-loop/concepts.md, What we measured",
         on_slide=[
-            "No Question Is Too Small Every Question Deserves an Answer!!",
-            "Why not a message broker? What if nobody approves? Why 300, then 291?",
-        ],
-        notes=[
-            "Say: Take questions; this slot also holds the section's discussion time. If a question will not fit, ask the learner to post it with the word Thursday.",
-            "Point at: the fixed question slide.",
-            'Likely question: "Why Postgres and not a message broker?" Answer: The jobs, the approvals, and the answers share one database and one transaction model, so a claim, a checkpoint, and a post can be reasoned about together. A broker is a fine choice at higher volume, and the same keys and fences still apply.',
-            'Likely question: "What if nobody approves?" Answer: The run stays held and visible; add an expiry that rejects after a set time, and the kill switch can block it.',
-            'Likely question: "Can the event loop run at the unattended level today?" Answer: Not yet. Nothing has earned it; the poll is about exactly that.',
-            'Likely question: "Why 300 orders one time and 291 the next?" Answer: 300 counts 30 January in Eastern time, the business day, and is right; 291 counts the same day in UTC, five hours early. The reviewer shares the starting knowledge, so it approved both; that is why the orders family is still at the report-only level.',
-            "Transition: If time is short, skip the reference slides and go to the poll.",
-        ],
-    ),
-    dict(
-        kind="reference",
-        title="Reference: skip if short on time - queue failure modes",
-        layout="table",
-        minutes=1,
-        says="Failure, symptom, and defense for each way a table-backed queue goes wrong",
-        src="Sources 13 to 15 (Postgres queue); docs/costs.md",
-        container="table with a how-to-read line",
-        on_slide=[
-            "How to read this: each row is one way a table-backed queue fails, what you see, and the defense.",
-            "| Failure | Symptom | Defense |",
+            "| Live runs, gpt-6-luna | Without the fix (planted) | With the fix |",
             "|---|---|---|",
-            "| Duplicate delivery | Two effects | Idempotency key, conflict rule |",
-            "| Worker dies mid-job | Job stuck running | Lease, heartbeat, reaper |",
-            "| Stale worker finishes or extends | Overwrites a re-claimed job | Fence on lease owner and attempt |",
-            "| Poison job | Endless retries | Attempt limit, dead state |",
-            "| Long transaction or assumed order | Bloat, wrong sequence | Short claim; never rely on order |",
+            "| One event sent three times | 3 answers, 2 digests: 5 of 5 | 1 answer: 7 of 7 |",
+            "| Worker restart while held | Approval lost: 6 of 6 | Held, then posted: 7 of 7 |",
+            "| Kill switch during a run | Posted after the stop: 6 of 6 | Stopped in flight: "
+            "9 of 9 |",
+            "Insight: Force each failure on purpose: a fix you never saw fail is untested.",
         ],
         notes=[
-            "Plain explanation: This table is the queue's failure model in one place. Each row is a way a table-backed queue goes wrong, the symptom you see, and the defense.",
-            "Concrete example from DataPilot: Every row has a counterpart in the event loop: the event key, the worker's lease and heartbeat, the finish and the heartbeat fenced on lease owner and attempt number so a stale worker can neither finish nor extend a re-claimed job, the attempt limit and dead state, the claim that commits before the model call, and handlers that never assume order. A job also carries the spend activity of the command that started it, so the worker records each model call under that job's activity, not its own; calibration found demo runs counted under the worker's activity before that change.",
-            "Analogy: A restaurant ticket rail. Tickets can be printed twice, a cook can walk out mid-order, and a ticket that always burns must be pulled off the rail.",
-            "Under the hood: The two rows people miss are the last two. `SKIP LOCKED` skips rows another worker holds, so the queue is not strictly first in first out. A transaction left open, for example around a model call, keeps old row versions alive, and every claim scans past them until vacuum can clean up.",
-            "Source 14: Postgres Job Queues & Failure By MVCC (https://brandur.org/postgres-queues), in summary: long-lived transactions stop dead row versions from being removed, and queue performance degrades as they accumulate.",
-            "Transfer: Before you ship any worker pool, walk this table and name the line of code that defends each row.",
-            "Point at: the how-to-read line, then the last row: long transactions and assumed order.",
-            'Ask: "Which row does a model call inside a transaction break?" Expected: the long transaction row, and the worker-dies row too.',
-            'Likely question: "How many attempts before a dead letter?" Answer: Few; a model that fails three times on the same input rarely succeeds on the fourth.',
-            'Likely question: "Do we alert on dead letters?" Answer: You should; a dead letter is a job a person must look at.',
-            'Misconception: "A reaper makes duplicates impossible." Correction: A reaper creates the second attempt; keys and fences render it harmless.',
-            "Transition: Next reference slide.",
+            "Purpose: Show every recorded run of the three safeguards, with sample sizes, off "
+            "and on.",
+            "What to say: You just saw one run of each half; this is every recorded run behind "
+            "them, from the section's evidence page. Read each row left to right. One event sent "
+            "three times: 3 answers and 2 digests in all 5 planted runs; with the key, 1 answer "
+            "and 2 duplicates absorbed in 7 of 7. A worker restart while an export was held: in "
+            "memory the approval was lost in all 6; in Postgres it was held and posted, 7 of 7. "
+            "The kill switch during a run: checked at claim only, a post after the stop in all "
+            "6; checked before every step, stopped in flight, 9 of 9. These are small samples, "
+            "so read them as every time we tried, not as rates. The counts are all or nothing "
+            "because this is deterministic code: the guarantee comes from the constraint, and "
+            "the count shows that the planted half really breaks it. That is the practice on "
+            "the insight line.",
+            "The point to land: Deterministic safeguards should hold every time; test them by "
+            "switching each failure on and watching it happen.",
+            "Example: The kill switch count of 9 includes the slowed-down demo run, where "
+            "the run moved slowly enough to watch it stop.",
+            'Ask the room: "Which of your safeguards have you ever seen fail on purpose?" '
+            "Expect: few or none; most are tested only on the happy path.",
+            "Misconceptions: That 7 of 7 means the fix works 100 times out of 100. It means it "
+            "held in every recorded run; the guarantee comes from the constraint, not the count.",
+            "Transition: So what does this loop change in a text-to-SQL design?",
         ],
     ),
+    # 10 design callout -------------------------------------------------------------------------
     dict(
-        kind="reference",
-        title="Reference: skip if short on time - router or supervisor",
-        layout="table",
-        minutes=1,
-        says="A decision table for when routing should be a table and when it should be an agent",
-        src="docs/architecture.md",
-        container="table with a how-to-read line",
+        kind="design_callout",
+        title="From events: hold queries returning personal data",
+        minutes=3,
+        says="Run generated queries from events; hold by column tags; pin the business date",
+        src="pack.yaml personal_data and autonomy; section-3-event-loop/demo/README.md, What "
+        "the result means; docs/calibration-report.md, Resumed without traces; Source 2 (levels)",
         on_slide=[
-            "How to read this: go down the rows for your input; if most answers fall in the right column, a supervisor earns its cost.",
-            "| Question | Router table | Supervisor agent |",
-            "|---|---|---|",
-            "| Input set | Closed, typed | Open-ended text |",
-            "| Same input, same route | Always | Not guaranteed |",
-            "| Testable per route | One test per row | Only by sampling |",
-            "| Cost and injection risk | None; a payload cannot persuade it | A model call; a payload can |",
+            "Decision: which generated queries wait for a person?",
+            "| Hold rule | Trade-off |",
+            "|---|---|",
+            "| Hold every query | Safe; approval risks a reflex click |",
+            "| A model judges sensitivity | May flip on resume; a payload can argue |",
+            "| Hold queries returning tagged columns | Same every time; tags to maintain |",
+            "DataPilot: hold returned tagged columns; approve or reject only; start at the "
+            "report-only level[^2].",
         ],
         notes=[
-            "Plain explanation: This is the decision behind the section's question slide, in table form. A router table reads a type and returns a handler and a policy. A supervisor agent reads content and decides who acts next.",
-            "Concrete example from DataPilot: Three event types, a question, a digest request, and an export request, each map to one handler and one autonomy policy. The router is deliberately not an agent, so the event loop adds no model call of its own.",
-            "Analogy: A post office sorts by postcode, not by reading each letter.",
-            "Under the hood: The routes that matter for safety, such as which events can export personal data, must be the same every time. A table gives that by construction. A supervisor can be right on average and still wrong on the one payload written to persuade it. If you do need judgement on open text, classify into a closed label set first, then route the label with a table, and log the label.",
-            "Source 1: The art of loop engineering (https://www.langchain.com/blog/the-art-of-loop-engineering), in summary: the event-driven loop connects triggers such as cron and webhooks to the agent.",
-            "Transfer: In your own multi-agent designs, count the steps that need judgement. Make everything else a table, and let agents work only where a table cannot.",
-            "Point at: the how-to-read line, then the cost and injection row.",
-            'Ask: "Which row decides it for an export?" Expected: same input, same route, plus injection risk.',
-            'Likely question: "Is a supervisor ever cheaper?" Answer: When maintaining the table costs more than the calls, which happens with many fuzzy intents and low stakes.',
-            'Likely question: "Can the router call an agent?" Answer: Yes; a handler can be an agent. The choice of handler is what stays deterministic.',
-            'Misconception: "Multi-agent means every decision is an agent." Correction: Good multi-agent systems are mostly deterministic glue around a few judgement steps.',
-            "Transition: Last reference slide: which clock the business uses.",
+            "Purpose: Turn the event loop into design decisions for the learner's own "
+            "text-to-SQL system: what runs unattended, what waits, and against which clock.",
+            "What to say: When questions arrive as events, nobody reads the generated query "
+            "before it runs, so you must decide in advance which queries wait for a person. "
+            "Three rules, top to bottom. Hold every query: safe on paper, but approval risks "
+            "becoming a reflex click. Let a model judge sensitivity: it can answer "
+            "differently when the run resumes, and the question text can argue with it. Hold "
+            "queries returning tagged columns: the same answer every time, decided from the "
+            "parsed query, at the cost of keeping a tag list. DataPilot tags customer email, "
+            "phone, and names; a query that returns them holds with its exact text and row "
+            "estimate, and the person may approve or reject, never edit. A query that only "
+            "filters on the email domain, such as the internal-accounts rule, does not hold, "
+            "because no email comes back. Remember that approved rows travel to the model provider with "
+            "the run. Two more design points. First, size: an approved export once returned one "
+            "aggregated row holding all 5,261 addresses, which a 50-row cap does not limit; the "
+            "pitfalls slide has what that cost. Second, the clock: an event-time question about the previous day resolves against the business "
+            "date and Eastern time. The webhook question answered 300 orders on the Eastern time "
+            "day and 291 on the Coordinated Universal Time day, and the reviewer approved both. "
+            "That is why every metric family starts at the report-only level, labelled "
+            "unverified, the level framing of Source 2.",
+            "The point to land: Decide holds from the columns a query returns, cap the size of what an "
+            "approved query returns, and pin the business date.",
+            "Example: The California export holds because it returns email; the webhook question "
+            "about orders returns no tagged column, so it posts, labelled unverified.",
+            'Ask the room: "Which columns in your warehouse would you tag first?" Expect: email, '
+            "phone, names, sometimes salary or address.",
+            "Misconceptions: That read-only access makes personal data safe. A read-only query "
+            "can still export every email; the hold is about where data goes.",
+            "Transition: What do you do with this next week?",
         ],
     ),
+    # 11 apply-it checklist ---------------------------------------------------------------------
     dict(
-        kind="reference",
-        title="Reference: skip if short on time - business and wall clocks",
-        layout="table",
-        minutes=1,
-        says="Business logic uses the business date and its time zone; live stamps use the wall clock",
-        src="platform/src/datapilot/business_date.py; platform/demos/registry.yaml",
-        container="table with a how-to-read line",
+        kind="checklist",
+        title="Apply it: five checks for your event loop",
+        minutes=2,
+        says="Five things to do on your own event-driven agent next week",
+        src="section-3-event-loop/README.md, Apply it in a real system; "
+        "section-3-event-loop/demo/walkthrough.md, If you copy this",
         on_slide=[
-            "How to read this: pick the clock by what the value is for, not by what is easy to read.",
-            "| Clock | Used for | Example |",
-            "|---|---|---|",
-            "| Business date | The previous day, schedules, keys | Data ends 31 January 2026 |",
-            "| Business time zone | Day boundaries | Digest at 8 a.m. Eastern time |",
-            "| Wall clock | When a run started | Live stamp in the viewer's local time |",
+            "- Key every event by its meaning, under a unique constraint",
+            "- Claim in one short transaction; a lease covers the work",
+            "- Keep pending approvals in a durable checkpointer",
+            "- Check the stop before every model call and tool call",
+            "- Test each by forcing it: send twice, restart, stop mid-run",
         ],
         notes=[
-            "Plain explanation: An event loop has two clocks, and mixing them is a classic bug. The business clock decides what the previous day means, when the digest is due, and which key an alert gets. The wall clock records when something actually ran.",
-            "Concrete example from DataPilot: The warehouse ends on 31 January 2026, and the class runs later. So the previous day, last month, the morning digest, every scheduled job, and fresh demo orders resolve against the business date, never the system clock. Day boundaries use Eastern time, so an order at 9 p.m. Eastern time belongs to that day even though its UTC date is the next one. The live stamp on each result is wall-clock time, shown in your local time, because it proves the run just happened. A unit test fails if business logic reads the clock, and agent SQL may not read the database clock either: the statement policy rejects it, because a question about the previous day once answered 0 when its SQL used the wall clock.",
-            "Analogy: An accountant closing the books for the last quarter works today but dates every entry in that quarter.",
-            "Under the hood: Keys built from the wall clock break idempotency, because a retry a second later gets a new key. Keys built from the business date are stable. Grouping by UTC date moves evening orders to the next day, which is Trap 4: Eastern time; the webhook question about the previous day answered 300 orders on the Eastern time day and 291 on the UTC day in calibration. Tests become reproducible when the business date is a setting.",
-            "Source 13: PostgreSQL SELECT (https://www.postgresql.org/docs/current/sql-select.html), in summary: the reference for the queries whose date filters convert to the business time zone before truncating to a day.",
-            "Transfer: In any agent that reports on data, name the business date explicitly, inject it as configuration, and keep the wall clock for audit stamps only.",
-            "Point at: the how-to-read line, then the key column of the business-date row.",
-            'Ask: "Which clock should the anomaly alert in Assignment 3: Event loop use for its key?" Expected: the business date.',
-            'Likely question: "Why not just use today\'s date?" Answer: Because the data ends on the business date; asking about the previous day by the wall clock returns nothing.',
-            'Likely question: "Why show local time on the stamp?" Answer: So every viewer can check the run happened minutes ago, in their own time.',
-            'Misconception: "Time zones only matter for display." Correction: They decide which day an order belongs to, and so the revenue for that day.',
-            "Transition: Now the poll.",
+            "Purpose: Give five concrete actions a learner can take on their own event-driven "
+            "agent next week.",
+            "What to say: Five checks, each an afternoon or less. One: list every effect your "
+            "agent has, posts, emails, tickets, exports, and key each by what the event means, "
+            "under a unique constraint, with a second-arrival rule: ignore, update, or reject. "
+            "Two: if your jobs live in a table, claim in one short statement that commits at "
+            "once, with a lease, and keep no transaction open across a model call. Three: move "
+            "every pause for a person into a durable checkpointer, and keep the hold condition "
+            "a function of the action, never a model's opinion. Four: put your stop check in "
+            "middleware before every model call and every tool call. Five, the one teams skip: "
+            "force each failure. Send one event three times, restart a worker while a run is "
+            "held, engage the stop during a slow run. If you cannot force the failure, you do "
+            "not know that the fix holds. Assignment 3: Event loop practises this on a nightly "
+            "revenue anomaly alert with a deterministic key.",
+            "The point to land: Every safeguard you add gets a test that makes its failure "
+            "happen on purpose.",
+            "Example: In Assignment 3, a second delivery of the anomaly alert must post nothing "
+            "new, and a late order must update the alert in place.",
+            'Ask the room: "Which of the five would take you longest?" Expect: moving approvals '
+            "into a durable checkpointer.",
+            "Misconceptions: That a message broker removes the need for keys. Brokers deliver at "
+            "least once too; the keys and the lease checks still apply.",
+            "Transition: Before the recap, the mistakes teams repeat here.",
+        ],
+    ),
+    # 12 pitfalls -------------------------------------------------------------------------------
+    dict(
+        kind="pitfalls",
+        title="Event loop pitfalls that pass every unit test",
+        minutes=2.5,
+        says="Two event-loop mistakes and the row cap that is not a size cap",
+        src="section-3-event-loop/concepts.md; docs/calibration-report.md, The retake chains; Source 26 (long "
+        "transactions)",
+        on_slide=[
+            "| Pitfall | What happens | Do instead |",
+            "|---|---|---|",
+            "| A key made at arrival | Every copy looks new and posts | Key by meaning |",
+            "| A lock held through the model call | Dead rows pile up[^26]; the job looks queued "
+            "while it runs, and a killed run restarts uncounted | Commit the claim; lease the "
+            "work |",
+            "Insight: A row cap is not a size cap: one row held 5,261 addresses, 109,380 tokens.",
+        ],
+        notes=[
+            "Purpose: Name the event-loop mistakes that look fine in unit tests and fail in "
+            "production, each with its fix.",
+            "What to say: Two pitfalls on the table, and one more in words, each one we either planted or met. First, a key made at "
+            "arrival. A random id per delivery, which is exactly the planted random digest id, "
+            "makes every copy look new; a key from the wall clock breaks the other way, because "
+            "a retry a second later gets a new key. Key by meaning. Second, a lock held through "
+            "the model call. It looks tidy, one transaction around the whole job, but Brandur "
+            "Leach's write-up of Postgres job queues, Source 26, shows long transactions pile up "
+            "dead rows and slow every claim. In our tests the job also looks queued while it "
+            "runs, and killing the worker rolls the claim back: the job is queued again with no "
+            "attempt counted, though its run had already started, so an attempt cap never "
+            "stops it and anything it posted goes out again. We plant this one in the code and "
+            "its tests, with no class demo. Third, not on the table: no daily budget. "
+            "Unattended work spends with nobody watching; our daily worker budget is 2,000,000 "
+            "tokens, checked at claim, and on a rehearsal day it blocked a run at 1,969,486. "
+            "Now the insight. A row cap of 50 felt like a size limit. Then an approved export "
+            "returned one aggregated row holding all 5,261 addresses, resent with every later "
+            "call, and the run ended at 109,380 tokens against the 60,000-token budget. A cap of "
+            "2,000 characters a value brought the same export down to 7,670.",
+            "The point to land: Bound the size of every value a tool returns, not only the "
+            "number of rows.",
+            "Example: The fix for the export was one setting, a cap on characters per value, "
+            "and the run's tokens fell from about 109,000 to 7,670.",
+            'Ask the room: "Which of these does your system have today?" Expect: no daily '
+            "budget, and approvals in memory.",
+            "Misconceptions: That a budget per run is enough. Many small runs, each inside its "
+            "own budget, still add up when nobody watches.",
+            "Transition: Let me check what stuck before the poll.",
+        ],
+    ),
+    # 13 recap and question ---------------------------------------------------------------------
+    dict(
+        kind="recap",
+        title="Recap: the event loop",
+        minutes=2.5,
+        says="Three points to keep, and a resent export held across a worker restart",
+        src="section-3-event-loop/README.md; docs/instructor-guide.md, Section 3: Event loop; "
+        "docs/calibration-report.md, Resumed without traces",
+        on_slide=[
+            "- One event, one effect: the key lives in the database",
+            "- A pending approval is state: keep it durable",
+            "- The stop reaches the running job",
+            "Question: A sender resends the California export while the first is held, then the "
+            "worker restarts. How many exports wait for approval, and why?",
+        ],
+        notes=[
+            "Purpose: Consolidate the event loop and check, with one question, that learners "
+            "can combine the event key and the durable approval.",
+            "What to say: Three points to keep. One event, one effect, because the key lives in "
+            "a unique constraint. A pending approval is state, so it lives in a durable "
+            "checkpointer. And the stop is checked before every step, so it reaches the job "
+            "already running. Now the question; give the room thirty seconds in the chat. The "
+            "answer: one. The resend carries the same event id, so the insert hits the unique "
+            "constraint, inserts nothing, and is counted as a duplicate. The first export's "
+            "pending approval is a checkpoint in Postgres, so it survives the restart, and "
+            "approving it posts once. Take any remaining questions here; park longer ones for "
+            "the Thursday review.",
+            "The point to land: The event loop makes runs safe to repeat, wait, and stop; it "
+            "does not turn a wrong answer into a right one.",
+            "Example: The webhook question answered 300 orders in one run and 291, the day in "
+            "Coordinated Universal Time, in another; both posted once, labelled unverified, and "
+            "the key could not tell them apart.",
+            "Ask the room: the question on the slide. Expect: one; a common wrong answer is two, "
+            "from people who think the key is made when the event arrives, and another is zero, "
+            "from people who expect the restart to lose the approval.",
+            "Misconceptions: That idempotency protects correctness. It posts a wrong answer "
+            "exactly once.",
+            "Transition: A 291 would post once, labelled unverified, and the key cannot tell it "
+            "from 300. So which autonomy level would you grant the revenue digest today? That is "
+            "the poll.",
         ],
     ),
 ]

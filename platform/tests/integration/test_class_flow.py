@@ -108,6 +108,12 @@ def test_a_reset_refuses_while_the_runner_runs_a_request(promoted_v8) -> None:
             commands.reset("hill-climbing-loop")
         refused = CliRunner().invoke(cli, ["reset", "hill-climbing-loop"])
         assert refused.exit_code == 1 and "not reset" in refused.output
+        # the way out it names must work: a restarted runner serves again and keeps the lock,
+        # so the message says to stop the runner, reset, then start it (session 7 review)
+        flat = " ".join(refused.output.split())
+        assert "docker compose stop hill-climbing-runner" in flat
+        assert "docker compose start hill-climbing-runner" in flat
+        assert "docker compose restart" not in flat
     assert status()["v8"] == "active", "nothing changed"
     # the runner stopped (its lock went with its connection): the reset closes the request
     report = commands.reset("hill-climbing-loop")

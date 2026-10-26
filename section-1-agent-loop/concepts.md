@@ -38,7 +38,7 @@ one email domain. None of that is in the schema. [BIRD](https://arxiv.org/abs/23
 this gap external knowledge and supplies it to models as evidence. A stronger large language model
 (LLM) guesses more fluently, but it still guesses.
 
-![The analyst agent between its prompt and its tools list_tables, describe_table, run_query, and scout_schema; run_query goes through the checker and returns at most 50 rows; scout_schema starts a schema scout agent inside a dashed tool boundary with only list_tables and describe_table; the run ends in an answer envelope; a red box lists the stops: 12 model calls, 16 tool calls, 60,000 tokens](diagrams/agent-loop.svg)
+![The analyst agent between its prompt, which carries the business date and the active knowledge version, and its tools list_tables, describe_table, run_query, and scout_schema; run_query goes through the checker and returns at most 50 rows; scout_schema starts a schema scout agent inside a dashed tool boundary with only list_tables and describe_table; the run ends in an answer envelope; a stop box lists the limits of every run: 12 model calls, 16 tool calls, 60,000 tokens](diagrams/agent-loop.svg)
 
 *Notice the schema scout's boundary: it can read the catalog but has no run_query, and every answer arrives as one structured envelope.*
 

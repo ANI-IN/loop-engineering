@@ -88,13 +88,13 @@ runs on both splits, measured like the active version (`platform/packs/datapilot
 - Runs go 8 at a time (`evaluation.concurrency`).
 
 The gate passes the candidate when it passes more holdout items than the active version, there are
-zero regressions on both splits, its new rules pass the overfit guard, and a person approves the
-knowledge diff. The over-broad version `v2-overbroad`, "exclude discounted orders from revenue",
+zero regressions on both splits, a person approves the knowledge diff, and its new rules pass
+the overfit guard. The over-broad version `v2-overbroad`, "exclude discounted orders from revenue",
 breaks items, and the gate blocks it.
 
 Key idea: the gate decides on questions the analyzer never saw.
 
-![The benchmark, 25 development and 15 holdout items, and two databases feed the experiment runner; failed development items go to the analyzer team of three agents, then the overfit guard, then a candidate knowledge version; the promotion gate, with its confirming runs and a person's approval, makes the active version; a band below explains autonomy per metric family](diagrams/hill-climbing-loop.svg)
+![The hill-climbing cycle: the benchmark, 25 development and 15 holdout questions, feeds an experiment that measures execution match on two databases; the analyzer team of three agents reads only the failed development questions; the overfit guard rejects a rule that copies a question or a gold query; of two candidates the better one is kept; the promotion gate needs all four conditions, more holdout passes than the active version, zero confirmed regressions on both splits, human approval, and every new rule passing the overfit guard; the promoted version becomes the active knowledge version and the next baseline](diagrams/hill-climbing-loop.svg)
 
 *Notice that the agents only propose: code decides whether a rule overfits and whether a version is better, and a person approves the promotion.*
 

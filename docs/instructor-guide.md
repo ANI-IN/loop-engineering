@@ -10,7 +10,8 @@
 > - **Development split**: The benchmark questions the analyzer team may learn from.
 > - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 
-How to run the four-hour live class of Module: Loop Engineering. Every demo is live, on
+How to run the four-hour live class of Module: Loop Engineering, on an agent that turns
+questions into Structured Query Language (SQL), a text-to-SQL agent. Every demo is live, on
 gpt-6-luna, with the class key. When a demo stalls, you reset its section and run it again:
 `make reset NAME=<section slug>`, then the same trigger. The times on this page are the times in
 `slides/outline.md`; the cues come from `platform/demos/registry.yaml` and the DEMO slides'
@@ -20,15 +21,16 @@ speaker notes.
 
 | Time | Block | What you do |
 |---|---|---|
-| 0:00-0:10 | Opening | Full screen; welcome, keys, setup checks, the fiscal year 2025 revenue question |
-| 0:10-0:55 | Section 1: Agent loop | Concepts to 0:33; three core demos and the code to 0:50; questions |
-| 0:55-1:45 | Section 2: Verification loop | Concepts to 1:19; three core demos and the code to 1:37; questions |
+| 0:00-0:10 | Opening | Full screen; welcome, the insight, the four loops, the five traps |
+| 0:10-0:25 | Designing text-to-SQL | Why warehouses are hard, the nine stages, the design decisions; no demo |
+| 0:25-1:03 | Section 1: Agent loop | Concept and code slides to 0:38; three demos, code to 0:53; evidence to recap |
+| 1:03-1:45 | Section 2: Verification loop | Concept and code slides to 1:17:30; demos, code to 1:35:30; evidence to recap |
 | 1:45-1:55 | Break | Write the return time in the chat; reset the event loop |
-| 1:55-2:50 | Section 3: Event loop | Concepts to 2:19; four core demos, a reset, and the code to 2:41; questions |
+| 1:55-2:50 | Section 3: Event loop | Concept and code slides to 2:14; demos and a reserve to 2:38; evidence to recap |
 | 2:50-2:55 | Poll | Start the baseline experiment first, then launch the Zoom poll |
 | 2:55-3:05 | Break | Queue the naive analyzer behind the baseline: `make demo NAME=improve-naive-analyzer-blocked PLANTED=1` |
-| 3:05-3:50 | Section 4: Hill-climbing loop | Concepts to 3:25; five core demos and the code to 3:45; questions |
-| 3:50-4:00 | Closing | All results, which loop when, assignments, final project, questions |
+| 3:05-3:48 | Section 4: Hill-climbing loop | Start the chain on the opener, about 3:07; demos 3:19-3:34; evidence to recap |
+| 3:48-4:00 | Closing | The four loops, ten insights, the design checklist, Monday, assignments, sources |
 
 Three terminals, opened before the class:
 
@@ -52,7 +54,8 @@ make demo NAME=agent-confident-wrong-answer
 ```
 
 Swap the section slug (`agent-loop`, `verification-loop`, `event-loop`, `hill-climbing-loop`) and
-the demo slug for the demo on screen. Never run `make preflight` during class: it starts a new
+the demo slug for the demo on screen. A reset takes about 7 seconds (6.4 to 6.9 measured on 26
+October 2026). Never run `make preflight` during class: it starts a new
 live session, and the baseline experiment from the poll belongs to the class session.
 
 The baseline is safe across a reset: `make reset NAME=hill-climbing-loop` clears the candidate and
@@ -63,8 +66,8 @@ console then needs a new baseline from the open session. Both first copy every e
 decision, and version they delete or retire into the reset archive, and say how many rows;
 `make archive` and `make archive-show NAME=<experiment id>` read it back.
 
-Cut first, in this order: the optional demos, then the "Reference: skip if short on time" slides.
-Never cut a core demo or a core concept slide.
+Cut first, in this order: the optional demos, then the length of the code walkthrough. Never cut
+a core demo or a core concept slide.
 
 Parking lot: when a question will not fit, say "Great question for Thursday. Put it in the chat
 with the word Thursday and we answer it in the review session." The questions go into
@@ -110,8 +113,8 @@ class, never on its morning.
 4. **Rehearse every core demo twice in a row**, with `make reset NAME=<section slug>` between, on
    the class model, in the order of the class, planted flags included (see "Planted flags in
    class" below). Note what varied, and time the approval demo's planted half (two worker
-   restarts) and each promotion after approval: Section 3's timetable needs the first, Section
-   4's the second.
+   restarts; 41 seconds in both measured runs) and each promotion after approval: Section 3's
+   timetable needs the first, Section 4's the second.
 5. **Rehearse the Section 4 chain twice**, as in class, and the class-day safeguard once between
    the two, in this order:
    1. The first chain: the baseline, the naive analyzer and its candidate experiment, the
@@ -220,36 +223,56 @@ console once the run holds; then approve the held export; then wait for the term
 seconds for the run to end (`wait_seconds` in `platform/src/datapilot/loop3_events/commands.py`),
 then restarts the worker anyway. Until the terminal restarts the worker back, the worker claims
 only this demo's runs, so every other run waits in Queued: press Ctrl+C before the next demo, and
-the worker is restarted without the flag at once. Its restart time is owed to
-rehearsal (step 4 of the day before). A live check and the finale refuse to start while `.env` or
+the worker is restarted without the flag at once. The planted half was measured twice, 41
+seconds both times; time it again in rehearsal (step 4 of the day before). A live check and the finale refuse to start while `.env` or
 a running service has a flag on, and name it: set it to 0 in `.env`, then `make up`.
 
 ### Opening (0:00-0:10)
 
 | Time | Slide | What you do |
 |---|---|---|
-| 0:00-0:01 | Title, instructor | Your name and contact |
-| 0:01-0:01:30 | Welcome, in the chat | Ask for one line: which agent you run, and what stops it when it is wrong |
-| 0:01:30-0:02:30 | How the class runs | Four sections, two breaks, one poll; every demo live; reset and run again |
-| 0:02:30-0:03 | Support | The chat, and the parking lot for Thursday |
-| 0:03-0:04 | Your key, LangSmith | The key from the operations team; LangSmith on the learner's own account |
-| 0:04-0:05 | Setup checks | Services healthy, then the preflight canary |
-| 0:05-0:06:30 | Recap, problem statement | From the Harness Engineering module to four loops; DataPilot |
-| 0:06:30-0:08 | The fiscal year 2025 revenue question, why it matters | "What was our net revenue in fiscal year 2025?" and its five traps |
-| 0:08-0:10 | Four loops, measurement, glossary | The loops in one picture; gold queries on two databases; the terms |
+| 0:00-0:00:30 | Module: Loop Engineering | The title |
+| 0:00:30-0:01:30 | Your instructor | Your name; one line from everyone in the chat |
+| 0:01:30-0:03 | Why agents fail in production | Four failure classes, one number each |
+| 0:03-0:05 | The four loops on one map | Walk the map |
+| 0:05-0:07:30 | The agent answered. The answer was wrong. | 72,394,572.08 against 64,015,091.21 dollars; three traps on the query |
+| 0:07:30-0:09 | One question, five traps no column states | The breakdown of the 0 of 99 trap-question runs |
+| 0:09-0:10 | How the class runs | Sections, breaks, the poll; every demo live; reset and run again |
 
-### Section 1: Agent loop (0:10-0:55)
+### Designing text-to-SQL (0:10-0:25)
+
+| Time | Slide | What you do |
+|---|---|---|
+| 0:10-0:12 | Business knowledge decides the answer; check it like code | Internal accounts move the answer by 1,577,441.23 dollars; the SEED audit |
+| 0:12-0:14 | Why questions over a real warehouse are hard | Four reasons, with the benchmark figures |
+| 0:14-0:18 | Nine stages from question to checked answer | Walk the nine stages and DataPilot's part in each |
+| 0:18-0:20:30 | Design decisions: rules, generation, and clarification | Where rules live; one shot or an agent; assume, ask when a term has no rule |
+| 0:20:30-0:23 | Design decisions: schema, permissions, cost, and evaluation | Schema at scale, each user's access, cost, execution match on two databases |
+| 0:23-0:25 | Build or buy: semantic layers and warehouse assistants | What buying gives; what this approach adds |
+
+No demo runs in this block: keep the console on the Agent page, ready for Section 1.
+
+### Section 1: Agent loop (0:25-1:03)
 
 | Time | Slide or demo | What you do |
 |---|---|---|
-| 0:10-0:15 | Agenda, failure story, the tempting question | "Will a stronger model fix the revenue number?" No |
-| 0:15-0:33 | Concepts 1 to 4, cheat sheet | Schema linking, context as a budget, structured output, subagents |
-| 0:33-0:36 | The simple question | Agent: type "How many orders have been placed in total?" and press Ask, or `make demo NAME=agent-simple-question` |
-| 0:36-0:41 | The confident wrong answer | Agent > Ask the spine question, or `make demo NAME=agent-confident-wrong-answer` |
-| 0:41-0:45 | Unbounded rows | `make demo NAME=agent-unbounded-rows PLANTED=1`, then Agent > Run large query |
-| 0:45-0:50 | Code walkthrough | The tools, the analyst, the prompt, the answer envelope |
-| 0:50-0:53 | Questions | Why not put the rules in the prompt? Does the scout pay for itself? |
-| 0:53-0:55 | Reference slides | Only if time is left |
+| 0:25-0:26 | Section opener | Two design questions: what the tools show, how much they return |
+| 0:26-0:27:30 | Insight: what the tools show decides the answer | 68.3 percent schema-linking failures (pooled schema); 12 against 17 of 21 |
+| 0:27:30-0:29:30 | Story: one tool result used three run budgets | Run 199d2188, 184,983 tokens against a 60,000 budget, checked before each call |
+| 0:29:30-0:31:30 | Concept: the agent loop diagram | Walk it left to right |
+| 0:31:30-0:33:30 | Mechanism: describe_table | Names only against types, samples, distinct values; what LangChain gives |
+| 0:33:30-0:35:30 | Mechanism: format_result | Row cap 50, value cap 2,000 characters, the count, the notice |
+| 0:35:30-0:38 | Mechanism: the analyst | Knowledge on every call, 12 and 16 call limits, the envelope |
+| 0:38-0:41 | The simple question | Status line; type "How many orders have been placed in total?", Agent > Ask, or `make demo NAME=agent-simple-question` |
+| 0:41-0:46 | The confident wrong answer | Agent > Ask the spine question, or `make demo NAME=agent-confident-wrong-answer`; leave a held run held |
+| 0:46-0:50 | Unbounded rows | `make demo NAME=agent-unbounded-rows PLANTED=1`, then Agent > Run large query |
+| 0:50-0:53 | Code walkthrough | The analyst's prompt and limits, then the tools' result formatting |
+| 0:53-0:54 | Buffer | Texas last quarter only if the core demos ended early |
+| 0:54-0:56 | Evidence | 12 against 17 of 21; tokens 3,738 against 4,857 |
+| 0:56-0:58:30 | Design callout | Retrieve and describe tables on demand; value lookup (Assignment 1: Agent loop) |
+| 0:58:30-1:00 | Apply it | Five changes for next week |
+| 1:00-1:01:30 | Pitfalls | No cap in the tool, asking whenever unsure, prose answers; measure the scout |
+| 1:01:30-1:03 | Recap and question | The final query and the assumptions |
 
 Demo cues:
 
@@ -266,20 +289,33 @@ Demo cues:
   query), the row cap, the total count, and the truncation notice. May vary: exact tokens, and whether the run with the bug
   off ends held for approval by a reviewer concern, which it did twice in calibration; the token
   counter is the moment either way.
-- Optional, cut first: Texas last quarter, `make demo NAME=agent-texas-last-quarter`.
+- Optional, cut first: Texas last quarter, `make demo NAME=agent-texas-last-quarter`, only in the
+  1-minute buffer, 0:53-0:54, when the core demos ended early.
 
-### Section 2: Verification loop (0:55-1:45)
+Retries: the core demos keep their slots, 0:38-0:41, 0:41-0:46, and 0:46-0:50, and the code
+walkthrough runs 0:50-0:53. A retry that would end after 0:53 takes the code walkthrough's time;
+after 0:54, no retry: name the moment for the Thursday review and go on.
+
+### Section 2: Verification loop (1:03-1:45)
 
 | Time | Slide or demo | What you do |
 |---|---|---|
-| 0:55-1:00 | Agenda, failure story, the tempting question | "If every grader passes, is the answer right?" No |
-| 1:00-1:19 | Concepts 1 to 4, cheat sheet | Allowlist the shape, permissions as the boundary, stops, a checker's blind spots |
-| 1:19-1:23 | Malicious SQL | `make demo NAME=verify-malicious-sql PLANTED=1`, then Verify > Send malicious SQL |
-| 1:23-1:27 | The retry cap | `make demo NAME=verify-retry-cap PLANTED=1`, then Verify > Inject failing grader |
-| 1:27-1:31 | Every grader passes, still wrong | Verify > Ask the spine question, or `make demo NAME=verify-graders-pass-still-wrong` |
-| 1:31-1:37 | Code walkthrough | The statement policy, the executor, the caps, the reviewer |
-| 1:37-1:42 | Questions | Why two databases? Can the reviewer be fooled? |
-| 1:42-1:45 | Reference slides | Only if time is left |
+| 1:03-1:04 | Section opener | Checks flag wrong answers; they do not fix them: 0 of 40 either way |
+| 1:04-1:05:30 | The product name that said delete | Illustrative: the three demo statements pass a first-word guard |
+| 1:05:30-1:08:30 | The verification layers, in order | Walk the diagram: seven graders, the executor, the exits, the reviewer last |
+| 1:08:30-1:11 | Allowlist the shape | Root check, walk every node, a reason back |
+| 1:11-1:13 | Grants are walls | 25006 from the transaction, 42501 from the grants; a refused write ends the run |
+| 1:13-1:15 | A stop the model cannot argue with | The cap of 3 in code; 9 to 13 attempts without it |
+| 1:15-1:17:30 | Same knowledge, same blind spot | The reviewer approved 19 of 40 wrong answers |
+| 1:17:30-1:21:30 | Malicious SQL | `make reset NAME=verification-loop`; `make demo NAME=verify-malicious-sql PLANTED=1`, then Verify > Send malicious SQL |
+| 1:21:30-1:25:30 | The retry cap | `make demo NAME=verify-retry-cap PLANTED=1`, then Verify > Inject failing grader |
+| 1:25:30-1:29:30 | Every grader passes, still wrong | Verify > Ask the spine question, or `make demo NAME=verify-graders-pass-still-wrong` |
+| 1:29:30-1:35:30 | Code walkthrough | The checker, the statement policy, the retry cap; the cost guard only if ahead |
+| 1:35:30-1:38 | Evidence | 0 of 40 right either way; 20 flagged against 1; 9,311 against 17,344 tokens |
+| 1:38-1:40 | Design callout | Validate before, while, and after the query runs; gold on two databases |
+| 1:40-1:41:30 | Apply it | Five checks for next week |
+| 1:41:30-1:43:30 | Pitfalls | Four layers that trusted the one above |
+| 1:43:30-1:45 | Recap and question | Benchmark questions: the gold check; new questions: the rule or a person |
 
 Demo cues:
 
@@ -293,23 +329,40 @@ Demo cues:
   and the gold check fails on both databases. May vary: the reviewer's verdict.
 - Optional, cut first: the cost guard, `make demo NAME=verify-cost-guard`.
 
+Retries: a retry takes time from the code walkthrough, 1:29:30-1:35:30. After 1:33, do not retry
+any demo: name the moment and go on.
+
 ### Break (1:45-1:55)
 
-Write the return time, 1:55, in the chat. Run `make reset NAME=event-loop` during the break.
+| Time | Slide | What you do |
+|---|---|---|
+| 1:45-1:55 | Time for a Break | Return time in the chat; `make reset NAME=event-loop`; read Tokens today on the status line |
+
+Write the return time, the local time 10 minutes from now, in the chat. Run
+`make reset NAME=event-loop` during the break.
 
 ### Section 3: Event loop (1:55-2:50)
 
 | Time | Slide or demo | What you do |
 |---|---|---|
-| 1:55-2:00 | Agenda, failure story, the tempting question | "Should an agent route the events?" No |
-| 2:00-2:19 | Concepts 1 to 4, cheat sheet | Idempotent effects, the queue as a table, durable approval, the kill switch |
-| 2:19-2:22 | The webhook question | Events > Send webhook question, or `make demo NAME=events-webhook-question` |
-| 2:22-2:27 | The approval that survives a restart | Events > Request California export, or `make demo NAME=events-approval-survives-restart` |
-| 2:27-2:30 | Duplicate events | `make demo NAME=events-duplicate-events PLANTED=1`, `make reset NAME=event-loop`, then Events > Send the same event three times |
-| 2:30-2:34 | The kill switch in flight | `make demo NAME=events-kill-switch-in-flight PLANTED=1`, `make reset NAME=event-loop`, then `make demo NAME=events-kill-switch-in-flight` |
-| 2:34-2:41 | Code walkthrough | The router, the claim with its lease, the approval, the kill switch check |
-| 2:41-2:47 | Questions | Why not a message broker? What if nobody approves? Why 300 orders, then 291? |
-| 2:47-2:50 | Reference slides | Only if time is left |
+| 1:55-1:56 | Section opener | Work that runs twice, waits in memory, or ignores a stop |
+| 1:56-1:59 | Insight: every planted bug failed every run | The failures were in delivery, state, and control, not the model |
+| 1:59-2:01:30 | Story: two digests for one day | Without a stored event key, repeats became two digests |
+| 2:01:30-2:04:30 | The event pipeline diagram | Router, queue, approval, kill switch |
+| 2:04:30-2:07:30 | Code: insert once, route, claim with a lease | The code walkthrough, part 1 |
+| 2:07:30-2:11 | Code: the approval checkpoint | The code walkthrough, part 2: a pending approval kept in Postgres |
+| 2:11-2:14 | Code: the kill switch | The code walkthrough, part 3: the check before every step |
+| 2:14-2:17 | The webhook question | Events > Send webhook question, or `make demo NAME=events-webhook-question` |
+| 2:17-2:23 | The approval that survives a restart | `make demo NAME=events-approval-survives-restart PLANTED=1`, `make reset NAME=event-loop`, then Events > Request California export |
+| 2:23-2:27 | Duplicate events | `make demo NAME=events-duplicate-events PLANTED=1`, `make reset NAME=event-loop`, then Events > Send the same event three times |
+| 2:27-2:33 | The kill switch in flight | `make demo NAME=events-kill-switch-in-flight PLANTED=1`, `make reset NAME=event-loop`, `make demo NAME=events-kill-switch-in-flight`, `make reset NAME=event-loop` |
+| 2:33-2:36 | The digest now (optional, cut first) | `make demo NAME=events-digest-now` |
+| 2:36-2:38 | Reserve | One reset and run again, or questions |
+| 2:38-2:40 | Evidence table | Each planted bug failed every time; each fix held |
+| 2:40-2:43 | Design callout | From events: hold queries that read personal data |
+| 2:43-2:45 | Apply it | Five checks for next week |
+| 2:45-2:47:30 | Pitfalls | Three that pass every unit test; a row cap is not a size cap |
+| 2:47:30-2:50 | Recap and the question | Three points; the resent export across a restart: one waits. Remaining questions |
 
 Demo cues:
 
@@ -356,14 +409,22 @@ answered on the wrong clock.
   (`BUG_KILLSWITCH_AT_CLAIM_ONLY`, the `PLANTED=1` half, first), it keeps going; with the check
   before every step, the in-flight run moves to blocked by kill switch, and the status line shows
   the report-only level. Each half leaves the switch engaged, and an engaged switch blocks every
-  new run at claim: **`make reset NAME=event-loop` after each half**, the second before the code
-  walkthrough, or the finale is blocked too.
+  new run at claim: **`make reset NAME=event-loop` after each half**, the second before the
+  evidence slide, or the finale is blocked too.
 - Optional, cut first: the digest now, `make demo NAME=events-digest-now`.
 
-During the questions, check that the status line's button reads Kill switch, not Release kill
-switch.
+Retries: a retry spends the 2-minute reserve, 2:36-2:38, then the 3 minutes of the optional
+digest demo. Start no retry after 2:36: skip it, say so, and name that demo for the Thursday
+review.
+
+During the recap and the questions, check that the status line's button reads Kill switch, not
+Release kill switch.
 
 ### Poll (2:50-2:55)
+
+| Time | Slide | What you do |
+|---|---|---|
+| 2:50-2:55 | Live Zoom Poll | Start the baseline experiment first, then the poll; read the result aloud |
 
 First start the baseline experiment: Improve > Run experiment on the active version, or
 `make demo NAME=improve-baseline-experiment`. It is the class session's baseline; the console
@@ -373,7 +434,12 @@ assisted, and unattended levels as options. Read the result aloud before the bre
 
 ### Break (2:55-3:05)
 
-Write the return time, 3:05, in the chat. The baseline experiment keeps running at concurrency 8
+| Time | Slide | What you do |
+|---|---|---|
+| 2:55-3:05 | Time for a Break | Return time in the chat; queue the naive analyzer; check the progress strip once |
+
+Write the return time, the local time 10 minutes from now, in the chat. The baseline experiment
+keeps running at concurrency 8
 (`evaluation.concurrency` in `pack.yaml`); measured, a baseline took 236 to 386 seconds from the trigger
 (the longest on a machine shared with assignment checks), so it ends at about 2:54 to 2:57. Check once that the benchmark progress strip on the run board is counting up.
 
@@ -385,49 +451,81 @@ for the baseline: the naive analyzer takes seconds and makes no model call, then
 candidate experiment runs. The naive analyzer took 211 to 580 seconds from the trigger to the
 verdict in its 6 measured runs; the longest ran on a machine shared with assignment checks, and
 the class run-through of 25 October 2026 took 221 seconds. Its blocked verdict is on the Improve page by about
-3:01 in most runs; if it is not there at 3:25, read the baseline ledger first and come back to
-it. The flag was on for those two requests alone, so the
+3:01 in most runs; if it is not there at 3:06, it may still be behind the baseline: read the
+baseline, keep talking, and look again at 3:07. The flag was on for those two requests alone, so the
 analyzer team runs in Section 4 with nothing to switch back.
 
-### Section 4: Hill-climbing loop (3:05-3:50)
+### Section 4: Hill-climbing loop (3:05-3:48)
 
 | Time | Slide or demo | What you do |
 |---|---|---|
-| 3:05-3:09 | Agenda, failure story, the tempting question | "Promote rules when the development score rises?" No |
-| 3:09-3:25 | Concepts 1 to 4, cheat sheet | The benchmark as an instrument, overfitting, the paired gate, earned autonomy |
-| 3:25-3:40 | Five core demos, in order | The five demos in the cues below |
-| 3:40-3:45 | Code walkthrough | The evaluator, the analyzer, the overfit guard, the gate |
-| 3:45-3:48 | Questions | Start from the open question below |
-| 3:48-3:50 | Reference slides | Only if time is left |
+| 3:05-3:08 | Section opener | Read the baseline and the naive verdict; start the chain about 3:07 |
+| 3:08-3:10:30 | Problem story | The over-broad rule: 9 confirmed regressions; the chain runs |
+| 3:10:30-3:13:30 | The hill-climbing loop diagram | The gate's conditions in order; the honest caveat about the holdout |
+| 3:13:30-3:16:30 | Mechanism: the analyzer team and the overfit guard | The chain runs |
+| 3:16:30-3:19 | Mechanism: the gate's decide function | The chain runs |
+| 3:19-3:34 | Demo: the diff, the candidate ledger, approval, the unattended level, the finale | Steps 3 to 5 below; the safeguard if the gold check fails |
+| 3:34-3:36:30 | Evidence chart | Every promotion, on 15 holdout questions |
+| 3:36:30-3:39 | Insight: the naive analyzer's history | 15 of 15, then the fourth condition, then 6 of 6 blocked |
+| 3:39-3:41 | Insight: autonomy per metric family | Read the poll's result back |
+| 3:41-3:43 | Design callout | Where rules live; execution match |
+| 3:43-3:45 | Apply it | Six steps |
+| 3:45-3:47 | Pitfalls | Four, from our runs |
+| 3:47-3:48 | Recap and question | 15 of 15 with copied rules: promoted? No |
 
-The demos need more machine time than their 15 minutes, measured over every recorded run, 23 to
-25 October 2026 ([evidence](evidence/section-4-hill-climbing-loop.md#results)):
+The chain needs more machine time than the 15-minute demo slot, so it starts on the opener.
+Measured over every recorded run, 23 to 25 October 2026
+([evidence](evidence/section-4-hill-climbing-loop.md#results)):
 
 | Step | Measured machine time | Where it runs |
 |---|---|---|
 | The baseline experiment | 236 to 386 seconds | From the poll, done by about 2:54 to 2:57 |
 | The naive analyzer and its candidate experiment | 211 to 580 seconds | Queued at the break, done by about 3:01 in most runs |
 | The analyzer team, two candidates | 326 to 377 seconds, five runs | In the block |
-| The candidate experiment | 176 to 337 seconds; 404 and 459 seconds at analyzer reasoning effort high | In the block |
-| The promotion after approval, with its clearance re-runs | Active about 5 seconds after approval; the finale is held during the re-runs | In the block |
-| The finale after a promotion, from its first send | 50 seconds of holds once; then posted at 74, 115, and 162 seconds | In the block |
+| The candidate experiment | 171.3 to 459 seconds; 404 and 459 at analyzer reasoning effort high | In the block |
+| The promotion after approval, with its clearance re-runs (measured once) | Active about 5 seconds after approval; re-runs done about 50 seconds after it | In the block |
+| The finale after a promotion, from its first send | 50 to 162 seconds when held for the clearance re-runs | In the block |
 | The finale on the class-day safeguard | 19 and 21 seconds | Only if the safeguard is used |
 
-So only the analyzer team, the candidate experiment, the promotion, and the finale run in the
-block: from 326 + 176 + 74 seconds, about 9.6 minutes, to 377 + 337 + 162 seconds, about 14.6
-minutes. In the class run-through of 25 October 2026, in class order, the chain took 362 + 237 + 162
-seconds, about 12.7 minutes. Plan from the largest: started at 3:28, the finale can land as late as
-about 3:43, in the code walkthrough slot, so show the code walkthrough during the clearance re-runs
-when the chain runs long. The plan for 3:25-3:40:
+Started at about 3:07, the analyzer team ends by about 3:13 (326 to 377 seconds), during slides
+57 and 58. The candidate experiment follows during slides 58 to 60, and the gate reads about
+3:15 to 3:21: the 459 seconds at the top of its range ran at analyzer reasoning effort high, and
+`pack.yaml` runs the analyzer team at medium. In the class run-through of 25 October 2026 the
+two took 362 + 237 seconds, about 10 minutes. Approval, the promotion's clearance re-runs, and
+the finale (50 to 162 seconds after its first send in 8 recorded runs) follow, so the last run
+lands about 3:20 to 3:24. A fresh chain needs about 8 to 14 minutes to the gate, so after 3:24
+do not restart it: say so, go to the evidence slide, and report the class run at the Thursday
+review. If the gate blocks the class candidate, leave the verdict on screen and go to the
+evidence slide (no safeguard). A hill-climbing reset refuses while the runner serves a request
+(it says "not reset"); otherwise it takes about 7 seconds. To end a running request:
+`docker compose stop hill-climbing-runner`, then `make reset NAME=hill-climbing-loop`, then
+`docker compose start hill-climbing-runner`, about 20 seconds in all (stop 11.0, reset 6.6,
+start 2.9, timed with no request running on 26 October 2026; rehearse it once with one
+running). Never restart the runner instead: a restarted runner keeps serving, so the reset
+refuses again. The plan:
 
-1. 3:25: read the baseline's holdout ledger, then the naive analyzer's blocked verdict. Both ran
-   before the block. Then `make reset NAME=hill-climbing-loop`: it keeps the baseline and clears
-   the naive candidate, so the Improve page shows the analyzer team's candidate next.
-2. 3:28: Improve > Run analyzer, then at once Improve > Run experiment on the candidate. The
-   runner runs the experiment as soon as the team's candidate is written, on that candidate.
-3. While the team and the experiment run, narrate the cues below. If the experiment confirms
-   apparent regressions and runs long, show the code walkthrough during the wait, and come back
-   for the approval.
+1. On the opener, from 3:05: read the baseline's holdout ledger (2 of 15), then the naive
+   analyzer's blocked verdict. Both ran before the block. If no verdict shows at 3:06, read the
+   baseline, keep talking, and look again at 3:07. If the reset prints "not reset", the naive
+   request is still running: never reset mid-request; wait until the Improve page shows it
+   finished, or, if it has not finished by 3:08, end it with the stop, reset, and start above.
+   Then `make reset NAME=hill-climbing-loop`: it
+   keeps the baseline and clears the naive candidate, so the Improve page shows the analyzer
+   team's candidate next.
+2. About 3:07: Improve > Run analyzer, then at once Improve > Run experiment on the candidate.
+   The runner runs the experiment as soon as the team's candidate is written, on that candidate.
+   Teach slides 57 to 60 while the chain runs. If the baseline never started, at 3:06 reset, press
+   its trigger, then at once the two buttons: the runner takes them in order, so the gate reads
+   about 4 to 6 minutes later than planned, still inside the demo slot. If it has not read by
+   3:30, go on to the evidence slide and return to it.
+3. At 3:19, on the demo slide: the analyzer team's diff, then the candidate's ledger against this
+   session's baseline. If the team is still writing at 3:19, say: two analyzer runs and 50
+   development runs are in flight. If the gate has not read at 3:19, say: 70 benchmark runs
+   are still in flight, and a confirming re-run lengthens them. If the experiment confirms
+   apparent regressions and runs long, narrate the cues below, and come back for the approval.
+   If it stalls, the request reads as running and the reset refuses: end it with the stop,
+   reset, and start above, then Run analyzer and Run experiment on the candidate, but never
+   after 3:24.
 4. Approve when the gate reads ready; an approval given earlier waits for the gate. Wait for the
    promotion: as soon as the Improve page says the
    version is the active version, set the unattended level (Improve > Set the unattended level);
@@ -436,7 +534,8 @@ when the chain runs long. The plan for 3:25-3:40:
    line then names the families cleared or, when the promotion cleared none, reads Not cleared
    for every family: the finale then posts at the assisted level, a correct outcome.
 5. Send the finale. From the promotion on, Send webhook question sends the fiscal year 2025 revenue
-   question, whether a family cleared or none did.
+   question, whether a family cleared or none did. If it is still held at 3:34, go on to the
+   evidence slide and come back for it.
 
 Cut the optional demo first, as always; it is not in the 15 minutes.
 
@@ -462,7 +561,7 @@ Demo cues:
   or copies gold SQL and passes the rest: live, it rejected a rule the critic kept because it
   copied 20 or more tokens of a gold query. If it rejects one, point at it: that is the guard
   working.
-- **The candidate experiment.** Already queued at 3:28, with the analyzer; trigger it only if it
+- **The candidate experiment.** Already queued at about 3:07, with the analyzer; trigger it only if it
   never started (Improve > Run experiment on the candidate, or
   `make demo NAME=improve-candidate-experiment`): a second press queues a second 70-run experiment
   on the same candidate. Approve when the gate reads ready; an approval given earlier waits for
@@ -470,8 +569,8 @@ Demo cues:
   flips against this session's baseline, zero regressions, then the LangSmith trace list of
   `datapilot-experiments` filtered by knowledge version. **Then wait for the promotion.** Approval
   only marks the version approved; the runner then makes it active and runs the clearance
-  re-runs: the finale was held 50 seconds once, and posted 74, 115, and 162 seconds after its first
-  send in three later chains. The Improve page says the version is the active version
+  re-runs: the finale posted 50 to 162 seconds after its first send when held for them, in 8
+  recorded runs. The Improve page says the version is the active version
   first: set the unattended level then, during the re-runs. The status line names the families
   cleared once the re-runs finish, or reads Not cleared for every family when none cleared. Until
   the re-runs finish and the system is at the unattended level, Events > Send webhook question
@@ -528,14 +627,19 @@ as it is, and nothing is hidden. We now run the same finale, live, on the versio
 level in rehearsal." Then point at the live stamp and the gold check on the new run's strip, and
 at the failed gold check on the first finale's strip, as the evidence of both.
 
-### Closing (3:50-4:00)
+### Closing (3:48-4:00)
 
 | Time | Slide | What you do |
 |---|---|---|
-| 3:50-3:53 | Final run, all results | One question through four loops; one row per section, as counts |
-| 3:53-3:55:30 | Which loop when, use it at work | Match the failure to the loop; four questions to ask of any agent system |
-| 3:55:30-3:57 | Assignments, final project, the Thursday review | Four live checks; solutions published when the review starts |
-| 3:57-4:00 | Takeaways, references, questions | End at 4:00 |
+| 3:48-3:49:30 | The four loops together | What each loop cannot do alone |
+| 3:49:30-3:51:30 | Ten insights to take away | Each with the section whose runs proved it |
+| 3:51:30-3:53:30 | Designing text-to-SQL for your warehouse | Ten steps, each with the part of the course that teaches it |
+| 3:53:30-3:55 | Use it on Monday | Six actions for the learner's own agent, each under an hour |
+| 3:55-3:56:30 | Assignments, final project, and the Thursday review | The deadline in the class chat; solutions when the review starts |
+| 3:56:30-3:57:15 | Sources: agent design | Every bracketed number on a slide points to these four pages |
+| 3:57:15-3:58 | Sources: verification and research | The sources of Section 2 and the design segment |
+| 3:58-3:58:45 | Sources: event-driven systems and products | The sources of Section 3 and the build-or-buy slide |
+| 3:58:45-4:00 | Sources: products and the course's evidence | The last questions in the chat; close at 4:00 |
 
 ## If something breaks
 
@@ -545,7 +649,7 @@ at the failed gold check on the first finale's strip, as the evidence of both.
 | A model call fails or is rate limited | Wait for the retry; if it still fails, reset and run it again |
 | The OpenAI API is down | Say so, show the code walkthrough, and return to the demo when the API answers |
 | The Improve page does not move | `make logs NAME=hill-climbing-runner`, then `make up` if it stopped |
-| The hill-climbing reset says "not reset" | Wait until the Improve page shows the request finished, then reset |
+| The hill-climbing reset says "not reset" | Wait for the request to finish, or stop the runner, reset, start it (Section 4) |
 | A run moves to Blocked by kill switch outside Section 3 | Status line > Release kill switch, or `make reset NAME=event-loop`; then the same trigger |
 | Send webhook question is off, or `make demo` says "not sent" | Do the step the message names, then the same trigger |
 | A planted half shows no change | It was sent without `PLANTED=1`: `make demo NAME=<demo> PLANTED=1` |
@@ -555,7 +659,7 @@ at the failed gold check on the first finale's strip, as the evidence of both.
 | `make preflight PURPOSE=class` refuses for the day's token budget | See "The token budget refusal" below |
 | LangSmith refuses traces: a trace link never fills | The live stamp's start time, and the run id `make demo` prints, are the evidence; see below |
 | A service is down | `make ps`, then `make up`; the queue and pending approvals survive in Postgres |
-| A section runs long | Cut its optional demo, then its reference slides |
+| A section runs long | Cut its optional demo, then shorten its code walkthrough |
 | An approved version never becomes active | See "A promotion that never finishes" below |
 | "The OpenAI account behind your key has no credits left" | Stop live work; see "No credits left" below |
 | The finale's answer is wrong under the version promoted in class | The class-day safeguard in Section 4: `make safeguard-activate BY="<your name>"`, then the finale again, live |
@@ -607,15 +711,19 @@ or run `make reset NAME=hill-climbing-loop`.
 same trigger again.
 
 A reset that says "not reset" names the request the hill-climbing runner is still running: the
-reset would delete the experiment that request still writes to. When LangSmith refuses traces for
+reset would delete the experiment that request still writes to. Wait for it to finish, or end
+it: `docker compose stop hill-climbing-runner`, `make reset NAME=hill-climbing-loop`, then
+`docker compose start hill-climbing-runner`, about 20 seconds. Never restart the runner
+instead: it keeps serving, and the reset refuses again. When LangSmith refuses traces for
 its monthly limit, a run's trace link opens a page that never fills
 ([costs page](costs.md#langsmith-traces)). Say so once, point at the live stamp's start time and
 the run id `make demo` prints as the evidence, skip the trace list step of the candidate
 experiment, and point at the holdout ledger instead: it is scored locally either way.
 
 There is no recording, and nothing is shown again from a saved run. Every result on screen
-carries a live stamp; point at it once per section. The `demo/expected/` folders are for learners
-after class and are never opened in class.
+carries a live stamp; point at it once per section. Each demo's backup screenshot in
+`demo/expected/` is shown only while a reset runs, never instead of a run. An optional demo
+with no backup screenshot is cut rather than described.
 
 ## After class
 

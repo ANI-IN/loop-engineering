@@ -13,7 +13,8 @@ Module: Loop Engineering builds four loops around one analytics agent, DataPilot
 each one on the same benchmark. Work through it in order: setup, the four sections, the four
 assignments, the final project, and then your own repository. Keep three pages at hand: the
 [glossary](glossary.md) for any term, the [costs page](costs.md) for what each command calls, and
-the [frequently asked questions](faq.md).
+the [frequently asked questions](faq.md). Every outside source the slides cite is on the
+[sources page](sources.md).
 
 ## How the times were set
 
@@ -71,7 +72,9 @@ solutions are published at the start of the [Thursday review](review-session.md)
 
 The [final project](../final-project/README.md) is open-ended: your own dataset, at least three
 traps of your own, your own benchmark with development and holdout splits, one extension, and a
-before-and-after report.
+before-and-after report. The steps for turning questions into Structured Query Language (SQL) on
+any warehouse, each with the section that teaches it, are in
+[designing text-to-SQL for your own warehouse](text-to-sql-design.md).
 
 ## Step 8: Use it in your repository
 

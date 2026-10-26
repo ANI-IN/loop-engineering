@@ -85,6 +85,7 @@ in a code span: the naive guard (`BUG_NAIVE_GUARD`). The list, with what each on
 - **Evaluator**: The code that runs a benchmark answer's query and the gold query on both
   warehouses and compares their results.
 - **Event loop**: Events become jobs that workers run, with approvals, budgets, and a kill switch.
+- **Execution match**: Running an answer's query and the gold query and comparing their results, not their text.
 - **Failure analyst**: The agent of the analyzer team that diagnoses why each failed development question
   failed.
 - **Fiscal year 2025 revenue question**: "What was our net revenue in fiscal year 2025?", the
@@ -128,11 +129,13 @@ in a code span: the naive guard (`BUG_NAIVE_GUARD`). The list, with what each on
 - **Rule writer**: The agent of the analyzer team that proposes rules from the failure analyst's
   diagnoses.
 - **Schema scout**: A stateless helper agent that suggests tables and joins for a question.
+- **Semantic layer**: A shared set of metric and dimension definitions that tools query instead of raw tables.
 - **Stability filter**: The calibration check that keeps only holdout items that pass or fail
   consistently.
 - **Starting knowledge**: Version 1 of the knowledge (the starting version), the rules DataPilot
   starts with: only the money rule.
 - **Structured Query Language (SQL)**: The language of every query the analyst writes.
+- **Text-to-SQL**: Turning a question in plain words into a SQL query that answers it.
 - **Trace**: The record of one run's steps, each model call and tool call, stored in LangSmith.
 - **Trace sample**: The share of experiment runs that send a trace, about 1 in 5
   (`tracing.experiment_sample_rate`); a row with none reads "Not traced".

@@ -118,4 +118,6 @@ confirming runs of any apparent regression. The [costs page](../docs/costs.md) e
 The final project is the rehearsal for your own warehouse. Part 3 of
 [apply the loops to your own data](../use-in-your-repo/apply-to-your-repo.md) points DataPilot at
 your own Postgres with a read-only role, and the [walkthrough](walkthrough.md) shows the code that
-checks a pack and loads its benchmark.
+checks a pack and loads its benchmark. Before you start on your own warehouse, work through
+[designing text-to-SQL for your own warehouse](../docs/text-to-sql-design.md): the design steps,
+each with the part of the course that teaches it.

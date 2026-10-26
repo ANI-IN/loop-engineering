@@ -156,9 +156,9 @@ and what may differ from run to run.
 - **Tier**: core
 - **Start it**: Improve > Run experiment on the active version in the console, or `make demo NAME=improve-baseline-experiment`
 - **Guaranteed by**: the near-empty version 1 of the knowledge (the starting version); the five traps in the seeded data
-- **What appears**: Started at the poll, the experiment runs the 40 benchmark items under version 1 of the knowledge (the starting version); the trap items fail and the holdout ledger fills in locally, each row stamped with its run's start time and linked to its LangSmith trace when the trace sample took one of its runs (about 1 run in 5), otherwise marked "Not traced". This run is the session's baseline.
-- **Expected live outcome**: The number of holdout items version 1 passes, with the trap items failed.
-- **What can vary**: which non-trap items pass; wall time
+- **What appears**: Started at the poll, the experiment runs the 40 benchmark questions under version 1 of the knowledge (the starting version); the trap questions fail and the holdout ledger fills in locally, each row stamped with its run's start time and linked to its LangSmith trace when the trace sample took one of its runs (about 1 run in 5), otherwise marked "Not traced". This run is the session's baseline.
+- **Expected live outcome**: The number of holdout questions version 1 passes, with the trap questions failed.
+- **What can vary**: which non-trap questions pass; wall time
 - **Recovery**: `make reset NAME=hill-climbing-loop`, then the same trigger again
 
 ### The naive analyzer, blocked
@@ -166,9 +166,9 @@ and what may differ from run to run.
 - **Tier**: core
 - **Start it**: Improve > Run the naive analyzer (planted) in the console, or `make demo NAME=improve-naive-analyzer-blocked`
 - **Guaranteed by**: the naive analyzer (`BUG_NAIVE_ANALYZER`)
-- **What appears**: Two requests, queued together at the break with `make demo NAME=improve-naive-analyzer-blocked PLANTED=1`: the analyzer, then the candidate experiment; the runner takes them in that order, after the baseline. Its planted half is its only half, so the command switches the naive analyzer on for its own two requests with or without PLANTED=1. The console's Improve page queues the same two requests with the same flag from its Run the naive analyzer (planted) button, shown only while demo controls are allowed; its Run analyzer button runs the analyzer team, never the naive analyzer. The naive analyzer, with no model call, writes one rule per failed development question, quoting it word for word with the analyst's query that failed, and never reads a reference query. It skips the critic and applies no overfit guard: the guard flags every rule and the Improve page says so, yet the knowledge diff keeps them all. Then the candidate experiment runs, and the gate blocks the version because the overfit guard rejects its rules, whatever its holdout count.
+- **What appears**: Two requests, queued together at the break with `make demo NAME=improve-naive-analyzer-blocked PLANTED=1`: the analyzer, then the candidate experiment; the runner takes them in that order, after the baseline. Its planted half is its only half, so the command switches the naive analyzer on for its own two requests with or without PLANTED=1. The console's Improve page queues the same two requests with the same flag from its Run the naive analyzer (planted) button, shown only while demo controls are allowed; its Run analyzer button runs the analyzer team, never the naive analyzer. The naive analyzer, with no model call, writes one rule per failed development question, quoting it word for word with the analyst's query that failed, and never reads a gold query. It skips the critic and applies no overfit guard: the guard flags every rule and the Improve page says so, yet the knowledge diff keeps them all. Then the candidate experiment runs, and the gate blocks the version because the overfit guard rejects its rules, whatever its holdout count.
 - **Expected live outcome**: The overfit guard flags every rule, not applied by the analyzer; the gate verdict reads blocked, naming the rules the overfit guard rejects.
-- **What can vary**: how many development questions failed; how many development questions pass; how many holdout items pass; the time from the trigger to the verdict (211 to 580 seconds in 6 measured runs; the longest on a machine shared with assignment checks)
+- **What can vary**: how many development questions failed; how many development questions pass; how many holdout questions pass; the time from the trigger to the verdict (211 to 580 seconds in 6 measured runs; the longest on a machine shared with assignment checks)
 - **Recovery**: `make reset NAME=hill-climbing-loop`, then the same trigger again
 
 ### The over-broad rule, blocked
@@ -176,9 +176,9 @@ and what may differ from run to run.
 - **Tier**: optional, cut first when the section runs late
 - **Start it**: Improve > Add the over-broad rule to the active version in the console, or `make demo NAME=improve-overbroad-rule-blocked`
 - **Guaranteed by**: the over-broad rule
-- **What appears**: Run only after a candidate has been promoted. The active version plus one pre-authored rule, "exclude discounted orders from revenue", breaks revenue items that pass under the active version; the ledger marks the regressions and the gate blocks it.
+- **What appears**: Run only after a candidate has been promoted. The active version plus one pre-authored rule, "exclude discounted orders from revenue", breaks revenue questions that pass under the active version; the ledger marks the regressions and the gate blocks it.
 - **Expected live outcome**: Regressions marked on the ledger and a blocked verdict.
-- **What can vary**: which items regress
+- **What can vary**: which questions regress
 - **Recovery**: `make reset NAME=hill-climbing-loop`, then the same trigger again
 
 ### The analyzer team and approval
@@ -194,16 +194,16 @@ and what may differ from run to run.
 
 - **Tier**: core
 - **Start it**: Improve > Run experiment on the candidate in the console, or `make demo NAME=improve-candidate-experiment`
-- **What appears**: The candidate version flips holdout trap items with zero regressions on either split. The live holdout ledger in the console, scored locally against this session's baseline, marks the flips; then the LangSmith trace list of datapilot-experiments, filtered by knowledge version, shows the candidate's traced runs, a sample of about 1 run in 5. The gate reads ready for human approval; once approved, the runner makes the version active and runs the clearance re-runs (50 seconds after the approval, measured once). In class it is queued at once after the analyzer (Improve > Run analyzer, then Improve > Run experiment on the candidate); trigger it again only if it never started, since a second press queues a second experiment.
+- **What appears**: The gate decides against this session's baseline, every time: ready for human approval, or blocked with its reasons. The live holdout ledger in the console, scored locally against this session's baseline, marks the holdout trap questions the candidate flips (a majority flipped with zero regressions in 6 of 10 measured runs); then the LangSmith trace list of datapilot-experiments, filtered by knowledge version, shows the candidate's traced runs, a sample of about 1 run in 5. When the gate reads ready and a person approves, the runner makes the version active and runs the clearance re-runs (50 seconds after the approval, measured once). In class it is queued at once after the analyzer (Improve > Run analyzer, then Improve > Run experiment on the candidate); trigger it again only if it never started, since a second press queues a second experiment.
 - **Expected live outcome**: Holdout flips marked against this session's baseline, no regressions, gate verdict ready for human approval.
-- **What can vary**: which items flip; how many flip: 0 to 12 of 13 holdout trap items in the measured runs, a majority in 6 of 10 measured runs, so check the candidate in rehearsal; wall time: 171.3 to 459 seconds; confirming re-runs of an apparent regression lengthen it
+- **What can vary**: which questions flip; how many flip: 0 to 12 of 13 holdout trap questions in the measured runs, a majority in 6 of 10 measured runs, so check the candidate in rehearsal; wall time: 171.3 to 459 seconds; confirming re-runs of an apparent regression lengthen it
 - **Recovery**: `make reset NAME=hill-climbing-loop`, then the same trigger again
 
 ### Cleared for the unattended level
 
 - **Tier**: core
 - **Start it**: Events > Send webhook question in the console, or `make demo NAME=improve-cleared-unattended`
-- **What appears**: The correct answer, posted at the level its family has earned. Before it, the Improve page says the approved version is the active version, and the system is set to the unattended level (Improve > Set the unattended level, or `make autonomy LEVEL=unattended BY="<your name>"`); the trigger refuses, saying which step is missing, while a promotion is pending, the kill switch is engaged, or the level is lower. The fiscal year 2025 revenue question arrives as a webhook and is answered correctly under the new active version; it posts at the unattended level when the promotion cleared its metric family on the gate's own confirmed standard (every holdout item at 2 of 3 runs, an item that fell short passing 2 of 3 more runs), and at the assisted level when the family fell short. From the promotion on, Events > Send webhook question sends this question whether a family cleared or none did. Its strip on the Events page then shows the gold check the runner writes after the post: "Gold check passed", or "Gold check failed" with the agent's value and the gold value, the class-day safeguard's trigger.
+- **What appears**: The correct answer, posted at the level its family has earned. Before it, the Improve page says the approved version is the active version, and the system is set to the unattended level (Improve > Set the unattended level, or `make autonomy LEVEL=unattended BY="<your name>"`); the trigger refuses, saying which step is missing, while a promotion is pending, the kill switch is engaged, or the level is lower. The fiscal year 2025 revenue question arrives as a webhook and is answered correctly under the new active version; it posts at the unattended level when the promotion cleared its metric family on the gate's own confirmed standard (every holdout question at 2 of 3 runs, a question that fell short passing 2 of 3 more runs), and at the assisted level when the family fell short. From the promotion on, Events > Send webhook question sends this question whether a family cleared or none did. Its strip on the Events page then shows the gold check the runner writes after the post: "Gold check passed", or "Gold check failed" with the agent's value and the gold value, the class-day safeguard's trigger.
 - **Expected live outcome**: A correct answer, posted at the unattended level if its family cleared on the confirmed standard, and at the assisted level if it did not.
 - **What can vary**: wording; latency; the level: assisted or unattended; the answer is correct either way
 - **Recovery**: `make reset NAME=hill-climbing-loop`, then the same trigger again

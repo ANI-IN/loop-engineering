@@ -2,45 +2,75 @@
   "about": "SHA-256 of each diagram source and of the renders made from it, written by platform/tools/diagrams/export_diagrams.py; do not edit by hand.",
   "excalidraw": "0.18.1",
   "renders": {
+    "diagram-style": {
+      "source": "7bd0858f92de9b909bd8051946594fe39de0f08bcc194322190aff51599480ca",
+      "svg": "18ddaff8fe88377fa572455343f271de5d88cee9e613582466be1af81b07b5fc",
+      "png": "35e4765de97e8d727f510d7a6760b07ac0e0bc64b39b3b8f36e9a9a9fd745d00"
+    },
     "four-loops": {
-      "source": "a5ce76a024c9a45664fb319e3f06d5a952d0a25ece04eb23c2baab764b64ed3b",
-      "svg": "6b94e498c01ca60b558ae9953565efbe2314ba371ed035f5da46c87b47af9248",
-      "png": "e28663b4f1dad769c65a0ddc67089e79c127ac3d6410ae4c99a0795454962999"
+      "source": "4621822a614603731f16d57edb14cf2ea1a703eb49b066d37597675cd31cd5c8",
+      "svg": "0e23fd75e55dd60c210d05740972830b509a2faaf52f0c01a0e2d6ae283ac9d7",
+      "png": "606f98b1a5db92847d7a365097f46c83d6729c93a97f7caf7cfc8311ad0ffee6"
+    },
+    "four-loops-agent-loop": {
+      "source": "e7d3b006e76a9750415e84ff2d31741aa88107db4b50bdccbdba8666797e7b8b",
+      "svg": "77cc84e863339d6ec9cfc56b959750f6e6ddacde72c665fc6d13e0174e95823b",
+      "png": "d4f255b3dd88e6d963e2f7d7f65b4dc3c7f7c5e64b0c345f9f820679a1f4fa0f"
+    },
+    "four-loops-event-loop": {
+      "source": "0595963c6cf4e8ea5249a912d5fd75273865a394f96e3178bcbd341ad7f8448e",
+      "svg": "dd5e9fdba6ba3d8850fe8335eb7303a5317fd3930fe88d94c96cb169d6a32408",
+      "png": "b8e37610c3ea97b18c1f4d1df1390b264f883e1ec57cd74ca615aff237234933"
+    },
+    "four-loops-hill-climbing-loop": {
+      "source": "788d10cc5a584216a502975b48239d137211cfa0002be4024e90a64198109660",
+      "svg": "2f7f1296f7337d990630b768c2b6bde913f0a1a924aee69a69d84b3f43118c36",
+      "png": "8cd79cc8dc1a39e7833e42f09850f8cb7fb2cc3e9505a8ba1298c5c405026f70"
     },
     "four-loops-step-1": {
-      "source": "86bc31a107ca39136cb24adaa672e57be5b4e7d165666a564fc0b91816096a22",
-      "svg": "1ce19e39407770e5b6e4f1694f7e6fba0054df49728c862ab99ef763dae0551b",
-      "png": "5fbec09fe657f3c624066ed51131ebcf395c0c857a3497ebb9a13051b9f23b05"
+      "source": "acc0de5d40417b481c056969eb4b51da6a6ea890a02cbfb44e81827959425180",
+      "svg": "98b390f8dfb8bc305b3ec67c068bc56ce9d347c5b4c3af0f37bae4f5b477a78e",
+      "png": "54d6db4152dcb074d056351b133ea89a8ffef8dc4b32df25de53a2d88752e827"
     },
     "four-loops-step-2": {
-      "source": "acbf9b2833d88e5aaf0b431850407ed615a361860f46e9a3d4a52bc2c396f883",
-      "svg": "0ae8573eafbe367c5a1632d24e24885c4159626bba3ee8cb0836d029de7cd92b",
-      "png": "2025dbec9b21ccab109059d2a47209224ef37480f762f548e596ece036916a81"
+      "source": "fd0e7a68930397dc93119b2ce6784412d7f1fa7aebc7bbb496bfe41c5a7a95fd",
+      "svg": "d998fef7e46e7769bd232226aefe5ef460fb1673ef34a966fcf2df6e8a3d0c43",
+      "png": "1072b09ccad01098adfddf9d8284a73a5576115e7c8c06df0af767bc0640283c"
     },
     "four-loops-step-3": {
-      "source": "9947854bb3c6d6db1811fc72986cf3b67d147242fab76009fba14b903e287718",
-      "svg": "4ceb30460f93083056656f5fb5cb3c117b81ce5a79857dec3ce30eb138645c31",
-      "png": "afd2ccf981f8d86319a4f78d5db0f40978c5e6be610e135b90acde906fde2b9c"
+      "source": "7abf747333c295b2fd65ec836173756e4f3bbaf9784fd4ccc5ac288a7f45ccc0",
+      "svg": "c679c7064f18515b69fb738382a4df53b7fab5bb793e47b8887c1d02a47ddb2e",
+      "png": "ecdd0df3b1b094290087ca427121d2a3eb913aa1e7e51a6cedcc1b782751ff5c"
     },
     "four-loops-step-4": {
-      "source": "a5ce76a024c9a45664fb319e3f06d5a952d0a25ece04eb23c2baab764b64ed3b",
-      "svg": "6b94e498c01ca60b558ae9953565efbe2314ba371ed035f5da46c87b47af9248",
-      "png": "e28663b4f1dad769c65a0ddc67089e79c127ac3d6410ae4c99a0795454962999"
+      "source": "4621822a614603731f16d57edb14cf2ea1a703eb49b066d37597675cd31cd5c8",
+      "svg": "0e23fd75e55dd60c210d05740972830b509a2faaf52f0c01a0e2d6ae283ac9d7",
+      "png": "606f98b1a5db92847d7a365097f46c83d6729c93a97f7caf7cfc8311ad0ffee6"
+    },
+    "four-loops-verification-loop": {
+      "source": "1b4277b39480cdbe0db21784c07bc461b01927283cc3c62fe6243e2ce0a00b75",
+      "svg": "abc712e9c9e3b0894796290f1500fb88b20617d8718b905b67f84a1c6a51c0a2",
+      "png": "023dba3656b62b3ae40609d8bb2799470b3fa66b4e7c88432adebd51c50e57a9"
     },
     "run-lifecycle": {
-      "source": "b6e3f684f6164acdf17be2a409e337a3cec17cdd260521e926033f76fa8341c3",
-      "svg": "e86b1eaa85b4eceb1712e07d60249061ecb1a3a60d0e44cc8353145d99c105e3",
-      "png": "7f7b99f7488cfba6c052cad0da503e8bfe373036e3fe7be8f50c1384213a29dd"
+      "source": "e9083f3147c23434d12b937793faf3cc64d4e24c781e0537afb4663d8815b8f1",
+      "svg": "6195b1669d5b23288c5035b27c9b309ddea2b7945bfb9a1b9431e144bade8457",
+      "png": "c736005c7fcd0d37a1f69cff6089be71e1016a406384e02148cdef5bc07a44a1"
     },
     "system-architecture": {
-      "source": "002352c4b3efe948a5eb05ea33869876e1073abefccae4b3fadfc6cedcf25f94",
-      "svg": "c9c165894d2269f25e2986202964ae6fff890acca8576ea36cf1e758d3128711",
-      "png": "183ec08456e1555658fd8d9495daa6b4669b409abf2184a434bc43027a7faa69"
+      "source": "cc3947fb46dd8a86ad8cd5662900e896474500f1efe201832765f110e80ef67a",
+      "svg": "f55e36a1f46da3c53dd36ad238e311f4dd77b106d020857156341967c5b30a44",
+      "png": "df474d3d277aa941317552b674e961f00f60cc622ee94192b46c74460f46b76d"
+    },
+    "text-to-sql-architecture": {
+      "source": "279331a6dc0c632e07def05ffb9f8e85ea6236eca4dcba06ed8bfcd5b404ea04",
+      "svg": "2ecb2dce8d38f80e3a5a15161ac7e63664b3dcf31dc799ce792d13c3ffab34a8",
+      "png": "4d8b6fd791e9445abcdb29663969fd9c6bba6b244a4fba4aa1c5be24d8448313"
     },
     "warehouse-data-model": {
-      "source": "de823e910d5829463b849a011881bc1d98cf176e7280d9ee03990219fe77fa02",
-      "svg": "33dc7b19de0a0103ba397388698b86dce0b820a3534f8d9fcc33634af8657a43",
-      "png": "d15302e2caf1c7883de408a71db0fafb8a3866765d000918d2c1d2d979815d5e"
+      "source": "3ca2474294a02cfc7042a96b9e579afa7fb72da4e8a2b4e11ad60fe2fd1112ef",
+      "svg": "95351b7c86ef1fbd651c7d997e619dc6211354e217249c678f0e9365747a889a",
+      "png": "1f31a5c4e5052822a5a355e12f51548c0b9286183781bbe6ea0362668e1c22bb"
     }
   }
 }

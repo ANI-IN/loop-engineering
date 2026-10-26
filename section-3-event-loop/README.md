@@ -34,6 +34,10 @@ and posts its answer.
 
 ## How this section fixes it
 
+![The four-loop map with the event loop highlighted: the router, the jobs table, the kill switch, and human approval around the verification and agent loops, which are muted](../docs/diagrams/four-loops-event-loop.svg)
+
+*Where this section sits: the event loop is highlighted; the other three loops stay in view.*
+
 Every event becomes a row and a job; workers claim jobs with a short transaction and a lease. A
 deterministic event id makes a duplicate event harmless. Approvals live in the Postgres checkpointer, so they
 survive a restart. The kill switch is checked before every model call and every tool call.
@@ -41,7 +45,7 @@ survive a restart. The kill switch is checked before every model call and every 
 The router is a table from event type to handler and policy, deliberately not an agent: routing is
 a lookup you can test and audit. The section adds no agent.
 
-![Events arrive by webhook, scheduler, or console at POST /events, which inserts once per event_id; a fixed router picks the queue; the worker claims jobs from the jobs table with a lease and a heartbeat, the reaper requeues expired leases, and the daily budget and the kill switch are checked; a person approves through POST /approvals, and the paused run waits in its checkpoint](diagrams/event-loop.svg)
+![The event pipeline: a webhook, the scheduler, or the console sends an event to POST /events, which inserts once per event_id; a fixed router, with no agent, picks the queue in the jobs table; the worker claims a job with a lease and a heartbeat, the reaper requeues an expired lease, and the daily budget is checked at claim; the autonomy policy posts at once or holds the run, which waits as a parked job with its checkpoint until a person approves; the kill switch is checked at claim and before every model call and every tool call](diagrams/event-loop.svg)
 
 *Notice that every safeguard here is a row in Postgres, not memory: the event id, the lease, the parked job, and the checkpoint, so a restart loses nothing.*
 
