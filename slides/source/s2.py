@@ -102,7 +102,7 @@ SLIDES = [
             "2. **Context**: the agent describes the products table; three sample rows put that name in its prompt.",
             "3. **Query**: its next query is a SELECT, a semicolon, and a DELETE on orders.",
             "4. **Guard**: a first-word check sees SELECT and lets the whole text through.",
-            "5. **Last layer**: only the role's missing write grant refuses it, a defense nobody designed as the main one.",
+            "5. **Last layer**: only the role's missing write grant refuses it, a defense nobody designed.",
             "Lesson: a check that reads the first word is a sign on the door, not a lock.",
         ],
         notes=[

@@ -156,8 +156,9 @@ def _empty_headings(text: str) -> list[int]:
     return found
 
 
-def placeholder_findings(path: str, text: str) -> list[tuple[int, str]]:
-    """(line, rule) for every placeholder in one shipped file, before any allow entry."""
+def placeholder_matches(path: str, text: str) -> list[tuple[int, str, str]]:
+    """(line, rule, the text matched) for every placeholder in one shipped file, before any allow
+    entry; an empty heading's text is the heading line."""
     found = []
     prose = _prose(text) if path.endswith(".md") else None
     for name, scope, pattern in PLACEHOLDER_RULES:
@@ -165,18 +166,28 @@ def placeholder_findings(path: str, text: str) -> list[tuple[int, str]]:
         if body is None:
             continue
         for match in pattern.finditer(body):
-            found.append((body.count("\n", 0, match.start()) + 1, name))
+            found.append((body.count("\n", 0, match.start()) + 1, name, match.group(0)))
     if prose is not None:
-        found += [(number, EMPTY_HEADING) for number in _empty_headings(text)]
+        lines = text.split("\n")
+        found += [(n, EMPTY_HEADING, lines[n - 1]) for n in _empty_headings(text)]
     return sorted(set(found))
 
 
-def _allowed(path: str, rule: str, allow: list[dict]) -> dict | None:
+def placeholder_findings(path: str, text: str) -> list[tuple[int, str]]:
+    """(line, rule) for every placeholder in one shipped file, before any allow entry."""
+    return sorted({(line, rule) for line, rule, _ in placeholder_matches(path, text)})
+
+
+def _allowed(path: str, rule: str, matched: str, allow: list[dict]) -> dict | None:
+    """The allow entry for one finding: its path and rule, and, when the entry names a `text`,
+    exactly that text, so an entry for one marked value allows no other placeholder."""
     return next(
         (
             entry
             for entry in allow
-            if fnmatch.fnmatchcase(path, entry["path"]) and rule in entry["rules"]
+            if fnmatch.fnmatchcase(path, entry["path"])
+            and rule in entry["rules"]
+            and entry.get("text", matched) == matched
         ),
         None,
     )
@@ -184,12 +195,13 @@ def _allowed(path: str, rule: str, allow: list[dict]) -> dict | None:
 
 def placeholder_problems(files: dict[str, str], allow: list[dict]) -> list[str]:
     """Placeholder text in the shipped files, each as `path:line: rule`, less the allowed uses."""
-    return [
+    found = (
         f"{path}:{line}: placeholder text ({rule})"
         for path, text in sorted(files.items())
-        for line, rule in placeholder_findings(path, text)
-        if not _allowed(path, rule, allow)
-    ]
+        for line, rule, matched in placeholder_matches(path, text)
+        if not _allowed(path, rule, matched, allow)
+    )
+    return list(dict.fromkeys(found))
 
 
 def _allow(entry: str) -> str:

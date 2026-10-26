@@ -109,6 +109,13 @@ other_markdown = [
 # that no longer matches anything fails platform/tests/unit/test_release_list.py, so the list
 # never outlives its reason.
 [[placeholder_allow]]
+path = "slides/outline.md"
+rules = ["a square-bracket placeholder"]
+text = "[INSTRUCTOR NAME]"
+why = """the owner's decision of 26 October 2026: the instructor's name on slide 2 stays a marked
+value the course owner supplies before class; `text` allows that one value and no other"""
+
+[[placeholder_allow]]
 path = "platform/config/release.toml"
 rules = ["lorem ipsum"]
 why = "this list names the rule each entry allows"

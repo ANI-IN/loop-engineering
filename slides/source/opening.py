@@ -37,12 +37,12 @@ SLIDES = [
         "minutes": 0.5,
         "says": "Who is teaching, and how to reach them",
         "src": "-",
-        "on_slide": ["Instructor", "Reach your instructor in the class chat"],
+        "on_slide": ["Instructor", "Taught by [INSTRUCTOR NAME]; questions go in the class chat"],
         "notes": [
             "Say: Introduce yourself in two sentences: what you build, and one loop that saved or "
             "cost you in production. Say how learners reach you during and after class.",
-            "The slide names no person, so any instructor can teach from it: say your name "
-            "aloud and post your contact details in the class chat.",
+            "Marked value: the course owner supplies the instructor's name in square brackets "
+            "before class; post your contact details in the class chat.",
             "Point at: the contact line.",
             'Likely question: "Where do I ask during class?" Answer: in the chat; questions that '
             "do not fit go to the Thursday review.",

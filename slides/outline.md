@@ -58,13 +58,13 @@ Container: title slide: name, role, contact
 On the slide:
 
 Instructor
-Reach your instructor in the class chat
+Taught by [INSTRUCTOR NAME]; questions go in the class chat
 
 Speaker notes:
 
 Time: 0.5 minutes (0:00:30-0:01)  
 Say: Introduce yourself in two sentences: what you build, and one loop that saved or cost you in production. Say how learners reach you during and after class.  
-The slide names no person, so any instructor can teach from it: say your name aloud and post your contact details in the class chat.  
+Marked value: the course owner supplies the instructor's name in square brackets before class; post your contact details in the class chat.  
 Point at: the contact line.  
 Likely question: "Where do I ask during class?" Answer: in the chat; questions that do not fit go to the Thursday review.  
 Transition: One line from you in the chat before we start.
@@ -886,7 +886,7 @@ Illustrative
 2. **Context**: the agent describes the products table; three sample rows put that name in its prompt.
 3. **Query**: its next query is a SELECT, a semicolon, and a DELETE on orders.
 4. **Guard**: a first-word check sees SELECT and lets the whole text through.
-5. **Last layer**: only the role's missing write grant refuses it, a defense nobody designed as the main one.
+5. **Last layer**: only the role's missing write grant refuses it, a defense nobody designed.
 Lesson: a check that reads the first word is a sign on the door, not a lock.
 
 Speaker notes:
@@ -2489,7 +2489,7 @@ Words on the slide and words in the speaker notes after the Time line; reviewer 
 | # | Slide | Words on the slide | Words in the notes |
 |---|---|---|---|
 | 1 | Module: Loop Engineering | 24 | 118 |
-| 2 | Instructor | 8 | 91 |
+| 2 | Instructor | 11 | 88 |
 | 3 | Welcome: before we begin, in the chat | 16 | 91 |
 | 4 | How the class runs | 39 | 168 |
 | 5 | Support during the class | 18 | 77 |
@@ -2518,7 +2518,7 @@ Words on the slide and words in the speaker notes after the Time line; reviewer 
 | 28 | Reference: skip if short on time - structured output strategies | 51 | 315 |
 | 29 | Reference: skip if short on time - five traps | 59 | 380 |
 | 30 | Agenda (Section 2 highlighted) | 19 | 193 |
-| 31 | Failure story: the product name that said delete | 99 | 235 |
+| 31 | Failure story: the product name that said delete | 95 | 235 |
 | 32 | Verification loop: if every grader passes, is the answer right? | 70 | 216 |
 | 33 | 1) Allowlist the shape, not a list of bad words | 121 | 627 |
 | 34 | 2) Permissions are the boundary, not the parser | 115 | 561 |
