@@ -43,8 +43,8 @@ cap with the reviewer; it is not the row cap alone.
 
 ### Section 2: Verification loop
 
-Twenty trap questions from the dev split under the starting knowledge, each asked twice on each
-side (40 runs per side). "Without" is the naive guard and no reviewer; "with" is the full layer:
+Twenty trap questions from the development split (the benchmark questions the analyzer team may
+learn from) under the starting knowledge, each asked twice on each side (40 runs per side). "Without" is the naive guard and no reviewer; "with" is the full layer:
 the syntax-tree guard, the graders, and the reviewer.
 
 | Measure | Without | With |
@@ -86,26 +86,27 @@ One run of each half of three demos.
 
 ### Section 4: Hill-climbing loop
 
-The starting knowledge v1 against the version the analyzer team wrote and the gate passed, v11,
-in one rehearsal session; holdout items run 3 times each (passing on 2 of 3), dev items once.
+Version 1 of the knowledge (the starting version) against the version the analyzer team wrote and
+the gate passed, version 11, in one rehearsal session. Holdout items (the 15 benchmark questions the
+analyzer team never sees) run 3 times each and pass on 2 of 3; development questions run once.
 
-| Measure | v1 (experiment 74ff242b) | v11 (experiment b50131b4) |
+| Measure | Version 1 (experiment 74ff242b) | Version 11 (experiment b50131b4) |
 |---|---|---|
 | Holdout items passed | 2 of 15 | 13 of 15 |
-| Dev items passed | 5 of 25 | 16 of 25 |
-| Regressions, dev and holdout | | 0 and 0 |
+| Development questions passed | 5 of 25 | 16 of 25 |
+| Regressions, development and holdout | | 0 and 0 |
 
-The analyzer team wrote two candidates on the dev split only: A passed 13 of 25 dev items with 8
-rules, B 14 of 25 with 6 rules. After approval, v11 was the active version 5 seconds later; the
-finale was held while the promotion's clearance re-runs ran, then answered the spine question
+The analyzer team wrote two candidates on the development split only: candidate A passed 13 of 25
+development questions with 8 rules, candidate B 14 of 25 with 6 rules. After approval, version 11 was the active version 5 seconds later; the
+finale was held while the promotion's clearance re-runs ran, then answered the fiscal year 2025 revenue question
 correctly, 64,015,091.21 dollars, at the unattended level (run e1769f0e), with revenue, average
-order value, and customers cleared. The class-day safeguard, rehearsed after a reset, made v11
+order value, and customers cleared. The class-day safeguard, rehearsed after a reset, made version 11
 active again and the finale was correct again at the unattended level (run 037f3718).
 
-The naive analyzer, once in this session: 21 rules quoting the dev questions, every rule rejected
-by the overfit guard, the holdout unchanged at 2 of 15, and the gate blocked the version. Over its
-6 runs since it was made deterministic it was blocked every time and the holdout never improved;
-on 25 October 2026 it fell to 0 of 15, with 2 holdout regressions.
+The naive analyzer, once in this session: 21 rules quoting the development questions, every rule
+rejected by the overfit guard, holdout items passed unchanged at 2 of 15, and the gate blocked the
+version. Over its 6 runs since it was made deterministic it was blocked every time and never passed
+more holdout items; on 25 October 2026 it fell to 0 of 15, with 2 regressions on holdout items.
 
 ## Where a loop did not help, or cost more
 
@@ -118,22 +119,22 @@ on 25 October 2026 it fell to 0 of 15, with 2 holdout regressions.
   and 0.0605 dollars against 0.0361 for the 40 runs, for 19 more answers held or escalated.
 - **The agent loop cost more tokens per run** on easy questions: 4,857 against 3,738, for 5 more
   correct runs out of 21; the dollars for the 21 runs were lower with it (0.0083 against 0.0097).
-- **Two holdout items still fail under v11** (13 of 15). The cause per item is in the experiment's
+- **Two holdout items still fail under version 11** (13 of 15 passed). The cause per item is in the experiment's
   results; it is not diagnosed on this page.
 - **The analyzer's quality varies from run to run.** With one candidate per run it scored 11, 3,
   and 6 of 15 holdout items at reasoning effort medium, and 2, 9, and 5 of 15 at effort high
-  (calibration report). With two candidates kept on the dev split, it has seven measurements to 25
-  October 2026: 14, 14, 13, 14, 13, 12, and 13 of 15 (v8, v9, v11, v13, v15, v17, and v19), still
-  too few to know the spread.
+  (calibration report). With two candidates and the development split choosing one, seven
+  promotions measured to 25 October 2026 passed 14, 14, 13, 14, 13, 12, and 13 of 15 holdout items
+  (versions 8, 9, 11, 13, 15, 17, and 19), still too few to know the spread.
 - **Wrong answers on fixed questions are not what the event loop prevents.** Its value is in
   delivery, approval, and stopping, so its rows show posts, losses, and stops, not correctness.
 
 ## The earlier measurement, 23 October 2026
 
 The same comparison with smaller samples (one run per question, 6 or 7 questions per row): the
-agent loop answered 6 of 7 against 4 of 7; the verification layer held 1 of 6 wrong trap answers,
-against 0; the demo halves showed the same moments as above; v8 passed 14 of 15 holdout items
-against 2 for v1 (experiments 5dba42c6 and 2eb8890c). The runs are on the
+agent loop answered 6 of 7 questions correctly against 4 of 7 without it; the verification layer
+held 1 of 6 wrong trap answers, against 0 without it; the demo halves showed the same moments as above; version 8 passed 14 of 15 holdout items
+against 2 for version 1 (experiments 5dba42c6 and 2eb8890c). The runs are on the
 [evidence pages](evidence.md).
 
 ## How to reproduce

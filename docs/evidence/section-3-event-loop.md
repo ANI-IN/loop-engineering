@@ -13,10 +13,10 @@ counts the runs made with the pauses between lifecycle stages turned on.
 
 ## Results
 
-From the calibration of 22 and 23 October 2026 and the live session of 23 October, afternoon
-(session 4), the capture session of 23 October, evening, the live session of 24 October 2026
-(session 5, the rows marked "24 October"), and the live session of 25 October 2026 (session 6,
-the rows marked "25 October": the class story pass in rehearsal session c18bcc2e), all in the
+From the calibration of 22 and 23 October 2026, the live session of 23 October (the rows marked
+"23 October, afternoon"), the capture session of 23 October, evening, the live session of 24
+October 2026 (the rows marked "24 October"), and the live session of 25 October 2026 (the rows
+marked "25 October": the run-through of the class story in rehearsal session c18bcc2e), all in the
 [calibration report](../calibration-report.md). The kill switch row also counts run 31984983, the
 paced capture of 23 October, since replaced. The rows marked "Captures, 24 October" and "Captures, 25
 October" come from the captures now in the section's demo/expected/ folder (the capture runner's
@@ -31,8 +31,8 @@ logs of 13:55, 14:04, and 14:09 Coordinated Universal Time on 24 October, and of
 | The kill switch stops a run in flight and forces the report-only level | 7 of 7 | bb8b3e1f, 16b96215, 6a0b1408, 619c716e, b497410b, 31984983, bcf92dcb |
 | Planted halves, 23 October (approval lost, 3 posts, kill switch missed) | 2 of 2 each | b81eb2e6, 58fe4dc2, fcf3834f, 1eeb2a0f, 02d72359, 70e1f9b0 |
 | A webhook question is posted labelled unverified, 23 October | 4 of 4 | 9d8be803, 8f6c1fa2, be76dea9, 9f6e1d62 |
-| Session 4: planted halves (approval lost; 3 answers; posted after the switch) | 1 of 1 each | 035816e8, 11e06819, 70235a3e |
-| Session 4: the export after the 2,000-character value cap | 7,670 tokens, against about 109,000 before the cap | 13e0b95d |
+| 23 October, afternoon: planted halves (approval lost, 3 answers, switch missed) | 1 of 1 each | 035816e8, 11e06819, 70235a3e |
+| 23 October, afternoon: the export after the 2,000-character value cap | 7,670 tokens, against about 109,000 before the cap | 13e0b95d |
 | 24 October: the webhook question | posted unverified, 12 seconds | 105ee553 |
 | 24 October: the digest now (optional) | one post, labelled unverified, 30 seconds | 1049cfd1 |
 | 24 October: the approval across a worker restart | held, still held after the restart, posted after approval, 59 seconds | 43ec464c |

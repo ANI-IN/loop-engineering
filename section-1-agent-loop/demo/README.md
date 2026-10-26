@@ -6,8 +6,9 @@
 [section page](../README.md#the-problem) comes back with a confident wrong number. Later someone
 asks for a long list, and the analyst pulls every row into its context before it answers.
 
-These demos put both failures in front of a live run. The spine question runs under knowledge
-version v1, which states only the money rule, so the traps in the seeded data decide the answer.
+These demos put both failures in front of a live run. The fiscal year 2025 revenue question runs
+under version 1 of the knowledge (the starting version), which states only the money rule, so the
+traps in the seeded data decide the answer.
 The unbounded rows demo sends a Structured Query Language (SQL) query that returns far more rows
 than the model needs.
 
@@ -95,7 +96,7 @@ measured times.
 
 - [run.sh](run.sh): the launcher; its header states what it runs, the caps, and the target minutes
 - [walkthrough.md](walkthrough.md): the code behind these demos, explained
-- [Knowledge version v1](../../platform/packs/datapilot_us/knowledge/v1.yaml): the near-empty rules
+- [Version 1 of the knowledge](../../platform/packs/datapilot_us/knowledge/v1.yaml): the near-empty rules
 - [The analyst's prompt](../../platform/src/datapilot/loop1_agent/prompts.py)
 - [The row cap and call limits](../../platform/packs/datapilot_us/pack.yaml): `limits` and `budgets`
 - [expected/](expected/): real output from a real run, for comparison after class, never in class
@@ -135,8 +136,8 @@ and what may differ from run to run.
 
 - **Tier**: core
 - **Start it**: Agent > Ask the spine question in the console, or `make demo NAME=agent-confident-wrong-answer`
-- **Guaranteed by**: the near-empty knowledge version v1; the tempting total_cents column; the undocumented order status codes; the five traps in the seeded data
-- **What appears**: Under knowledge version v1, the spine question "What was our net revenue in fiscal year 2025?" gets a confident, wrong answer; the answer-versus-gold ledger shows the mismatch and the annotated SQL names each trap behind the wrong fragments.
+- **Guaranteed by**: the near-empty version 1 of the knowledge (the starting version); the tempting total_cents column; the undocumented order status codes; the five traps in the seeded data
+- **What appears**: Under version 1 of the knowledge (the starting version), the fiscal year 2025 revenue question, "What was our net revenue in fiscal year 2025?", gets a confident, wrong answer; the answer-versus-gold ledger shows the mismatch and the annotated SQL names each trap behind the wrong fragments.
 - **Expected live outcome**: A mismatch against gold with at least one trap annotation on the SQL.
 - **What can vary**: which traps the SQL hits; the wrong value; wording; held for approval by a reviewer concern (leave it held: the gold check still shows); no number, so no gold check: reset Section 1 and ask again
 - **Recovery**: `make reset NAME=agent-loop`, then the same trigger again
@@ -155,14 +156,14 @@ and what may differ from run to run.
 ## What the result means
 
 A correct count on the simple question shows the loop itself works: tool choice, SQL, and the
-answer envelope. A mismatch on the spine question is the expected result under knowledge version
-v1. It shows that better tools do not supply business rules. That is why
+answer envelope. A mismatch on the fiscal year 2025 revenue question is the expected result under
+version 1. It shows that better tools do not supply business rules. That is why
 [Section 2: Verification loop](../../section-2-verification-loop/README.md) adds checks, and why
 only the rules learned in Section 4: Hill-climbing loop fix the number.
 
-If the spine question comes back correct, the model solved the traps unaided on this run. Report it
-as it is; the gold check, not the answer's wording, is the verdict. One run shows what one model
-did once; the evidence page counts several.
+If the fiscal year 2025 revenue question comes back correct, the model solved the traps unaided on
+this run. Report it as it is; the gold check, not the answer's wording, is the verdict. One run
+shows what one model did once; the evidence page counts several.
 
 With the unbounded rows bug on, the token counter jumps because every row reaches the model. With it
 off, the model sees at most the row cap (`limits.row_cap` in `pack.yaml`), the total count, and a

@@ -37,14 +37,14 @@ NUMBERS = [
     "Malicious SQL: fixed system guard, guard, then 42501 from the missing grant; naive guard 25006, 25006, then 42501: docs/calibration-report.md, Demos.",
     "Retry cap demo: escalated after 3 attempts, in 69 and 79 seconds: docs/calibration-report.md, Demos; without the cap, 9 attempts until the 60,000-token run budget, 62,762 and 63,737 tokens, 0.0067 and 0.0069 dollars, 104 and 111 seconds: docs/calibration-report.md, Resumed after the ledger correction.",
     "Every grader passes, still wrong, retaken twice: 76,981,355.95 dollars against gold 64,015,091.21, 4 trap labels each: docs/calibration-report.md, Resumed without traces.",
-    "The reviewer's verdict on the wrong spine answer under the starting knowledge: concern in 6 runs, approve in 1: docs/calibration-report.md, Agents on and off.",
+    "The reviewer's verdict on the wrong answer to the fiscal year 2025 revenue question under the starting knowledge: concern in 6 runs, approve in 1: docs/calibration-report.md, Agents on and off.",
     "Mean tokens and seconds per question with the reviewer off, 5,786 and 12.8, against 8,648 and 24.2 with the scout and reviewer on: docs/calibration-report.md, Agents on and off.",
     "Class code guesses at an undefined term in 5 of 8 runs; the reviewer turns most guesses into a held or escalated answer: docs/calibration-report.md, Agents on and off.",
     "Output cap per call, reasoning included: analyst 16,000 tokens, reviewer 8,000: `models` in pack.yaml.",
     "Malicious SQL, one run of each half: with the naive guard all 3 statements reached the database (25006 twice, then 42501); with the syntax-tree guard 2 stopped by the guard, the third by the grants (42501); the orders table unchanged in both: docs/benefits.md, Section 2: Verification loop.",
     "Retry cap, one run of each half: 11 attempts, 63,718 tokens, 0.0068 dollars without the cap; 3 attempts, 12,682 tokens, 0.0014 dollars with it: docs/benefits.md, Section 2: Verification loop.",
     "Six trap questions under the starting knowledge: 0 of 6 correct with or without the verification layer; the reviewer raised 2 concerns, 1 held and 1 sent back: docs/benefits.md, Section 2: Verification loop.",
-    "Every core and optional demo of the section showed its moment, both halves: docs/calibration-report.md, Live session of 24 October 2026 (session 5).",
+    "Every core and optional demo of the section showed its moment, both halves: docs/calibration-report.md, Live session of 24 October 2026.",
     "On 24 October, the retry cap: 4 attempts and 19,960 tokens without it, the agent escalating by itself, against 3 attempts and 10,573 tokens with it; 20 trap questions twice each: 0 of 40 correct either way, 1 against 20 wrong answers held or escalated (17 held, 3 escalated), the reviewer approving the other 19: docs/benefits.md, Section 2: Verification loop.",
 ]
 
@@ -136,12 +136,12 @@ SLIDES = [
         on_slide=[
             "If every grader passes, is the answer right?",
             "KEY IDEA: No. Graders prove a query is safe and well formed, not that it means what the business means.",
-            "- The spine query is one cheap SELECT on real tables, so every grader passes.",
+            "- The fiscal year 2025 revenue query is one cheap SELECT on real tables, so every grader passes.",
             "- The fiscal year rule and the cancelled-order rule live in no grader.",
             "- Even a result match on one database shows about 6.5 percent false positives.",
         ],
         notes=[
-            "Say: No. Take the spine question from Section 1, net revenue in fiscal year 2025. The query "
+            "Say: No. Take the fiscal year 2025 revenue question from Section 1, net revenue in fiscal year 2025. The query "
             "the agent writes is one statement, a plain SELECT, on tables that exist, cheap to run, "
             "touching no personal data, and it returns one sensible number. Every grader we build in "
             "this section passes it. It is still wrong, because the fiscal year starts in February and "
@@ -411,7 +411,7 @@ SLIDES = [
             "question, the final SQL, the result preview, and the active knowledge version. It returns "
             "approve or concern with reasons. A concern goes back to the analyst once, within the retry "
             "cap; if it persists, the run holds for human approval. It runs on the same class model as "
-            "the analyst. In calibration, on the wrong baseline answer to the spine question, it raised "
+            "the analyst. In calibration, on the wrong baseline answer to the fiscal year 2025 revenue question, it raised "
             "a concern in 6 runs and approved in 1. Better than feared, and still not a fix: a concern "
             "holds the answer, it never supplies the fiscal year rule. It is also the costly part: with "
             "it off, a question averaged 5,786 tokens and 12.8 seconds against 8,648 and 24.2 with "
@@ -429,10 +429,10 @@ SLIDES = [
             "different model, different inputs such as the gold data or the business rules, or a "
             "deterministic test. If none applies, spend the call elsewhere.",
             "Evidence from this course: in the paired measurement of 24 October, 20 trap questions "
-            "from the dev split under the starting knowledge, twice each, 40 runs per side: 0 of 40 "
+            "from the development split under the starting knowledge, twice each, 40 runs per side: 0 of 40 "
             "correct with or without the verification layer. Without it, 1 wrong answer was "
             "escalated; with it, 20 were held for approval or escalated (17 held, 3 escalated), and "
-            "the reviewer approved the other 19, which went out. On the spine answer alone, "
+            "the reviewer approved the other 19, which went out. On the answer to the fiscal year 2025 revenue question alone, "
             "calibration saw a concern in 6 of 7 runs. Both say the same thing: a concern holds an "
             "answer, it never supplies the fiscal year rule.",
             "Point at: the why line, the Misses column, top to bottom, then the evidence line: the "
@@ -498,7 +498,7 @@ SLIDES = [
             "naive guard, then tree guard",
             "- The retry cap: the attempt and cost counters, cap off, then on",
             "- Every grader passes, still wrong: a green checklist beside a failed gold check",
-            "Guaranteed moment: under the starting knowledge, the spine question passes every "
+            "Guaranteed moment: under the starting knowledge, the fiscal year 2025 revenue question passes every "
             "deterministic grader and the checklist turns green, while the gold check on both "
             "databases fails.",
             "Link: Demo page on GitHub | https://github.com/ANI-IN/loop-engineering/tree/main/"
@@ -563,7 +563,7 @@ SLIDES = [
             "If it stalls: reset and run it again, `make reset NAME=verification-loop`, then the same "
             "trigger.",
             "Demo: every grader passes, still wrong.",
-            "Starting state: knowledge version v1 active, no planted bug on. Reset first: `make reset "
+            "Starting state: version 1 of the knowledge (the starting version) active, no planted bug on. Reset first: `make reset "
             "NAME=verification-loop`.",
             "Do: Verify > Ask the spine question, or `make demo NAME=verify-graders-pass-still-wrong`.",
             "Narrate: the tempting question from the start of the section. Every deterministic grader "

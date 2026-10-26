@@ -7,6 +7,8 @@
 > - **Knowledge version**: A numbered set of business rules given to the agent in its prompt.
 > - **Planted bug**: A defect switched on by a flag so a demo shows its failure every time.
 > - **Domain pack**: The folder that holds one warehouse's settings, rules, benchmark, and knowledge.
+> - **Development split**: The benchmark questions the analyzer team may learn from.
+> - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 
 This page lists everything you look up but do not read in order: every make target, every setting
 and variable, the stacks and their ports, the caps and limits, and the folders. The services, the
@@ -29,6 +31,7 @@ computer's name in every shell.
 |---|---|---|
 | `make setup` | Installs the pinned packages; creates `.env` from `.env.example` if missing | None |
 | `make up` | Builds the image, starts the six services, and waits until they are healthy | None |
+| `make restart` | Recreates the services from the built image, so a `.env` change applies | None |
 | `make down` | Stops every service; the database volume is kept | None |
 | `make ps` | Shows the services and their health | None |
 | `make logs` | Follows the logs of every service; `NAME=<service>` for one | None |
@@ -49,10 +52,14 @@ computer's name in every shell.
 | `make spend` | The model spend recorded on this machine, by activity | None |
 
 `PURPOSE` is one of `class`, `rehearsal`, `thursday-review`, or `development`. With
-`PURPOSE=class`, preflight refuses while less than one class pass (`budgets.class_pass_tokens` in
-`pack.yaml`) is left of the day's token budget; `ACCEPT_TOKENS_LEFT=<count>`, the exact count
-left that the refusal prints, starts the class session anyway, knowingly
-([instructor guide](instructor-guide.md#if-something-breaks)). The section slugs
+`PURPOSE=class`, preflight refuses while less than the tokens of one class run-through
+(`budgets.class_pass_tokens` in `pack.yaml`) are left of the day's token budget;
+`ACCEPT_TOKENS_LEFT=<count>`, the exact count left in the command the refusal prints (digits,
+without commas), starts the class session anyway, knowingly
+([instructor guide](instructor-guide.md#if-something-breaks)). With 0 tokens left the refusal
+offers no such command and preflight takes none. No course command resets or raises the day's
+count, and none is planned: the knowing start keeps the cap and the count as they are, so every
+run still stops at the cap. The section slugs
 are `agent-loop`, `verification-loop`, `event-loop`, and `hill-climbing-loop`. The demo slugs are
 in each section's demo page and in `platform/demos/registry.yaml`.
 
@@ -96,7 +103,8 @@ of that purpose on its own stack unless one of the same purpose opened there tod
 | `make lint-prose` | Banned words and emoji in the course pages | None |
 | `make check-style` | The course style check; `CHECK_STYLE_OPTS=--strict` makes warnings fail | None |
 | `make check-style-strict` | The style check where warnings fail too | None |
-| `make check-images` | Published images: size, blank areas, clipped edges, alt text | None |
+| `make check-images` | Published images: size, blank areas, clipped edges, alt text (note 2) | None |
+| `make check-images ARGS=--rehearsal` | The same, where the exceptions that expire at the rehearsal fail | None |
 | `make check-names` | The naming rule on the course pages and the slide outline (note 1) | None |
 | `make check-short-forms` | The naming rule on this branch's commit messages (note 1) | None |
 | `make guards` | No `core.worktree` and no tracked `.env`; more checks in the build (note 1) | None |
@@ -118,6 +126,13 @@ Note 1: the commit-message and author checks run in the course's build only: `ma
 reads commit messages there, `make check-short-forms` runs there, and `make guards` also checks
 that every commit has the one author and no co-author lines and that the git configuration holds
 only allowed keys. Your own copy skips them.
+
+Note 2: the image check is part of `make verify`. Its reviewed exceptions are the list `EXCEPTIONS` in
+`platform/scripts/check_images.py`. Each names one image, the kind of problem it excuses, the
+reason, and when it expires: `never` (the Agent page's empty state, whose blank area is the state
+shown) or `rehearsal` (an image the rehearsal retakes). The check prints each excused problem on an
+`excused` line and counts them. It fails on an exception whose image is missing or no longer has
+that problem, so a retaken image's exception is removed with the retake.
 
 ## Settings and variables
 
@@ -221,11 +236,11 @@ The benchmark measurement uses these values from the `evaluation` block of the s
 | Setting | Value | What it means |
 |---|---|---|
 | `holdout_repeats`, `holdout_pass_threshold` | 3, 2 | Each holdout item runs 3 times per version and passes on 2 |
-| `dev_regression_reruns`, `dev_regression_threshold` | 2, 2 | A newly failing dev item runs twice more per version; see below |
+| `dev_regression_reruns`, `dev_regression_threshold` | 2, 2 | A newly failing development question runs twice more per version; see below |
 | `holdout_regression_reruns`, `holdout_regression_fail_threshold` | 3, 2 | An apparent holdout regression counts only if 2 of 3 more runs fail |
 | `concurrency` | 8 | Benchmark runs at once |
 
-An apparent dev regression counts only when the candidate fails 2 of its 2 re-runs and the active
+An apparent regression on the development questions counts only when the candidate fails 2 of its 2 re-runs and the active
 version passes 2 of its 2 (`dev_regression_threshold`), so an item unstable under both versions is
 never a regression.
 

@@ -1,6 +1,6 @@
 """Check the published images: size, blank areas, clipped edges, and alt text.
 
-Usage: python platform/scripts/check_images.py [--root PATH]
+Usage: python platform/scripts/check_images.py [--root PATH] [--rehearsal]
 
 Every PNG in the published image folders (IMAGE_FOLDERS) is checked for:
 
@@ -13,6 +13,23 @@ Every PNG in the published image folders (IMAGE_FOLDERS) is checked for:
 - alt text: every Markdown image reference to the file, in any Markdown page of the repository,
   has non-empty alt text.
 
+Reviewed exceptions (EXCEPTIONS) each excuse one kind of problem on one named image, with the
+reason and when the exception expires:
+
+- `never`: the problem is the image's point. The one such image is
+  platform/console/screenshots/agent-empty.png, the Agent page's empty state before any question:
+  its blank area is what that state looks like (platform/console/DESIGN.md, section 14,
+  "Screenshot notes").
+- `rehearsal`: the image is retaken in the rehearsal. With --rehearsal these exceptions no longer
+  excuse, so the end of the rehearsal shows whether the retakes fixed them.
+
+An excused problem prints as an "excused" line and is counted, not failed. An exception fails the
+check when its image is missing, or when its image no longer has the problem it excuses (stale:
+remove it after the retake), so the list never outlives its reasons. One case is not a failure:
+an exception whose image lies under a withheld solutions folder (`solutions` in
+platform/config/release.toml) while that folder is absent, as in the published copy before the
+Thursday review, prints as "not applicable".
+
 It prints one line per problem, then the count per kind, and exits 1 on any problem. Images are
 read only; nothing is written.
 """
@@ -20,8 +37,10 @@ read only; nothing is written.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import re
 import sys
+import tomllib
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -29,6 +48,8 @@ from pathlib import Path, PurePosixPath
 from PIL import Image
 
 REPO = next(p for p in Path(__file__).resolve().parents if (p / "pyproject.toml").is_file())
+# Its `solutions` names the folders the published copy withholds until the Thursday review.
+RELEASE_LIST = "platform/config/release.toml"
 
 # The folders whose images a learner sees: pages, the guide, the published solutions, and the
 # console's own screenshots (platform/ ships).
@@ -87,8 +108,54 @@ _FENCE = re.compile(r"^\s*(```|~~~)")
 @dataclass(frozen=True)
 class Problem:
     path: str
-    kind: str  # size, blank area, clipped edge, alt text, unreadable
+    kind: str  # size, blank area, clipped edge, alt text, unreadable, exception
     detail: str
+
+
+NEVER, REHEARSAL = "never", "rehearsal"
+EXPIRIES = (NEVER, REHEARSAL)
+
+
+@dataclass(frozen=True)
+class ReviewedException:
+    """`kind` of problem on the image at `path` is excused, for `reason`, until `expires`."""
+
+    path: str
+    kind: str
+    reason: str
+    expires: str  # NEVER, or REHEARSAL: --rehearsal stops it excusing
+
+
+_SECTION_4_CAPTURED = "section-4-hill-climbing-loop/assignment/solution/captured"
+_RETAKE = "an Assignment 4 solution console capture owed a retake in the rehearsal"
+EXCEPTIONS: tuple[ReviewedException, ...] = (
+    ReviewedException(
+        "platform/console/screenshots/agent-empty.png",
+        "blank area",
+        "the Agent page's empty state before any question: the empty space is the state shown",
+        NEVER,
+    ),
+    *(
+        ReviewedException(
+            f"{_SECTION_4_CAPTURED}/{name}-console.png", "clipped edge", _RETAKE, REHEARSAL
+        )
+        for name in (
+            "alternative-one-run-1",
+            "alternative-two-run-1",
+            "reference-run-1",
+            "reference-run-2",
+        )
+    ),
+    *(
+        ReviewedException(
+            f"{_SECTION_4_CAPTURED}/{name}-console.png",
+            "size",
+            f"{_RETAKE}, at 2560 by 1440",
+            REHEARSAL,
+        )
+        for name in ("alternative-one-run-2", "alternative-two-run-2")
+    ),
+)
 
 
 def image_kind(relative: str) -> str:
@@ -255,6 +322,7 @@ def alt_text_problems(root: Path, images: set[Path]) -> list[Problem]:
 
 
 def check(root: Path) -> tuple[int, list[Problem]]:
+    """Every problem of every published image, before any exception is applied."""
     images = published_images(root)
     problems: list[Problem] = []
     for path in images:
@@ -263,16 +331,113 @@ def check(root: Path) -> tuple[int, list[Problem]]:
     return len(images), problems
 
 
-def main(argv: list[str]) -> int:
+def apply_exceptions(
+    root: Path,
+    problems: list[Problem],
+    exceptions: tuple[ReviewedException, ...] = EXCEPTIONS,
+    *,
+    rehearsal: bool = False,
+) -> tuple[list[Problem], list[tuple[Problem, ReviewedException]]]:
+    """The problems that still fail, and each excused problem with its exception.
+
+    An exception with an unknown expiry, for a missing image, or whose image no longer has the
+    kind of problem it excuses (stale) is a problem itself, with or without `rehearsal`. With
+    `rehearsal`, an exception that expires at the rehearsal excuses nothing."""
+    failing: list[Problem] = []
+    excused: list[tuple[Problem, ReviewedException]] = []
+    by_image_and_kind = {(e.path, e.kind): e for e in exceptions}
+    for problem in problems:
+        exception = by_image_and_kind.get((problem.path, problem.kind))
+        if exception is not None and not (rehearsal and exception.expires == REHEARSAL):
+            excused.append((problem, exception))
+        else:
+            failing.append(problem)
+    found = {(p.path, p.kind) for p in problems}
+    for exception in exceptions:
+        if exception.expires not in EXPIRIES:
+            detail = f"unknown expiry {exception.expires!r}: use one of {', '.join(EXPIRIES)}"
+        elif not (root / exception.path).is_file():
+            detail = f"excuses {exception.kind} on an image that does not exist"
+        elif (exception.path, exception.kind) not in found:
+            detail = f"stale: the image no longer has a {exception.kind} problem; remove it"
+        else:
+            continue
+        failing.append(Problem(exception.path, "exception", detail))
+    return failing, excused
+
+
+def withheld_solutions(root: Path) -> str | None:
+    """The withheld solutions' folder pattern, `solutions` in the release list
+    (platform/config/release.toml), such as "section-*/assignment/solution/"; None without one."""
+    release_list = root / RELEASE_LIST
+    if not release_list.is_file():
+        return None
+    pattern = tomllib.loads(release_list.read_text(encoding="utf-8")).get("solutions")
+    return pattern if isinstance(pattern, str) and pattern.strip("/") else None
+
+
+def _withheld_folder(path: str, pattern: str) -> str | None:
+    """The solutions folder an image path lies under ("section-4-.../assignment/solution"), when
+    the path matches the pattern; else None."""
+    depth = len(PurePosixPath(pattern.strip("/")).parts)
+    parts = PurePosixPath(path).parts
+    folder = "/".join(parts[:depth])
+    if len(parts) > depth and fnmatch.fnmatchcase(folder + "/", pattern.rstrip("/") + "/"):
+        return folder
+    return None
+
+
+def split_withheld(
+    root: Path, exceptions: tuple[ReviewedException, ...]
+) -> tuple[tuple[ReviewedException, ...], list[tuple[ReviewedException, str]]]:
+    """The exceptions that apply to this tree, and each one that does not, with its solutions
+    folder: an image under a withheld solutions folder (the release list's `solutions`) when that
+    folder is absent, as in the published copy before the Thursday review. A missing image
+    anywhere else, or under a solutions folder that is present, still fails (apply_exceptions)."""
+    pattern = withheld_solutions(root)
+    applicable: list[ReviewedException] = []
+    absent: list[tuple[ReviewedException, str]] = []
+    for exception in exceptions:
+        folder = _withheld_folder(exception.path, pattern) if pattern else None
+        if folder is not None and not (root / folder).is_dir():
+            absent.append((exception, folder))
+        else:
+            applicable.append(exception)
+    return tuple(applicable), absent
+
+
+def main(argv: list[str], exceptions: tuple[ReviewedException, ...] = EXCEPTIONS) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", type=Path, default=REPO, help="the repository to check")
+    parser.add_argument(
+        "--rehearsal",
+        action="store_true",
+        help="the end of the rehearsal: exceptions that expire at the rehearsal no longer excuse",
+    )
     arguments = parser.parse_args(argv)
-    checked, problems = check(arguments.root)
+    checked, found = check(arguments.root)
+    applicable, absent = split_withheld(arguments.root, exceptions)
+    problems, excused = apply_exceptions(
+        arguments.root, found, applicable, rehearsal=arguments.rehearsal
+    )
+    for exception, folder in absent:
+        print(
+            f"not applicable {exception.path}: {exception.kind}: the withheld solutions folder "
+            f"{folder} is not in this tree"
+        )
+    for problem, exception in excused:
+        print(
+            f"excused {problem.path}: {problem.kind}: {problem.detail} "
+            f"({exception.reason}; expires: {exception.expires})"
+        )
     for problem in problems:
         print(f"x {problem.path}: {problem.kind}: {problem.detail}")
     counts = Counter(problem.kind for problem in problems)
     summary = ", ".join(f"{kind} {count}" for kind, count in sorted(counts.items())) or "none"
     failing = len({problem.path for problem in problems})
+    print(f"{len(excused)} problems excused by reviewed exceptions")
+    if absent:
+        print(f"{len(absent)} exceptions not applicable: their solutions folder is withheld")
     print(f"{checked} images checked, {failing} with problems; problems by kind: {summary}")
     return 1 if problems else 0
 

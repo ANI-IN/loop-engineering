@@ -11,6 +11,7 @@ starts at No; tick a row only after you have seen it pass.
 | Every page passes the strict style check | `make check-style-strict` reports 0 errors and 0 warnings | No |
 | The prose lint is clean | `uv run python platform/scripts/lint_prose.py` reports 0 problems | No |
 | Generated pages are current | `make docs-check` reports 0 out of date | No |
+| Every published image passes the image check | `make check-images`, part of `make verify` | No |
 | The naming rule holds in commit messages | `make check-short-forms` reports 0 found | No |
 | The preflight canary passes on the class model | `make preflight PURPOSE=rehearsal` | No |
 | Calibration is recorded with its date and returned model id | `docs/calibration-report.md` | No |
@@ -23,7 +24,7 @@ starts at No; tick a row only after you have seen it pass.
 | Check | How you confirm it | Done |
 |---|---|---|
 | The final rehearsal runs in its own live session | `make preflight PURPOSE=rehearsal`; the status line shows its start | No |
-| Every core demo passes live twice in a row, with a reset between | The rehearsal log | No |
+| Every core demo shows its moment live twice in a row, with a reset between | The rehearsal log | No |
 | Fresh runs: every demo produced new run ids during that rehearsal itself | Run ids and start times in the log fall inside the rehearsal session | No |
 | The class and the Thursday review each start their own session | `PURPOSE=class` and `PURPOSE=thursday-review` in their run sheets | No |
 | Every result shows its live stamp, and a trace link or "Not traced" | Point at each stamp during the rehearsal | No |
@@ -33,14 +34,16 @@ starts at No; tick a row only after you have seen it pass.
 | DEMO slides hold the badge, what to watch for, the moment, and the GitHub link | The course owner reads every DEMO slide of the built deck | No |
 | No font falls back on the presenting machine | On that machine, Replace Fonts lists only Fira Sans; the DEMO badge is a shape | No |
 | One timed dry run of the Thursday review fits 120 minutes | [The review session](review-session.md) | No |
+| Every image the rehearsal owed is retaken | `make check-images ARGS=--rehearsal` passes, the last step of the rehearsal | No |
 
 ## Publishing
 
 | Check | How you confirm it | Done |
 |---|---|---|
-| The solutions stay unpublished until the Thursday review | The `solution/` folders are absent from the published tree | No |
-| The solutions are published at the start of the Thursday review | The course owner runs the command below (step 1 of [the review session](review-session.md)) | No |
+| The solutions stay unpublished until the Thursday review | No branch of the published repository holds a `solution/` folder | No |
+| The solutions are published at the start of the Thursday review | [The instructor guide's steps](instructor-guide.md#publishing-the-solutions-for-the-thursday-review) | No |
 | The published tree holds only the allow-listed files | `platform/config/release.toml` and the release build output | No |
+| No published page describes what it will hold instead of holding it | The placeholder check in every release build reports nothing | No |
 | No secrets or `.env` file in the published tree | The secret scan reports nothing | No |
 | The workflow passes on the release commit before the push | `make ci-local REPO=<clone>` exits with 0 (note below) | No |
 | Continuous integration is green on the pushed commit | `gh run watch` on the push's run | No |

@@ -50,7 +50,7 @@ Structured Query Language (SQL) demo makes no model call.
 | Chapter | Core demos, seconds per demo | Not timed | Cost |
 |---|---|---|---|
 | [Section 1](chapters/1-agent-loop.md) | Simple question 14 to 39; confident wrong answer 37 to 76 | None | About 0.001 dollars per analyst run |
-| [Section 2](chapters/2-verification-loop.md) | Malicious SQL 2 to 6; retry cap 14 to 79; graders pass 52 to 58 | None | 0 tokens for malicious SQL |
+| [Section 2](chapters/2-verification-loop.md) | Malicious SQL 2 to 6; retry cap 14 to 79; graders pass, still wrong 52 to 58 | None | 0 tokens for malicious SQL |
 | [Section 3](chapters/3-event-loop.md) | Webhook 14 to 46; approval 50 to 84; duplicates 35 to 78; kill switch 3 to 33 | None since 24 October (below) | About 0.001 dollars per analyst run |
 | [Section 4](chapters/4-hill-climbing-loop.md) | Baseline 236 to 386; team 326 to 377; candidate 176 to 337; finale 50 to 162 | None | 0.0594 to 0.0914 dollars per 70-run experiment |
 
@@ -58,7 +58,7 @@ On the code of 24 October 2026, one run each, in seconds
 ([evidence index](../docs/evidence.md)):
 
 - Section 1: simple question 16; confident wrong answer 50; unbounded rows 33 fixed, 12 planted.
-- Section 2: malicious SQL 2; retry cap 20; graders pass 50.
+- Section 2: malicious SQL 2; retry cap 20; every grader passes, still wrong 50.
 - Section 3: webhook 12; approval 59; duplicates 37; kill switch 4; the planted halves 41, 37,
   and 16.
 - Section 4: baseline 286.6 of experiment wall time; analyzer team 359; candidate 212; the finale
@@ -68,13 +68,13 @@ On the code of 24 October 2026, one run each, in seconds
 On 25 October 2026, in class order, one run each, in seconds:
 
 - Section 1: simple question 16; confident wrong answer 35; unbounded rows 30 fixed, 12 planted.
-- Section 2: malicious SQL 2; retry cap 16, and 49 planted; graders pass 48.
+- Section 2: malicious SQL 2; retry cap 16, and 49 planted; every grader passes, still wrong 48.
 - Section 3: webhook 14; approval 60; duplicates 37; kill switch 3; the planted halves 41, 33,
   and 30.
 - Section 4: baseline 252; analyzer team 362; candidate 237; the finale after the promotion 162
   from the first send; the finale on the class-day safeguard 21; the naive analyzer 221.
 
-Section 4's analyzer team writes two candidates and measures each on the dev split, so its step
+Section 4's analyzer team writes two candidates and measures each on the development split, so its step
 took 326 to 377 seconds in five runs; with one candidate it took 62 to 98 seconds. Over every
 recorded run, the candidate experiment took 176 to 337 seconds from the trigger, and 70-run
 experiments ran 171.3 to 459 seconds of experiment wall time. The naive analyzer, blocked, took

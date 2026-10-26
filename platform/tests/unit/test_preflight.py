@@ -310,6 +310,24 @@ def test_any_other_count_is_refused_as_before(named: int) -> None:
     assert refusal == checks.BUDGET_SHORT.format(until="3 hours 0 minutes", left=300_000)
 
 
+@pytest.mark.parametrize("named", [None, 0, 1])
+def test_with_no_token_left_no_knowing_start_is_offered_or_taken(named: int | None) -> None:
+    # a class session started with 0 left would block every run it starts (review of 26 October)
+    spent = budget.DayBudget(DAY.day, 2_000_000, 2_000_000)
+    found, refusal = checks.budget_check(
+        SessionPurpose.CLASS, spent, CLASS_PASS, timedelta(hours=3), accepted_left=named
+    )
+    assert not found.ok and found.detail.startswith("2,000,000 of 2,000,000 tokens used")
+    assert refusal == checks.BUDGET_SPENT.format(until="3 hours 0 minutes")
+    assert checks.ACCEPT_VARIABLE not in refusal and "No class session started" in refusal
+    over = budget.DayBudget(DAY.day, 2_100_000, 2_000_000)  # a run's last call can pass the cap
+    assert checks.budget_check(SessionPurpose.CLASS, over, CLASS_PASS, timedelta(), 0)[1] == (
+        checks.BUDGET_SPENT.format(until="0 hours 0 minutes")
+    )
+    rehearsal = checks.budget_check(SessionPurpose.REHEARSAL, spent, CLASS_PASS, timedelta())
+    assert rehearsal[1] is None  # only the class session is refused
+
+
 def test_a_named_count_changes_nothing_on_a_day_with_a_class_pass_left() -> None:
     roomy = budget.DayBudget(DAY.day, 1_000_000, 2_000_000)
     named = checks.budget_check(SessionPurpose.CLASS, roomy, CLASS_PASS, timedelta(), 1_000_000)

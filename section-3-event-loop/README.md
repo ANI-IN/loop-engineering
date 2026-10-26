@@ -92,8 +92,7 @@ Effort: about 2 to 2.5 hours; the cost of a check is on the
 ### Further reading
 
 The [reading list](post-class-reading/README.md) has three: a job queue in Postgres, idempotency
-keys, and durable human approval. After class, [session-notes.md](session-notes.md) recaps what
-class showed.
+keys, and durable human approval.
 
 ## Where next
 

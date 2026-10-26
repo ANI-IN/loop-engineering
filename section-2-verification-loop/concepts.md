@@ -145,11 +145,13 @@ The reviewer's output contract is `ReviewVerdict` in
 |---|---|---|
 | Tokens per question | 8,648 | 5,786 |
 | Latency per question | 24.2 seconds | 12.8 seconds |
-| Reviewer approves the wrong spine answer | 1 of 7 runs (concern in 6) | Not applicable |
+| Reviewer approves the wrong answer to the fiscal year 2025 revenue question | 1 of 7 runs (concern in 6) | Not applicable |
 
-Tokens and latency are the mean of 4 benchmark questions under v1, one run each; the extra cost
-comes with the reviewer's concerns, which send the analyst back and then hold the answer. The runs
-are on the [Section 2 evidence page](../docs/evidence/section-2-verification-loop.md).
+Tokens and latency are the mean of 4 benchmark questions under version 1 of the knowledge (the
+starting version), one run each; the extra cost comes with the reviewer's concerns, which send the
+analyst back and then hold the answer. The reviewer's row is the wrong answer to the fiscal year
+2025 revenue question (7 runs of that one question). The runs are on the
+[Section 2 evidence page](../docs/evidence/section-2-verification-loop.md).
 
 ## When it helps, and when it does not
 

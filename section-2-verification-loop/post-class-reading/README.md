@@ -24,4 +24,3 @@ to 5 minutes.
 - Read the second and third together: one says which layer refuses, the other how it says so.
 - After each reading, do the first step of its "Apply it to your repository" list on a database
   you work with.
-- The class recap is in [session-notes.md](../session-notes.md).

@@ -2,19 +2,19 @@
 
 Try it yourself first. The full solution is published at the start of the Thursday review.
 
-> **Deadline (instructor: set this before you share the page):** `<set by the instructor>`
+> **Deadline:** the date your instructor announces in the class chat.
 
 ## The problem
 
 **Illustrative scenario.** The retention team at Harbor & Pine Outfitters starts asking DataPilot
 for the repeat-customer rate. The benchmark has no questions about it, so nothing measures whether
 the answers are right. A rule writer suggests a broad rule that looks helpful, and one passing
-holdout question is enough to clear a family for the unattended level.
+question that the rule writers never saw is enough to clear a family for the unattended level.
 
 **In class.** Section 4: Hill-climbing loop showed the analyzer team and the promotion gate
 improving revenue questions: the naive analyzer was blocked, and the candidate experiment flipped
 holdout items with zero regressions. This assignment extends the loop to a new metric family and
-tightens two places where it is still too easy to pass.
+tightens two places where a weak rule or thin evidence still gets through.
 
 > **Terms on this page**
 >
@@ -131,10 +131,10 @@ This rubric is for assessing your own work. Nobody grades it.
 
 | Criterion | What earns the points | Points | How you check it |
 |---|---|---|---|
-| Benchmark items | Six items with gold and naive SQL, at least three in holdout | 15 | Check lines 1 and 2 |
+| Benchmark items | Six items with gold and naive SQL, at least three in the holdout split | 15 | Check lines 1 and 2 |
 | Gold and traps | Gold runs on both warehouses; each naive query differs from gold | 15 | Check lines 3 and 4 |
 | Family in the pack | The family is a metric family of the pack | 5 | Check line 5 |
-| Minimum-holdout rule | Fewer than three holdout items keep a family below unattended | 15 | Check lines 6 and 7 |
+| Minimum-holdout rule | Fewer than three holdout items keep a family below the unattended level | 15 | Check lines 6 and 7 |
 | Gate unchanged | No change weakens the gate, the overfit guard, or the measurement | 10 | Check line 8 |
 | Critic | The planted rule is dropped with a reason; no rule is added | 20 | Check line 9 |
 | Promotion | Promotion with zero confirmed regressions, covering the family | 20 | Check line 10 |

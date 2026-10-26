@@ -93,8 +93,7 @@ cost of a check is on the [costs page](../docs/costs.md#assignments).
 ### Further reading
 
 The [reading list](post-class-reading/README.md) has three: business knowledge as evidence, how
-far enterprise schemas are from benchmarks, and how to design what a tool returns. After class,
-[session-notes.md](session-notes.md) recaps what class showed.
+far enterprise schemas are from benchmarks, and how to design what a tool returns.
 
 ## Where next
 

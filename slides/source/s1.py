@@ -36,8 +36,8 @@ NUMBERS = [
     "The confident wrong answer, 76,981,355.95 dollars against gold 64,015,091.21 with 4 trap labels, in 76 seconds: docs/calibration-report.md, Demos; retaken twice, 72,394,572.08 dollars with 3 trap labels each: docs/calibration-report.md, Resumed without traces.",
     "Seven questions without traps, 3 runs each, 21 runs per side: 12 of 21 correct with column names only, unbounded rows, and no scout, 17 of 21 with full descriptions, capped rows, and the scout, on 24 October: docs/benefits.md, Section 1: Agent loop; 4 and 6 of 7 in the earlier measurement of 23 October.",
     "Unbounded rows, one run of each half on 24 October: 182,654 tokens and 0.0228 dollars without the row cap, escalated at the run budget; 30,216 tokens and 0.0021 dollars with it, reviewer round trip included: docs/benefits.md, Section 1: Agent loop.",
-    'The question "How many VIP customers do we have?" ended with the status needs clarification: docs/calibration-report.md, Live session of 24 October 2026 (session 5), Edge cases.',
-    "Every core and optional demo of the section showed its moment, both halves: docs/calibration-report.md, Live session of 24 October 2026 (session 5).",
+    'The question "How many VIP customers do we have?" ended with the status needs clarification: docs/calibration-report.md, Live session of 24 October 2026, Edge cases.',
+    "Every core and optional demo of the section showed its moment, both halves: docs/calibration-report.md, Live session of 24 October 2026.",
 ]
 
 SLIDES = [
@@ -335,7 +335,7 @@ SLIDES = [
             "In the board-deck story, the SQL field alone would have let someone see the calendar "
             "year in the WHERE clause. One rule came from calibration: the analyst answers with its "
             "assumptions stated and recorded, and asks for clarification only when a question names "
-            "nothing in the schema. Early on, the spine question came back as a clarifying question, "
+            "nothing in the schema. Early on, the fiscal year 2025 revenue question came back as a clarifying question, "
             "which left the reviewer and the gold check nothing to check.",
             "Analogy: A pull request with a diff against a message in chat saying it is fixed. Both "
             "may be true; only one can be reviewed.",
@@ -481,7 +481,7 @@ SLIDES = [
             "later step depends on what the agent could see.",
             'Likely question: "Which one would you add first to an existing agent?" Answer: The '
             "output contract. It makes every other improvement measurable.",
-            "Transition: Now watch all four live, and watch the spine question still come out wrong.",
+            "Transition: Now watch all four live, and watch the fiscal year 2025 revenue question still come out wrong.",
         ],
     ),
     # 9 -----------------------------------------------------------------------------------------
@@ -502,7 +502,7 @@ SLIDES = [
             "- The confident wrong answer: a fluent number, a mismatch against gold, each trap "
             "named on the SQL",
             "- Unbounded rows: the token counter, cap off, then on",
-            "Guaranteed moment: under the starting knowledge, the spine question gets a "
+            "Guaranteed moment: under the starting knowledge, the fiscal year 2025 revenue question gets a "
             "confident, wrong answer; the gold check shows the mismatch and the annotated SQL "
             "names each trap.",
             "Link: Demo page on GitHub | https://github.com/ANI-IN/loop-engineering/tree/main/"
@@ -517,7 +517,7 @@ SLIDES = [
             "(instructor guide, the day before, step 4). The measured figures are under each demo. The slide's link opens the section's demo page on GitHub, the page "
             "learners use after class.",
             "Demo: the simple question.",
-            "Starting state: the Agent page, knowledge version v1 active, no planted item on, the "
+            "Starting state: the Agent page, version 1 of the knowledge (the starting version) active, no planted item on, the "
             "status line at the report-only level. Reset first: `make reset NAME=agent-loop`.",
             'Do: on the Agent page type "How many orders have been placed in total?", the question '
             "`make demo` sends, and press Ask; or `make demo NAME=agent-simple-question`.",
@@ -537,10 +537,10 @@ SLIDES = [
             "If it stalls: reset and run it again, `make reset NAME=agent-loop`, then the same "
             "trigger.",
             "Demo: the confident wrong answer.",
-            "Starting state: the same page after the first demo; knowledge version v1 still active. "
+            "Starting state: the same page after the first demo; version 1 still active. "
             "Reset first if anything else ran: `make reset NAME=agent-loop`.",
             "Do: Agent > Ask the spine question, or `make demo NAME=agent-confident-wrong-answer`.",
-            "Narrate: the spine question, what was our net revenue in fiscal year 2025. Tie it to "
+            "Narrate: the fiscal year 2025 revenue question, what was our net revenue in fiscal year 2025. Tie it to "
             "the question slide: a stronger model would not help, because the rules are not in the "
             "schema. Tie it to concept 1: the tools showed everything they could, and the fiscal "
             "year rule is still invisible.",
@@ -595,7 +595,7 @@ SLIDES = [
             "Open `platform/src/datapilot/loop1_agent/analyst.py`, lines 56-58: the knowledge "
             "injection, the base of concept 1, Schema linking, and of the confident wrong answer. "
             "Say: the dynamic prompt writes the base prompt, the business date, and the active "
-            "knowledge version before every model call; under v1 that block holds only the money "
+            "knowledge version before every model call; under version 1 that block holds only the money "
             "rule, so the traps decide the answer. A new version changes this block and nothing "
             "else.",
             "Open `platform/src/datapilot/loop1_agent/analyst.py`, lines 72-86: implements concept "

@@ -50,7 +50,16 @@ exclude = [
     "slides/slide-review.md",
     # The guide kit's template configuration (placeholders); guide/guide.json is this guide's.
     "guide/source/guide.example.json",
+    # The session notes recap the class run, so they cannot be written before it; until then each
+    # holds only its outline, and a page that describes what it will hold never ships (the
+    # placeholder check in platform/scripts/build_release.py). They ship in the first release
+    # after the class, once written: delete this entry then, and link them again from each
+    # section's README and reading list and from docs/start-here.md.
+    "section-*/session-notes.md",
 ]
+# Files withheld only until they are written or published: a shipped page may name one (the
+# instructor guide's after-class steps, the style guide's page rules), though never link to it.
+withheld_until_later = ["section-*/session-notes.md"]
 # The withheld solutions: an `exclude` entry and a `public_gitignore` line until the owner's
 # release with --with-solutions, at the start of the Thursday review, publishes them.
 solutions = "section-*/assignment/solution/"
@@ -94,3 +103,32 @@ other_markdown = [
 # with its reason. Whether to rewrite such a commit is the course owner's decision.
 [accepted_history]
 "a0a23d9b27a4586c4aab2888b360cf398886b294" = "the first release, 23 October 2026, published before the deny patterns existed"
+
+# Legitimate uses of what the placeholder check refuses (platform/scripts/build_release.py,
+# PLACEHOLDER_RULES): each names a shipped file (a glob), the rules it may break, and why. An entry
+# that no longer matches anything fails platform/tests/unit/test_release_list.py, so the list
+# never outlives its reason.
+[[placeholder_allow]]
+path = "platform/config/release.toml"
+rules = ["lorem ipsum"]
+why = "this list names the rule each entry allows"
+
+[[placeholder_allow]]
+path = "platform/scripts/build_release.py"
+rules = ["a leftover marker", "lorem ipsum", "template guidance"]
+why = "the placeholder check itself names the markers it refuses"
+
+[[placeholder_allow]]
+path = "platform/scripts/check_style.py"
+rules = ["a leftover marker"]
+why = "the style checker's leftover-marker rule names the markers it refuses"
+
+[[placeholder_allow]]
+path = "platform/scripts/kit/scan/*"
+rules = ["a leftover marker", "lorem ipsum"]
+why = "the scan kit's PDF check and its README name the markers it refuses"
+
+[[placeholder_allow]]
+path = "platform/scripts/kit/style/README.md"
+rules = ["a leftover marker"]
+why = "the style kit's README states the no-leftovers rule"

@@ -47,7 +47,9 @@ A = "Assignment"
 # Ids that belong only in the evidence pages (regex).
 [ids]
 run = '\b(?:ab|r)-\d{8}-\d{6}-[0-9a-f]{6}\b'
-finding = '\bF-[ab]-\d+\b'
+# Finding ids: the research findings (F-a-12), the build's review findings (R3D-01, F071), its
+# milestone codes (B5), and its decision codes (D8b). Pages only: old commit messages hold some.
+finding = '\b(?:F-[ab]-\d+|R\d[A-Z]?-\d{2}|F\d{3}|B[1-9]|D\d+[a-z])\b'
 
 # Exact source titles that may contain a banned word.
 [prose]

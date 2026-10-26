@@ -1,11 +1,12 @@
 # Chapter 2: Section 2: Verification loop
 
 The verification loop stops unsafe Structured Query Language (SQL) and bounds the agent's retries.
-Then it passes every grader on the spine answer, and the answer is still wrong. You run each demo
+Then it passes every grader on the answer to the fiscal year 2025 revenue question, and the answer is still wrong. You run each demo
 from the demo terminal and watch it on the console's Verify page. Every screenshot in this chapter
 comes from the live runs of 24 October 2026, from 13:54 Coordinated Universal Time (business date
-31 January 2026), except two retaken on 25 October 2026 (the retry cap and the trap notes), and
-every time range from the calibration demo pass of 22 and 23 October 2026 and the live sessions of
+31 January 2026), except two retaken on 25 October 2026 (the retry cap and the trap notes) and the
+missing retry cap's image, taken on 26 October 2026, and every time range from the calibration's
+run-through of the demos on 22 and 23 October 2026 and the live sessions of
 23, 24, and 25 October.
 
 > Your output will differ: run times, ids, and the agent's wording change on every run.
@@ -129,11 +130,11 @@ and a person sees why.
 > half with `make demo NAME=verify-retry-cap PLANTED=1`: the cost counter keeps climbing until the
 > 60,000-token cap per run (13 attempts on 25 October 2026).
 
-![The Verify page with the missing retry cap planted: the checklist past attempt 3, the run still verifying, and the tokens bar climbing](../../section-2-verification-loop/demo/expected/verify-retry-cap-no-cap-climbing.png) <!-- check-style: allow SC06 awaiting its live capture, live_manifest.AWAITING_CAPTURE -->
+![The Verify page with the missing retry cap planted: the checklist past attempt 3, the run still verifying, and the tokens bar climbing](../../section-2-verification-loop/demo/expected/verify-retry-cap-no-cap-climbing.png)
 
-*With the missing retry cap the run is past attempt 3 and still going; the tokens line keeps climbing toward the cap of 60,000 tokens per run.*
+*With the missing retry cap the run is past attempt 3 and still going; the tokens line keeps climbing toward the cap of 60,000 tokens per run. Here: attempt 7, 31,095 tokens.*
 
-### Step 4: Ask the spine question through every grader
+### Step 4: Ask the fiscal year 2025 revenue question through every grader
 
 **Where:** The demo terminal, and the Verify page.
 
@@ -206,15 +207,15 @@ are the case for Section 4: Hill-climbing loop.
 
 | Item | This run |
 |---|---|
-| Spine question against gold, both databases | Mismatch, with every grader passed (headline) |
+| The fiscal year 2025 revenue question against gold, both databases | Mismatch, with every grader passed (headline) |
 | Malicious statements, fixed system | Guard, guard, then role grants (42501) |
 | Malicious statements, naive guard | Read-only transaction twice (25006), then role grants (42501) |
 | Order rows changed | None: 405,738 before and after |
-| Reviewer on the spine answer, secondary | Concern, held for human approval |
+| Reviewer on the answer to the fiscal year 2025 revenue question, secondary | Concern, held for human approval |
 
 ## Time and cost
 
-Times are wall time from the trigger to the checked result, from the calibration demo pass of 22
+Times are wall time from the trigger to the checked result, from the calibration's run-through of the demos on 22
 and 23 October 2026 and the live sessions of 23, 24, and 25 October
 (`docs/calibration-report.md`), each demo run alone with a reset between.
 

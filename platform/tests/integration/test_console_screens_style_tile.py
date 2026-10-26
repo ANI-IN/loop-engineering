@@ -113,6 +113,26 @@ def _shot(page: Any, name: str, *, top: str | None = None, bottom: str | None = 
     (SHOTS / f"{name}.png").write_bytes(data)
 
 
+def _clipped_above_tokens(page: Any, name: str) -> None:
+    """The page's top, full width, down to the middle of the empty gap between the specimen-state
+    toggle and the "Tokens" heading: a frame that holds the Events view and ends in empty page.
+    Written only when its edges are clean, and the image check then judges its size."""
+    framing.place(page)  # the page's own top
+    framing.rest_pointer(page)
+    page.wait_for_timeout(150)
+    toggle = page.get_by_text("No live session", exact=True).first.bounding_box()
+    tokens = page.locator(_heading("Tokens")).first.bounding_box()
+    assert toggle is not None and tokens is not None
+    toggle_end, tokens_top = toggle["y"] + toggle["height"], tokens["y"]
+    assert tokens_top > toggle_end, (toggle_end, tokens_top)
+    width = page.viewport_size["width"]
+    height = int((toggle_end + tokens_top) / 2)
+    data = page.screenshot(clip={"x": 0, "y": 0, "width": width, "height": height})
+    found = framing.edges_of_png(data)
+    assert found.clean, (found, toggle_end, tokens_top)
+    (SHOTS / f"{name}.png").write_bytes(data)
+
+
 def _heading(words: str) -> str:
     """A Streamlit title, header, or subheader by its words."""
     return f'[data-testid="stHeading"]:has-text("{words}")'
@@ -167,14 +187,18 @@ def test_style_tile_screenshots(style_tile: str, browser: Any) -> None:
     _shot(page, "13-no-session")
     page.context.close()
 
-    # A 1280 by 720 screen at 67 percent zoom shows 1910 by 1075 CSS pixels; at twice that
-    # screen's pixels the image is 2560 by 1440, as every published screenshot.
+    # A 1280 by 720 screen at 67 percent zoom shows 1910 by 1075 CSS pixels, taken at device scale
+    # factor 2 like every published screenshot (docs/STYLE.md, rule 11). The clip below keeps the
+    # full width, 3820 pixels, and about 1640 of the height: above the 2560 by 1440 minimum.
     zoomed = _open(
         browser,
         style_tile,
         viewport={"width": 1910, "height": 1075},
-        device_scale_factor=2 * 1280 / 1910,
+        device_scale_factor=2,
         timezone_id=framing.TIMEZONE,
     )
-    _shot(zoomed, "14-events-67-percent")
+    # The Events view fits with room to spare, so the style tile's own sections follow it on the
+    # first screen, and no scroll from the page's top keeps the status line in view and ends the
+    # frame clear of the colour swatches: the frame is clipped above them (DESIGN.md, section 14).
+    _clipped_above_tokens(zoomed, "14-events-67-percent")
     zoomed.context.close()

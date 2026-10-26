@@ -57,6 +57,7 @@ run_check "naming check, outline"        "$UV" run python platform/scripts/short
 run_check "naming check, commit messages" commit_messages_check
 run_check "docs check"                   "$UV" run python platform/tools/generators/render.py --check
 run_check "outline check"                outline_check
+run_check "image check"                  "$UV" run python platform/scripts/check_images.py
 run_check "unit tests"                   "$UV" run pytest -q -m "not integration and not live"
 
 echo

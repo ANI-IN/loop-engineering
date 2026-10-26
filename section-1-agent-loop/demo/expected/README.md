@@ -2,7 +2,8 @@
 
 Real captures from live runs on 25 October 2026, from 14:43 Coordinated Universal Time (business
 date 31 January 2026), in rehearsal session c18bcc2e, for comparison after class, sent with every
-planted bug off and the starting knowledge v1, except the planted half of the unbounded rows demo.
+planted bug off and under version 1 of the knowledge (the starting version), except the planted
+half of the unbounded rows demo.
 They are never shown in class: in class, every demo runs live. Times on the captures are in
 Coordinated Universal Time (UTC); the console shows your own local time. LangSmith refused traces
 at its monthly limit, so each capture reads "Trace not received" and names its run id instead of a
@@ -28,12 +29,12 @@ Trace: run 87a06dba
 
 ## The confident wrong answer
 
-![The Agent page after the spine question: the status line at the report-only level, Holding for approval, the line that the run waits for a person's approval, and the tool calls list_tables, scout_schema, two describe_table calls, and run_query, 20.3 seconds in total](agent-confident-wrong-answer-run.png)
+![The Agent page after the fiscal year 2025 revenue question: the status line at the report-only level, Holding for approval, the line that the run waits for a person's approval, and the tool calls list_tables, scout_schema, two describe_table calls, and run_query, 20.3 seconds in total](agent-confident-wrong-answer-run.png)
 
-*Run 9182df01, 25 October 2026: under the starting knowledge v1 the run holds for a person's approval; the schema scout takes 11.1 of the 20.3 seconds of tool time.*
+*Run 9182df01, 25 October 2026: under version 1 the run holds for a person's approval; the schema scout takes 11.1 of the 20.3 seconds of tool time.*
 
-The spine question is "What was our net revenue in fiscal year 2025?". The reviewer raised a
-concern twice, first that "The query assumes fiscal year 2025 is the calendar year 2025, but no
+The fiscal year 2025 revenue question is "What was our net revenue in fiscal year 2025?". The
+reviewer raised a concern twice, first that "The query assumes fiscal year 2025 is the calendar year 2025, but no
 fiscal-year definition or start month is provided.", so the run holds for approval. The run took 3
 attempts. Its answer is one number, 72,394,572.08 dollars, which it says is for calendar year 2025
 in UTC, because the warehouse defines no fiscal calendar.

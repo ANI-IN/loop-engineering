@@ -134,13 +134,13 @@ JavaScript Object Notation (JSON), and Coordinated Universal Time (UTC) by their
 - **Section**: Section 4: Hill-climbing loop
 - **Where**: `platform/src/datapilot/loop4_hill_climbing/analyzer.py`
 - **Trigger**: `make demo NAME=improve-naive-analyzer-blocked` (its own requests only; it plants the naive analyzer with or without PLANTED=1); or Improve > Run the naive analyzer (planted), shown while demo controls are allowed
-- **Symptom**: The naive analyzer quotes each failed dev question in a rule of its own; the analyzer applies no overfit guard, and the gate blocks the version because the guard rejects its rules.
+- **Symptom**: The naive analyzer quotes each failed development question in a rule of its own; the analyzer applies no overfit guard, and the gate blocks the version because the guard rejects its rules.
 - **Fix**: The analyzer team with the critic, then the deterministic overfit guard.
 - **Demos**: The naive analyzer, blocked (`improve-naive-analyzer-blocked`)
 
 ## Harness weaknesses
 
-### The near-empty knowledge version v1
+### The near-empty version 1 of the knowledge (the starting version)
 
 - **Identifier**: `knowledge-v1-empty`
 - **Section**: Section 1: Agent loop

@@ -6,7 +6,7 @@ team may read and keep, and how the promotion gate decides.
 > **Terms on this page**
 >
 > - **Hill-climbing loop**: Experiments find failures, an analyzer team proposes rules, and a gate decides.
-> - **Dev split**: The benchmark questions the analyzer team may learn from.
+> - **Development split**: The benchmark questions the analyzer team may learn from.
 > - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 > - **Promotion gate**: The check that a new knowledge version must pass before it becomes active.
 > - **Regression**: An item that passed under the active version and fails under the candidate, confirmed by re-runs.
@@ -18,11 +18,11 @@ team may read and keep, and how the promotion gate decides.
 
 An experiment runs every benchmark item under one knowledge version, each repetition a fresh live
 run, and scores each answer locally against the gold Structured Query Language (SQL) result. The
-analyzer team reads only the failed dev items: the failure analyst diagnoses them, the rule writer
-proposes rules, the critic keeps, narrows, or drops each one, a rule whose SQL guidance does not
-run over the schema is dropped, and the overfit guard rejects any that quote a question or copy
-gold SQL. The team writes two candidates this way; each runs on the dev split only, and one is
-kept. The gate compares the kept candidate's experiment with the baseline from the same live
+analyzer team reads only the failed development items: the failure analyst diagnoses them, the rule
+writer proposes rules, the critic keeps, narrows, or drops each one, a rule whose SQL guidance does
+not run over the schema is dropped, and the overfit guard rejects any that quote a question or copy
+gold SQL. The team writes two candidates this way; each runs on the development split only, and one
+is kept. The gate compares the kept candidate's experiment with the baseline from the same live
 session.
 
 ```mermaid
@@ -32,11 +32,11 @@ sequenceDiagram
     participant Guard as Overfit guard
     participant Person
     participant Gate as Promotion gate
-    Runner->>Runner: baseline on the active version (dev once, holdout repeated)
-    Runner->>Team: failed dev items only
+    Runner->>Runner: baseline on the active version (development items once, holdout items repeated)
+    Runner->>Team: failed development items only
     Team->>Team: failure analyst, rule writer, critic, twice
     Team->>Guard: the rules the critic kept whose SQL guidance runs
-    Runner->>Runner: each candidate on the dev split only, one kept
+    Runner->>Runner: each candidate on the development split only, one kept
     Guard-->>Person: candidate version in the knowledge diff
     Runner->>Gate: candidate experiment, same session
     Gate-->>Person: ready for human approval, or blocked with every reason
@@ -55,11 +55,12 @@ sequenceDiagram
         return [self.run_once(item, knowledge_version, n) for n in range(1, repeats + 1)]
 ```
 
-This is the baseline experiment and the candidate experiment. Each item's runs go one after
-another, so its run passes stay in repetition order. `scheme.repeats` gives a holdout item
-`evaluation.holdout_repeats` runs and a dev item one, from `platform/packs/datapilot_us/pack.yaml`.
-A holdout item passes on `evaluation.holdout_pass_threshold` of its runs, so one lucky run does not
-flip it. The same scheme applies to both versions.
+This is the baseline experiment and the candidate experiment. Each item's runs go one after another,
+so the results of its runs stay in repetition order. `scheme.repeats` gives a holdout item
+`evaluation.holdout_repeats` runs and a development item one, from
+`platform/packs/datapilot_us/pack.yaml`. A holdout item passes on
+`evaluation.holdout_pass_threshold` of its runs, so one lucky run does not flip it. The same scheme
+applies to both versions.
 
 ### platform/src/datapilot/loop4_hill_climbing/analyzer.py, lines 206-210
 
@@ -77,7 +78,7 @@ analyzer team. With the naive analyzer (`BUG_NAIVE_ANALYZER`) on, the team is sk
 and no overfit guard applied. That is the naive analyzer, blocked.
 
 The naive analyzer, `naive_rules` in the same file, makes no model call. It writes one rule per
-failed dev question, quoting the question word for word with the analyst's query that failed, and
+failed development question, quoting the question word for word with the analyst's query that failed, and
 never reads a reference query. Each rule is tied to one question, so it teaches nothing about the
 next one. The overfit guard still checks every rule and flags each one for quoting a benchmark
 question, but its verdict is not applied, so the knowledge diff keeps them all.
@@ -102,12 +103,12 @@ such as `lower(c.email) NOT LIKE '%@harborpine.com'`; a rule that still fails is
 the problems as its reason. The overfit guard is deterministic and runs last, with its thresholds
 in `evaluation` in `pack.yaml`. Only rules that pass every check reach the candidate version.
 
-One analyzer team run can write a strong candidate or a weak one from the same failed items, so
-the team writes `analyzer.candidates` of them (two, in `pack.yaml`). Each runs on the dev split
-only, every item once, and `choose` in `candidates.py` keeps one: fewer dev regressions against
-the session's baseline, then more dev passes, then fewer rules. The holdout split never takes part
-in the choice, so it still measures questions no decision was tuned on. The Improve page shows
-both candidates and the one kept above the knowledge diff.
+One analyzer team run can write a strong candidate or a weak one from the same failed items, so the
+team writes `analyzer.candidates` of them (two, in `pack.yaml`). Each runs on the development split
+only, every item once, and `choose` in `candidates.py` keeps one: fewer regressions on the
+development split against the session's baseline, then more development items passed, then fewer
+rules. The holdout split never takes part in the choice, so it still measures questions no decision
+was tuned on. The Improve page shows both candidates and the one kept above the knowledge diff.
 
 ### platform/src/datapilot/loop4_hill_climbing/gate.py, lines 117-135
 
@@ -134,15 +135,15 @@ both candidates and the one kept above the knowledge diff.
     promoted = ready and bool(approved_by)
 ```
 
-The gate has four conditions and records all of them: more holdout passes than the active
-version, zero confirmed regressions on either split, a person's approval, and every rule the
+The gate has four conditions and records all of them: more holdout items passed than under the
+active version, zero confirmed regressions on either split, a person's approval, and every rule the
 candidate adds passing the overfit guard (`overfit_flags`, from `new_rule_flags` in
 `overfit_guard.py`). Both experiments must come from the same live session, so the comparison is
 always against this session's baseline. The runner records that baseline when the gate runs
-(`store.record_gate_baseline` in `runner.py`), and a promotion after a later approval decides on
-the same experiment. The over-broad rule is blocked by `clean`. The naive
-analyzer's version is blocked by `overfit_flags` whatever its holdout count, because the guard
-rejects every rule that quotes a question.
+(`store.record_gate_baseline` in `runner.py`), and a promotion after a later approval decides on the
+same experiment. The over-broad rule is blocked by `clean`. The naive analyzer's version is blocked
+by `overfit_flags` whatever its holdout count, because the guard rejects every rule that quotes a
+question.
 
 ### platform/src/datapilot/loop4_hill_climbing/eligibility.py, lines 72-80
 
@@ -172,7 +173,7 @@ already lost. The re-runs are written beside their items in the candidate experi
   re-runs that confirm a regression, the same for both versions.
 - Keep a critic that can only remove or narrow, and a deterministic overfit check after it.
 - Check every rule's SQL guidance against the real schema before the agent reads it.
-- Choose between candidates on the dev split only, never on the split the gate decides on.
+- Choose between candidates on the development split only, never on the split the gate decides on.
 - Keep human approval as a gate condition, recorded with the other reasons.
 - Change the benchmark to your own questions with hand-written gold queries, split before you
   look at any failure.

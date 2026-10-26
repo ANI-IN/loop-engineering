@@ -12,7 +12,7 @@ Next month's questions are still wrong, and one question that used to be right n
 > **Terms on this page**
 >
 > - **Hill-climbing loop**: Experiments find failures, an analyzer team proposes rules, and a gate decides.
-> - **Dev split**: The benchmark questions the analyzer team may learn from.
+> - **Development split**: The benchmark questions the analyzer team may learn from.
 > - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 > - **Promotion gate**: The check that a new knowledge version must pass before it becomes active.
 > - **Regression**: An item that passed under the active version and fails under the candidate, confirmed by re-runs.
@@ -33,14 +33,15 @@ Next month's questions are still wrong, and one question that used to be right n
 ## How this section fixes it
 
 An experiment runs the benchmark by execution on two databases. The analyzer team reads the
-failed dev items: the failure analyst diagnoses, the rule writer proposes, and the critic keeps,
-narrows, or drops each rule. The team writes two candidates; the runner keeps the one with fewer
-dev regressions, then more dev passes, then fewer rules, and the holdout split never takes part.
+failed development items: the failure analyst diagnoses, the rule writer proposes, and the critic
+keeps, narrows, or drops each rule. The team writes two candidates; the runner keeps the one with
+fewer regressions on the development split, then more development items passed, then fewer rules,
+and the holdout split never takes part.
 A deterministic overfit guard and the promotion gate follow. The gate
 decides on the holdout split, with zero regressions, every new rule passing the overfit guard, and
 human approval.
 
-![The benchmark, 25 dev and 15 holdout items, and two databases feed the experiment runner; failed dev items go to the analyzer team of three agents, then the overfit guard, then a candidate knowledge version; the promotion gate, with its confirming runs and a person's approval, makes the active version; a band below explains autonomy per metric family](diagrams/hill-climbing-loop.svg)
+![The benchmark, 25 development and 15 holdout items, and two databases feed the experiment runner; failed development items go to the analyzer team of three agents, then the overfit guard, then a candidate knowledge version; the promotion gate, with its confirming runs and a person's approval, makes the active version; a band below explains autonomy per metric family](diagrams/hill-climbing-loop.svg)
 
 *Notice that the agents only propose: code decides whether a rule overfits and whether a version is better, and a person approves the promotion.*
 
@@ -96,8 +97,7 @@ check ([costs page](../docs/costs.md#assignments)).
 ### Further reading
 
 The [reading list](post-class-reading/README.md) has three: rules learned from failures, evidence
-written by a machine, and the post that names the four loops. After class,
-[session-notes.md](session-notes.md) recaps what class showed.
+written by a machine, and the post that names the four loops.
 
 ## Where next
 

@@ -35,6 +35,7 @@ checks: `make check-names` runs it. The naming checks print a readable name, not
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import os
 import re
 import sys
@@ -516,15 +517,33 @@ def _solutions_withheld(root: Path) -> bool:
     return not any(root.glob("section-*/assignment/solution"))
 
 
+def _withheld_until_later(root: Path) -> list[str]:
+    """The section items a public copy leaves out until they are written: the release list's
+    `withheld_until_later` patterns (section-*/session-notes.md, the session notes written after
+    the class run). Only a public copy: a tree that holds one of the release list's `build_only`
+    files is the private build, where SC19 still requires every item."""
+    listed = root / "platform" / "config" / "release.toml"
+    if not listed.is_file():
+        return []
+    release = tomllib.loads(listed.read_text(encoding="utf-8"))
+    if any((root / p).is_file() for p in release.get("build_only", [])):
+        return []
+    return [str(p) for p in release.get("withheld_until_later", [])]
+
+
 def section_problems(root: Path) -> list[Problem]:
     """SC19 for every section folder: the required files and folders."""
     out: list[Problem] = []
     withheld = _solutions_withheld(root)
+    later = _withheld_until_later(root)
     for folder in sorted(
         p for p in root.iterdir() if p.is_dir() and re.fullmatch(_SECTION, p.name)
     ):
         items = [
-            i for i in SECTION_ITEMS if not (withheld and i.startswith("assignment/solution/"))
+            i
+            for i in SECTION_ITEMS
+            if not (withheld and i.startswith("assignment/solution/"))
+            and not any(fnmatch.fnmatchcase(f"{folder.name}/{i}", p) for p in later)
         ]
         if (folder / "diagrams").is_dir():
             items.append("diagrams/README.md")

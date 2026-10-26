@@ -251,7 +251,10 @@ def test_a_drill_down_absorbed_into_an_earlier_run_fails(monkeypatch: pytest.Mon
 def test_the_check_clears_the_drill_down_event_ids_its_alerts_named() -> None:
     assert "drill_down" in event_loop.DRILL_DOWN_IDS
     source = assignment("event-loop").check_file.read_text(encoding="utf-8")
-    assert "clear_drill_down(" in source.split("def run(ctx)")[1], "cleared before the live step"
+    # Requirement 10 runs the drill-down up to 3 times (the fair pass rule of 26 October 2026), so
+    # run() hands the clearing to drill_down_runs, which clears before every run
+    # (test_event_loop_check_drill_down.py).
+    assert "clear=clear_drill_down" in source.split("def run(ctx)")[1], "cleared before each run"
 
 
 def test_the_starter_router_requirement_names_its_extension_point() -> None:
@@ -551,9 +554,12 @@ def test_the_printed_typical_costs_are_the_costs_page_figures() -> None:
     later = _costs_row("Assignment 4, each later check")
     assert "About 13 to 24 cents (12.62 to 23.95, seven checks" in later
     assert hill_climbing_loop.TYPICAL_LATER.startswith("about 13 to 24 cents (12.62 to 23.95")
-    assert "About 0.2 cents" in _costs_row("Assignment 3: Event loop")
+    # Assignment 3 runs its drill-down on 2 of 3 runs since 26 October 2026: its typical figure is
+    # an estimate from the single-run checks, printed as one.
+    assert "About 0.5 cents, an estimate" in _costs_row("Assignment 3: Event loop")
+    assert event_loop.TYPICAL == "about 0.5 cents"
     source = assignment("event-loop").check_file.read_text(encoding="utf-8")
-    assert 'typical="about 0.2 cents"' in source
+    assert "typical=TYPICAL,\n        typical_estimated=True" in source
 
 
 class _PlanContext:

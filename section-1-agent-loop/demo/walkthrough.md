@@ -28,7 +28,7 @@ sequenceDiagram
     participant Tools as Tools and checker
     Worker->>Analyst: question
     loop until an answer envelope or a limit
-        Analyst->>Model: prompt with the business date and knowledge v1
+        Analyst->>Model: prompt with the business date and the active knowledge version
         Model-->>Analyst: tool call (list_tables, describe_table, run_query)
         Analyst->>Tools: run the tool; run_query goes through the checker
         Tools-->>Analyst: result, rows capped at limits.row_cap
@@ -48,8 +48,8 @@ sequenceDiagram
         return f"{base}\n{business_date.prompt_line()}\n\n{knowledge.prompt_block()}"
 ```
 
-The knowledge reaches the model here, on every call, not once at build time. Under knowledge
-version v1 the block holds only the money rule, so the confident wrong answer shows what the
+The knowledge reaches the model here, on every call, not once at build time. Under version 1 of
+the knowledge (the starting version) the block holds only the money rule, so the confident wrong answer shows what the
 model does with the traps left out. A new version changes this block and nothing else.
 
 ### platform/src/datapilot/loop1_agent/analyst.py, lines 72-86

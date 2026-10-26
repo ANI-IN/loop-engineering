@@ -22,4 +22,3 @@ reading time in the table is for the full source, at 200 words a minute, rounded
 - Read the first two together: one is the queue, the other the effects it delivers more than once.
 - Read the third before you add an approval step to any agent you run.
 - After each reading, do the first step of its "Apply it to your repository" list.
-- The class recap is in [session-notes.md](../session-notes.md).

@@ -6,6 +6,7 @@ live against the real api."""
 
 from __future__ import annotations
 
+import io
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -13,7 +14,7 @@ from typing import Any
 import pytest
 
 from datapilot.assignments import assignment
-from datapilot.assignments.report import Stop
+from datapilot.assignments.report import Report, Stop
 from datapilot.assignments.runner import load_check
 from datapilot.contracts import RunStatus
 from datapilot.contracts.api import EventSubmitted, RunDetail
@@ -287,7 +288,6 @@ def test_a_subcategory_holding_a_top_level_name_is_not_that_category() -> None:
         ("Unlike Footwear, Water Sports rose most.", "Water Sports"),
         ("Water Sports fell the most; Footwear rose most.", "Footwear"),
         ("Not Water Sports: Camping rose most.", "Camping"),
-        ("Water Sports and Camping both sold.", "Water Sports"),  # no rise said: the first named
     ],
 )
 def test_the_text_is_judged_by_the_category_it_says_rose_most(text: str, said: str) -> None:
@@ -450,3 +450,184 @@ def test_a_gold_row_fails_when_the_text_says_another_category_rose_most() -> Non
         Api(hold=False, posted_text=first_named, rows=rows), DRILL, GOLD, NAMES
     )
     assert outcome.contradicted is None and outcome.passed
+
+
+# --- the owner's decision of 26 October 2026: no rise said, no category -----------------------
+def test_a_text_that_says_no_rise_names_no_category() -> None:
+    """Changed by a decision: this text used to name its first category, Water Sports, and so
+    passed. The owner decided on 26 October 2026 that a category merely named first, with no rise
+    said of it, never counts (SPEC.md, requirement 10)."""
+    text = "Water Sports and Camping both sold."
+    reading = check.read_rise(text, NAMES, GOLD)
+    assert reading.category is None and not reading.ambiguous
+    outcome = check.drill_down(Api(hold=False, posted_text=text), DRILL, GOLD, NAMES)
+    assert not outcome.passed
+    assert "the posted answer did not name it" in outcome.what()
+
+
+# --- the session 7 review of the judge: correct answers the contradiction rule failed ----------
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The largest rise was not in Camping but in Water Sports.",
+        "Water Sports rose by $9,040.00, the most of any top-level category, while Camping led the "
+        "remaining categories.",
+    ],
+)
+def test_a_correct_text_over_a_gold_row_is_never_read_as_a_contradiction(text: str) -> None:
+    """Both texts say Water Sports rose most. The negation came after the phrase it negates, and
+    "the most of any" was not a phrase that says a category rose most, so both read Camping and
+    failed a correct rise_cents row."""
+    rows = _rise_rows(("Water Sports", 904_000), ("Camping", 120_000))
+    outcome = check.drill_down(Api(hold=False, posted_text=text, rows=rows), DRILL, GOLD, NAMES)
+    assert outcome.contradicted is None
+    assert outcome.passed, outcome.what()
+    assert check.rose_most(text, NAMES, GOLD) == GOLD  # the text alone says it too
+
+
+def test_a_negation_after_the_phrase_rules_out_only_its_own_subject() -> None:
+    swapped = "The largest rise was not in Water Sports but in Camping."
+    assert check.rose_most(swapped, NAMES, GOLD) == "Camping"
+    # A negation said of another category, after the phrase's own subject, rules nothing out.
+    assert check.rose_most("Water Sports rose the most and Camping did not.", NAMES, GOLD) == GOLD
+
+
+def test_a_text_that_says_another_category_rose_most_still_contradicts_a_gold_row() -> None:
+    rows = _rise_rows(("Water Sports", 904_000), ("Camping", 120_000))
+    for text in ("Camping rose the most of any category.", "Camping led every category."):
+        api = Api(hold=False, posted_text=text, rows=rows)
+        outcome = check.drill_down(api, DRILL, GOLD, NAMES)
+        assert outcome.contradicted == "Camping", text
+        assert not outcome.passed
+
+
+def test_led_the_remaining_categories_says_nothing_rose_most() -> None:
+    assert check.SAID_MOST.search("Camping led the remaining categories") is None
+    assert check.SAID_MOST.search("Camping led the rest") is None
+    assert check.SAID_MOST.search("Camping led the rise") is not None
+
+
+# --- the text path never names a category that fell, trailed, or was only listed -----------------
+@pytest.mark.parametrize(
+    ("text", "said"),
+    [
+        # a wrong answer that passed: Water Sports trails, and "which" is Camping
+        ("Water Sports trailed Camping, which rose most.", "Camping"),
+        # no category rose: Water Sports fell and Camping was flat
+        ("Water Sports fell while Camping was flat.", None),
+        # a list under a heading names no category by itself (it used to name the first)
+        ("Rise by category: Camping $1,200, Water Sports $9,000.", None),
+    ],
+)
+def test_the_text_path_rules_out_falling_and_trailing_categories(
+    text: str, said: str | None
+) -> None:
+    assert check.rose_most(text, NAMES, GOLD) == said
+    outcome = check.drill_down(Api(hold=False, posted_text=text), DRILL, GOLD, NAMES)
+    assert not outcome.passed, outcome.what()
+
+
+# --- the fair pass rule: 2 of 3 runs, a third only when the first two disagree -------------------
+RIGHT = "Water Sports rose the most."
+WRONG = "Hiking rose the most."
+
+
+class Runs:
+    """The api of each run in turn: clearing the drill-down's event id, as the check does before
+    every run, moves to the next run's api double."""
+
+    def __init__(self, *apis: Api) -> None:
+        self.apis = list(apis)
+        self.index = -1
+        self.cleared: list[str] = []
+
+    def clear(self, event_id: str) -> None:
+        self.cleared.append(event_id)
+        self.index += 1
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.apis[self.index], name)
+
+
+class Raising(Api):
+    """A run whose wait raises: the api went away, or the run never ended in time."""
+
+    def wait(self, run_id: str, *, seconds: float = 600, until: Any = None) -> RunDetail:
+        raise TimeoutError("the run did not end in 900 seconds")
+
+
+def _answer(text: str) -> Api:
+    return Api(hold=False, posted_text=text)
+
+
+def _judged(*apis: Api) -> tuple[Runs, Any]:
+    runs = Runs(*apis)
+    outcomes = check.drill_down_runs(runs, DRILL, GOLD, NAMES, clear=runs.clear)
+    return runs, check.judge_runs(10, "the drill-down", outcomes)
+
+
+@pytest.mark.parametrize(
+    ("answers", "passed", "made"),
+    [
+        ((RIGHT, RIGHT, RIGHT), True, 2),  # two passes decide: the third run is never made
+        ((WRONG, WRONG, RIGHT), False, 2),  # two failures decide too
+        ((RIGHT, WRONG, RIGHT), True, 3),  # 2 of 3
+        ((WRONG, RIGHT, RIGHT), True, 3),
+        ((RIGHT, WRONG, WRONG), False, 3),  # 1 of 3
+    ],
+)
+def test_the_drill_down_passes_on_2_of_3_runs(
+    answers: tuple[str, ...], passed: bool, made: int
+) -> None:
+    runs, result = _judged(*(_answer(text) for text in answers))
+    assert result.passed is passed
+    assert len(result.live) == made
+    assert runs.cleared == [DRILL["event_id"]] * made, "cleared before every run"
+    wins = sum(text == RIGHT for text in answers[:made])
+    assert result.rule.startswith(f"passed {wins} of {made} runs; passes on 2 of 3 runs")
+    assert bool(result.fix) is not passed
+
+
+def test_a_run_that_raises_an_error_counts_as_wrong() -> None:
+    _runs, result = _judged(_answer(RIGHT), Raising(hold=False), _answer(RIGHT))
+    assert result.passed and len(result.live) == 3
+    assert not result.live[1].passed
+    assert "raised an error, so it counts as a wrong answer: TimeoutError" in result.live[1].detail
+    _runs, result = _judged(_answer(RIGHT), Raising(hold=False), _answer(WRONG))
+    assert not result.passed
+    assert "raised an error" in result.fix
+
+
+def test_a_second_ask_that_starts_another_run_fails_at_once_without_more_runs() -> None:
+    """The deterministic part of requirement 10 must hold in every run, so the first run that
+    breaks it decides, and the check makes no more runs."""
+    runs, result = _judged(
+        Api(hold=False, posted_text=RIGHT, absorbed=False), _answer(RIGHT), _answer(RIGHT)
+    )
+    assert not result.passed and len(result.live) == 1 and len(runs.cleared) == 1
+    assert "deterministic event id" in result.fix
+
+
+def test_a_stop_in_any_run_stops_the_check() -> None:
+    """A planted bug on the stack is the stack, not the solution: it never counts as a wrong run."""
+    planted = Api(hold=False, posted_text=RIGHT, absorbed=False, planted=["BUG_NO_IDEMPOTENCY"])
+    with pytest.raises(Stop, match="BUG_NO_IDEMPOTENCY"):
+        _judged(_answer(RIGHT), planted, _answer(RIGHT))
+
+
+def test_the_report_prints_every_run_with_the_rule() -> None:
+    _runs, result = _judged(_answer(RIGHT), _answer(WRONG), _answer(RIGHT))
+    out = io.StringIO()
+    Report("Assignment 3", out=out).add(result)
+    printed = out.getvalue()
+    assert printed.startswith("PASS  10. the drill-down")
+    assert "passed 2 of 3 runs; passes on 2 of 3 runs" in printed
+    assert "live run 2: FAIL, gold category Water Sports" in printed
+    assert "says Hiking rose most (its text)" in printed
+    assert "live run 3: PASS" in printed
+
+
+def test_the_check_plans_two_runs_and_a_third_only_if_needed() -> None:
+    assert (check.NEEDED, check.RUNS) == (2, 3)
+    source = assignment("event-loop").check_file.read_text(encoding="utf-8")
+    assert "extra=RUNS - NEEDED" in source.split("def run(ctx)")[1]

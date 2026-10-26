@@ -5,8 +5,8 @@ Source: Arian Askari, Christian Poelitz, and Xinye Tang (Leiden University, Micr
 
 > **Terms on this page**
 >
-> - **Analyzer team**: The failure analyst, the rule writer, and the critic, which turn failed dev items into a candidate knowledge version.
-> - **Dev split**: The benchmark questions the analyzer team may learn from.
+> - **Analyzer team**: The failure analyst, the rule writer, and the critic, which turn failed development items into a candidate knowledge version.
+> - **Development split**: The benchmark questions the analyzer team may learn from.
 > - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 
 ## Why it matters

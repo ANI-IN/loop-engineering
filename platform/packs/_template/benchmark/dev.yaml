@@ -1,4 +1,4 @@
-# Template benchmark, dev split: 6 items. The analyzer team may read these; it never reads the
+# Template benchmark, development split: 6 items. The analyzer team may read these; it never reads the
 # holdout. Schema: datapilot.contracts.evaluation.BenchmarkItem. Gold SQL follows
 # business_rules.md; each naive_sql is what a model without the rules writes, and it must give a
 # different result than gold on both databases.

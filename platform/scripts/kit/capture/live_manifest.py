@@ -613,11 +613,7 @@ SHOTS: tuple[Shot, ...] = (
 CHAIN_STEPS = tuple(dict.fromkeys(s.chain_step for s in SHOTS if s.chain_step))
 # Listed and embedded in the guide, not captured yet: the lead's live captures write them. A test
 # keeps this list honest: an image here must not exist yet, and every other listed image must.
-AWAITING_CAPTURE = frozenset(
-    {
-        "verify-retry-cap-no-cap-climbing",
-    }
-)
+AWAITING_CAPTURE: frozenset[str] = frozenset()
 
 
 def shots_for(section: str) -> list[Shot]:

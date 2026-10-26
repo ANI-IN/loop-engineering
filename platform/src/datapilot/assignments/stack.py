@@ -48,8 +48,12 @@ from datapilot.loop4_hill_climbing.pack_files import load_submodule, pack_root
 from datapilot.observability.background import bounded_client, use_for_tracing
 from datapilot.settings import get_settings
 
-# The class image's tag in compose.yaml: every service built from it gets the check's own tag.
-CLASS_IMAGE = "datapilot:local"
+# The image tag compose.yaml gives every service built from the platform's code, as written there
+# (read raw, before Compose interpolates it): each Compose project its own image,
+# "<project>:local", so the class project's is datapilot:local. The older literal form counts too.
+# Every service built from it gets the check's own tag in the override.
+CLASS_IMAGE = "${COMPOSE_PROJECT_NAME:-datapilot}:local"
+_CLASS_IMAGE_FORMS = re.compile(r"(datapilot|\$\{COMPOSE_PROJECT_NAME(:?-datapilot)?\}):local")
 CLASS_PROJECT = "datapilot"
 # The check's own project and host ports, used whenever the environment names none.
 DEFAULTS = {
@@ -187,10 +191,16 @@ def project_name() -> str:
     return project
 
 
+def is_class_image(image: object) -> bool:
+    """Whether an image as compose.yaml writes it is the platform's own image: CLASS_IMAGE, the
+    same with ${COMPOSE_PROJECT_NAME} and no default, or the older literal datapilot:local."""
+    return isinstance(image, str) and _CLASS_IMAGE_FORMS.fullmatch(image.strip()) is not None
+
+
 def app_services(tree: Path) -> list[str]:
     """Every service of compose.yaml built from the class image (read, with its merge keys)."""
     compose = yaml.safe_load((tree / "compose.yaml").read_text(encoding="utf-8"))
-    return [name for name, spec in compose["services"].items() if spec.get("image") == CLASS_IMAGE]
+    return [name for name, spec in compose["services"].items() if is_class_image(spec.get("image"))]
 
 
 def _override(tree: Path, project: str, activity: str) -> Path:

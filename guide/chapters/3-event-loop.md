@@ -5,7 +5,7 @@ stop. You watch runs move across the run board on the console's Events page, an 
 a worker restart, three deliveries become one answer, and the kill switch stop a run in flight.
 Every screenshot in this chapter comes from the live runs of 24 October 2026, 13:56 to 14:09
 Coordinated Universal Time, or of 25 October 2026, from 14:49, as each caption says (business date
-31 January 2026), and every time range from the calibration demo pass of 22 and 23 October 2026
+31 January 2026), and every time range from the calibration's run-through of the demos on 22 and 23 October 2026
 and the live sessions of 23, 24, and 25 October.
 
 > Your output will differ: run times, ids, and the agent's wording change on every run.
@@ -348,7 +348,7 @@ make reset NAME=event-loop
 
 ## Time and cost
 
-Times are wall time from the trigger to the checked result, from the calibration demo pass of 22
+Times are wall time from the trigger to the checked result, from the calibration's run-through of the demos on 22
 and 23 October 2026 and the live sessions of 23, 24, and 25 October
 (`docs/calibration-report.md`), each demo run alone with a reset between.
 

@@ -47,10 +47,11 @@ passes, an independent reviewer reads the result.
 
 *Notice the order: the reviewer only ever sees an answer that every grader passed, and the stop before the model call can end the run at any point.*
 
-The section ends with the spine question passing every grader and failing the gold check. Graders
-prove a query is safe and well formed, not that it means what the business means. The gold check
-is what [Section 4: Hill-climbing loop](../section-4-hill-climbing-loop/README.md) measures with.
-The full idea is in [concepts.md](concepts.md) (in class, minutes 0 to 24).
+The section ends with the fiscal year 2025 revenue question passing every grader and failing the
+gold check. Graders prove a query is safe and well formed, not that it means what the business
+means. The gold check is what
+[Section 4: Hill-climbing loop](../section-4-hill-climbing-loop/README.md) measures with. The full
+idea is in [concepts.md](concepts.md) (in class, minutes 0 to 24).
 
 ## How to work through this section
 
@@ -96,8 +97,7 @@ the cost of a check is on the [costs page](../docs/costs.md#assignments).
 ### Further reading
 
 The [reading list](post-class-reading/README.md) has three: why one database is not proof, least
-privilege and allow-lists, and database error codes as feedback. After class,
-[session-notes.md](session-notes.md) recaps what class showed.
+privilege and allow-lists, and database error codes as feedback.
 
 ## Where next
 

@@ -41,6 +41,9 @@ Folder rules (checked on a full run): every section folder has `README.md`, `con
 `session-notes.md`, `demo/` (`README.md`, `run.sh`, `walkthrough.md`, `files/`,
 `expected/`), `assignment/` (`README.md`, `SPEC.md`, `starter/`, `solution/SOLUTION.md`),
 `post-class-reading/README.md`, and `diagrams/README.md` once it has a `diagrams/` folder.
+A public copy may leave out what the release list withholds: the solutions until the Thursday
+review, and `session-notes.md`, which recaps the class run and ships in the first release after
+the class.
 `final-project/` has `README.md`, `run.sh`, `walkthrough.md`, `expected/`, and `CHECKLIST.md`.
 Every `.png` or `.svg` in a `diagrams/` folder has an `.excalidraw` source with the same name.
 
@@ -100,7 +103,11 @@ Do not write sentences about labels.
 ### 5. Evidence stays in the evidence pages, and names follow one format
 
 Run ids, finding ids, source ids, and commit hashes appear only in the evidence pages:
-`docs/evidence.md` (the index) and the files under `docs/evidence/`.
+`docs/evidence.md` (the index) and the files under `docs/evidence/`. Kept on purpose: a short run
+id (its first eight characters) beside a measured result or under a capture, as on
+`docs/benefits.md`, `docs/images/README.md`, and the `demo/expected/` pages, ties that number or
+image to the run behind it. Keep these short ids when you edit such a page; the full record of
+each run is on the evidence pages.
 
 Sections, assignments, and any other named kind are written "<Kind> N: <name>". The first mention
 on a page is the full form; later mentions use the short form "Section 2". Plurals such as
@@ -137,6 +144,14 @@ Every claim comes with its evidence: a command, real output, a file in this repo
 linked source. A claim you cannot back is cut. Every number comes from a file in this repository
 (name the file) or a real run listed in an evidence page. Do not estimate times or costs. Caps are stated as caps, with their variable name in
 `.env.example`. If a number is missing, run the command and capture it. Never commit a placeholder.
+
+A page holds its content; it never says what it will hold. The release build refuses any shipped
+file with placeholder text (its placeholder check, in `platform/scripts/build_release.py`): a
+page that describes its own future content, a placeholder comment, a leftover marker, filler
+text, a bracketed placeholder outside code, or a heading with nothing under it. A course detail
+that is not known yet is written as where the reader finds it ("the time your instructor
+announces in the class chat"). A page whose content cannot exist yet is withheld from the release
+(`platform/config/release.toml`) and no published page links to it until it ships.
 
 ### 8. One "your output will differ" note per page
 
@@ -176,7 +191,10 @@ How a screenshot is taken:
 `platform/scripts/check_images.py` checks every image in the published image folders: the size
 (terminal renders and diagrams have their own minimum, listed in the script with its reason),
 large blank areas of one colour, content cut by the top or bottom edge, and alt text on every
-Markdown reference to the image. It prints one line per problem and the count per kind.
+Markdown reference to the image. It prints one line per problem and the count per kind. It is part
+of the gate, `make verify`. A problem an image has on purpose, such as an empty state's blank
+area, goes in the script's reviewed exceptions (`EXCEPTIONS`) with its reason and when it
+expires; the check prints it as an `excused` line and fails once the image no longer has it.
 
 ### 12. Code blocks
 

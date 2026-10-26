@@ -24,24 +24,24 @@ SLIDES = [
             "Lesson: each loop fixed a different failure, and none needed a bigger model",
         ],
         "notes": [
-            "Say: Retell the spine question's path. In Section 1: Agent loop it was confident and "
+            "Say: Retell the fiscal year 2025 revenue question's path. In Section 1: Agent loop it was confident and "
             "wrong. In Section 2: Verification loop every check turned green and it was still "
             "wrong; on 24 October its SQL carried 3 trap labels. In Section 3: Event loop the same "
             "agent ran on events, with keys, durable approval, and a stop that reaches running "
-            "work; the spine question itself returns in Section 4, as a webhook. In Section 4: Hill-climbing loop it became right, through rules that passed a "
+            "work; the fiscal year 2025 revenue question itself returns in Section 4, as a webhook. In Section 4: Hill-climbing loop it became right, through rules that passed a "
             "gate on questions the analyzer never saw, and it posted at the level its metric "
             "family earned: the unattended level if revenue cleared on the confirmed standard. If "
             "revenue did not clear in the class run, say so: the answer was right and posted at the "
             "assisted level, because the gate did not see enough evidence. In the live session of 24 "
-            "October revenue cleared under the promoted version, v11, and the spine answer, "
+            "October revenue cleared under the promoted version, version 11, and the answer to the fiscal year 2025 revenue question, "
             "64,015,091.21 dollars, matching gold, posted at the unattended level, as it had under "
-            "v8 and v9; under v5 revenue did not clear and the answer was wrong.",
+            "versions 8 and 9; under version 5 revenue did not clear and the answer was wrong.",
             "Point at: the four stages in order.",
             'Likely question: "Can I run the whole path myself?" Answer: yes; the final project '
             "runs it end to end on your machine.",
             "Transition: All the results on one slide.",
         ],
-        "container": "step cards: the spine question's four stages",
+        "container": "step cards: the fiscal year 2025 revenue question's four stages",
     },
     {
         "kind": "closing",
@@ -70,13 +70,13 @@ SLIDES = [
             "cap stopped at 3 attempts, and no malicious statement changed a warehouse row in "
             "either half. Event loop: one event sent three times posted 3 answers without the "
             "key, 1 with it. Hill-climbing loop: the starting version passed 2 of 15 holdout items; the version "
-            "promoted on 24 October, v11, passed 13 of 15 with 0 regressions, and the finale posted "
-            "the correct spine answer at the unattended level.",
+            "promoted on 24 October, version 11, passed 13 of 15 with 0 regressions, and the finale posted "
+            "the correct answer to the fiscal year 2025 revenue question at the unattended level.",
             "Say plainly where a loop did not help: the verification layer made no trap answer "
             "correct; it held or escalated 20 of 40 wrong answers against 1, and the reviewer, "
             "which shares the analyst's knowledge, approved the other 19; the event loop prevents duplicates and lost approvals, not wrong "
             "numbers; and the analyzer's quality varies from run to run, candidates of 2 to 11 of "
-            "15 from the same input, which is why it writes two and keeps the better on dev.",
+            "15 from the same input, which is why it writes two and keeps the better one on the development questions.",
             "Re-check after live runs: every count on the slide against the paired measurements "
             "page of 24 October.",
             "Point at: the hill-climbing row.",
@@ -160,9 +160,9 @@ SLIDES = [
             "Assignment 2: Verification loop: clarify or abstain, and a personal-data leak grader",
             "Assignment 3: Event loop: a nightly revenue anomaly alert, keyed and stoppable",
             "Assignment 4: Hill-climbing loop: a repeat-customer family and a minimum-holdout rule",
-            "Each has a live check with your own OpenAI key. Deadline: [ASSIGNMENT DEADLINE]; "
+            "Each has a live check with your own OpenAI key. Deadline: announced in the class chat; "
             "solutions published when the Thursday review starts.",
-            "Final project: one question through all four loops, on your machine",
+            "Final project: the four loops on your own dataset, with a benchmark you write",
         ],
         "notes": [
             "Say: Each assignment adds a capability class code does not have. Each assignment has "
@@ -170,16 +170,17 @@ SLIDES = [
             "the real stack with your own OpenAI key, reports pass or fail per requirement with a "
             "trace link and a live stamp, and prints its cost estimate first and the actual cost at the "
             "end. There are no stubs or canned model answers in any check: every check is live. "
-            "Solutions are published when the Thursday review starts. The deadline in square "
-            "brackets is a placeholder, replaced before class. The final project runs the spine "
-            "question through all four loops end to end on your own machine, with its own "
-            "walkthrough and checklist.",
+            "Solutions are published when the Thursday review starts. Announce the deadline in the "
+            "class chat before class ends. The final project applies the four loops to your own "
+            "dataset, on a domain no section used, with a benchmark you write and "
+            "its own checklist.",
             "Point at: Assignment 4, which turns the open question about small holdouts into a "
             "rule.",
             'Likely question: "What does the check cost me?" Answer: it prints its estimate '
             "before it starts and the actual cost when it ends, on your own key. Measured in the "
             "build's verification: typically about 0.4 cents for a full check of Assignment 1, "
-            "about 2 cents for Assignment 2, and about 0.2 cents for Assignment 3; and for "
+            "about 2 cents for Assignment 2, and about 0.5 cents for Assignment 3, an estimate "
+            "(its drill-down now runs two or three times; no check has run on that rule yet); and for "
             "Assignment 4, which runs the benchmark, about 13 to 24 cents for each later check of "
             "a live session (12.62 to 23.95 cents, seven checks: five audited clean, and two, of "
             "23 October at 13.58 and 23.95 cents, not confirmed clean). The first check of a live "
@@ -256,12 +257,12 @@ SLIDES = [
         "src": "-",
         "on_slide": [
             "No Question Is Too Small Every Question Deserves an Answer!!",
-            "See you at the Thursday review: [THURSDAY REVIEW TIME]",
+            "See you at the Thursday review: the time is in the class chat",
         ],
         "notes": [
             "Say: Take the last questions. Remind everyone to post Thursday questions in the chat. "
-            "End at 4:00. The review time in square brackets is a placeholder, replaced before "
-            "class.",
+            "End at 4:00. Post the Thursday review time in the class chat if it is not there "
+            "yet.",
             "Point at: the Thursday line.",
             'Likely question: "Where do I start after class?" Answer: setup, then the Section 1 '
             "demos on your own machine.",

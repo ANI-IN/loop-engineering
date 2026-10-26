@@ -155,3 +155,46 @@ def test_the_prose_lint_reports_file_line_and_phrase(
 def test_the_plain_status_symbols_are_allowed() -> None:
     line = "pass ✓, fail ✗, warning ⚠, waiting ⏳"
     assert _load("lint_prose").lint_text(line) == []
+
+
+# -- finding ids (SC09): the research findings and the build's review, milestone, and decision codes
+
+
+def _finding_lines(page: str, rel: str, root: Path) -> list[int]:
+    problems = _load("check_style").check_text(rel, page, root)
+    return [p.line for p in problems if p.check == "SC09"]
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "As finding F-a-12 shows, the check holds.",
+        "Fixed after review finding R3D-01.",
+        "The review's R3B-07 asked for it.",
+        "Finding F071 is closed.",
+        "This lands at milestone B5.",
+        "Decision D8b moved the cap.",
+    ],
+)
+def test_a_finding_id_on_a_course_page_is_found(line: str, tmp_path: Path) -> None:
+    assert _finding_lines(f"# Page\n\n{line}\n", "docs/finding-page.md", tmp_path) == [3]
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "Press F11 for full screen.",
+        "Candidate B 14 of 25, candidate A 13 of 25.",
+        "BIRD and Spider are benchmarks; the B2B segment buys in bulk.",
+        "Commit f071abcd and run 3e0c420d are on the evidence page.",
+        "Version 11 of the knowledge passed 13 of 15 holdout items.",
+        "Section 4 has 13 slides and one 3D chart.",
+    ],
+)
+def test_words_that_only_look_like_finding_ids_are_not_found(line: str, tmp_path: Path) -> None:
+    assert _finding_lines(f"# Page\n\n{line}\n", "docs/finding-page.md", tmp_path) == []
+
+
+def test_finding_ids_stay_allowed_on_the_evidence_pages(tmp_path: Path) -> None:
+    page = "# Evidence: Part\n\nReview finding R3D-01, milestone B5, decision D8b, finding F071.\n"
+    assert _finding_lines(page, "docs/evidence/general.md", tmp_path) == []

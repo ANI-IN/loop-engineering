@@ -12,9 +12,10 @@ The final project is done when you can show the items below. There is no grader.
    `0 problems`.
 4. **Your extension**: the files you changed, and one sentence on what the class code could not do
    before.
-5. **The before-and-after report**: holdout passes under the starting knowledge and under the
-   candidate, the regressions on both splits, the gate verdict, and the trace links of both
-   experiments.
+5. **The before-and-after report**: the holdout items passed (the questions the analyzer team
+   never sees) under version 1 of your knowledge (the starting version) and under the candidate,
+   the regressions on both splits (development and holdout), the gate verdict, and the trace
+   links of both experiments.
 
 ## Self-check
 
@@ -22,6 +23,6 @@ The final project is done when you can show the items below. There is no grader.
 - [ ] Results are counts, such as "3 of 4 holdout items", never percentages.
 - [ ] Each of your traps fails at least once under the starting knowledge; one that passed is
       reported as passing.
-- [ ] The holdout questions are worded away from the dev questions.
+- [ ] The holdout questions are worded away from the development questions.
 - [ ] A run that ended early, at a cap or with a blocked gate, is reported with its counts.
 - [ ] The report says what one run cannot tell you.

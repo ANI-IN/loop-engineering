@@ -11,7 +11,7 @@ The question that breaks is about orders, and nobody can say which pasted line c
 >
 > - **Hill-climbing loop**: Experiments find failures, an analyzer team proposes rules, and a gate decides.
 > - **Knowledge version**: A numbered set of business rules given to the agent in its prompt.
-> - **Dev split**: The benchmark questions the analyzer team may learn from.
+> - **Development split**: The benchmark questions the analyzer team may learn from.
 > - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 > - **Promotion gate**: The check that a new knowledge version must pass before it becomes active.
 > - **Regression**: An item that passed under the active version and fails under the candidate, confirmed by re-runs.
@@ -25,8 +25,8 @@ them only on questions the team never saw, with zero regressions and human appro
 
 ## How it works
 
-If the dev score goes up, should you promote the new rules? No: rules written from the dev items
-fit the dev items. Only the holdout questions decide.
+If the development score goes up, should you promote the new rules? No: rules written from the
+development items fit them. Only the holdout questions decide.
 
 [MAGIC](https://arxiv.org/abs/2406.12692) turns training-set failures into a self-correction
 guideline and reports gains on two benchmarks. A [table agents survey](https://arxiv.org/html/2507.10281)
@@ -42,8 +42,8 @@ query by accident; [Semantic Evaluation for Text-to-SQL with Distilled Test Suit
 measures that false-positive effect and fixes it with more databases. The SQL text evaluator
 (`BUG_SQL_TEXT_EVAL`) compares query text and marks correct answers wrong.
 
-The benchmark has 40 questions, 25 in the dev split (`benchmark/dev.yaml`) and 15 in the holdout
-split (`benchmark/holdout.yaml`), with no ambiguous category.
+The benchmark has 40 questions, 25 in the development split (`benchmark/dev.yaml`) and 15 in the
+holdout split (`benchmark/holdout.yaml`), with no ambiguous category.
 
 Key idea: compare results, not query text.
 
@@ -54,14 +54,14 @@ Three agents split the work, each with one structured output in
 
 | Agent | Reads | Returns |
 |---|---|---|
-| the failure analyst | One failed dev item | `Diagnosis`: what went wrong and the likely cause, no rules |
+| the failure analyst | One failed development item | `Diagnosis`: what went wrong and the likely cause, no rules |
 | the rule writer | The diagnoses | `ProposedRule`: a general rule and when it applies |
 | the critic | Each proposed rule | `CriticReview`: keep, narrow, or drop; never add |
 
-The analyzer model is set separately with `OPENAI_ANALYZER_MODEL`. A rule's SQL guidance must
-run over the schema, or the critic gets it back. The team writes two candidates and keeps the
-better one on dev. The naive analyzer (`BUG_NAIVE_ANALYZER`) quotes each failed question in a rule
-and skips the critic and the guard.
+The analyzer model is set separately with `OPENAI_ANALYZER_MODEL`. A rule's SQL guidance must run
+over the schema, or the critic gets it back. The team writes two candidates and keeps the better one
+on the development split. The naive analyzer (`BUG_NAIVE_ANALYZER`) quotes each failed question in a
+rule and skips the critic and the guard.
 
 Key idea: split diagnosis, proposal, and criticism so no agent grades its own work.
 
@@ -74,11 +74,11 @@ runs on both splits, measured like the active version (`platform/packs/datapilot
 
 - Each holdout item runs 3 times per version and passes on 2 of 3 (`evaluation.holdout_repeats`,
   `evaluation.holdout_pass_threshold`).
-- Each dev item runs once. A dev item that passed under the active version and fails under the
-  candidate is re-run twice more under each version (`evaluation.dev_regression_reruns`). It is a
-  regression only if the candidate fails both of its re-runs and the active version passes both of
-  its own (`evaluation.dev_regression_threshold`), so an item unstable under both versions never
-  counts.
+- Each development item runs once. A development item that passed under the active version and fails
+  under the candidate is re-run twice more under each version (`evaluation.dev_regression_reruns`).
+  It is a regression only if the candidate fails both of its re-runs and the active version passes
+  both of its own (`evaluation.dev_regression_threshold`), so an item unstable under both versions
+  never counts.
 - An apparent holdout regression is confirmed under the candidate only: 3 more runs, and 2 of 3
   must fail again. The active version is not re-run, because its holdout result already passed 2
   of 3 runs. The ledger shows "Apparent regression: confirming with 3 more runs".
@@ -87,14 +87,14 @@ runs on both splits, measured like the active version (`platform/packs/datapilot
   replaced 3 unstable items, found others unstable on the next run, and restored the original 15.
 - Runs go 8 at a time (`evaluation.concurrency`).
 
-The gate passes when the candidate's holdout passes exceed the active version's, there are zero
-regressions on both splits, its new rules pass the overfit guard, and a person approves the
+The gate passes the candidate when it passes more holdout items than the active version, there are
+zero regressions on both splits, its new rules pass the overfit guard, and a person approves the
 knowledge diff. The over-broad version `v2-overbroad`, "exclude discounted orders from revenue",
 breaks items, and the gate blocks it.
 
 Key idea: the gate decides on questions the analyzer never saw.
 
-![The benchmark, 25 dev and 15 holdout items, and two databases feed the experiment runner; failed dev items go to the analyzer team of three agents, then the overfit guard, then a candidate knowledge version; the promotion gate, with its confirming runs and a person's approval, makes the active version; a band below explains autonomy per metric family](diagrams/hill-climbing-loop.svg)
+![The benchmark, 25 development and 15 holdout items, and two databases feed the experiment runner; failed development items go to the analyzer team of three agents, then the overfit guard, then a candidate knowledge version; the promotion gate, with its confirming runs and a person's approval, makes the active version; a band below explains autonomy per metric family](diagrams/hill-climbing-loop.svg)
 
 *Notice that the agents only propose: code decides whether a rule overfits and whether a version is better, and a person approves the promotion.*
 
@@ -109,13 +109,13 @@ the unattended level on the gate's own confirmed standard, not on one lucky expe
   (`evaluation.holdout_regression_reruns`), and counts as passing if it passes 2 of 3 of them.
 - A family stays at the assisted level when one of its items falls short twice.
 
-The spine question then arrives as a webhook, and the correct answer posts at the level its family
-has earned. The revenue metric family
-has 4 holdout questions in `benchmark/holdout.yaml`. Calibration showed why one experiment is not
-enough: all 4 revenue items passed in the same measurement only once in four.
-The rule that a family needs at least three holdout questions before the unattended level is not
-in class code. Assignment 4: Hill-climbing loop builds it, and it applies before the confirmed
-standard: a family with too few holdout questions is never re-run.
+The fiscal year 2025 revenue question then arrives as a webhook, and the correct answer posts at the
+level its family has earned. The revenue metric family has 4 holdout questions in
+`benchmark/holdout.yaml`. Calibration showed why one experiment is not enough: all 4 revenue items
+passed together in only one of four measurements. The rule that a family needs at least three
+holdout questions before the unattended level is not in class code. Assignment 4: Hill-climbing loop
+builds it, and it applies before the confirmed standard: a family with too few holdout questions is
+never re-run.
 
 Key idea: autonomy is granted per metric family, from holdout evidence.
 
@@ -134,7 +134,7 @@ question that used to pass breaks unnoticed. After: the critic drops a rule that
 the gate blocks a version with one regression, and a version that flips holdout items with zero
 regressions waits for human approval.
 
-The loop combines five pieces: a held-out split, zero regressions on both splits, human approval
+The loop combines five pieces: a holdout split, zero regressions on both splits, human approval
 of a versioned knowledge artefact, a deterministic overfit guard, and autonomy per metric family.
 
 ## How DataPilot does it
@@ -188,10 +188,10 @@ guidance; `overfit_guard.py` checks every proposed rule; `candidates.py` keeps o
 
 | Check | Result |
 |---|---|
-| Holdout passes, active version v1 | 2 of 15, in every baseline experiment |
-| Holdout passes, promoted candidate | 12 to 14 of 15 in 7 promotions with two candidates; 3 to 12 earlier (one) |
+| Holdout items passed, version 1 of the knowledge (the starting version) | 2 of 15, in every baseline experiment |
+| Holdout items passed, promoted candidate | 12 to 14 of 15 in 7 promotions with two candidates; 3 to 12 with one |
 | Regressions on both splits | 0 for every promoted version |
-| Naive analyzer verdict | Blocked, in 6 of 6 runs; the holdout never improved |
+| Naive analyzer verdict | Blocked in 6 of 6 runs; 2 of 15 holdout items passed in five, 0 of 15 in one |
 
 The runs are on the [evidence page for this section](../docs/evidence/section-4-hill-climbing-loop.md).
 
@@ -218,11 +218,11 @@ It does not help when:
 
 ## Check your understanding
 
-1. Why can a higher dev score still mean a worse version?
+1. Why can a higher score on the development split still mean a worse version?
 
 <details><summary>Answer</summary>
 
-The rules were written from the dev items, so they fit them. A rule can also break questions that
+The rules were written from the development items, so they fit them. A rule can also break questions that
 passed before. Only the holdout split and the regression check show whether it generalises.
 
 </details>

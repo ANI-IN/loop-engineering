@@ -168,7 +168,7 @@
   metric_family: revenue
   traps: [fiscal_year, net_revenue, cancelled_orders, internal_accounts, eastern_time]
   paraphrase_group: net-revenue-fiscal-year
-  notes: The spine question of the course.
+  notes: The fiscal year 2025 revenue question, which every section of the course asks.
   gold_sql: |
     SELECT round(sum(o.subtotal_cents - o.discount_cents) / 100.0, 2) AS net_revenue
     FROM warehouse.orders o

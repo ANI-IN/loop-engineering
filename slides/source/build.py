@@ -257,7 +257,7 @@ def render(out: str) -> None:
         "transferable engineering concepts; they carry no file names, repository paths, make "
         'commands, or screenshots. The "Source in the repository" column is reviewer metadata only. The '
         "one fragment of code on a slide is the naive query drawn as an annotated diagram on the "
-        "spine question slide; the platform's code appears only in each demo segment, opened live "
+        "slide of the fiscal year 2025 revenue question; the platform's code appears only in each demo segment, opened live "
         "in the editor, and its paths live in that DEMO slide's speaker notes. Every demo is live: "
         "recovery is reset and run it again, never a recording. Each concept slide gives the "
         "principle, why it matters (the failure it prevents), how it works in DataPilot, the "

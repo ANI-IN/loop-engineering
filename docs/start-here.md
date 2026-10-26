@@ -6,6 +6,8 @@
 > - **Verification loop**: Graders check each query and answer, and send failures back to the agent.
 > - **Event loop**: Events become jobs that workers run, with approvals, budgets, and a kill switch.
 > - **Hill-climbing loop**: Experiments find failures, an analyzer team proposes rules, and a gate decides.
+> - **Development split**: The benchmark questions the analyzer team may learn from.
+> - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 
 Module: Loop Engineering builds four loops around one analytics agent, DataPilot, and measures
 each one on the same benchmark. Work through it in order: setup, the four sections, the four
@@ -47,10 +49,10 @@ operations team; LangSmith is your own free account.
 ## Steps 2 to 5: the four sections
 
 Each section has the same parts, in the same order: the README, concepts, the demo and its
-walkthrough, the assignment, the post-class readings, and the session notes.
+walkthrough, the assignment, and the post-class readings.
 
 - [Section 1: Agent loop](../section-1-agent-loop/README.md): better tools before more rules. The
-  section ends with the spine question still answered wrong.
+  section ends with the fiscal year 2025 revenue question still answered wrong.
 - [Section 2: Verification loop](../section-2-verification-loop/README.md): deterministic graders,
   caps the model cannot argue with, and an independent reviewer. Every grader passes, and the
   answer is still wrong.
@@ -68,7 +70,7 @@ solutions are published at the start of the [Thursday review](review-session.md)
 ## Step 7: Final project
 
 The [final project](../final-project/README.md) is open-ended: your own dataset, at least three
-traps of your own, your own benchmark with dev and holdout splits, one extension, and a
+traps of your own, your own benchmark with development and holdout splits, one extension, and a
 before-and-after report.
 
 ## Step 8: Use it in your repository
@@ -78,9 +80,8 @@ or builds a new domain pack from `platform/packs/_template/`.
 
 ## After class
 
-- Read each section's [session notes](../section-1-agent-loop/session-notes.md) and its
-  post-class readings.
+- Read each section's post-class readings.
 - Work through the four assignments before the Thursday review, with their live checks.
 - Bring the question you could not ask in class: questions marked Thursday in the chat are
   answered in the review session, then added to the [frequently asked questions](faq.md).
-- Start the final project once the assignments pass.
+- Start the final project once your assignment checks pass.

@@ -4,8 +4,7 @@ This page holds the evidence for the root README and the shared pages: the model
 the measured costs, the build spend, the dated stops of live work, the assignment verification
 results, the setting changes made during calibration with their commits, and the source register.
 Every number comes from the calibration of 22 and 23 October 2026, the live sessions of 23
-October, the live session of 24 October 2026 (session 5), and the live session of 25 October
-2026 (session 6), recorded in the [calibration report](../calibration-report.md).
+October, the live session of 24 October 2026, and the live session of 25 October 2026, recorded in the [calibration report](../calibration-report.md).
 
 ## How to use this page
 
@@ -19,8 +18,8 @@ Universal Time (UTC).
 ## Results
 
 From the calibration of 22 and 23 October 2026, the live sessions of 23 October, the live
-session of 24 October 2026 (session 5, the rows marked "24 October"), and the live session of 25
-October 2026 (session 6, the rows marked "25 October"), all in the
+session of 24 October 2026 (the rows marked "24 October"), and the live session of 25 October 2026
+(the rows marked "25 October"), all in the
 [calibration report](../calibration-report.md).
 
 | Claim | Runs | Ids |
@@ -37,14 +36,14 @@ October 2026 (session 6, the rows marked "25 October"), all in the
 | Live work stopped a third time | the ledger estimated a refused request at 0.81 dollars, about 08:10 UTC | run 0642c561 |
 | Resumed after the ledger correction | 5 planted halves twice, the finale chain, the naive analyzer once | session b91fc3f7 |
 | Build spend at the end of the session | 3.44 dollars of 10.00 in the ledger; this session 1.7609 of 2.50 | make spend, 23 October 2026, 09:40 UTC |
-| Live session of 23 October, afternoon (session 4) | each core demo and planted half of Sections 1 to 3; the finale (note 2) | session ae67ee60 |
+| Live session of 23 October, afternoon | each core demo and planted half of Sections 1 to 3; the finale (note 2) | session ae67ee60 |
 | Install time, warm caches, a published clone in WSL | seconds: clone 7, setup 1, up 214, seed 65, check-data 6, preflight 58 | learner-path review, 23 October 2026, session 8f9cb8cf |
 | Live session of 23 October, evening (the capture session) | each core demo of Sections 1 to 3; the finale chain; the naive analyzer (below) | 21:17 to 21:55 UTC |
 | 24 October: the live session | every demo, the safeguard, every assignment check (note 8) | sessions 56894641 and 385150df |
 | 24 October: build spend past the warning line | 6.0342 dollars at 11:17:37 UTC, 6.7152 at 11:40:08, 6.9913 at 11:57:22 | the warning lines the assignment checks logged |
 | 24 October: spend this session, per line | 1.5063 dollars of the session's 4.00 (note 8) | make spend, 24 October 2026, 12:20 UTC |
-| 25 October: the class story pass, every core demo in class order, both halves | every moment shown (note 9) | rehearsal session c18bcc2e, preflight 12:42:50 UTC |
-| 25 October: `make up` with the image built | 63 seconds | the build machine, session 6 notes |
+| 25 October: the class story, every core demo in class order, both halves | every moment shown (note 9) | rehearsal session c18bcc2e, preflight 12:42:50 UTC |
+| 25 October: `make up` with the image built | 63 seconds | the build machine's notes of 25 October |
 | 25 October: memory of the six class services | about 625 mebibytes (MiB) in all, postgres 248 of them | `docker stats`, the build machine |
 | 25 October: disk on the build machine | Docker volumes 4.2 gigabytes (GB), images 6.6 GB, uv cache 1.2 GB | `docker system df`, `du` of the uv cache |
 | 25 October: the assignment verification, clean (partly superseded) | every starter failed and every solution passed (note 9) | Captures, below; Assignments 1 and 3 superseded by note 10 |
@@ -56,7 +55,7 @@ measurement ran in rehearsal session 56894641; the assignment checks ran in the 
 stack's session 385150df. The session's lines at 12:20 UTC: development live checks 0.0456,
 calibration 0.8127, assignment verification 0.6439, rehearsal 0.0041 dollars.
 
-Note 9: on 25 October the class story pass ran Sections 1 to 3 from 12:42 to 12:52 UTC, then the
+Note 9: on 25 October the run-through of the class story ran Sections 1 to 3 from 12:42 to 12:52 UTC, then the
 Section 4 chain, the class-day safeguard, and the naive analyzer, all in rehearsal session
 c18bcc2e. The memory, in mebibytes: postgres 248, api 92, worker 90, runner 87, scheduler 56,
 console 51. In the clean assignment verification, each solution of Assignments 1 to 3 passed 2 of
@@ -68,8 +67,8 @@ stack. Each result is on its section's evidence page.
 
 Note 10: from 22:35 UTC on 25 October, after the test database guard (commit d7e6dc5) and the fix
 that lets the api start again (commit 7c32700), `make verify-assignments` checked Assignments 1 and
-3 again: Assignment 1 on the code that ships, Assignment 3 on the code before a later change to
-requirement 10's reading of the answer text (Captures, below). Assignment 1's starter failed, 0 of 11, and each solution passed 11 of 11
+3 again: Assignment 1 on the code that ships, Assignment 3 on commit 7c32700, before later changes
+to requirement 10's reading of the answer text and its pass rule (Captures, below). Assignment 1's starter failed, 0 of 11, and each solution passed 11 of 11
 twice, 6 of 6. Assignment 3's starter failed, 0 of 10; the reference and alternative two passed
 twice, and alternative one failed once on a wrong answer from the agent and then passed, 5 of 6.
 
@@ -79,8 +78,10 @@ Note 2: also preflight, the live smoke check, the naive analyzer twice, and assi
 verification.
 
 In the capture session one demo, verify-graders-pass-still-wrong, was shown on its second attempt
-only; the first posted with no gold check within its window, a cause not yet confirmed. The finale chain gave v9,
-14 of 15 holdout items, and the spine answer correct at the unattended level.
+only; the first posted with no gold check within its window, a cause not yet confirmed. The
+finale chain gave version 9 of the knowledge, 14 of 15 holdout items (the benchmark questions the
+analyzer team never sees), and the answer to the fiscal year 2025 revenue question correct at the
+unattended level.
 
 The model was read from the key check and the response metadata of the calibration step traps.
 The cost of one analyst run is from the spend ledger, activities calibration-experiment and
@@ -92,8 +93,8 @@ The captures published with the solutions, one page each, with the full output, 
 image, a console screenshot, and the trace ids of the live runs: for Assignment 1, the
 verification of 25 October 2026 from 22:35 UTC, on the code that ships; for Assignment 2, the
 clean verification of 25 October 2026, on commit 29d7b2c; for Assignment 3, the verification of 25
-October from 22:47 UTC, on commit 7c32700, with the drill-down question and the pass rule that
-ship; for Assignment 4, the starter, the reference twice, and each alternative
+October from 22:47 UTC, on commit 7c32700, with the drill-down question that ships and the
+earlier rule of one drill-down run a check; for Assignment 4, the starter, the reference twice, and each alternative
 once, of 25 October, with each alternative's run 2 from 23 October. Each captured folder's README lists its captures.
 
 What "the code that ships" means on these pages: a run is on the code that ships only when no
@@ -102,10 +103,20 @@ Any other run names the date and the commit it ran on: the newest commit of the 
 check began, from the times in its capture. By that rule:
 
 - Assignment 1's verification from 22:35 UTC on 25 October 2026 is on the code that ships.
-- Assignment 3's verification from 22:47 UTC ran on commit 7c32700. At 23:34 UTC, commit 75e80e4
-  changed how requirement 10 reads the answer's text, and left its reading of the answer's row
-  unchanged. Five of its six solution checks were judged on the row, so that change cannot alter them.
-  Alternative two's run 1 was judged on its text, and the new reading has not judged it.
+- Assignment 3's verification from 22:47 UTC ran on commit 7c32700, one drill-down run a check.
+  Three later changes can alter its verdicts. At 23:34 UTC, commit 75e80e4 changed how requirement
+  10 reads the answer's text. Commit 89fdd75 (00:07 UTC on 26 October) made an answer fail when its
+  text says a category other than its own top row's rose most, so a verdict judged on the row can
+  change too. On 26 October 2026, a change made requirement 10 pass on 2 of 3 runs, and
+  its judge reads a negation anywhere it governs, reads "the most of any", and names no category
+  for a text that says no rise. The captures store each check's verdict line, not the answer text,
+  Structured Query Language (SQL), or rows, and the check deletes each drill-down run when the
+  next check starts, so the answers are gone. Re-judged with that judge (commit 93b0e1e) at zero
+  cost (the test `platform/tests/unit/test_event_loop_captured_verdicts.py`), only the failure is
+  decided: its
+  row named Hiking, and the row decides, so it fails under the current judge too. The five passes,
+  alternative two's run 1 among them (judged on its text), cannot be judged again; the table below
+  gives each.
 - Assignment 2's checks, from 13:33 UTC, ran on commit 29d7b2c. Assignment 4's ran on commits
   a1428ca (the starter, 14:18 UTC), 90e946e (the reference, 16:56 and 17:11 UTC), and 887e388
   (the alternatives, 18:59 and 19:18 UTC). All of them ran before commit 5f6e617 (19:35 UTC),
@@ -117,7 +128,7 @@ check began, from the times in its capture. By that rule:
   was off in these checks, so none of these changes can alter their verdicts. No check of
   Assignment 2 or 4 has run on the later code.
 
-The verification from 22:35 UTC on 25 October 2026 (session 6), each
+The verification from 22:35 UTC on 25 October 2026, each
 figure the check's own "Spend:" line and each time its capture's own. It ran after the test
 database guard (commit d7e6dc5), which also made Assignment 1's requirement 6 close the superuser
 address and `POSTGRES_PORT` and made Assignment 3's requirement 10 judge the category the answer
@@ -141,7 +152,48 @@ it, as it must fail a wrong answer. The same files passed the next check. A corr
 read FAIL when the agent answers wrongly; the check is right to fail it, and the remedy is to run
 it again.
 
-The clean verification of 25 October 2026 (session 6), each figure the check's own "Spend:"
+**Why one check in 6 failed, from the stored records only.** The cause was the agent's run-to-run
+variation, not the solution:
+
+- The solution controls one thing the agent reads: the drill-down question in its alert, with its
+  event id (`drill_down_question` and `publish` in the solution's `extension.py`). The check
+  submits that question alone, with the metric family; the alert's text and the anomaly rule, the
+  only code alternative one changes, never reach the agent. The question is the same, word for
+  word, in the reference and both alternatives.
+- The `rise_cents` question passed 11 of its 12 drill-down runs that day: 5 of 6 from 22:47 UTC,
+  and 6 of 6 from 20:33 UTC, when the question lacked only the words "in cents" and the check
+  judged the text alone (the gold category named first). Alternative one's own files passed in run
+  6c8dc37d, two minutes after ca5c5e3c, and in 5c16fdb1 and 4333413b at 20:40 and 20:42 UTC. The
+  reference and alternative two passed in every run. No calibration measured this question's
+  spread further: these 12 runs are all there is.
+- In the spend ledger, ca5c5e3c and 6c8dc37d made the same 10 calls in the same order: four
+  analyst calls, a reviewer verdict that held the answer, four more analyst calls, and a final
+  reviewer verdict. Only the content differed, and that is the model's.
+- The answer's SQL and rows were not stored, so the difference in SQL cannot be shown. The
+  solutions' "common mistakes" name one way to lose the check's added orders: they all fall
+  between 20:00 and 23:58 Eastern time, the next day in UTC, so a query that groups by the UTC day
+  misses them, and another category rises most. The question asks for Eastern time; whether the
+  agent's SQL ignored it is not recorded.
+
+So the check now judges requirement 10 on the course's fair pass rule (DECISIONS.md, 22 October,
+item 1, and the assignment rule of 23 October): two runs, a third only when they disagree, and a
+pass on 2 of 3. The stored runs were judged under the earlier rule of one run a check, and no
+check has run under the new rule yet; that run is owed to rehearsal.
+
+**The stored Assignment 3 verdicts, judged again at zero cost** with the judge of commit 93b0e1e,
+which made the 2 of 3 rule:
+
+| Capture | Drill-down run | Stored verdict | The current judge |
+|---|---|---|---|
+| Starter | none | FAIL, no live step ran | FAIL: no live step ran, under any judge |
+| Reference run 1 | 7dc78543 | PASS (its row) | Not judged again: the answer text is not stored |
+| Reference run 2 | 93627639 | PASS (its row) | Not judged again: the answer text is not stored |
+| Alternative one run 1 | ca5c5e3c | FAIL (its row: Hiking) | FAIL: its row says Hiking, so it fails under any text |
+| Alternative one run 2 | 6c8dc37d | PASS (its row) | Not judged again: the answer text is not stored |
+| Alternative two run 1 | 00012315 | PASS (its text) | Not judged again: the answer text is not stored |
+| Alternative two run 2 | 76230e08 | PASS (its row) | Not judged again: the answer text is not stored |
+
+The clean verification of 25 October 2026, each figure the check's own "Spend:"
 line. A check counts as clean when no planted bug was on in its stack; the check now switches
 every planted bug off on its own Compose project.
 
@@ -190,23 +242,23 @@ logs:
   idempotency), superseded by the clean checks above.
 - 25 October, from 14:18 UTC: the first two Assignment 4 reference checks (14.21 and 13.32 cents,
   activities 18a9f9a1 and d523de8a), superseded by the checks of 16:56 and 17:11. The starter of
-  that pass fails before any model call, so its capture stands.
+  that verification fails before any model call, so its capture stands.
 
 The earlier verification of 23 October 2026, from 00:05 Coordinated Universal Time (UTC); the
-passes from 06:45 UTC replace the earlier ones of Assignments 2 and 3. With an Assignment
-3 pass of 07:58 UTC that OpenAI's 504 answers stopped, and that was run again whole, they spent
+checks from 06:45 UTC replace the earlier ones of Assignments 2 and 3. With an Assignment
+3 check of 07:58 UTC that OpenAI's 504 answers stopped, and that was run again whole, they spent
 1.2393 dollars, the sum of their spend lines, and the ledger's session line for assignment
 verification shows the same.
 
-| Assignment | Starter (one pass) | Reference, alternative one, alternative two (two passes each) |
+| Assignment | Starter (one check) | Reference, alternative one, alternative two (two checks each) |
 |---|---|---|
 | Assignment 1: Agent loop | FAIL, 00:05 UTC | PASS in all six, 00:06 to 00:14 UTC |
 | Assignment 2: Verification loop | FAIL, 06:45 UTC | PASS in all six, 06:50 to 07:57 UTC |
 | Assignment 3: Event loop | FAIL, 08:11 UTC | PASS in all six, 08:13 to 08:25 UTC |
 | Assignment 4: Hill-climbing loop (the run 2 captures of both alternatives) | FAIL, 08:27 UTC | PASS in 3 of 6, one per solution; FAIL in 3 on requirement 10 |
 
-The checks of session 4 (23 October 2026, from 17:50 UTC), one each unless stated, are history
-now: the check code changed after them (see the latest checks below).
+The checks of the live session of 23 October 2026, from 17:50 UTC, one each unless stated, are
+history now: the check code changed after them (see the latest checks below).
 
 | Assignment | Starter | Reference | Alternatives |
 |---|---|---|---|
@@ -218,7 +270,7 @@ now: the check code changed after them (see the latest checks below).
 Note 3: the ambiguity suite's "shipped to Texas" case ended 0 of 2; that case is being replaced.
 Note 4: the live drill-down run was blocked by the check stack's daily token budget
 (blocked_budget), a fault of the stack, not of the solution. Note 5: 1 confirmed regression on an
-item that passed under v1.
+item that passed under version 1 of the knowledge (the starting version).
 
 The latest checks, after the case and budget changes, on 23 October 2026 from 21:28 UTC, in one
 live session; each figure is the check's own "Spend:" line:
@@ -237,11 +289,11 @@ is the live proof of the stop at the cap.
 So every reference solution passed on the check code as it stood from 21:28 UTC on 23 October
 2026; the alternatives were not verified on it. After that session, commit 92ea29b (23:55 UTC the
 same night, part of the review of 24 October) changed the checks again with no model call (each
-check's own spend activity, the reset's port guard, Assignment 4's minimum-holdout requirement,
+check's own spend activity, the reset's port guard, Assignment 4's requirement of a minimum number of holdout items,
 its shared baseline, and its kill switch), so each solution was owed its live checks again. The
 checks of 24 October below are those checks.
 
-The checks of 24 October 2026 (session 5), on the code of that day (commit 2003b00), from 10:42 to about
+The checks of 24 October 2026, on the code of that day (commit 2003b00), from 10:42 to about
 12:10 UTC, one each, in the assignments stack's live session 385150df; each figure is the check's
 own "Spend:" line and its wall time:
 
@@ -258,21 +310,21 @@ verification-loop-139348b8, event-loop-7fd68d36, hill-climbing-loop-1db56f51; As
 da3c4c1b, b4455d6f; Assignment 4 418329c2, cb0f0613, 045bf95f. Each is recorded in the spend ledger as
 "assignment verification-" followed by the slug and the id.
 
-The cap stop, 24 October, session 5: the Assignment 2 reference with check_cap_usd set to 0.005
+The cap stop, 24 October: the Assignment 2 reference with check_cap_usd set to 0.005
 (printed rounded, "stops at 0.01 dollars") read "STOPPED at the spend cap, 7 of 10 requirements
 passed, 0 failed, 3 not run", spent 0 cents in 0 model calls, and exited with code 2 (activity
 verification-loop-f6e2672d). One run priced at its whole token budget would pass the cap, so it
 started none.
 
-Note 7: the reference ran baseline experiment edc342f4 of v1 itself, because the session's
+Note 7: the reference ran baseline experiment edc342f4 of version 1 itself, because the session's
 baseline 1c933bea had measured 46 items otherwise than they are now; the gate promoted its
 candidate at 16 of 18 holdout items against 2, with 0 confirmed regressions. Alternative one
 and alternative two shared edc342f4 and were promoted at 13 and 8 of 18 against 2. This is the first measured first check of
 Assignment 4 with two candidates.
 
 LangSmith refused traces from about 06:48 UTC, at the free plan's monthly limit of unique traces,
-so most captures of these passes show the trace id without a link; the run ids, live stamps, and
-spend ledger rows stand in for them. The Assignment 2 audit of the earlier failed passes, and the
+so most captures of these checks show the trace id without a link; the run ids, live stamps, and
+spend ledger rows stand in for them. The Assignment 2 audit of the earlier failed checks, and the
 Assignment 4 analysis of requirement 10, are in each folder's README.
 
 The class story images in [docs/images](../images/README.md) are from live runs of 24 and 25
@@ -313,7 +365,8 @@ The analyzer changes after the review of 23 October:
 
 | Commit | Change |
 |---|---|
-| 48546cb | SQL guidance must run over the schema; two candidates chosen on dev |
+| 48546cb | SQL guidance must run over the schema |
+| | two candidates, chosen on the development questions |
 | | the naive analyzer quotes each failed question; the finale's moment restated |
 
 The live session of 23 October (commit ids in the
@@ -324,5 +377,5 @@ on the confirmed standard.
 Commit 40f10cc makes personal-data routing hold a query that returns a personal column, not one
 that filters on it.
 
-No release tag exists yet; the tag, and how to check a copy against it, are added at release.
-<!-- provisional: filled at release -->
+The public release carries no tag: each release is a normal commit on the public repository's main
+branch, made as the [release checklist](../release-checklist.md) describes.

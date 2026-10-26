@@ -13,7 +13,7 @@ SLIDES = [
         "on_slide": [
             "Module: Loop Engineering",
             "Agent, verification, event, and hill-climbing loops: build each, then measure it.",
-            "[CLASS DATE]",
+            "A live class: every demo runs against the real model",
         ],
         "notes": [
             "Say: Welcome to Module: Loop Engineering. You already build agents. Today is about "
@@ -22,7 +22,7 @@ SLIDES = [
             "one data agent and measure each one. Every demo you see runs live against the real "
             "model.",
             "Point at: the four loop names in the subtitle.",
-            "Placeholder: the class date in square brackets is replaced before class.",
+            "The slide names no date, so the same deck serves every run of the class.",
             'Likely question: "Is this specific to SQL agents?" Answer: SQL makes every check '
             "concrete, so we use it; each principle transfers to any agent whose output you can "
             "check.",
@@ -37,12 +37,12 @@ SLIDES = [
         "minutes": 0.5,
         "says": "Who is teaching, and how to reach them",
         "src": "-",
-        "on_slide": ["Instructor", "[INSTRUCTOR NAME AND CONTACT]"],
+        "on_slide": ["Instructor", "Reach your instructor in the class chat"],
         "notes": [
             "Say: Introduce yourself in two sentences: what you build, and one loop that saved or "
             "cost you in production. Say how learners reach you during and after class.",
-            "Placeholder: the instructor's name and contact in square brackets are replaced "
-            "before class.",
+            "The slide names no person, so any instructor can teach from it: say your name "
+            "aloud and post your contact details in the class chat.",
             "Point at: the contact line.",
             'Likely question: "Where do I ask during class?" Answer: in the chat; questions that '
             "do not fit go to the Thursday review.",
@@ -119,8 +119,8 @@ SLIDES = [
             "Thursday, and you post it with that word. The Thursday review session is two hours on "
             "the four assignments; it also answers the parking lot in writing.",
             "Point at: the Thursday line.",
-            'Likely question: "When is the Thursday review?" Answer: [THURSDAY REVIEW TIME], a '
-            "placeholder replaced before class; the solutions are published when it starts.",
+            'Likely question: "When is the Thursday review?" Answer: at the time I announce in '
+            "the class chat; the solutions are published when it starts.",
             "Transition: Keys next.",
         ],
         "container": "icon row: chat, parking lot",
@@ -292,7 +292,7 @@ SLIDES = [
     },
     {
         "kind": "opening_content",
-        "title": "The spine question: net revenue in fiscal year 2025",
+        "title": "Every section's question: net revenue in fiscal year 2025",
         "layout": "diagram",
         "minutes": 1,
         "says": "One question, five traps the schema does not reveal",
@@ -455,16 +455,16 @@ SLIDES = [
             "18-point labels: the hill-climbing loop from the benchmark to the new active version.",
             "frames": [
                 (0.6, 1.05, 12.13, 5.45, "Section 4: Hill-climbing loop"),
-                (5.85, 1.2, 6.85, 1.65, "Analyzer team: failed dev items only"),
+                (5.85, 1.2, 6.85, 1.65, "Analyzer team: failed development questions only"),
             ],
             "boxes": [
-                (0.8, 1.6, 2.2, 0.95, "data", "Benchmark: 25 dev, 15 holdout"),
+                (0.8, 1.6, 2.2, 0.95, "data", "Benchmark: 25 development, 15 holdout"),
                 (3.3, 1.6, 2.35, 0.95, "step", "Experiment: two databases"),
                 (6.0, 1.6, 2.05, 0.95, "agent", "Failure analyst"),
                 (8.3, 1.6, 2.05, 0.95, "agent", "Rule writer"),
                 (10.6, 1.6, 1.95, 0.95, "agent", "Critic: only cuts"),
                 (10.35, 3.3, 2.2, 1.0, "step", "Overfit guard: no quoted question"),
-                (7.85, 3.3, 2.2, 1.0, "step", "Two candidates, kept on dev"),
+                (7.85, 3.3, 2.2, 1.0, "step", "Two candidates, one kept"),
                 (5.1, 3.3, 2.45, 1.0, "step", "Promotion gate: four conditions"),
                 (2.85, 3.3, 1.95, 1.0, "person", "Human approval"),
                 (0.8, 4.75, 4.0, 0.95, "data", "The new active version, in every prompt"),
@@ -515,19 +515,19 @@ SLIDES = [
         "title": "How we will measure",
         "layout": "diagram",
         "minutes": 0.5,
-        "says": "Hand-written gold queries, results compared on two databases, dev and holdout splits",
+        "says": "Hand-written gold queries, results compared on two databases, development and holdout splits",
         "src": "platform/packs/datapilot_us/pack.yaml",
         "on_slide": [
             "Each question has a hand-written gold query",
             "Pass: the result matches gold on two databases, never the query text",
-            "40 questions: 25 dev the analyzer team may learn from; 15 holdout it never sees",
+            "40 questions: 25 development ones the analyzer team may learn from; 15 holdout it never sees",
             "Holdout items run 3 times and pass on 2 of 3",
             "The gate decides on holdout only, with human approval",
         ],
         "notes": [
             "Say: Every benchmark question has a gold query written by hand. An answer passes when "
             "its result matches gold on two databases, never by comparing query text. The "
-            "benchmark has 40 questions: the analyzer team learns from the dev split only, and the "
+            "benchmark has 40 questions: the analyzer team learns from the development split only, and the "
             "gate decides on the holdout split, where each item runs 3 times and passes on 2 of 3.",
             "Re-check after live runs: 40 items and the 3 runs and 2 passes against the benchmark "
             "files and the evaluation settings.",

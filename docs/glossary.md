@@ -22,7 +22,7 @@ file names, logs, and captured output. The single source is `platform/src/datapi
 | Assignment 1: Agent loop | A value-lookup tool for informal or misspelled names | `make check-assignment NAME=agent-loop` |
 | Assignment 2: Verification loop | A clarify-or-abstain grader and a personal-data leak grader | `make check-assignment NAME=verification-loop` |
 | Assignment 3: Event loop | A nightly revenue anomaly alert, one per day, stopped by the kill switch | `make check-assignment NAME=event-loop` |
-| Assignment 4: Hill-climbing loop | A repeat-customer metric family, a critic change, a minimum-holdout rule | `make check-assignment NAME=hill-climbing-loop` |
+| Assignment 4: Hill-climbing loop | A repeat-customer metric family, a critic change, a holdout minimum per family | `make check-assignment NAME=hill-climbing-loop` |
 
 ### Business rules and traps
 
@@ -58,8 +58,8 @@ in a code span: the naive guard (`BUG_NAIVE_GUARD`). The list, with what each on
 ## Terms A to Z
 
 - **Agent loop**: The model calls tools, reads the results, and repeats until it answers.
-- **Analyzer team**: The failure analyst, the rule writer, and the critic, which turn failed dev
-  items into a candidate knowledge version.
+- **Analyzer team**: The failure analyst, the rule writer, and the critic, which turn failed development
+  questions into a candidate knowledge version.
 - **Answer envelope**: The structured result of a run: status, SQL, rows, and answer text.
 - **Application programming interface (API)**: The service DataPilot's console and commands call;
   in this course, the `api` container on port 8000.
@@ -68,8 +68,8 @@ in a code span: the naive guard (`BUG_NAIVE_GUARD`). The list, with what each on
   live session, that the candidate is compared against.
 - **Business date**: The day DataPilot treats as today, 31 January 2026 (`DATAPILOT_BUSINESS_DATE`).
 - **Candidate**: A knowledge version the analyzer team proposed, not yet promoted.
-- **Candidates A and B**: The two rule sets the analyzer team writes from the same failed dev
-  items; the dev split alone picks the one that goes to the gate.
+- **Candidates A and B**: The two rule sets the analyzer team writes from the same failed
+  development questions; the development split alone picks the one that goes to the gate.
 - **Class-day safeguard**: The live fallback for a wrong finale: the version verified in rehearsal
   becomes active, and the finale runs again.
 - **Comma-separated values (CSV)**: A plain-text table format, one row per line.
@@ -78,15 +78,17 @@ in a code span: the naive guard (`BUG_NAIVE_GUARD`). The list, with what each on
   local time.
 - **Critic**: The agent of the analyzer team that keeps, narrows, or drops each proposed rule, and
   never adds one.
-- **Dev split**: The benchmark questions the analyzer team may learn from.
+- **Development split**: The benchmark questions the analyzer team may learn from.
 - **Domain pack**: The folder that holds one warehouse's settings, rules, benchmark, and knowledge.
 - **Drift canary**: Three easy questions that must pass and two trap questions that must still fail.
 - **Escalated**: A run that ended without an answer because it hit a cap or a refused write.
 - **Evaluator**: The code that runs a benchmark answer's query and the gold query on both
   warehouses and compares their results.
 - **Event loop**: Events become jobs that workers run, with approvals, budgets, and a kill switch.
-- **Failure analyst**: The agent of the analyzer team that diagnoses why each failed dev item
+- **Failure analyst**: The agent of the analyzer team that diagnoses why each failed development question
   failed.
+- **Fiscal year 2025 revenue question**: "What was our net revenue in fiscal year 2025?", the
+  question every section asks.
 - **Gold SQL**: The query an analyst wrote by hand that gives the right answer.
 - **Grader**: A check that passes or fails one stage of a run and says why.
 - **Hill-climbing loop**: Experiments find failures, an analyzer team proposes rules, and a gate
@@ -126,12 +128,10 @@ in a code span: the naive guard (`BUG_NAIVE_GUARD`). The list, with what each on
 - **Rule writer**: The agent of the analyzer team that proposes rules from the failure analyst's
   diagnoses.
 - **Schema scout**: A stateless helper agent that suggests tables and joins for a question.
-- **Spine question**: "What was our net revenue in fiscal year 2025?", the question every section
-  asks.
 - **Stability filter**: The calibration check that keeps only holdout items that pass or fail
   consistently.
-- **Starting knowledge**: Knowledge version v1, the rules DataPilot starts with: only the money
-  rule.
+- **Starting knowledge**: Version 1 of the knowledge (the starting version), the rules DataPilot
+  starts with: only the money rule.
 - **Structured Query Language (SQL)**: The language of every query the analyst writes.
 - **Trace**: The record of one run's steps, each model call and tool call, stored in LangSmith.
 - **Trace sample**: The share of experiment runs that send a trace, about 1 in 5

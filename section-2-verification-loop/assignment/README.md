@@ -2,7 +2,7 @@
 
 Try it yourself first. The full solution is published at the start of the Thursday review.
 
-> **Deadline (instructor: set this before you share the page):** `<set by the instructor>`
+> **Deadline:** the date your instructor announces in the class chat.
 
 ## The problem
 
@@ -93,12 +93,13 @@ its own spend cap of 1.00 dollar, so one check costs at most 100 cents
 
 ## Grading criteria (100 points)
 
-This rubric is for assessing your own work. Nobody grades it.
+This rubric is for assessing your own work. Nobody grades it. Version 1 of the knowledge (the
+starting version) defines neither "loyal" nor "VIP".
 
 | Criterion | What earns the points | Points | How you check it |
 |---|---|---|---|
-| Undefined terms | "loyal" and "VIP" under v1 end in a question that names the term | 15 | Check lines 1 and 2 |
-| Defined terms pass | A defined term, and words that are not business terms, pass | 10 | Check line 3 |
+| Undefined terms | "loyal" and "VIP" under version 1 end in a question that names the term | 15 | Check lines 1 and 2 |
+| Defined terms pass the grader | A defined term, and words that are not business terms, pass the grader | 10 | Check line 3 |
 | Feedback | Each failure has a reason, feedback for the agent, and a severity | 10 | Check line 4 |
 | Deterministic | Neither grader calls a model; both are registered in stage order | 10 | Check lines 5 and 6 |
 | Leak grader | Personal data in an answer fails unless a person approved it | 10 | Check line 7 |

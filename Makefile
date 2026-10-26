@@ -10,11 +10,14 @@ NAME ?=
 PURPOSE ?=
 STEP ?=
 ARGS ?=
-TEST_STACK ?= datapilot-tests
-TEST_POSTGRES_PORT ?= 55432
+# The tests' own stack. Set with :=, not ?=, so an exported shell variable never points these
+# targets at another project: TEST_STACK=datapilot in the environment would stop the class stack.
+# make TEST_STACK=... on the command line still counts.
+TEST_STACK := datapilot-tests
+TEST_POSTGRES_PORT := 55432
 # One run at a time on the tests' own database: parallel checkouts queue on this lock, and so
 # does starting it, since a checkout elsewhere recreates the container from its own folder.
-TEST_LOCK ?= /tmp/datapilot-tests-database.lock
+TEST_LOCK := /tmp/datapilot-tests-database.lock
 VARIANT ?=
 TREE ?=
 PACK ?=
@@ -28,7 +31,7 @@ ONCE ?=
 COMMAND_LINE_ONLY := NAME PURPOSE STEP ARGS VARIANT TREE PACK PLANTED ONCE LEVEL BY RUN REPO FORCE
 $(foreach variable,$(COMMAND_LINE_ONLY),$(if $(filter command line,$(origin $(variable))),,$(eval unexport $(variable))$(eval override $(variable) :=)))
 
-.PHONY: verify help setup up down ps logs migrate seed check-data spend test-stack test-stack-down live-smoke preflight hill-climbing-runner calibrate style-tile demos registries outline docs docs-check test test-integration test-console 	lint format import-lint lint-prose check-style check-style-strict check-short-forms check-names check 	demo reset reset-discarding-baseline archive archive-show safeguard-status safeguard-verify safeguard-activate autonomy open-code test-security 	check-assignment apply-solution verify-assignments diagrams check-pack ci-local check-images
+.PHONY: verify help setup up restart down ps logs migrate seed check-data spend test-stack test-stack-down live-smoke preflight hill-climbing-runner calibrate style-tile demos registries outline docs docs-check test test-integration test-console 	lint format import-lint lint-prose check-style check-style-strict check-short-forms check-names check 	demo reset reset-discarding-baseline archive archive-show safeguard-status safeguard-verify safeguard-activate autonomy open-code test-security 	check-assignment apply-solution verify-assignments diagrams check-pack ci-local check-images
 
 help: ## List every target
 	@grep -E '^[a-zA-Z0-9_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -42,6 +45,10 @@ up: ## Build and start postgres, api, worker, scheduler, hill-climbing runner, a
 	# Build first, then start: a combined "up --build" stalled in the image build under WSL.
 	$(COMPOSE) build
 	$(COMPOSE) up --detach --wait
+
+restart: ## Recreate every service from the image already built, so a changed .env takes effect; wait until healthy (no image build)
+	@mkdir -p $(HOME)/.datapilot
+	$(COMPOSE) up --detach --wait --no-build --force-recreate
 
 down: ## Stop every service (the database volume is kept)
 	$(COMPOSE) down
@@ -124,8 +131,8 @@ ci-local: ## The continuous integration workflow's own steps in a clean clone, n
 	@test -n "$(REPO)" || { echo "x name the release clone: make ci-local REPO=<folder>"; exit 2; }
 	$(UV) run python platform/scripts/ci_local.py --repo "$(REPO)"
 
-check-images: ## Published images: size, blank areas, clipped edges, alt text (not in the gate until the screenshots are retaken)
-	$(UV) run python platform/scripts/check_images.py
+check-images: ## Published images: size, blank areas, clipped edges, alt text; ARGS=--rehearsal at the end of the rehearsal
+	$(UV) run python platform/scripts/check_images.py $(ARGS)
 
 check-short-forms: ## The naming rule on this branch's commit messages (the build only; read without a pipe)
 	$(UV) run python platform/scripts/check_repo_guards.py --commit-messages

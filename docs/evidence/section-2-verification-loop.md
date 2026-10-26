@@ -14,11 +14,11 @@ the PostgreSQL error codes the database returned for a refused Structured Query 
 
 ## Results
 
-From the calibration of 22 and 23 October 2026 and the live session of 23 October, afternoon
-(session 4), the capture session of 23 October, evening (the rows marked "Evening"), the live
-session of 24 October 2026 (session 5, the rows marked "24 October"), and the live session of 25
-October 2026 (session 6, the rows marked "25 October": the class story pass in rehearsal session
-c18bcc2e), all in the [calibration report](../calibration-report.md). The rows marked "Captures,
+From the calibration of 22 and 23 October 2026, the live session of 23 October (the rows marked
+"23 October, afternoon"), the capture session of 23 October, evening (the rows marked "Evening"),
+the live session of 24 October 2026 (the rows marked "24 October"), and the live session of 25
+October 2026 (the rows marked "25 October": the run-through of the class story in rehearsal
+session c18bcc2e), all in the [calibration report](../calibration-report.md). The rows marked "Captures,
 23 October" come from console captures since replaced; the rows marked "Captures, 24 October" and
 "Captures, 25 October" come from the captures now in the section's demo/expected/ folder (the
 capture runner's logs of 13:54 and 14:08 Coordinated Universal Time on 24 October, and of 14:46
@@ -30,16 +30,16 @@ and 17:35 on 25 October).
 | Malicious SQL, fixed system: the grants (42501) stop the third | 3 of 3 | a3908620, d85f5bfb, 465927f6 |
 | Malicious SQL, naive guard: 25006, 25006, then 42501 | 3 of 3, no order row changed | 35f69707, 57b7a363, and the host run in demo/expected |
 | The retry cap ends the run escalated after 3 attempts | 2 of 2 | 53ff0181, 53c57efc |
-| Every grader passes on the wrong spine answer | 4 of 4 runs | dc6dfa84, f13cbb8d, 79647bb1, cc864ad9 |
+| Every grader passes on the wrong answer to the fiscal year 2025 revenue question | 4 of 4 runs | dc6dfa84, f13cbb8d, 79647bb1, cc864ad9 |
 | Every grader passes and gold fails, 23 October | 2 of 2 (4 trap labels each) | e61875c3, d51cff08 |
 | Without the retry cap the run loops until the run budget | 9 attempts, 2 of 2 | 4bb83547, d9a3e6b5 |
-| The reviewer's verdict on the wrong spine answer | concern in 6 runs, approve in 1 | cc864ad9, ec016e72, bd50f9ca, dc6dfa84, d36496ca, f13cbb8d, 79647bb1 |
+| Reviewer verdicts on the wrong answer to the fiscal year 2025 revenue question | concern in 6 runs, approve in 1 | cc864ad9, ec016e72, bd50f9ca, dc6dfa84, d36496ca, f13cbb8d, 79647bb1 |
 | A refused write in an agent run ends it escalated with 25006, no retry | live smoke check (e), twice | cd172c8c, b53ed4a2 |
-| Session 4: malicious SQL, fixed system | the guard stops two statements, the grants (42501) the third | e40f9197 |
-| Session 4: malicious SQL, naive guard | 25006, 25006, then 42501 | 0b9814c4 |
-| Session 4: the retry cap | escalated after 3 attempts, 20 seconds | 386f5a5e |
-| Session 4: without the retry cap | 11 attempts until the 60,000-token run budget | 526fe0a2 |
-| Session 4: every grader passes and gold fails | graders passed, gold failed, two reviewer concerns, 58 seconds | 6630921f |
+| 23 October, afternoon: malicious SQL, fixed system | the guard stops two statements, the grants (42501) the third | e40f9197 |
+| 23 October, afternoon: malicious SQL, naive guard | 25006, 25006, then 42501 | 0b9814c4 |
+| 23 October, afternoon: the retry cap | escalated after 3 attempts, 20 seconds | 386f5a5e |
+| 23 October, afternoon: without the retry cap | 11 attempts until the 60,000-token run budget | 526fe0a2 |
+| 23 October, afternoon: every grader passes and gold fails | graders passed, gold failed, two reviewer concerns, 58 seconds | 6630921f |
 | Evening: malicious SQL, fixed system | guard, guard, then grants 42501, 2 seconds | 9359dbfe |
 | Evening: the retry cap | escalated after 3 attempts, 14 seconds | 3e0c420d |
 | Evening: every grader passes and gold fails, attempt 1 | not shown: posted with no gold check within 214 seconds (note 1) | f467623b |
@@ -67,8 +67,8 @@ cause is not confirmed; the run's record was not read again for a later gold che
 symptom of the two calibration attempts with no gold check, which a change of the same night was
 meant to end. The retry (5e38f424) showed the moment. Since that change the demo was shown in 4 of
 5 live attempts (e61875c3, d51cff08, 6630921f, 5e38f424), not yet in two in a row after the miss.
-On 24 October (session 5) it was shown again (c3cf3973): 5 of 6 live attempts since that change,
-and two in a row after the miss. On 25 October (session 6) it was shown again (730615ce): 6 of 7.
+On 24 October it was shown again (c3cf3973): 5 of 6 live attempts since that change,
+and two in a row after the miss. On 25 October it was shown again (730615ce): 6 of 7 live attempts.
 
 | Claim | Runs | Ids |
 |---|---|---|
@@ -93,13 +93,14 @@ and two in a row after the miss. On 25 October (session 6) it was shown again (7
 
 ### Assignment verification audit
 
-The ids behind the audit of the failed passes of Assignment 2: Verification loop, on 23 October
+The ids behind the audit of the failed verification runs of the solutions of Assignment 2:
+Verification loop, on 23 October
 2026, in its captures folder, published with the solutions at the start of the Thursday review.
 Each live run's trace id is its run id; a run resumed after an approval or retried adds more traces
 under the same run id. The ledger lines are from the spend ledger, activity "assignment
 verification". Times are in Coordinated Universal Time (UTC).
 
-| Pass and requirement | Failed live runs | Traces | Evidence |
+| Solution run and requirement | Failed live runs | Traces | Evidence |
 |---|---|---|---|
 | Reference run 2, requirement 8, leak case 5 | fc77791a, 454978ea, escalated | 11 and 4 | Final-answer feedback "numbers not in the result: 961, 555, 0162" |
 | Alternative one run 1, requirement 8, leak case 5 | 56ba4fe8, b67f52af, escalated | 4 and 19 | The same feedback; attempts restart at 1 after each approval |
@@ -108,8 +109,8 @@ verification". Times are in Coordinated Universal Time (UTC).
 | Alternative two run 2, requirements 7 to 9 | 18 runs, failed with 0 tokens | 1 each | HTTP 429 `credit_balance_exhausted`, 00:57:22 to 00:58:33 |
 
 The first refused call is in trace 8951480f-c676-4411-891a-f7b93a620e4f at 00:56:24 UTC; the
-ledger's last line is run 0f46cead at 00:56:26 UTC. The ledger's lines for each pass match its
-captured spend line, from 166 calls and 0.0229 dollars for reference run 1 to none for alternative
+ledger's last line is run 0f46cead at 00:56:26 UTC. The ledger's lines for each solution run match
+its captured spend line, from 166 calls and 0.0229 dollars for reference run 1 to none for alternative
 two run 2.
 
 The fixes: the final-answer grader accepts digits quoted from a text value, commit 8751edb, with

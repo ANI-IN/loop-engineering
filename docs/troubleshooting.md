@@ -7,6 +7,7 @@
 > - **Console**: The Streamlit app that shows every loop live, on four pages.
 > - **Planted bug**: A defect switched on by a flag so a demo shows its failure every time.
 > - **Trace**: The record of one run's steps, each model call and tool call, stored in LangSmith.
+> - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 
 Each part lists the exact line you see, its cause, and the fix, with the file the message comes
 from. A line that ends in `...` is the start of a longer message. For a first install, follow the
@@ -40,7 +41,7 @@ Messages from `make up`, `make ps`, and `make logs` (`compose.yaml`).
 | `Bind for 127.0.0.1:5432 failed: port is already allocated` | Another Postgres uses port 5432 | Stop it, or set `POSTGRES_PORT` in `.env` and `make up` again |
 | The same line for 8000 or 8501 | Another program uses the application programming interface (API) or console port | Set `API_PORT` or `CONSOLE_PORT` in `.env`, then `make up`; the host commands follow the ports |
 | A service shows `Restarting` in `make ps` | It fails at start | `make logs NAME=<service>` shows the error line |
-| `migrate` exited with an error | The ops migrations failed | `make logs NAME=migrate`; then `make down` and `make up` |
+| `migrate` exited with an error | The migrations of the `ops` schema failed | `make logs NAME=migrate`; then `make down` and `make up` |
 | `attempt to write a readonly database` in `make logs NAME=worker` | The containers run as user id 1000 and cannot write `~/.datapilot` | Make the folder writable for user id 1000 (below), then `make up` |
 
 The spend ledger, `~/.datapilot/spend-ledger.sqlite`, is shared by your machine and the containers,
@@ -72,16 +73,18 @@ Messages from `platform/src/datapilot/loop4_hill_climbing/preflight.py`.
 | `The drift canary failed: a trap question passed ...` | The model no longer behaves as the course measured it | Tell the instructor; calibration runs again before class |
 | `The drift canary failed: an easy question failed ...` | The model or the warehouse changed | `make check-data`; if it passes, tell the instructor |
 | `Less than one class pass is left of this Eastern time day's token budget ...` | Too few tokens are left today for a class (`PURPOSE=class` only) | See "The token budget refusal" below |
+| `This Eastern time day's token budget is spent: 0 tokens are left ...` | No token is left today (`PURPOSE=class` only) | No class session starts today; see "The token budget refusal" below |
 
-**The token budget refusal.** With `PURPOSE=class`, preflight refuses while less than one class
-pass, about 520,000 tokens, is left of the stack's daily token budget, often after a rehearsal on
+**The token budget refusal.** With `PURPOSE=class`, preflight refuses while fewer tokens than one
+class run-through needs, about 520,000, are left of the stack's daily token budget, often after a rehearsal on
 the same Eastern time day. No class session starts, and the session open before it stays open, so
 any run started now belongs to that session. The count starts again at midnight Eastern time;
 raising or resetting it sooner is not a course command, so ask whoever runs the class stack. To
-hold the class that day anyway, run the command the message's last line prints,
-`make preflight PURPOSE=class ACCEPT_TOKENS_LEFT=<the count left>`, with the count the
-`token budget` line shows: the class session starts knowingly, and the worker blocks every run once
-the cap is reached. [The instructor guide](instructor-guide.md#if-something-breaks) lists which
+hold the class that day anyway, run the command at the end of the message,
+`make preflight PURPOSE=class ACCEPT_TOKENS_LEFT=<count>`, with the digits of the printed command,
+without commas: the class session starts knowingly, and the worker blocks every run once the cap
+is reached. With 0 tokens left the message says the day's budget is spent and offers no command,
+and no class session starts that day. [The instructor guide](instructor-guide.md#if-something-breaks) lists which
 demos to cut first. Rehearse on an earlier Eastern time day than the class.
 
 Preflight never prints your key. A failed preflight starts no session, so the earlier session, if
@@ -138,7 +141,7 @@ The console runs at http://localhost:8501 (`CONSOLE_PORT`, `compose.yaml`).
 
 Once the month's traces are used, LangSmith answers every upload with Hypertext Transfer Protocol
 (HTTP) status 429 until the month ends; the [costs page](costs.md#langsmith-traces) explains the
-limit and how a run records the refusal. The SDK's own line says
+limit and how a run records the refusal. The LangSmith software development kit (SDK) says
 `Monthly unique traces usage limit exceeded`. DataPilot prints the first refusal of each
 process once, and a count when the process ends
 (`platform/src/datapilot/observability/background.py`): `LangSmith refused a trace upload (its

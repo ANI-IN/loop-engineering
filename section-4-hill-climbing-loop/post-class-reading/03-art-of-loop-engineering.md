@@ -13,8 +13,8 @@ Source: Sydney Runkle (LangChain), [The Art of Loop Engineering](https://www.lan
 This post names the four loops Module: Loop Engineering builds: the agent, verification,
 event-driven, and hill-climbing loops. Read it after the class as a map of what you built, and
 note where DataPilot makes a different choice: its hill-climbing loop learns knowledge versions
-for a large language model (LLM) and gates them on a holdout split, instead of rewriting the
-harness from production traces.
+for a large language model (LLM) and gates them on a holdout split, benchmark questions the
+analyzer team never sees, instead of rewriting the harness from production traces.
 
 ## Three key ideas
 

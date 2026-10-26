@@ -137,7 +137,7 @@ autonomy:
 evaluation:
   holdout_repeats: 3
   holdout_pass_threshold: 2
-  # An apparent dev regression (passed under the active version, fails under the candidate) is
+  # An apparent regression on the development split (passed under the active version, fails under the candidate) is
   # re-run this many times under each version, and counts only when the candidate fails at least
   # dev_regression_threshold of its re-runs and the active version passes at least that many of
   # its own: an item unstable under both versions is not a regression.

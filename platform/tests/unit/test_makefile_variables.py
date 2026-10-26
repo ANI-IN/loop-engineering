@@ -125,3 +125,22 @@ def test_a_planted_variable_in_makeflags_counts_as_the_command_line() -> None:
     assert "--planted" in _make("demo", "NAME=agent-unbounded-rows", MAKEFLAGS="PLANTED=1")
     assert "--planted" not in _make("demo", "NAME=agent-unbounded-rows", PLANTED="1")
     assert "--planted" not in _make("demo", "NAME=agent-unbounded-rows", "PLANTED=yes")
+
+
+# The tests' own stack is named in the Makefile, never taken from the environment (session 7
+# review): an exported TEST_STACK=datapilot made `make test-stack-down` stop the class stack.
+@pytest.mark.parametrize(
+    ("variable", "exported", "kept"),
+    [
+        ("TEST_STACK", "datapilot", "-p datapilot-tests "),
+        ("TEST_POSTGRES_PORT", "5432", "POSTGRES_PORT=55432 "),
+    ],
+)
+def test_the_tests_stack_ignores_the_environment(variable: str, exported: str, kept: str) -> None:
+    printed = _make("test-stack-down", **{variable: exported})
+    assert kept in printed
+
+
+def test_the_tests_stack_still_takes_the_command_line() -> None:
+    printed = _make("test-stack-down", "TEST_STACK=another-tests")
+    assert "-p another-tests " in printed

@@ -96,7 +96,7 @@ make reset NAME=hill-climbing-loop
 
 ![The terminal output of the four resets: each section's reset lists the tables it cleared; the hill-climbing reset also names the baseline experiment it kept, the candidate version it removed, the retired versions it kept, the active knowledge version v1, and the reset archive of the rows it changed](../docs/images/part0-four-resets-terminal.png)
 
-*Each reset says what it cleared; the hill-climbing reset keeps the session's baseline, leaves v1 active, and archives every row it changed.*
+*Each reset says what it cleared; the hill-climbing reset keeps the session's baseline, leaves version 1 of the knowledge (the starting version) active, and archives every row it changed.*
 
 **Look at:** the last line of each reset.
 
@@ -146,7 +146,7 @@ still fail. Everything from now until the next preflight belongs to this class s
 > [!IFDIFFERENT]
 > `Your OpenAI key was not accepted. Check it with the operations team.` → the key in `.env` is missing or rejected; ask the operations team.
 > `The drift canary failed: ...` → the model changed; do not teach the measured results as they are, and re-run calibration.
-> `Less than one class pass is left of this Eastern time day's token budget ...` (only with `PURPOSE=class`) → no class session started, and the session open before it, often the rehearsal one, stays open: teach nothing in it. Less than about 520,000 tokens is left of the stack's daily token budget. Tell the course owner, then run the command the message's last line prints, `make preflight PURPOSE=class ACCEPT_TOKENS_LEFT=<the count left>`, with the count the `token budget` line shows: the class session starts knowingly, and the worker blocks every run once the cap is reached. Cut the planted half of the unbounded rows demo first, as [the instructor guide](../docs/instructor-guide.md#if-something-breaks) says under "The token budget refusal".
+> `Less than one class pass is left of this Eastern time day's token budget ...` (only with `PURPOSE=class`) → no class session started, and the session open before it, often the rehearsal one, stays open: teach nothing in it. Less than about 520,000 tokens is left of the stack's daily token budget. Tell the course owner, then run the command at the end of the message, `make preflight PURPOSE=class ACCEPT_TOKENS_LEFT=<count>`, with the digits of the printed command, without commas: the class session starts knowingly, and the worker blocks every run once the cap is reached. Cut the planted half of the unbounded rows demo first, as [the instructor guide](../docs/instructor-guide.md#if-something-breaks) says under "The token budget refusal".
 
 > [!INSTRUCTOR]
 > Run preflight once. Never run it again during class: a new session orphans the class baseline.

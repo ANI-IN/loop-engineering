@@ -2,8 +2,8 @@
 
 Calibration ran live on 22 and 23 October 2026 (business date 31 January 2026) against gpt-6-luna,
 the model id the application programming interface (API) returned for every agent and for the analyzer team. It covered the traps under
-the starting knowledge, the analyzer team, the promoted version's holdout flips, the stability
-filter, the reviewer's verdict on the wrong spine answer, the schema scout and the reviewer on and
+version 1 of the knowledge (the starting version), the analyzer team, the promoted version's flips
+on holdout items (the benchmark questions the analyzer team never sees), the stability filter, the reviewer's verdict on the wrong answer to the fiscal year 2025 revenue question, the schema scout and the reviewer on and
 off, experiment wall time at concurrency 8, the confirming re-run, the drift canary, and every core
 demo live twice. It stopped at 00:59 Coordinated Universal Time (UTC) on 23 October 2026, when the OpenAI account ran out of
 credits (every call from then on returned 429, credit_balance_exhausted); the items not run are
@@ -16,7 +16,7 @@ counted.
 
 Every number below comes from a run of this calibration. Raw results are in the gitignored
 folder `.runs/calibration/` and the run log beside them; traces are in LangSmith under three projects:
-datapilot-development (calibration and preflight runs, tagged track:calibration and a feature tag
+datapilot-development (calibration and preflight runs, tagged `track:calibration` and a feature tag
 per step), datapilot-live (the worker's demo runs), and datapilot-experiments (the hill-climbing
 runner's experiments, tagged by knowledge version, split, item, and repetition). The build's traces
 are private, so each result names its run id in words instead of a trace link.
@@ -29,13 +29,13 @@ are private, so each result names its run id in words instead of a trace link.
 | Model, as returned | gpt-6-luna, for every agent and for the analyzer team |
 | Reasoning effort | low for the analyst, the schema scout, and the reviewer |
 | | medium for the analyzer team; Responses API; no temperature |
-| Knowledge versions | v1, the starting knowledge (the money rule only) |
-| | v4, the analyzer team's candidate promoted on 22 October (seven rules) |
+| Knowledge versions | Version 1, the starting version (the money rule only) |
+| | Version 4, the analyzer team's candidate promoted on 22 October (seven rules) |
 | Seeded data | make check-data: both warehouses match expected.yaml |
 | | 405,738 orders in warehouse |
 | Live session | development session 78b04de8-5e2c-4ca5-aba8-43e41f19bf4b |
 | | started by make preflight PURPOSE=development |
-| Measurement scheme | holdout items 3 runs per version, pass on 2 of 3; dev items once |
+| Measurement scheme | holdout items 3 runs per version, pass on 2 of 3; development questions once |
 | Bake-off and analyzer comparison | dropped by decision on 23 October |
 
 Where the model comes from: the key check's model lookup, and the response metadata of 625
@@ -43,9 +43,9 @@ analyst, 237 schema scout, and 141 reviewer calls in the trap step, all returned
 analyzer team uses OPENAI_ANALYZER_MODEL, which was unset, so it ran gpt-6-luna too; by the decision
 of 23 October, gpt-6-luna serves every agent and the analyzer team.
 
-The rest of the measurement scheme, as it stood for these runs: a dev regression is confirmed only
+The rest of the measurement scheme, as it stood for these runs: a regression on the development questions is confirmed only
 on at least 2 failures of 3 runs; an apparent holdout regression is re-run 3 more times and
-confirmed on at least 2 failures. Since session 3, an apparent dev regression is re-run 2 times
+confirmed on at least 2 failures. Since the midday session of 23 October, an apparent regression on the development questions is re-run 2 times
 under each version and counts only when the candidate fails both and the active version passes both
 (`evaluation.dev_regression_reruns` in `pack.yaml`).
 
@@ -54,19 +54,19 @@ under each version and counts only when the candidate fails both and the active 
 Not run, by decision: gpt-6-luna is the class model and the analyzer team's model. What the
 class model does on the 40 items, from the calibration experiments in session 78b04de8:
 
-| Measure | v1, starting knowledge | v4, promoted |
+| Measure | Version 1, starting knowledge | Version 4, promoted |
 |---|---|---|
 | Experiment | 2bcc6ac2 | 3358ea89 |
 | Easy items (no trap) passed | 6 of 7 | 7 of 7 |
 | Trap items failed | 33 of 33 | 13 of 33 |
 | Holdout passes | 2 of 15 | 12 of 15 |
 | Holdout trap items passed | 0 of 13 | 10 of 13 |
-| Dev passes | 4 of 25 | 15 of 25 |
-| Regressions, dev and holdout | | 0 and 0 |
+| Development questions passed | 4 of 25 | 15 of 25 |
+| Regressions, development and holdout | | 0 and 0 |
 | Wall time, 70 runs at concurrency 8 | 273.4 seconds | 203.3 seconds |
 | Cost, 70 runs | 0.0828 dollars | 0.0594 dollars |
 
-The holdout trap items v4 flipped: web-orders-calendar-2024, units-by-category-fiscal-2024,
+The holdout trap items version 4 flipped: web-orders-calendar-2024, units-by-category-fiscal-2024,
 net-revenue-fiscal-2026, buyers-first-quarter-fiscal-2026, net-revenue-cyber-monday-2025,
 orders-black-friday-2025, new-customers-fiscal-2026, bottom-states-net-revenue-fiscal-2026,
 app-average-order-value-fiscal-2026, and app-share-net-revenue-fiscal-2026. Still failing:
@@ -83,65 +83,66 @@ dollars.
 ## Analyzer comparison
 
 Not run, by decision (gpt-6-luna only). The analyzer team on gpt-6-luna ran four times, each from
-the failed dev items of a v1 experiment in the same session; the first run's candidate, v4, was
+the failed development questions of a version 1 experiment in the same session; the first run's candidate, version 4, was
 measured twice (rows 1 and 2):
 
-| Run | Rules proposed, kept by the critic, passed the overfit guard | Candidate holdout passes against v1 | Regressions |
+| Run | Rules proposed, kept by the critic, passed the overfit guard | Candidate holdout passes against version 1 | Regressions |
 |---|---|---|---|
 | Hill-climbing capture, 22 October (request 1bd79879) | 8, 7, 7 | 11 of 15 against 2 (experiment 1e0ec097) | 0 |
 | Same version, calibration experiment 3358ea89 | | 12 of 15 against 2 | 0 |
-| Demo pass 1 | 8, 7, 7 | 3 of 15 against 2 (experiment aa1dfae5) | 0 |
-| Demo pass 2 | 9, 8, 8 | 6 of 15 against 2 (experiment 0cf7df9d) | 0 |
-| Earlier session, before the personal-data fix (v3) | 9, 9, 9 | 2 of 15 against 2 | 0 |
+| Demo run-through 1 | 8, 7, 7 | 3 of 15 against 2 (experiment aa1dfae5) | 0 |
+| Demo run-through 2 | 9, 8, 8 | 6 of 15 against 2 (experiment 0cf7df9d) | 0 |
+| Earlier session, before the personal-data fix (version 3) | 9, 9, 9 | 2 of 15 against 2 | 0 |
 
 The rules are general (fiscal calendar, net revenue, eligible orders, New York local dates,
 category rollup, first qualifying order, average order value); the overfit guard rejected none, and
 the critic dropped the business-day holiday rule each time it was proposed in these runs (in
-session 4 the kept candidate, v8, carries one; see below). The v3 run scored no
-better than v1 because a correct query that filters internal accounts by email domain was held for
+the afternoon session of 23 October the kept candidate, version 8, carries one; see below). The version 3 run scored no
+better than version 1 because a correct query that filters internal accounts by email domain was held for
 human approval; the fix routes only a query that returns a personal column.
 
 Recommendation: keep gpt-6-luna for the analyzer team, but the candidate's quality varies from run
-to run (3, 6, and 11 holdout passes from the same 21 failed dev items), so the candidate experiment
+to run (3, 6, and 11 holdout passes from the same 21 failed development questions), so the candidate experiment
 demo's "clear majority of holdout trap items" is not guaranteed by one live analyzer run. Before
 class, re-run the analyzer team at reasoning effort high and measure whether that narrows the
 spread; until then the demo needs a planted aid or a rehearsal-time check.
 
 Prepared, not run: `make calibrate STEP=analyzer-high`. It runs the analyzer team at reasoning
-effort high (the pack's effort, medium, is unchanged for class) from the failed dev items of the
-open session's experiment of v1, the same input the analyzer step reads, then the candidate
+effort high (the pack's effort, medium, is unchanged for class) from the failed development questions of the
+open session's experiment of version 1, the same input the analyzer step reads, then the candidate
 experiment against that same experiment. It records the candidate's holdout passes, holdout trap
 flips, and confirmed regressions in `.runs/calibration/analyzer-high-*.json`, with how many earlier
-analyzer runs had exactly the same failed dev items. It prints its cost estimate before any model
+analyzer runs had exactly the same failed development questions. It prints its cost estimate before any model
 call: one analyzer team run (about 0.02 dollars) and one 70-run candidate experiment at the measured
 0.0011 dollars per run, about 0.10 dollars in all, with re-runs of apparent regressions on top. With
-no experiment of v1 in the open session it stops before any call and names
+no experiment of version 1 in the open session it stops before any call and names
 `make calibrate STEP=experiment-starting` (about 0.08 dollars).
 
 Built after the review of 23 October (its commit is on the evidence page), proposed as the fallback if effort high did not narrow the spread, which it did not (2, 9, and 5
-of 15, below): the analyzer team produces two candidate rule sets from the same failed dev items,
+of 15, below): the analyzer team produces two candidate rule sets from the same failed development questions,
 by two independent runs of the failure analyst, the rule writer, and the critic, each through the overfit guard. Both
-candidates run on the dev split only (25 items once each), compared with the active version's
+candidates run on the development split only (25 items once each), compared with the active version's
 results in the session's baseline experiment. The better one is selected by these keys in order:
-fewer dev regressions, then more dev passes, then fewer rules. The holdout is never used for the
+fewer regressions, then more passes, on the development questions, then fewer rules. The holdout is never used for the
 choice: only the selected candidate goes to the candidate experiment and the gate, so the holdout
 still measures questions no decision was tuned on. Cost per attempt: one more analyzer team run and
-50 dev runs, about 0.08 dollars; wall time about 1 to 1.5 minutes more at concurrency 8. The risk is
-that dev was the analyzer's own input, so dev selection favours rules fitted to those failures; the
+50 runs on the development questions, about 0.08 dollars; wall time about 1 to 1.5 minutes more at
+concurrency 8. The risk is that the development questions were the analyzer's own input, so
+choosing on them favours rules fitted to those failures; the
 overfit guard and the holdout gate still stand behind it. As built: the number of candidates is
 `analyzer.candidates: 2` in `pack.yaml`; the hill-climbing runner's analyzer request runs the team
 once per candidate, saves each candidate's rules under a retired version of its own (such as
-v7-candidate-a), runs it on the 25 dev items once each, and compares each item with the baseline
-experiment's dev result; a dev regression here is apparent, from one run, and the gate confirms the
+`v7-candidate-a`), runs it on the 25 development questions once each, and compares each item with the baseline
+experiment's result for that question; a regression on the development questions here is apparent, from one run, and the gate confirms the
 kept candidate's regressions with its own re-runs. The kept candidate is saved as the draft for
 approval. Every candidate is a row in `ops.analyzer_candidates` (migration 016), and the Improve
-page shows the choice above the knowledge diff, such as "Candidate A: 14 of 25 dev, 0 regressions,
-7 rules; Candidate B: 12 of 25 dev, 1 regression, 8 rules; chosen: A". Run live twice: in session
-4 (v8) and in the capture session of 23 October, evening (v9), both below.
+page shows the choice above the knowledge diff, such as "Candidate A: 14 of 25 dev, 0 regressions, 7
+rules; Candidate B: 12 of 25 dev, 1 regression, 8 rules; chosen: A". Run live twice: in
+the afternoon session of 23 October (version 8) and in the capture session of 23 October, evening (version 9), both below.
 
 ## Agents on and off
 
-Four benchmark questions under v1, once per configuration (calibration step agents, run of 23:29
+Four benchmark questions under version 1, once per configuration (calibration step agents, run of 23:29
 UTC); tokens are the run's input plus output, seconds its wall time.
 
 | Configuration | Mean tokens | Mean seconds |
@@ -165,10 +166,10 @@ UTC); tokens are the run's input plus output, seconds its wall time.
 | top-customers-fiscal-2025 | Scout off | 4,177 tokens, 15.6 seconds |
 | top-customers-fiscal-2025 | Reviewer off | 4,283 tokens, 11.9 seconds |
 | top-customers-fiscal-2025 | Both off | 4,340 tokens, 13.9 seconds |
-| net-revenue-fiscal-2025 (spine) | Scout and reviewer on | 17,002 tokens, 40.7 seconds, held |
-| net-revenue-fiscal-2025 (spine) | Scout off | 5,895 tokens, 18.8 seconds |
-| net-revenue-fiscal-2025 (spine) | Reviewer off | 13,341 tokens, 23.7 seconds |
-| net-revenue-fiscal-2025 (spine) | Both off | 3,669 tokens, 12.4 seconds |
+| net-revenue-fiscal-2025 | Scout and reviewer on | 17,002 tokens, 40.7 seconds, held |
+| net-revenue-fiscal-2025 | Scout off | 5,895 tokens, 18.8 seconds |
+| net-revenue-fiscal-2025 | Reviewer off | 13,341 tokens, 23.7 seconds |
+| net-revenue-fiscal-2025 | Both off | 3,669 tokens, 12.4 seconds |
 
 Gold results were identical in every configuration: the two easy questions pass, the two trap
 questions fail. Each cell is one run per question, so the table shows what happened, not a cause.
@@ -176,8 +177,8 @@ The extra tokens appear when both agents are on and the reviewer raises a concer
 analyst back and then holds the answer: the two held runs are the two largest. With one agent on,
 the reviewer alone added 516 tokens on average over both off, and the scout alone 2,449.
 
-The reviewer's verdict on the wrong spine answer, over every run where the analyst answered with
-Structured Query Language (SQL) under v1 and has a trace below: concern in 6 runs, approve in 1.
+The reviewer's verdict on the wrong answer to the fiscal year 2025 revenue question, over every run where the analyst answered with
+Structured Query Language (SQL) under version 1 and has a trace below: concern in 6 runs, approve in 1.
 
 | Run | Verdict | Trace |
 |---|---|---|
@@ -185,8 +186,8 @@ Structured Query Language (SQL) under v1 and has a trace below: concern in 6 run
 | Agents step, scout off | approve | ec016e72 |
 | Section 1: Agent loop capture | concern, held | bd50f9ca |
 | Section 2: Verification loop capture | concern twice, held | dc6dfa84 |
-| Demo pass, agent-confident-wrong-answer attempt 1 | concern twice, held | d36496ca |
-| Demo pass, verify-graders-pass-still-wrong attempts 1 and 2 | concern | f13cbb8d, 79647bb1 |
+| Demo run-through, agent-confident-wrong-answer attempt 1 | concern twice, held | d36496ca |
+| Demo run-through, verify-graders-pass-still-wrong attempts 1 and 2 | concern | f13cbb8d, 79647bb1 |
 
 The premise of Assignment 2: Verification loop (class code guesses at a term no business rule
 defines), from the same step:
@@ -205,7 +206,7 @@ still needed, because with the reviewer off the guess is posted unflagged.
 
 ## Traps
 
-Every trap item 3 times under v1 (calibration step traps, 99 runs, 400.6 seconds, experiment 322f604d):
+Every trap item 3 times under version 1 (calibration step traps, 99 runs, 400.6 seconds, experiment 322f604d):
 
 | Trap | Items carrying it | Runs | Runs that passed |
 |---|---|---|---|
@@ -225,7 +226,7 @@ top-customers-fiscal-2026 (run 26191448).
 
 The stability filter, 5 runs per holdout item (a keep needs 4 or 5 of 5, or 0 or 1 of 5):
 
-| Holdout item | Family | v1, run 23:02 | v4, run 23:10 |
+| Holdout item | Family | Version 1, run 23:02 | Version 4, run 23:10 |
 |---|---|---|---|
 | average-list-price-active | products | 5 | 5 |
 | web-orders-calendar-2024 | orders | 0 | 4 |
@@ -243,11 +244,11 @@ The stability filter, 5 runs per holdout item (a keep needs 4 or 5 of 5, or 0 or
 | app-average-order-value-fiscal-2026 | aov | 0 | 4 |
 | app-share-net-revenue-fiscal-2026 | revenue | 0 | 5 |
 
-Under v1 every item is stable (all at 0 or 5). Under v4, 3 items were unstable. As the rule allows,
+Under version 1 every item is stable (all at 0 or 5). Under version 4, 3 items were unstable. As the rule allows,
 they were replaced by new items of the same family and category, never seen by the analyzer team
 (see the evidence page): camping-units-fiscal-2026, orders-second-quarter-fiscal-2026, and
 net-revenue-christmas-eve-2025, whose gold and naive SQL differ on both warehouses. The filter was
-then run again (23:18 under v1, all stable; 23:23 under v4): 4 items unstable, 3 of them different
+then run again (23:18 under version 1, all stable; 23:23 under version 4): 4 items unstable, 3 of them different
 from the first run, including two the first run had at 5 of 5 (net-revenue-fiscal-2026 2 of 5,
 app-share-net-revenue-fiscal-2026 2 of 5) and two of the new items (camping-units-fiscal-2026 2 of
 5, orders-second-quarter-fiscal-2026 3 of 5). The instability belongs to the promoted version's
@@ -260,8 +261,8 @@ family for the unattended level only when every holdout item of the family passe
 experiment of the promoted version. Revenue has 4 holdout
 items; with each passing 2 to 5 of 5 under a promoted version, all 4 passed in only one of the four
 measurements above, and revenue was cleared in none of the three live promotions (cleared:
-average order value and customers on 22 October; none in demo pass 1; average order value and
-products in demo pass 2). The spine question by webhook was answered correctly (64,015,091.21
+average order value and customers on 22 October; none in demo run-through 1; average order value and
+products in demo run-through 2). The fiscal year 2025 revenue question by webhook was answered correctly (64,015,091.21
 dollars, gold passed, run 32c5abc0) but posted at the assisted level.
 
 Recommendations:
@@ -279,13 +280,13 @@ Recommendations:
   (`eligibility.confirmed_clearance`) and writes each re-run beside its item in the candidate
   experiment. The measured numbers above stand: under the earlier rule, revenue clearance depended
   on all 4 revenue items passing in one experiment, which happened once in four measurements. The
-  new standard ran live three times, below: under v5 revenue did not clear; under v8 (session 4)
-  and v9 (the capture session of 23 October, evening) it cleared.
+  new standard ran live three times, below: under version 5 revenue did not clear; under version 8 (the afternoon session of 23 October)
+  and version 9 (the capture session of 23 October, evening) it cleared.
 
 ## Confirming re-run
 
 The gate's own code (find_regressions with the scheme's re-runs), on net-revenue-fiscal-2026 under
-v4, the item the stability filter had at 2 of 5 (a flaky item, chosen on purpose):
+version 4, the item the stability filter had at 2 of 5 (a flaky item, chosen on purpose):
 
 | Run (23 October, UTC) | First 3 runs | Re-runs | Outcome |
 |---|---|---|---|
@@ -299,12 +300,12 @@ ee0d768a,
 5315a5a3.
 No apparent regression in these calibration experiments was confirmed: each had 0 regressions.
 Across the analyzer team's candidate experiments with an id in this report, 9 of 10 had 0
-regressions; 25d0f021 (analyzer at reasoning effort high, run 1) had 1 dev regression,
+regressions; 25d0f021 (analyzer at reasoning effort high, run 1) had 1 regression on the development questions,
 camping-subcategories.
 
 ## Drift canary
 
-Three easy questions must pass and two trap questions must fail under v1. All four canary runs
+Three easy questions must pass and two trap questions must fail under version 1. All four canary runs
 passed it: preflight at 21:02 and 22:12 UTC on 22 October, the calibration canary at 23:37 UTC
 (3 easy passed, 2 traps failed, product-count (run bf91c403), net-revenue-fiscal-2025 (run 5401c604)), and the first
 preflight at 20:57, which first scored a correct easy answer as failed because of an event-loop bug
@@ -329,7 +330,7 @@ registry: 3 to 5 minutes per demo.
 | events-approval-survives-restart | shown, 84 seconds (446dbe72) | shown, 81 seconds (c85a9984) | not run |
 | events-duplicate-events | shown, 57 seconds: 1 run, 2 duplicates absorbed, 1 digest (65ced5cc) | shown, 78 seconds (f19be33c) | not run |
 | events-kill-switch-in-flight | shown, 33 seconds, stopped in flight (6a0b1408) | shown, 8 seconds (619c716e) | not run |
-| improve-baseline-experiment | shown, 285 seconds: v1 2 of 15 (572dc0ea) | shown, 266 seconds (bf861054) | |
+| improve-baseline-experiment | shown, 285 seconds: version 1 2 of 15 (572dc0ea) | shown, 266 seconds (bf861054) | |
 | improve-analyzer-team-approve | shown, 62 seconds: 7 rules passed the guard | shown, 98 seconds: 8 rules | |
 | improve-naive-analyzer-blocked | | | not run |
 | improve-candidate-experiment | not shown: 3 of 15 against 2, 0 regressions (aa1dfae5) | not shown: 6 of 15 against 2 (0cf7df9d) | |
@@ -345,19 +346,19 @@ Demos whose guaranteed moment did not appear, and why:
   the business date. Fixed the same night (the reviewer sees the business date); retake not run.
 - improve-baseline-experiment exceeds its 3-minute target (266 and 285 seconds for 70 runs).
 - improve-candidate-experiment and improve-cleared-unattended: the analyzer team's candidates in
-  this pass were weak (3 and 6 of 15); see the analyzer comparison. On 22 October the same chain
+  this run-through were weak (3 and 6 of 15); see the analyzer comparison. On 22 October the same chain
   gave 11 of 15 and a correct finale at the assisted level.
 - agent-unbounded-rows: the fixed half ran (about 18,000 to 20,000 tokens per run); the planted
   half, which the moment compares against, was not run.
 
 ## Wall time
 
-The full scheme (70 runs: 25 dev items once, 15 holdout items 3 times) at concurrency 8: 182 to 459
+The full scheme (70 runs: 25 development questions once, 15 holdout items 3 times) at concurrency 8: 182 to 459
 seconds over every 70-run experiment in this report. The first 8 (calibration 273.4 and 203.3 seconds;
-hill-climbing captures 257.9 and 213.2 seconds; demo pass 283.4, 279, 259.9, and 193 seconds) took 193 to 283
+hill-climbing captures 257.9 and 213.2 seconds; demo run-through 283.4, 279, 259.9, and 193 seconds) took 193 to 283
 seconds. Later: 280.8 seconds (the starting experiment before the analyzer at effort high), 458.9, 229.4,
 and 403.8 seconds (the three candidates at effort high), 273.4 and 257.6 seconds (the chain of 23 October,
-morning), 276.8 and 206.5 seconds (session 4), and 278.8, 181.9, and 212.4 seconds (the capture session of 23
+morning), 276.8 and 206.5 seconds (the afternoon session of 23 October), and 278.8, 181.9, and 212.4 seconds (the capture session of 23
 October, evening). Two runs, both candidates at effort high with 10 rules
 each, took 6.8 and 7.6 minutes, past the 5-minute budget of the candidate experiment demo. The
 baseline experiment demo's 3-minute target is missed in every run. Cost per 70-run experiment, where
@@ -372,7 +373,7 @@ make spend at the end of calibration (23 October, 01:20 UTC), with the caps as t
 |---|---|---|
 | development live checks | 0.7808 dollars | 1.50 |
 | calibration | 0.6313 dollars | 2.50 |
-| assignment verification (another track) | 0.2712 dollars | 2.50 |
+| assignment verification | 0.2712 dollars | 2.50 |
 | rehearsal | 0 | 2.50 |
 | reserve | 0 | 1.50, not used |
 | total | 1.6833 dollars | 10.00, warning at 6.00 |
@@ -390,9 +391,9 @@ make spend at the end of calibration (23 October, 01:20 UTC), with the caps as t
 | calibration-confirm | 67 | 0.0070 |
 | calibration-canary | 37 | 0.0041 |
 
-Misattributed: the demo pass of this calibration ran through the stack's worker and runner, which
+Misattributed: the demo run-through of this calibration ran through the stack's worker and runner, which
 record under the stack's activity, "development". About 0.46 dollars of calibration work (the
-development activity grew from 0.3067 to 0.7633 dollars during the demo pass) is counted on the
+development activity grew from 0.3067 to 0.7633 dollars during the demo run-through) is counted on the
 development live checks line. Measured cost per analyst run: about 0.001 dollars; between 5 and 8
 of every 10 input tokens were served from OpenAI's prompt cache.
 
@@ -416,7 +417,7 @@ agent-confident-wrong-answer, verify-graders-pass-still-wrong, and events-webhoo
 ## Live session of 23 October, stopped at the trace limit and at the ledger
 
 The session started at 05:13 UTC on 23 October 2026 with its own limits (development live checks
-0.40 dollars, calibration 1.00, 2.50 in all, shared with the assignment verification track). Live
+0.40 dollars, calibration 1.00, 2.50 in all, shared with the assignment verification line). Live
 work stopped at about 06:50 UTC, during the first live smoke check: LangSmith refused every trace
 with 429, "Monthly unique traces usage limit exceeded". The rule at that time was that every result
 carries a trace link, so no further live run was made; the model calls themselves still succeeded.
@@ -426,19 +427,19 @@ Preflight (session e12c9e88, purpose development): every service healthy, gpt-6-
 canary as expected, three easy questions passed and two traps failed; traces for
 product-count (run 74ff46f4)
 and the
-spine trap (run dd99cbfd).
+fiscal year 2025 revenue question (run dd99cbfd).
 
 The live smoke check, five calls (actual 0.0056 dollars against the estimate 0.0264):
 
 | Call | Result | Tokens in (cached), out; cost | Trace |
 |---|---|---|---|
 | Analyst with the scout | answered, gold check passed | 7,604 (1,538), 681; 0.0010 | 32b30a5e |
-| Spine question | held for approval (below) | 21,855 (12,991), 1,835; 0.0020 | fb8cef0c |
+| Fiscal year 2025 revenue question | held for approval (below) | 21,855 (12,991), 1,835; 0.0020 | fb8cef0c |
 | Webhook event | posted: 291 orders on the previous day | 14,158 (2,905), 898; 0.0017 | c1fd7f5c, refused |
 | Analyzer team step | 2 diagnoses, 3 rules kept and guarded | 2,224 (0), 1,199; 0.0008 | f542227f, refused |
 | Refused write | SQLSTATE 25006; the run ended escalated | 743 (0), 33; 0.0001 | bb9c326f, refused |
 
-The spine question passed every grader; the reviewer raised a concern that fiscal year 2025 was
+The fiscal year 2025 revenue question passed every grader; the reviewer raised a concern that fiscal year 2025 was
 taken as the calendar year, so the answer was held for approval, and the gold check failed (row 1
 differs). The analyzer team step proposed 3 rules; the critic kept 3 and all 3 passed the overfit
 guard (not saved). Runs whose trace was refused are named by run id.
@@ -489,11 +490,11 @@ development); preflight passed again with the drift canary as expected.
 The cap probe's own reason says "after 0 tokens" while the ledger has 14 output tokens: the
 probe makes two analyst calls, an ordinary opening call (715 input, 14 output tokens) and the call
 that is cut off, which reported 0 input and 0 output tokens, the count the guard named (diagnosed
-and fixed in session 4: a cut-off reply that reports zero now reads as no count, with the run's
+and fixed in the afternoon session of 23 October: a cut-off reply that reports zero now reads as no count, with the run's
 total named). make spend with the switch off printed
 "the build budget is off (DATAPILOT_BUILD_BUDGET is not 1): the lines below are not enforced", and
 with it back at 1 the lines are enforced again; the session limit held either way. The console's
-"Send webhook question" sends the spine question, while make demo sends the question about the
+"Send webhook question" sends the fiscal year 2025 revenue question, while make demo sends the question about the
 previous day, so the console run was held by the reviewer (the guaranteed moment needs the make
 question).
 
@@ -506,17 +507,18 @@ before bb0b0e2. The overshoot comes from the approved query `SELECT array_agg(em
 holding all 5,261 addresses, which the row cap of 50 does not limit, sent again with every later
 call, while the run budget is checked before each call.
 
-Analyzer at reasoning effort high, after the starting experiment (v1: holdout 2 of 15, dev 5 of
+Analyzer at reasoning effort high, after the starting experiment (version 1: holdout 2 of 15, development 5 of
 25, 280.8 seconds, 0.0914 dollars):
 
-| Run | Candidate, experiment | Holdout passes (v1: 2), trap flips, regressions | Cost |
+| Run | Candidate, experiment | Holdout passes (version 1: 2), trap flips, regressions | Cost |
 |---|---|---|---|
-| 1 | v4, 25d0f021 | 2 of 15; 0 flips; 1 dev regression | 0.1382 |
-| 2 | v5, 4ae5177b | 9 of 15; 7 flips; 0 regressions | 0.0761 |
-| 3 | v6, 66616a62 | 5 of 15; 3 flips; 0 regressions | 0.1369 |
+| 1 | version 4, 25d0f021 | 2 of 15; 0 flips; 1 regression on the development questions | 0.1382 |
+| 2 | version 5, 4ae5177b | 9 of 15; 7 flips; 0 regressions | 0.0761 |
+| 3 | version 6, 66616a62 | 5 of 15; 3 flips; 0 regressions | 0.1369 |
 
 Each run proposed 10 rules; the critic kept 10, 9, and 10, and every kept rule passed the overfit
-guard. Run 1's dev regression was camping-subcategories. Experiment wall time: 458.9, 229.4, and
+guard. Run 1's regression on the development questions was
+camping-subcategories. Experiment wall time: 458.9, 229.4, and
 403.8 seconds. One measurement in three gives a clear majority of holdout flips, as at medium.
 
 Retakes, each with a reset before it:
@@ -585,16 +587,16 @@ run (demo pacing on) posted after the kill switch was engaged. With the unbounde
 
 The hill-climbing chain:
 
-1. Baseline: experiment dde64d21, v1, holdout 2 of 15, dev 4 of 25, 273.4 seconds, 0.0852 dollars
+1. Baseline: experiment dde64d21, version 1, holdout 2 of 15, 4 of 25 development questions, 273.4 seconds, 0.0852 dollars
    (calibration line).
-2. Candidate: v5, the best of the three analyzer runs at reasoning effort high; the two weaker
-   drafts (v4, v6) were retired in ops so the Improve page runs v5. Experiment 407ff720: holdout
-   10 of 15 against 2, 8 fixed, 0 regressions on either split, dev 15 of 25, 257.6 seconds; gate "Ready
+2. Candidate: version 5, the best of the three analyzer runs at reasoning effort high; the two weaker
+   drafts (versions 4, 6) were retired in ops so the Improve page runs version 5. Experiment 407ff720: holdout
+   10 of 15 against 2, 8 fixed, 0 regressions on either split, 15 of 25 development questions, 257.6 seconds; gate "Ready
    for human approval: v5 passes 10 of 15 holdout items against 2, with no regressions." A first
    run (c38338fc, the same counts) is not counted: the hill-climbing runner still had the unbounded
    rows flag from the step before.
 3. Approval: given by this session standing in for the instructor, under the approver name it
-   typed; promotion decision 26 at 09:18:26 UTC, v5 active.
+   typed; promotion decision 26 at 09:18:26 UTC, version 5 active.
 4. Clearance on the confirmed standard: average order value and products cleared for the
    unattended level; revenue, orders, and customers not. Revenue's re-runs:
    net-revenue-cyber-monday-2025 failed 3 of 3, then passed 2 of 3 more (passes);
@@ -612,9 +614,9 @@ warehouse (fiscal year 2025, status not 5, Eastern time) gives 65,592,532.44 wit
 filter, the gold 64,015,091.21 with the gold predicate, and exactly the finale's 63,986,616.77 with
 `email NOT ILIKE '%harborpine%'`, which also removes the look-alike addresses. That is why the
 answer is below gold, not above it. The trap label missing_internal_filter does not describe an
-over-broad filter, and how the label was assigned to this run is still to be checked. v5's rule "Use the
+over-broad filter, and how the label was assigned to this run is still to be checked. Version 5's rule "Use the
 eligible business-order population" gave the SQL guidance `status <> 5 AND <documented
-non-internal-customer predicate>`, a placeholder; v4 and v6 gave `customer_is_internal = false`, a
+non-internal-customer predicate>`, a placeholder; versions 4 and 6 gave `customer_is_internal = false`, a
 column that does not exist. The reference SQL reached the failure analyst, but its diagnoses were
 in general business terms, and the rule writer reads only the diagnoses, so the exact predicate
 never reached a rule. Fixed in the analyzer, for every rule and not for this one trap: the failure
@@ -622,7 +624,7 @@ analyst quotes the reference SQL fragment the agent's SQL lacked; the rule write
 and must write guidance that runs over it; and a deterministic check parses each rule's guidance
 with sqlglot against the catalog snapshot, sends a placeholder, an unknown table or column, or prose
 back to the critic, and drops a rule that still fails, with the reason in the analyzer report. The
-saved v4, v5, and v6 internal-accounts rules are each caught in the tests
+saved versions 4, 5, and 6 internal-accounts rules are each caught in the tests
 (`platform/tests/unit/test_sql_guidance.py`), and the email-domain predicate passes. The finale's
 moment is restated by the course team as "The correct answer, posted at the level its family has
 earned": the assisted level is a correct outcome when revenue falls short of the confirmed
@@ -634,49 +636,50 @@ human approval."). The board and channel captures of 22 October stay: the moment
 (a correct answer posted at the unattended level) did not appear.
 
 improve-naive-analyzer-blocked, attempt 1: the naive analyzer (request 15a9030d) wrote 21 rules,
-one per failed dev item, each quoting the item's question and its reference SQL, with no critic and
-no overfit guard: candidate v7. Its experiment 911423fb passed 15 of 15 holdout and 25 of 25 dev
-items, and the gate read "ready for human approval". The moment (dev jumps, holdout stays flat, the
-gate blocks) did not appear. No holdout item reached the analyzer: v7 quotes no holdout question.
-The dev reference SQL carries every convention the holdout items need (the fiscal calendar,
-internal accounts, status 5, New York time), so the rules generalize. v7 was not approved and is
+one per failed development question, each quoting the item's question and its reference SQL, with no critic and
+no overfit guard: candidate version 7. Its experiment 911423fb passed 15 of 15 holdout items and 25 of 25 development
+questions, and the gate read "ready for human approval". The moment (development passes jump,
+holdout passes stay flat, the gate blocks) did not appear. No holdout item reached the analyzer: version 7 quotes no holdout question.
+The reference SQL of the development questions carries every convention the holdout items need (the fiscal calendar,
+internal accounts, status 5, New York time), so the rules generalize. Version 7 was not approved and is
 retired in ops. Attempt 2 was not run: about 0.08 dollars, and the development line had 0.05 left
 this session. The demo is not ready: its planted item does not guarantee the moment.
 Built after the review of 23 October: the naive analyzer makes no model call.
-It writes one rule per failed dev item, quoting the question word for word with the analyst's
+It writes one rule per failed development question, quoting the question word for word with the analyst's
 query that failed, and never reads a reference query, so its rules teach nothing about a holdout
 question. The overfit guard reports on every rule, all flagged, and is not applied; a test proves
-that for any set of failed dev items every naive rule fails the guard. The other half of the
+that for any set of failed development questions every naive rule fails the guard. The other half of the
 recommendation is built too: the gate has a fourth condition, every rule the candidate adds to the
 active version passes the overfit guard, so the naive version is blocked whatever its holdout
 count, even one better than the active version's; an honest candidate, whose rules already passed
-the guard, is judged as before. Run live three times since, blocked each time: twice in session 4
-and once in the capture session of 23 October, evening, both below.
+the guard, is judged as before. Run live three times since, blocked each time: twice in
+the afternoon session of 23 October and once in the capture session of 23 October, evening, both below.
 
-Proposed for the analyzer's variance (built as the proposal in Analyzer comparison, with fewer dev regressions as the first key, then more dev passes): the three
-measurements at reasoning effort high gave 2, 9, and 5 of 15 holdout items from the same failed dev items. The runner would
-have the analyzer team write two candidate rule sets, run both on the dev split only, and keep the
-one with more dev passes (fewer dev regressions on a tie). Only the kept set runs on the holdout,
+Proposed for the analyzer's variance (built as the proposal in Analyzer comparison, with fewer regressions on the development questions as the first key, then more passes there): the three
+measurements at reasoning effort high gave 2, 9, and 5 of 15 holdout items from the same failed development questions. The runner would
+have the analyzer team write two candidate rule sets, run both on the development split only, and keep the
+one with more passes on the development questions (fewer regressions on a tie). Only the kept set runs on the holdout,
 once, for the gate. The holdout is never used to choose between the two, so the gate's measurement
-stays unbiased. Cost as proposed: one more analyzer team step and one more 25-run dev experiment, about 0.04
-dollars; as built, both candidates run on the dev split (50 runs), about 0.08 dollars (Analyzer comparison).
+stays unbiased. Cost as proposed: one more analyzer team step and one more 25-run experiment on the development questions, about 0.04
+dollars; as built, both candidates run on the development split (50 runs), about 0.08 dollars (Analyzer comparison).
 
 make spend at the end (09:40 UTC): development live checks 1.1290 of 1.50 (the correction row
 included), calibration 1.1590 of 2.50, reserve 0; this session, development 0.3482 of 0.40,
-calibration 0.5277 of 1.00, total 1.7609 of 2.50 with the assignment verification track. The
+calibration 0.5277 of 1.00, total 1.7609 of 2.50 with the assignment verification line. The
 ledger agreed with the run records within a few thousandths of a dollar for each step (the five
 planted halves, about 0.058 in the ledger against 0.063 in the runs).
 
-## Live session of 23 October, afternoon (session 4)
+## Live session of 23 October, afternoon
 
-Session ae67ee60 (purpose development) from 16:50 UTC, after the changes of session 3 (two analyzer
-candidates, the SQL guidance check, the gate's fourth condition, the dev re-run of both versions,
+Session ae67ee60 (purpose development) from 16:50 UTC, after the changes of the midday session (two
+analyzer candidates, the SQL guidance check, the gate's fourth condition, the re-run of both
+versions on a development question that regressed,
 the spend caps, trace sampling). LangSmith still refused every trace (its monthly limit, reset on 1
 November 2026), so each result below is proven by its run id, its record in ops, and the ledger.
 
 Preflight: the drift canary as expected, 3 easy questions passed and 2 traps failed, gpt-6-luna.
-`make live-smoke`: all five calls behaved as designed (an answer whose gold check passed; the spine
-question passing every grader and held by a reviewer concern about the fiscal year; a webhook
+`make live-smoke`: all five calls behaved as designed (an answer whose gold check passed; the fiscal year
+2025 revenue question passing every grader and held by a reviewer concern about the fiscal year; a webhook
 answer of 300 orders, the Eastern time day; an analyzer team step proposing 3 rules, all kept and
 guarded; a refused write ending escalated with SQLSTATE 25006); each is reported as a hard failure
 only because its trace is missing.
@@ -702,13 +705,13 @@ The export run of events-approval-survives-restart (13e0b95d) is the retake owed
 
 The hill-climbing chain, with the runner's spend on the calibration line:
 
-1. Baseline: experiment 5dba42c6, v1, holdout 2 of 15, dev 4 of 25, 276.8 seconds.
-2. The analyzer team, two candidates on the dev split only: A 18 of 25 dev, 0 regressions, 11 rules;
-   B 19 of 25 dev, 0 regressions, 8 rules; B kept as v8; the SQL guidance check rejected none of
+1. Baseline: experiment 5dba42c6, version 1, holdout 2 of 15, 4 of 25 development questions, 276.8 seconds.
+2. The analyzer team, two candidates on the development split only: A 18 of 25 development questions, 0 regressions, 11 rules;
+   B 19 of 25 development questions, 0 regressions, 8 rules; B kept as version 8; the SQL guidance check rejected none of
    the kept candidate's rules. The overfit guard rejected one rule the critic kept,
    fiscal-quarter-from-february-start, because it copied gold SQL (20 or more tokens in a row of
    orders-by-quarter-fiscal-2026), and passed the other 8. 326 seconds for the whole step.
-3. Candidate experiment 2eb8890c: v8 holdout 14 of 15 against 2, dev 19 of 25, 0 regressions on
+3. Candidate experiment 2eb8890c: version 8 holdout 14 of 15 against 2, 19 of 25 development questions, 0 regressions on
    either split, every new rule passed the overfit guard; 12 of 13 holdout trap items fixed
    (business-day-orders-november-2025 still fails); gate "Ready for human approval"; 206.5 seconds (211 seconds from the trigger).
 4. Human approval, given by the build in place of the instructor and recorded with the approver's name.
@@ -719,15 +722,15 @@ The hill-climbing chain, with the runner's spend on the calibration line:
    One clearance re-run: business-day-orders-november-2025 failed 3 of 3, then 0 of 3 more, so
    orders stays below the unattended level.
 5. The finale: the first attempt (c203dc8b) was triggered before the promotion had finished, so it
-   ran under v1 and answered 72,394,572.08 (gold failed, escalated); the cause was the driving
-   script, which did not wait for the activation. Run again under v8 (38f16596): 64,015,091.21
+   ran under version 1 and answered 72,394,572.08 (gold failed, escalated); the cause was the driving
+   script, which did not wait for the activation. Run again under version 8 (38f16596): 64,015,091.21
    dollars, gold passed, posted at the unattended level, 16,624 tokens, 0.0021 dollars; the Events
    page captured at 1280x720. The class-day safeguard was not needed and could not be shown: it
    needs a version verified in a rehearsal session.
 
-The naive analyzer, twice (`BUG_NAIVE_ANALYZER`): each time 21 rules quoting the dev questions with
+The naive analyzer, twice (`BUG_NAIVE_ANALYZER`): each time 21 rules quoting the development questions with
 no model call, all 21 flagged by the overfit guard; the candidate experiment kept the holdout at
-2 of 15 (dev 5 and 6 of 25), and the gate blocked the version on both counts (no holdout gain, and
+2 of 15 (development 5 and 6 of 25), and the gate blocked the version on both counts (no holdout gain, and
 the overfit guard on the new rules).
 
 Edge cases: a question naming nothing in the schema ("What is our employee headcount by
@@ -736,19 +739,19 @@ webhook question" sent exactly `make demo`'s question and posted unverified (f34
 output-token cap probe still said "after 0 tokens" (730953ea), which led to the fix above; every
 run went on at its normal speed while LangSmith refused its traces.
 
-The two versions called v8: the hill-climbing reset after the chain removed the session's
-experiments and decisions and then the promoted v8, so the naive analyzer's candidate took the name
+The two versions called version 8: the hill-climbing reset after the chain removed the session's
+experiments and decisions and then the promoted version 8, so the naive analyzer's candidate took the name
 again (a defect, being fixed so that a name is never reused). Its
-experiments are 37eb24f5 and 45fa8a3d; the promoted v8 is experiment 2eb8890c.
+experiments are 37eb24f5 and 45fa8a3d; the promoted version 8 is experiment 2eb8890c.
 
-Assignment verification in session 4 (assignment verification line):
+Assignment verification in this session (assignment verification line):
 
 | Check | Result | Spend |
 |---|---|---|
 | Assignment 1: Agent loop, reference | PASS, 11 of 11 | 0.48 cents |
 | Assignment 2: Verification loop, reference | FAIL, 8 of 9: case 8 of the ambiguity suite ended 0 of 2 (note 1) | 2.16 cents |
 | Assignment 3: Event loop, reference | FAIL, 9 of 10: the drill-down run ended blocked_budget (note 2) | 0.33 cents |
-| Assignment 4: Hill-climbing loop, reference, first check | FAIL, 9 of 10: 1 confirmed regression on an item that passed under v1 | 9.93 cents |
+| Assignment 4: Hill-climbing loop, reference, first check | FAIL, 9 of 10: 1 confirmed regression on an item that passed under version 1 | 9.93 cents |
 | Assignment 4: Hill-climbing loop, reference, second check | PASS, 10 of 10 | 8.70 cents |
 | Assignment 4: Hill-climbing loop, alternative one | PASS, 10 of 10 | 14.57 cents |
 | Assignment 4: Hill-climbing loop, alternative two | PASS, 10 of 10 | 13.13 cents |
@@ -763,8 +766,8 @@ The paired comparisons of each loop with its protection off and on are on the
 
 ## Live session of 23 October, evening (the capture session)
 
-The capture session ran from 21:17 to 21:55 UTC on 23 October 2026, after the fixes of review
-round 1, on gpt-6-luna. LangSmith still refused traces at its monthly limit,
+The capture session ran from 21:17 to 21:55 UTC on 23 October 2026, after the fixes of the first
+review, on gpt-6-luna. LangSmith still refused traces at its monthly limit,
 so each result below is proven by its run id, its record in ops, and the ledger. The console
 captures of the hill-climbing chain, on the
 [Section 4 evidence page](evidence/section-4-hill-climbing-loop.md#captures), come from this chain.
@@ -796,43 +799,43 @@ two not-shown attempts, which the change of the same night (one run's gold check
 the others) was meant to end. The cause is not confirmed: the run's record was not read again for
 a gold check that arrived later. The second attempt (5e38f424) was shown: the graders of its third
 attempt all passed, the gold check failed on both warehouses (row 1 differs from gold), and two
-reviewer concerns held it for approval. Since the change, the demo was shown in session 4 (6630921f)
+reviewer concerns held it for approval. Since the change, the demo was shown in the afternoon session (6630921f)
 and in this second attempt, with one attempt not shown between them, so it has not yet been shown in
 two consecutive live attempts.
 
 The hill-climbing chain, with the runner's spend on the calibration line:
 
-1. Baseline: experiment 31a76afe, v1, holdout 2 of 15, dev 5 of 25, 278.8 seconds (281 seconds from the
+1. Baseline: experiment 31a76afe, version 1, holdout 2 of 15, 5 of 25 development questions, 278.8 seconds (281 seconds from the
    trigger to the result).
-2. The analyzer team, two candidates on the dev split only, from 20 failed dev items: A 21 of 25
-   dev, 0 regressions, 8 rules; B 10 of 25 dev, 0 regressions, 5 rules; A kept as v9. The critic
+2. The analyzer team, two candidates on the development split only, from 20 failed development questions: A 21 of 25
+   development questions, 0 regressions, 8 rules; B 10 of 25 development questions, 0 regressions, 5 rules; A kept as version 9. The critic
    dropped the December 2024 business-day holiday rule; the overfit guard rejected one rule the
    critic kept, fiscal-quarter-numbering, because it copied gold SQL (20 or more tokens in a row of
    orders-by-quarter-fiscal-2026); the SQL guidance check rejected none. 377 seconds for the whole step.
-3. Candidate experiment a2ba7a5a: v9 holdout 14 of 15 against 2, dev 22 of 25, 0 regressions on
-   either split, every new rule passed the overfit guard; gate "Ready for human approval: v9 passes
-   14 of 15 holdout items against 2, with no regressions."; 181.9 seconds (186 seconds from the trigger).
+3. Candidate experiment a2ba7a5a: version 9 holdout 14 of 15 against 2, 22 of 25 development questions, 0 regressions on
+   either split, every new rule passed the overfit guard; gate "Ready for human approval: v9 passes 14
+   of 15 holdout items against 2, with no regressions."; 181.9 seconds (186 seconds from the trigger).
 4. Human approval at 21:41:50 UTC, given by the build in place of the instructor and recorded with
    the approver's name.
 5. The finale, sent at once: it was held 5 times over 50 seconds, the first time because the
-   promotion of v9 had not finished, the last because its clearance re-runs were still running;
+   promotion of version 9 had not finished, the last because its clearance re-runs were still running;
    both named the step to wait for. Then run c91ebcc0: 64,015,091.21 dollars, gold passed, posted at the
    unattended level, 10,231 tokens, 0.0006 dollars. Families cleared for the unattended level on
    the confirmed standard: revenue, average order value, customers, and products; orders not.
 
-The naive analyzer, once (`BUG_NAIVE_ANALYZER`), from one trigger: 20 rules quoting the dev
-questions with no model call, all 20 flagged by the overfit guard, saved as v10; its candidate
-experiment 02de992f kept the holdout at 2 of 15 (dev 4 of 25, 212.4 seconds), and the gate blocked the
+The naive analyzer, once (`BUG_NAIVE_ANALYZER`), from one trigger: 20 rules quoting the development
+questions with no model call, all 20 flagged by the overfit guard, saved as version 10; its candidate
+experiment 02de992f kept the holdout at 2 of 15 (4 of 25 development questions, 212.4 seconds), and the gate blocked the
 version on both counts. 285 seconds from the trigger to the verdict.
 
-With this chain, the two-candidate method has two measurements, v8 in session 4 and v9 here, both
+With this chain, the two-candidate method has two measurements, version 8 in the afternoon session and version 9 here, both
 14 of 15 holdout items against 2. Revenue cleared on the confirmed standard in 2 of 6 live
-promotions (v8 and v9), and the spine question was correct at the unattended level twice (38f16596
+promotions (versions 8 and 9), and the fiscal year 2025 revenue question was correct at the unattended level twice (38f16596
 and c91ebcc0). Of the analyzer team's candidate experiments with an id in this report, 9 of 10 had
 0 regressions. The naive analyzer was blocked in 3 of 3 runs since it was made deterministic (211,
 256, and 285 seconds from the trigger to the verdict).
 
-Assignment verification after the fixes of review round 1 (assignment verification line, checks
+Assignment verification after the fixes of the first review (assignment verification line, checks
 from 21:28 UTC on 23 October 2026, on the assignments stack):
 
 | Check | Result | Spend |
@@ -855,7 +858,7 @@ Note 4: both Assignment 4 checks shared the session's baseline experiment 1c933b
 earlier check had run, so in the check's terms both are later checks; neither ran a baseline of
 its own. A first check, which runs the baseline too, is not in this table.
 
-## Live session of 24 October 2026 (session 5)
+## Live session of 24 October 2026
 
 Every run below is of 24 October 2026, in UTC, on gpt-6-luna, on the code of that day (after the review of 24
 October; its commit is on the [evidence page](evidence/general.md#captures)). LangSmith still refused traces at its monthly limit, so each result is
@@ -941,54 +944,54 @@ The two clarification runs cost 0.0022 and 0.0012 dollars. The second also state
 In the order of step 5 of the instructor guide's day before, in rehearsal session 56894641, with
 the runner's spend on the calibration line:
 
-1. Baseline: experiment 74ff242b, v1, holdout 2 of 15, dev 5 of 25, 286.6 seconds of experiment wall
+1. Baseline: experiment 74ff242b, version 1, holdout 2 of 15, 5 of 25 development questions, 286.6 seconds of experiment wall
    time. The driving script was resumed while it waited, so this step has no time from the
    trigger.
-2. The analyzer team, two candidates on the dev split only, from 20 failed dev items: A 13 of 25
-   dev, 0 regressions, 8 rules; B 14 of 25 dev, 0 regressions, 6 rules; B kept as v11. The critic
+2. The analyzer team, two candidates on the development split only, from 20 failed development questions: A 13 of 25
+   development questions, 0 regressions, 8 rules; B 14 of 25 development questions, 0 regressions, 6 rules; B kept as version 11. The critic
    dropped exclude-christmas-from-business-days; the overfit guard rejected fiscal-quarter-offset,
    because it copied gold SQL (20 or more tokens in a row of orders-by-quarter-fiscal-2026); the
    SQL guidance check rejected none. 359 seconds for the whole step.
-3. Candidate experiment b50131b4: v11 holdout 13 of 15 against 2, dev 16 of 25, 0 regressions on
-   either split, every new rule passed the overfit guard; gate "Ready for human approval: v11
-   passes 13 of 15 holdout items against 2, with no regressions."; 210.3 seconds (212 seconds from the
+3. Candidate experiment b50131b4: version 11 holdout 13 of 15 against 2, 16 of 25 development questions, 0 regressions on
+   either split, every new rule passed the overfit guard; gate "Ready for human approval: v11 passes
+   13 of 15 holdout items against 2, with no regressions."; 210.3 seconds (212 seconds from the
    trigger).
 4. Human approval at 11:15:32 UTC, given by the build in place of the instructor and recorded with
-   the approver's name. v11 was the active version 5 seconds later; the unattended level was set
+   the approver's name. version 11 was the active version 5 seconds later; the unattended level was set
    at 11:15:42 UTC.
 5. The finale, sent at once, was held while the clearance re-runs ran (held at 11:15:42 and still
    at 11:16:32 UTC, each time naming the re-runs). Then run e1769f0e: 64,015,091.21 dollars, gold
-   passed, posted at the unattended level under v11, 8,156 tokens, 0.0004 dollars. Families
+   passed, posted at the unattended level under version 11, 8,156 tokens, 0.0004 dollars. Families
    cleared for the unattended level: average order value, customers, and revenue. The driving
    script was resumed after this run, so the finale has no time from the trigger.
-6. The safeguard, rehearsed live: `make safeguard-verify` marked v11 with run e1769f0e;
-   `make safeguard-activate` then refused, since v11 was still the active version, and changed
-   nothing; `make reset NAME=hill-climbing-loop` made v1 active; `make safeguard-activate` made v11
+6. The safeguard, rehearsed live: `make safeguard-verify` marked version 11 with run e1769f0e;
+   `make safeguard-activate` then refused, since version 11 was still the active version, and changed
+   nothing; `make reset NAME=hill-climbing-loop` made version 1 active; `make safeguard-activate` made version 11
    active (promotion decision 37) with the families it had cleared in rehearsal; the unattended
    level was set again.
 7. The finale on the safeguard: run 037f3718, 64,015,091.21 dollars, gold passed, posted at the
    unattended level, never held, 9,500 tokens, 0.0006 dollars, 19 seconds from the trigger.
 
 The second chain of step 5.4 was not run. With this chain the two-candidate method has three
-measurements, v8, v9, and v11: 14, 14, and 13 of 15 holdout items against 2, superseding "two
-measurements" above. Revenue cleared on the confirmed standard in 3 of 7 live promotions (v8, v9,
-v11), superseding "2 of 6". Of the analyzer team's candidate experiments with an id in this
-report, 10 of 11 had 0 regressions, superseding "9 of 10". The spine question was correct at the
-unattended level in 4 runs (38f16596, c91ebcc0, e1769f0e, 037f3718). Session 4's "the class-day
+measurements, versions 8, 9, and 11: 14, 14, and 13 of 15 holdout items against 2, superseding "two
+measurements" above. Revenue cleared on the confirmed standard in 3 of 7 live promotions (versions 8, 9,
+and 11), superseding "2 of 6". Of the analyzer team's candidate experiments with an id in this
+report, 10 of 11 had 0 regressions, superseding "9 of 10". The fiscal year 2025 revenue question was correct at the
+unattended level in 4 runs (38f16596, c91ebcc0, e1769f0e, 037f3718). The afternoon session's "the class-day
 safeguard was not needed and could not be shown" is superseded: it was shown here.
 
 ### The over-broad rule
 
-The first attempt failed after 311 seconds: "NoLiveBaseline: no experiment of v11 was started in this
-live session: run the baseline experiment now". The gate compares a candidate with an experiment
+The first attempt failed after 311 seconds: "NoLiveBaseline: no experiment of v11 was started in this live
+session: run the baseline experiment now". The gate compares a candidate with an experiment
 of the active version in the same live session. The reset of the safeguard rehearsal deleted the
-session's experiment of v11 (b50131b4, in reset archive 8a7b4646), and the safeguard's activation
-runs no experiment, so v11 was active with none. In class order the demo runs after the candidate
+session's experiment of version 11 (b50131b4, in reset archive 8a7b4646), and the safeguard's activation
+runs no experiment, so version 11 was active with none. In class order the demo runs after the candidate
 experiment, the gate's own experiment of the version then active, which fills that role.
 
 The second attempt came after `make safeguard-activate` again (promotion decision 40). The baseline
-experiment 82ad72d5 of v11: holdout 12 of 15, dev 15 of 25, 211.2 seconds. Then v11 plus the over-broad
-rule, experiment 84417bfe: holdout 7 of 15 against 12, dev 11 of 25, 4 dev regressions
+experiment 82ad72d5 of version 11: holdout 12 of 15, 15 of 25 development questions, 211.2 seconds. Then version 11 plus the over-broad
+rule, experiment 84417bfe: holdout 7 of 15 against 12, 11 of 25 development questions, 4 regressions on the development questions
 (net-revenue-calendar-2024, net-revenue-by-quarter-fiscal-2025, california-net-revenue-fiscal-2026,
 net-revenue-black-friday-2024) and 5 holdout regressions (net-revenue-fiscal-2026,
 net-revenue-cyber-monday-2025, top-customers-fiscal-2026, bottom-states-net-revenue-fiscal-2026,
@@ -1000,11 +1003,11 @@ holds the regressions and the blocked verdict that the demo registry names.
 
 ### The naive analyzer
 
-From a new baseline experiment, 3fc31a32, v1, holdout 2 of 15, dev 4 of 25, 380.7 seconds of
+From a new baseline experiment, 3fc31a32, version 1, holdout 2 of 15, 4 of 25 development questions, 380.7 seconds of
 experiment wall time (386 seconds from the trigger; the machine was shared with the assignment checks).
-With `BUG_NAIVE_ANALYZER`, the naive analyzer wrote 21 rules, one per failed dev item, with no
-model call; the overfit guard flagged 21 of 21; saved as v12. Its candidate experiment c87991fc
-kept the holdout at 2 of 15 (dev 4 of 25, 244.1 seconds), and the gate blocked the version on both
+With `BUG_NAIVE_ANALYZER`, the naive analyzer wrote 21 rules, one per failed development question, with no
+model call; the overfit guard flagged 21 of 21; saved as version 12. Its candidate experiment c87991fc
+kept the holdout at 2 of 15 (4 of 25 development questions, 244.1 seconds), and the gate blocked the version on both
 counts. 580 seconds from the trigger to the verdict. The naive analyzer has been blocked in 4 of 4 runs
 since it was made deterministic (211, 256, 285, and 580 seconds), superseding "3 of 3".
 
@@ -1024,7 +1027,7 @@ status and gold check:
 |---|---|---|
 | Agent loop, 7 easy items, 3 rounds: gold passed | 12 of 21 | 17 of 21 |
 | Agent loop: mean tokens; cost | 3,738; 0.0097 dollars | 4,857; 0.0083 dollars |
-| Verification loop, 20 dev trap items, 2 rounds: gold passed | 0 of 40 | 0 of 40 |
+| Verification loop, 20 development trap items, 2 rounds: gold passed | 0 of 40 | 0 of 40 |
 | Verification loop: wrong answers held for approval or escalated | 1 of 40 (escalated) | 20 of 40 (17 held, 3 escalated) |
 | Verification loop: mean tokens; mean attempts; cost | 9,311; 1.1; 0.0361 dollars | 17,344; 1.88; 0.0605 dollars |
 
@@ -1032,7 +1035,7 @@ With the verification layer on, 19 of the other 20 wrong answers were approved b
 and posted. The arms: for the agent loop, without is "column names only, unbounded rows, no
 scout" and with is "full column descriptions, capped rows, the scout"; for the verification loop,
 without is "naive guard, no reviewer" and with is "the full verification layer". The
-verification-loop items come from experiment 9739f3f1 of v1. The measurement script's summary
+verification-loop items come from experiment 9739f3f1 of version 1. The measurement script's summary
 field for held or escalated answers reads 40 of 40 in both arms; the run statuses give the counts
 above, so that field is not used.
 
@@ -1070,14 +1073,14 @@ token budget would pass the cap, so the check started no live run and made no mo
 deterministic requirements passed and its 3 live ones read NOT RUN. It exited with the stopped
 code, 2.
 
-Note 3: the reference ran its own baseline, experiment edc342f4 of v1, because the session's
+Note 3: the reference ran its own baseline, experiment edc342f4 of version 1, because the session's
 baseline 1c933bea had measured 46 items otherwise than they are now; it is the first measured
-Assignment 4 check with two candidates that runs a baseline. Candidates: A 21 of 28 dev, 8 rules;
-B 25 of 28 dev, 9 rules; B kept; the critic dropped the planted rule in both; the gate promoted
+Assignment 4 check with two candidates that runs a baseline. Candidates: A 21 of 28 development questions, 8 rules;
+B 25 of 28 development questions, 9 rules; B kept; the critic dropped the planted rule in both; the gate promoted
 the candidate at 16 of 18 holdout items against 2, 0 confirmed regressions, the new family 3 of 3.
-Alternative one shared edc342f4: A 12 of 28 dev, 0 regressions, 10 rules, kept over B, 25 of 28
-dev with 1 regression; promoted at 13 of 18 against 2, 0 confirmed regressions, the new family 0
-of 3 (measured, not required). Alternative two shared edc342f4 too: A and B both 9 of 28 dev with
+Alternative one shared edc342f4: A 12 of 28 development questions, 0 regressions, 10 rules, kept over B, 25 of 28
+development questions with 1 regression; promoted at 13 of 18 against 2, 0 confirmed regressions, the new family 0
+of 3 (measured, not required). Alternative two shared edc342f4 too: A and B both 9 of 28 development questions with
 0 regressions, B kept with 8 rules against 11; promoted at 8 of 18 against 2, 0 confirmed
 regressions, the new family 0 of 3. This supersedes note 4's "a first check, which runs the baseline
 too, is not in this table": one is now measured, at 23.59 cents and 1,319 seconds, but it is suspect
@@ -1108,11 +1111,11 @@ UTC, this session's lines against the session's own caps:
 The assignment verification line agrees with the checks' own "Spend:" lines: they sum to 0.6440
 dollars (the starters and the cap stop recorded no ledger rows).
 
-## Live session of 25 October 2026 (session 6)
+## Live session of 25 October 2026
 
 Every run below is of 25 October 2026, in UTC, on gpt-6-luna. LangSmith still refused traces at
 its monthly limit, so each result is proven by its run id or experiment id, its record in ops, and
-the spend ledger. The class story pass ran in rehearsal session c18bcc2e (preflight at 12:42:50
+the spend ledger. The run-through of the class story ran in rehearsal session c18bcc2e (preflight at 12:42:50
 UTC): every core demo of Sections 1 to 3 in class order, both halves, then the Section 4 chain,
 the class-day safeguard, and the naive analyzer. Its planted halves were switched through `.env`
 and `make up`, as the course did then; `make demo NAME=<demo> PLANTED=1` came later the same day.
@@ -1166,33 +1169,33 @@ These six runs cost 0.0262 dollars, from each run's own record.
 
 In class order, in rehearsal session c18bcc2e, with the runner's spend on the calibration line:
 
-1. Baseline: experiment a8801f38, v1, holdout 2 of 15, dev 4 of 25, 252 seconds from the trigger.
-2. The analyzer team, two candidates on the dev split only, from 21 failed dev items: A 7 of 25 dev,
-   0 regressions, 8 rules; B 24 of 25 dev, 0 regressions, 9 rules; B kept as v15. The overfit guard
+1. Baseline: experiment a8801f38, version 1, holdout 2 of 15, 4 of 25 development questions, 252 seconds from the trigger.
+2. The analyzer team, two candidates on the development split only, from 21 failed development questions: A 7 of 25 development questions,
+   0 regressions, 8 rules; B 24 of 25 development questions, 0 regressions, 9 rules; B kept as version 15. The overfit guard
    rejected fiscal-quarter-assignment, which copied gold SQL (20 or more tokens in a row of
    orders-by-quarter-fiscal-2026). 362 seconds for the whole step.
-3. Candidate experiment 2c7414d9: v15 holdout 13 of 15 against 2, dev 25 of 25, 0 regressions on
-   either split, every new rule passed the overfit guard; gate "Ready for human approval: v15
-   passes 13 of 15 holdout items against 2, with no regressions."; 237 seconds from the trigger.
+3. Candidate experiment 2c7414d9: version 15 holdout 13 of 15 against 2, 25 of 25 development questions, 0 regressions on
+   either split, every new rule passed the overfit guard; gate "Ready for human approval: v15 passes
+   13 of 15 holdout items against 2, with no regressions."; 237 seconds from the trigger.
 4. Human approval at 13:06:38 UTC, given by the build in place of the instructor and recorded with
-   the approver's name. v15 was the active version 5 seconds later; the unattended level was set
+   the approver's name. version 15 was the active version 5 seconds later; the unattended level was set
    at 13:06:45 UTC.
 5. The finale, sent at once, was held while the clearance re-runs ran (14 holds, each naming the
    re-runs). Then run cb8d3beb: 64,015,091.21 dollars, gold passed, posted at the unattended level
-   under v15, 10,240 tokens, 0.0007 dollars, 162 seconds from the first send. Families cleared for
+   under version 15, 10,240 tokens, 0.0007 dollars, 162 seconds from the first send. Families cleared for
    the unattended level: average order value, customers, products, and revenue.
-6. The safeguard, rehearsed live: `make safeguard-verify` marked v15 with run cb8d3beb;
-   `make safeguard-activate` refused, since v15 was still the active version, and changed nothing;
-   `make reset NAME=hill-climbing-loop` made v1 active; `make safeguard-activate` made v15 active
+6. The safeguard, rehearsed live: `make safeguard-verify` marked version 15 with run cb8d3beb;
+   `make safeguard-activate` refused, since version 15 was still the active version, and changed nothing;
+   `make reset NAME=hill-climbing-loop` made version 1 active; `make safeguard-activate` made version 15 active
    (promotion decision 48) with the families it had cleared; the unattended level was set again.
 7. The finale on the safeguard: run a2de1570, 64,015,091.21 dollars, gold passed, posted at the
    unattended level, never held, 12,395 tokens, 0.0005 dollars, 21 seconds from the trigger.
 
 ### The naive analyzer
 
-From a new baseline experiment, dd36c4f5, v1, holdout 2 of 15, dev 4 of 25, 252 seconds from the
-trigger. With `BUG_NAIVE_ANALYZER`, the naive analyzer wrote 21 rules, one per failed dev item,
-with no model call; the overfit guard flagged 21 of 21; saved as v16. Its candidate experiment
+From a new baseline experiment, dd36c4f5, version 1, holdout 2 of 15, 4 of 25 development questions, 252 seconds from the
+trigger. With `BUG_NAIVE_ANALYZER`, the naive analyzer wrote 21 rules, one per failed development question,
+with no model call; the overfit guard flagged 21 of 21; saved as version 16. Its candidate experiment
 5f596895 passed 0 of 15 holdout items against 2, with 2 holdout regressions
 (average-list-price-active and all-products-by-category), and the gate blocked the version. 221
 seconds from the trigger to the verdict. The naive analyzer has now been blocked in 6 of 6 runs
@@ -1206,19 +1209,20 @@ lines:
 
 | Step | First chain | Second chain |
 |---|---|---|
-| Baseline, v1 | experiment bbecf29e: holdout 2 of 15, dev 4 of 25, 246 seconds | experiment cf1decfc: holdout 2 of 15, dev 5 of 25, 236 seconds |
-| Candidate experiment | a4bfc059: v17 holdout 12 of 15, dev 24 of 25, 0 regressions, 186 seconds | 15703840: v19 holdout 13 of 15, dev 23 of 25, 0 regressions, 176 seconds |
-| The finale | run bd7b4a77: gold passed, posted at the unattended level under v17 | run fa7933bb: blocked by the daily token budget, no answer |
+| Baseline, version 1 | bbecf29e: holdout 2 of 15, development 4 of 25, 246 seconds | cf1decfc: holdout 2 of 15, development 5 of 25, 236 seconds |
+| Candidate experiment | a4bfc059, version 17: holdout 12 of 15, development 24 of 25 | 15703840, version 19: holdout 13 of 15, development 23 of 25 |
+| Its regressions and time | 0 regressions, 186 seconds | 0 regressions, 176 seconds |
+| The finale | run bd7b4a77: gold passed, posted at the unattended level under version 17 | run fa7933bb: blocked by the daily token budget, no answer |
 
 Both promotions cleared average order value, customers, products, and revenue. The second chain's
-analyzer team wrote A, 21 of 25 dev with 7 rules, and B, 21 of 25 with 7 rules, and kept A, as its
+analyzer team wrote A, 21 of 25 development questions with 7 rules, and B, 21 of 25 with 7 rules, and kept A, as its
 gate image shows. The first chain's analyzer step and both chains' analyzer times were not recorded.
 The class stack's daily token budget, `budgets.tokens_per_day`, was spent by the second finale: the
 status line at 15:03 UTC already read 1,969,486 of 2,000,000 tokens.
 
 ### Image retakes
 
-Sixteen console images were retaken from 14:43 to 17:51 UTC, under v1 except the Section 4 gate
+Sixteen console images were retaken from 14:43 to 17:51 UTC, under version 1 except the Section 4 gate
 image; each is listed with its run on its section's evidence page. The planted frames among them,
 from 14:53 to 15:03 UTC, ran with their flags in `.env`.
 
@@ -1257,12 +1261,12 @@ escalated, at 60,693 tokens in the second (activities 0ebc1c2b and 972b166b). Th
 question changed after them, at 18:07 UTC, to one the warehouse can answer. Re-checked on the new
 question: see the captured README of Assignment 3.
 
-Suspect, and replaced by the checks above: the first Assignment 3 pass, from 13:59 UTC, whose
+Suspect, and replaced by the checks above: the first Assignment 3 checks, from 13:59 UTC, whose
 stacks started while the retakes had the missing retry cap, the missing idempotency, and the kill
 switch at claim only with demo pacing switched on in `.env` (the reference and alternative two
 passed both checks, alternative one failed both, on the missing idempotency); and the first two
 Assignment 4 reference checks, from 14:18 UTC (14.21 and 13.32 cents), whose stacks started during
-the image retakes' planted windows. The Assignment 4 starter of that pass fails before any model
+the image retakes' planted windows. The Assignment 4 starter of that round fails before any model
 call, so it stands.
 
 After the question change, `make verify-assignments NAME=event-loop` re-checked Assignment 3 on the
@@ -1280,15 +1284,19 @@ judging the category the answer says rose most (from its own row, else its text)
 requirement 6 of Assignment 1 also closed the superuser address and `POSTGRES_PORT`; the test
 database guard landed in the same change, and the fix that lets the api start again at 22:33 UTC.
 On that code, `make verify-assignments NAME="event-loop agent-loop"` ran from
-22:35 UTC. Assignment 1's checks are on the code that ships. Assignment 3's ran before a change
-at 23:34 UTC altered how requirement 10 reads the answer's text; it left the reading of the
-answer's row unchanged, so it cannot alter the five verdicts judged on the row. Assignment 1: the starter failed, 0 of 11, and each solution passed 11 of 11 twice, 6 of 6
+22:35 UTC. Assignment 1's checks are on the code that ships. Assignment 3's ran with one
+drill-down run a check, before later changes to how requirement 10 reads the answer's text, one of
+which can fail an answer judged on its row when its text says another category rose most, and
+before requirement 10 began passing on 2 of 3 runs (26 October 2026). The captures store each
+verdict and not the answer text, so only the failure could be judged again with the current judge,
+and it fails under it too ([evidence](evidence/general.md#captures)). Assignment 1: the starter failed, 0 of 11, and each solution passed 11 of 11 twice, 6 of 6
 (0.39 to 0.47 cents a check, 42 to 50 calls). Assignment 3: the starter failed, 0 of 10; the
 reference and alternative two passed both of their checks, and alternative one failed its first
 and passed its second, 5 of 6 (0.19 to 0.33 cents a check, 7 to 10 calls; drill-down runs of
 18,200 to 33,324 tokens). In the failed check the agent's posted answer said Hiking rose most,
 against the gold Water Sports, and requirement 10 failed it, as it must fail a wrong answer; the
-run is on the [evidence page](evidence/general.md#captures). These are the published captures,
+run, and why it was the agent's run-to-run variation and not the solution, is on the
+[evidence page](evidence/general.md#captures). These are the published captures,
 and they supersede the Assignment 1 checks of 13:21 to 13:33 and the Assignment 3 checks of 20:33
 to 20:47.
 Each Assignment 4 alternative then ran once (`ONCE=1`), sharing baseline edc342f4: alternative one
@@ -1301,13 +1309,13 @@ and the build runs one live job at a time.
 
 ### What this session supersedes
 
-- The two-candidate method has seven measurements, v8, v9, v11, v13, v15, v17, and v19: 14, 14,
+- The two-candidate method has seven measurements, versions 8, 9, 11, 13, 15, 17, and 19: 14, 14,
   13, 14, 13, 12, and 13 of 15 holdout items against 2, superseding "three measurements".
-- Revenue cleared on the confirmed standard in 7 of 11 live promotions (v8, v9, v11, v13, v15, v17,
-  and v19), superseding "3 of 7".
+- Revenue cleared on the confirmed standard in 7 of 11 live promotions (versions 8, 9, 11, 13, 15, 17,
+  and 19), superseding "3 of 7".
 - Of the analyzer team's candidate experiments with an id in this report, 14 of 15 had 0
   regressions, superseding "10 of 11".
-- The spine question was correct at the unattended level in 8 runs: the 4 of 24 October above,
+- The fiscal year 2025 revenue question was correct at the unattended level in 8 runs: the 4 of 24 October above,
   59174f10 of the capture chain of 24 October, and cb8d3beb, a2de1570, and bd7b4a77.
 - Times from the trigger over every recorded run: the baseline 236 to 386 seconds; the candidate
   experiment 176 to 337 seconds; the finale after a promotion, from its first send, 50 seconds of
@@ -1339,33 +1347,33 @@ two attempts, as the live demo runbook asks. A planted half ran then with its fl
    `make demo NAME=events-approval-survives-restart` with `BUG_MEMORY_CHECKPOINTER`,
    `make demo NAME=events-duplicate-events` with `BUG_NO_IDEMPOTENCY` and `BUG_RANDOM_DIGEST_ID`,
    `make demo NAME=events-kill-switch-in-flight` with `BUG_KILLSWITCH_AT_CLAIM_ONLY`.
-4. [x] (twice in session 4, blocked both times, above; first run on 23 October, moment not shown,
+4. [x] (twice in the afternoon session of 23 October, blocked both times, above; first run on 23 October, moment not shown,
    before the deterministic naive analyzer was built) `make demo NAME=improve-naive-analyzer-blocked` with
    `BUG_NAIVE_ANALYZER`, twice (about 142 runs, 0.16 dollars: each attempt is the analyzer and a
    70-run candidate experiment).
 5. [x] (three times, 23 October, above) The analyzer at reasoning effort high: `make calibrate STEP=analyzer-high` (about 0.10
-   dollars). If it says there is no experiment of v1 in the session, first
+   dollars). If it says there is no experiment of version 1 in the session, first
    `make calibrate STEP=experiment-starting` (about 0.08 dollars).
-6. [x] (v5 promoted; revenue not cleared, above) A second chain of the finale, under the confirmed standard:
+6. [x] (version 5 promoted; revenue not cleared, above) A second chain of the finale, under the confirmed standard:
    `make demo NAME=improve-candidate-experiment`, approve the candidate on the Improve page, then
    `make demo NAME=improve-cleared-unattended` (about 75 runs, 0.09 dollars, plus about 0.0033
    dollars for each holdout item that falls short at clearance; at most 45 such runs, 0.05 dollars).
    Record which families cleared and every clearance re-run.
 7. [x] `make spend`, and the results written into this report.
-8. [x] (session 4: v8 at 14 of 15, the finale correct at the unattended level, above) The finale chain with two
+8. [x] (the afternoon session of 23 October: version 8 at 14 of 15, the finale correct at the unattended level, above) The finale chain with two
    candidates and the SQL guidance check: the baseline experiment if none is open in the session
    (about 0.09 dollars), `make demo NAME=improve-analyzer-team-approve` (two analyzer team runs
-   and 50 dev runs, about 0.10 dollars), approve, `make demo NAME=improve-candidate-experiment`
+   and 50 runs on the development questions, about 0.10 dollars), approve, `make demo NAME=improve-candidate-experiment`
    (70 runs, about 0.09 dollars), then `make demo NAME=improve-cleared-unattended` (one run, about
    0.002 dollars, plus at most 0.05 dollars of clearance re-runs): about 0.25 dollars, 0.34 with
    the baseline. Record both candidates, the one kept, the guidance rejections, which families
-   cleared, and the spine answer against gold. If the spine answer is wrong, run the class-day
+   cleared, and the answer to the fiscal year 2025 revenue question against gold. If the answer to the fiscal year 2025 revenue question is wrong, run the class-day
    safeguard live too (`make safeguard-activate BY="<name>"`, then the finale again) and record both.
-9. [x] (session 4, above) `make live-smoke` once (about 0.006 dollars, development live checks).
-10. [x] (session 4, results below) One live check of each reference solution of Assignments 1,
+9. [x] (the afternoon session of 23 October, above) `make live-smoke` once (about 0.006 dollars, development live checks).
+10. [x] (the afternoon session of 23 October, results above) One live check of each reference solution of Assignments 1,
     2, and 3 (about 0.03 dollars in all, assignment verification), then Assignment 4's reference
     twice and each alternative once (about 0.76 dollars, assignment verification).
-11. [x] (session 4: 7,670 tokens, run 13e0b95d) The export run of events-approval-survives-restart
+11. [x] (the afternoon session of 23 October: 7,670 tokens, run 13e0b95d) The export run of events-approval-survives-restart
     once (about 0.01 dollars, development live checks).
 12. [ ] (owed) The output-token cap probe, `make calibrate STEP=output-token-cap`
     (about 0.0001 dollars), and the console's "Send webhook question" once (about 0.002 dollars).
@@ -1373,17 +1381,17 @@ two attempts, as the live demo runbook asks. A planted half ran then with its fl
     trace limit resets) One baseline experiment and one demo run, to see about one experiment run in
     five arrive whole and every demo run traced (about 0.14 dollars).
 14. [ ] (owed) The planted halves through `make demo NAME=<demo> PLANTED=1` with `.env` unchanged,
-    as class runs them: the class pass of 25 October still set its flags in `.env` and ran
+    as class runs them: the class run-through of 25 October still set its flags in `.env` and ran
     `make up`. That includes the approval demo's tagged worker restart (two restarts, the
     terminal's wait, and Ctrl+C), and the console's Improve > Run the naive analyzer (planted)
-    once. The runs are those of a class pass's planted halves, about 0.03 dollars.
+    once. The runs are those of a class run-through's planted halves, about 0.03 dollars.
 15. [ ] (owed to rehearsal) The Section 4 finale frames and the promotion image, about 0.30
     dollars.
 
-Session 3 (23 October 2026, from 11:56 UTC) made no live run: any spend waited on a comparison of
+The midday session of 23 October 2026, from 11:56 UTC, made no live run: any spend waited on a comparison of
 the ledger with OpenAI's usage page, and that figure was not yet available, so nothing was spent.
 Items 4 and 8 to 12 together are about
-1.31 dollars, inside session 3's caps (development live checks 0.20, calibration 0.60, assignment
+1.31 dollars, inside that session's caps (development live checks 0.20, calibration 0.60, assignment
 verification 1.10). Items 4 and 8 must record under calibration: the activity header of `make demo`
 reaches event-loop jobs, but the hill-climbing runner records its experiments under its own activity
 from `.env` (development, whose session cap is 0.20). So, before items 4 and 8, set
@@ -1399,20 +1407,21 @@ Each change's commit is listed on the [evidence page](evidence/general.md).
 
 | Change | Why |
 |---|---|
-| The analyst answers with stated assumptions (first change below) | The spine question returned a clarifying question |
+| The analyst answers with stated assumptions (first change below) | The fiscal year 2025 revenue question returned a clarifying question |
 | Agent SQL may not read the database clock | A question about the previous day answered 0 (below) |
 | A refused write ends the run escalated | Decision of 22 October |
 | The cost grader estimates read-only SELECT statements only | A write past the guard must meet the read-only transaction first (25006) |
 | An approved query is not held again in the same run | One export asked for the same approval three more times |
 | Personal-data routing holds a query that returns a personal column (below) | Correct candidate queries were held, so none could be scored (below) |
-| The reviewer sees the business date; gold checks cannot block each other | A correct answer was held; two spine runs got no gold check |
+| The reviewer sees the business date | A correct answer was held |
+| Gold checks cannot block each other | Two runs of the fiscal year 2025 revenue question got no gold check |
 | Holdout: three items replaced, then restored | Replacing unstable items did not converge |
 | Traps: no change | No trap passed in 99 runs |
-| N: no change in class code | Recommendation 3, built by Assignment 4: Hill-climbing loop |
+| N: no change in class code | The recommended value, 3, built by Assignment 4 |
 | A family is cleared on the gate's confirmed standard | Decision of 23 October: revenue cleared in one measurement of four |
 
 In full: the analyst answers with stated assumptions, and returns needs_clarification only for a
-question that names nothing in the schema, because the spine question returned a clarifying
+question that names nothing in the schema, because the fiscal year 2025 revenue question returned a clarifying
 question, leaving nothing for the reviewer or the gold check. A question about the previous day
 answered 0 because the SQL read the database clock. Personal-data routing holds a query that returns
 a personal column, not one that only filters on it: every correct candidate query filtered internal
@@ -1430,14 +1439,14 @@ a correct answer about the previous day that was held.
 | slides/outline.md, the confident wrong answer | the mismatch, confirmed by calibration | 76,981,355.95 against gold 64,015,091.21 (below) |
 | slides/outline.md, the malicious SQL codes | the SQLSTATE codes | fixed system: guard, guard, 42501; naive guard: 25006, 25006, then 42501 |
 | slides/outline.md and Section 2 notes, the retry cap | attempt count and cost per attempt | escalated after 3 attempts, 14 to 79 seconds |
-| slides/outline.md and section-2-verification-loop/concepts.md, the reviewer | the reviewer's verdict on the baseline spine answer | concern in 6 runs, approve in 1 |
+| slides/outline.md and section-2-verification-loop/concepts.md, the reviewer | verdicts on the wrong answer to the fiscal year 2025 revenue question | concern in 6 runs, approve in 1 |
 | section-3-event-loop/concepts.md | duplicate event: answers posted | 1 run and 2 duplicates absorbed, twice |
 | section-3-event-loop/concepts.md | approval after a worker restart | the pending approval survived and the export posted after approval, twice |
 | section-3-event-loop/concepts.md | in-flight run after the kill switch | stopped in flight and blocked by the kill switch, twice |
 | slides/outline.md, Section 4: Hill-climbing loop | experiment wall time at concurrency 8 | 182 to 459 seconds for 70 runs (see Wall time) |
 | slides/outline.md and section-4-hill-climbing-loop/concepts.md | items the stability filter replaced | 0 in the end (3 replaced, then restored) |
 | slides/outline.md and section-4-hill-climbing-loop/concepts.md | N | 3 (recommendation; Assignment 4 builds it) |
-| section-4-hill-climbing-loop/concepts.md | holdout passes, active and candidate; regressions | v1 2 of 15; v8 and v9 14 of 15; v4 11 and 12 of 15; 0 regressions in each |
+| section-4-hill-climbing-loop/concepts.md | holdout passes, active and candidate; regressions | version 1: 2 of 15; versions 8 and 9: 14; version 4: 11 and 12; 0 regressions |
 | section-4-hill-climbing-loop/concepts.md | naive analyzer verdict | blocked in 37eb24f5, 45fa8a3d, 02de992f: holdout 2 of 15, all rules flagged |
 | docs/costs.md | measured cost per run | about 0.001 dollars per analyst run; 0.0594 to 0.0914 per 70-run experiment |
 | section-4-hill-climbing-loop/demo/README.md | the hill-climbing runner and its measured times | a Compose service; times in Wall time; the analyzer team 326 and 377 seconds |

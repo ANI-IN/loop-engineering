@@ -5,6 +5,8 @@
 > - **Drift canary**: Three easy questions that must pass and two trap questions that must still fail.
 > - **Trace**: The record of one run's steps, each model call and tool call, stored in LangSmith.
 > - **Live session**: Everything that runs between one `make preflight` and the next.
+> - **Development split**: The benchmark questions the analyzer team may learn from.
+> - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 
 What each command and assignment costs, as two numbers: the most it can cost at the caps, and what
 it cost when measured. The caps and prices come from `platform/packs/datapilot_us/pack.yaml`; the
@@ -52,15 +54,15 @@ tokens.
 | `make setup`, `make up`, `make seed`, `make check-data`, `make reset`, `make ps` | None | 0 dollars |
 | `make preflight PURPOSE=<purpose>` | Five canary questions, one agent run each (about 40 model calls) | About 15 cents |
 | `make demo NAME=<slug>`, one agent run | One run; retries stay inside its caps | About 3 cents per run |
-| `make demo NAME=improve-baseline-experiment` | The whole benchmark: each holdout item 3 times, each dev item once | About 3 cents per run, times the runs |
+| `make demo NAME=improve-baseline-experiment` | The whole benchmark: each holdout item 3 times, each development question once | About 3 cents per run, times the runs |
 | `make live-smoke` | Five real calls across the system | It prints its own estimate first |
 
 Measured on gpt-6-luna: one analyst run costs about 0.001 dollars; one 70-run experiment cost
-0.0594 to 0.0914 dollars where recorded; `make preflight` cost 0.0053 dollars. In the class story
-pass of 25 October 2026, every core demo of Sections 1 to 3 once, in class order, the worker's runs
+0.0594 to 0.0914 dollars where recorded; `make preflight` cost 0.0053 dollars. In the run-through
+of the class story on 25 October 2026, every core demo of Sections 1 to 3 once, in class order, the worker's runs
 cost 0.0102 dollars for the fixed halves and 0.0262 dollars for the planted halves, from each run's
 own record; the two finales of Section 4: Hill-climbing loop cost 0.0007 and 0.0005 dollars. Its
-experiments and analyzer team runs were not costed on their own in that pass.
+experiments and analyzer team runs were not costed on their own in that run-through.
 
 Every run is also inside the daily cap, `budgets.tokens_per_day` (2,000,000 tokens). The worker
 checks it before it claims each job, and a run past it ends as blocked by the budget.
@@ -106,15 +108,23 @@ checks of 23 October that the table includes, so they are not confirmed clean (n
 |---|---|---|---|
 | Assignment 1: Agent loop | Questions with informal or misspelled names | About 0.4 cents | 0.39 to 0.47 cents, six checks of 25 October 2026 (note 3) |
 | Assignment 2: Verification loop | The ambiguity suite, the leak cases, an approved export | About 2 cents | 1.49 to 1.92 cents, six checks of 25 October 2026 |
-| Assignment 3: Event loop | The alert job, a late order, the kill switch, the drill-down | About 0.2 cents | 0.19 to 0.33 cents, six checks of 25 October 2026 (note 1) |
+| Assignment 3: Event loop | The alert job, a late order, the kill switch, the drill-down 2 or 3 times | About 0.5 cents, an estimate (note 1) | 0.19 to 0.33 cents, six one-run checks of 25 October 2026 (note 1) |
 | Assignment 4, first check of a live session | The baseline and the candidate experiment, the analyzer team, two candidates | Not measured clean (note 2) | None |
 | Assignment 4, each later check | The candidate experiment, the analyzer team, two candidates | About 13 to 24 cents (12.62 to 23.95, seven checks, two unaudited; note 2) | Five audited clean, 12.62 to 19.22 cents, 24 and 25 October 2026 (note 2) |
 
-Note 1: the drill-down question and requirement 10's judging changed on 25 October 2026. The six
-checks above ran from 22:47 Coordinated Universal Time (UTC) that day, after the fix of 22:33 UTC, with
-the question and the pass rule that ship; a later change to how requirement 10 reads the answer's text
-cannot alter five of their six verdicts ([evidence](evidence/general.md#captures)): 0.21 and 0.19 cents for the reference, 0.33 and 0.32 for alternative
-one, and 0.20 and 0.22 for alternative two. Alternative one's 0.33-cent check failed on a wrong
+Note 1: since 26 October 2026 requirement 10 judges the drill-down question on the fair pass
+rule: two runs, and a third only when the first two disagree; it passes on 2 of 3. No check has
+run on that rule yet, so its typical figure is an estimate, from the six checks below, each of
+which made one drill-down run and no other model call: 18,200 to 33,324 tokens and 0.19 to 0.33
+cents a run, 0.245 cents on average. Two runs come to about 0.49 cents (0.38 to 0.66 cents over
+that range); a third run, made only when the first two disagree, brings a check to about 0.74
+cents, and to about 1 cent at the costliest run measured. About 0.2 cents was the typical check
+under the earlier single-run rule. The six checks ran from 22:47 Coordinated Universal Time (UTC)
+on 25 October 2026, after the fix of 22:33 UTC, one drill-down run each; later changes to how
+requirement 10 reads the answer's text can alter a verdict, and the captures do not store the
+answer text, so only one of the six could be judged again
+([evidence](evidence/general.md#captures)). They cost 0.21 and 0.19 cents for the reference, 0.33
+and 0.32 for alternative one, and 0.20 and 0.22 for alternative two. Alternative one's 0.33-cent check failed on a wrong
 answer from the agent; it was clean, so its cost counts. On the first earlier question, eight
 clean checks cost 0.21 to 0.54 cents, and two of the reference's four ended escalated at the token
 budget; on the second, from 18:29 UTC, six checks cost 0.09 to 0.41 cents; on the earlier pass
@@ -151,7 +161,7 @@ ceiling is what the check prints: the smaller of that and the spend cap.
 |---|---|---|---|
 | Assignment 1: Agent loop | 36 cents | 1.00 dollar | 36 cents |
 | Assignment 2: Verification loop | 108 cents | 1.00 dollar | 100 cents |
-| Assignment 3: Event loop | 3 cents | 1.00 dollar | 3 cents |
+| Assignment 3: Event loop | 9 cents | 1.00 dollar | 9 cents |
 | Assignment 4, first check of a live session | 678 cents, re-runs on top | 1.00 dollar | 100 cents |
 | Assignment 4, each later check | 432 cents, re-runs on top | 1.00 dollar | 100 cents |
 
@@ -159,14 +169,15 @@ ceiling is what the check prints: the smaller of that and the spend cap.
 
 Recommended: a spending limit of 3 dollars on each learner's key, in a dedicated OpenAI project,
 with an alert at 1.50 dollars. From the checks above, a learner who runs every check five
-times while working, with Assignment 4 over two live sessions, spends about 1.15 dollars:
-Assignment 1 about 2 cents, Assignment 2 about 9 cents, and Assignment 3 about 1 cent (five checks
-each at the mean of its clean checks above), and Assignment 4 about 1.03 dollars:
+times while working, with Assignment 4 over two live sessions, spends about 1.16 dollars:
+Assignment 1 about 2 cents, Assignment 2 about 9 cents (five checks each at the mean of its clean
+checks above), Assignment 3 about 2.5 cents (five checks of two drill-down runs each, at the
+measured mean of 0.245 cents a run, an estimate: note 1), and Assignment 4 about 1.03 dollars:
 five checks at 16.27 cents, the mean of the seven later checks, two of them not confirmed clean
 (note 2), plus two baseline experiments of 82 runs for the
 two first checks, each at 10.71 cents, the costliest measured 70-run experiment (9.14 cents) priced
 per run. At the mean of the five audited clean checks, 15.27 cents, Assignment 4 comes to about
-0.98 dollars (5 times 15.27 plus 2 times 10.71 is 97.77 cents), and the whole to about 1.10
+0.98 dollars (5 times 15.27 plus 2 times 10.71 is 97.77 cents), and the whole to about 1.11
 dollars. The alert comes past that, so it marks spending beyond the typical; the rest of the limit
 is for class demos and extra checks, whose cost is in Commands above. A runaway
 check stops at its own 1.00-dollar cap, so the limit is the backstop across checks, never the
@@ -210,11 +221,11 @@ shows a planted bug runs once with the bug on and once with it off. Each agent r
 retry or a resumed approval (each retry starts a new trace). That is more than most runs make: an
 answered run with the reviewer makes 2. An analyzer team run is 3 traces (failure analyst, rule
 writer, critic). In class the analyzer team writes 2 candidates (`analyzer.candidates`), each from
-its own team run and each measured on the 25 dev items once, so its demo adds 50 benchmark runs.
-The class benchmark is 70 runs (25 dev items once, 15 holdout items 3 times); with Assignment 4's
+its own team run and each measured on the 25 development questions once, so its demo adds 50 benchmark runs.
+The class benchmark is 70 runs (25 development questions once, 15 holdout items 3 times); with Assignment 4's
 six items it is 82. Each experiment the gate judges gets 20 re-runs, and the promoted candidate 15
 more for the clearance. The Assignment 4 check also writes 2 candidates, as the class does, and
-measures each on its 28 dev items once: 56 more benchmark runs in every check.
+measures each on its 28 development questions once: 56 more benchmark runs in every check.
 
 | Demo or check | Fully traced | Benchmark runs inside experiments |
 |---|---|---|
@@ -224,23 +235,23 @@ measures each on its 28 dev items once: 56 more benchmark runs in every check.
 | Section 4: Hill-climbing loop, 5 core demos (see below) | 9 | 260 runs and 55 re-runs |
 | Assignment 1: Agent loop (12 runs at most) | 36 | None |
 | Assignment 2: Verification loop (36 runs at most) | 108 | None |
-| Assignment 3: Event loop (1 run) | 3 | None |
+| Assignment 3: Event loop (3 runs at most) | 9 | None |
 | Assignment 4: Hill-climbing loop, first check of a live session (2 step traces) | 2 | 220 runs and 35 re-runs |
-| In all | 230 | 570 runs |
+| In all | 236 | 570 runs |
 
 Section 4's demos trace 2 analyzer team runs and 1 agent run in full (the naive analyzer makes no
 model call), and run 3 experiments and 2 candidate measurements on the benchmark.
 
 | | Benchmark traces | All traces, of the 5,000 a month |
 |---|---|---|
-| Sampled at 0.2, one pass of everything | 342 | 572 |
-| Not sampled, one pass of everything | 1,710 | 1,940 |
-| Sampled at 0.2, the working pattern of "The learner key limit" above | 617 on checks, 189 on demos | About 1,630 |
-| Not sampled, the same working pattern | 3,087 on checks, 945 on demos | About 4,860 |
+| Sampled at 0.2, everything run once | 342 | 578 |
+| Not sampled, everything run once | 1,710 | 1,946 |
+| Sampled at 0.2, the working pattern of "The learner key limit" above | 617 on checks, 189 on demos | About 1,660 |
+| Not sampled, the same working pattern | 3,087 on checks, 945 on demos | About 4,890 |
 
 The working pattern is every check of Assignments 1 to 3 five times, and Assignment 4 over two
 live sessions: two first checks of 255 benchmark runs each (220 runs and 35 re-runs) and three
-later ones of 173 each (82 runs, 56 dev runs for the two candidates, and 35 re-runs). Sampled, one
+later ones of 173 each (82 runs, 56 runs on the development questions for the two candidates, and 35 re-runs). Sampled, one
 learner's whole course fits the free plan three times over; unsampled, the same work uses nearly
 all of it, and the course's own experiments used it up on 23 October 2026.
 

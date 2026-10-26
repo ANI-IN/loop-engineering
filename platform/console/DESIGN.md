@@ -523,6 +523,20 @@ Screenshots (Streamlit 1.65.0, Chromium headless), in `design/screenshots/`:
 | `13-no-session.png` | No live session |
 | `14-events-67-percent.png` | The Events view at 67 percent browser zoom |
 
+Screenshot notes, for `make check-images` (`platform/scripts/check_images.py`):
+
+- **The 67 percent capture.** At 67 percent zoom the Events view ends about halfway down, and the
+  style tile's own sections follow it, so the whole viewport would cut the second row of colour
+  swatches. The frame is therefore clipped, nothing hidden: the page's top, the full 1910 CSS
+  pixels wide, down to the empty gap between the specimen-state toggle and the "Tokens" heading.
+  It shows the status line, the five lanes, the off-the-board row, the style tile's title, and
+  the toggle. Taken at device scale factor 2, like every screenshot, it is 3820 by 1642 pixels.
+- **`screenshots/agent-empty.png`, an allowed exception.** The Agent page before any question is
+  an empty state: under its line "Ask a question to see the tool calls, the SQL, and the answer."
+  the page is empty, because nothing has run yet. Its
+  blank area is the state shown, so the image check's reviewed exceptions excuse that one problem
+  on that one image, with the expiry `never`. Any other problem on it still fails.
+
 ## 15. Self-review
 
 ### Streamlit pin re-check on 1.65.0

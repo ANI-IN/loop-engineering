@@ -20,40 +20,40 @@ MEASURED = (
     "the candidate experiment not shown, 3 and 6 of 15 against 2 with 0 regressions (the version "
     "promoted on 22 October scored 11 and 12 of 15); cleared for the unattended level not shown, both "
     "attempts posted at the assisted level with a wrong answer after those weak candidates, while on "
-    "22 October the spine question by webhook was right at the assisted level. On 23 October the "
+    "22 October the fiscal year 2025 revenue question by webhook was right at the assisted level. On 23 October the "
     "analyzer team at reasoning effort high gave candidates of 2, 9, and 5 of 15 from the same failed "
-    "dev items, so the spread stays; the finale chain on the confirmed standard promoted the best, 10 "
+    "development questions, so the spread stays; the finale chain on the confirmed standard promoted the best, 10 "
     "of 15 against 2 with 0 regressions, cleared average order value and products but not revenue "
-    "(one revenue item fell short twice), and posted the spine question at the assisted level with a "
+    "(one revenue item fell short twice), and posted the fiscal year 2025 revenue question at the assisted level with a "
     "wrong answer, 63,986,616.77 dollars against gold 64,015,091.21, from an internal-account filter "
     "that was too broad; the naive analyzer's first live attempt, before it was made deterministic, "
     "passed 15 of 15 holdout items and the gate did not block it. In the live session of 23 October, "
-    "afternoon, with the SQL guidance check and two candidates chosen on the dev split: candidate A "
-    "18 of 25 dev with 11 rules, candidate B 19 of 25 with 8 rules, B kept as v8, the guidance check "
-    "rejecting none of its rules, in 326 seconds; v8 passed 14 of 15 holdout items against 2, 12 of 13 "
+    "afternoon, with the SQL guidance check and two candidates chosen on the development split: candidate A "
+    "18 of 25 development questions with 11 rules, candidate B 19 of 25 with 8 rules, B kept as version 8, the guidance check "
+    "rejecting none of its rules, in 326 seconds; version 8 passed 14 of 15 holdout items against 2, 12 of 13 "
     "trap items fixed, 0 regressions; revenue, average order value, customers, and products cleared, "
-    "orders not; the spine question correct, 64,015,091.21 dollars, posted at the unattended level; "
+    "orders not; the fiscal year 2025 revenue question correct, 64,015,091.21 dollars, posted at the unattended level; "
     "and the deterministic naive analyzer blocked twice, 21 rules all flagged, holdout 2 of 15. In "
-    "the capture session of 23 October, evening: candidate A 21 of 25 dev with 8 rules, candidate B "
-    "10 of 25 with 5 rules, A kept as v9, in 377 seconds; v9 passed 14 of 15 holdout items against 2, "
+    "the capture session of 23 October, evening: candidate A 21 of 25 development questions with 8 rules, candidate B "
+    "10 of 25 with 5 rules, A kept as version 9, in 377 seconds; version 9 passed 14 of 15 holdout items against 2, "
     "0 regressions, in 186 seconds; the finale held 5 times over 50 seconds while the promotion and "
-    "its clearance re-runs finished, then the spine question correct, 64,015,091.21 dollars, posted "
+    "its clearance re-runs finished, then the fiscal year 2025 revenue question correct, 64,015,091.21 dollars, posted "
     "at the unattended level with the same four families cleared; and the naive analyzer blocked a "
     "third time, 20 rules all flagged, holdout 2 of 15. In the live session of 24 October, every "
     "core and optional demo showed its moment: the naive analyzer wrote 21 rules, all rejected by "
     "the overfit guard, holdout 2 of 15, blocked; the analyzer team took 359 seconds for two "
-    "candidates, A 13 of 25 dev with 8 rules and B 14 of 25 with 6 rules, one kept as v11; the "
-    "candidate experiment took 212 seconds, v11 13 of 15 holdout items against 2 for v1, 0 "
-    "regressions; v11 was the active version 5 seconds after approval, and the finale was held "
-    "while the clearance re-runs ran; the finale under v11 answered 64,015,091.21 dollars, matching "
+    "candidates, A 13 of 25 development questions with 8 rules and B 14 of 25 with 6 rules, one kept as version 11; the "
+    "candidate experiment took 212 seconds, version 11 at 13 of 15 holdout items against 2 for version 1, 0 "
+    "regressions; version 11 was the active version 5 seconds after approval, and the finale was held "
+    "while the clearance re-runs ran; the finale under version 11 answered 64,015,091.21 dollars, matching "
     "gold, posted at the unattended level with revenue, average order value, and customers "
     "cleared; the safeguard was rehearsed after a reset and its finale was correct again; and the "
-    "over-broad rule on v11 passed 7 of 15 holdout items against 12, with 4 dev and 5 holdout "
-    "regressions, and was blocked."
+    "over-broad rule on version 11 passed 7 of 15 holdout items against 12, with 4 regressions on "
+    "development questions and 5 on holdout items, and was blocked."
 )
 
 NUMBERS = [
-    "40 benchmark items, 25 dev and 15 holdout, so 70 runs per experiment: from "
+    "40 benchmark items, 25 development and 15 holdout, so 70 runs per experiment: from "
     "`platform/packs/datapilot_us/benchmark/dev.yaml` and `holdout.yaml` with `evaluation.holdout_repeats`.",
     "Holdout questions per metric family (revenue 4, orders 4, customers 3, products 3, average order "
     "value 1): from `platform/packs/datapilot_us/benchmark/holdout.yaml`; calibration replaced 3 "
@@ -61,17 +61,17 @@ NUMBERS = [
     "docs/calibration-report.md, Stability and the holdout.",
     "Holdout passes 2 of 15 under the starting version and 12 of 15 under the promoted one; 10 of 13 "
     "holdout trap items flipped; 0 regressions on either split: docs/calibration-report.md, Model "
-    "bake-off. On 23 October v5 passed 10 of 15 against 2, 8 fixed, 0 regressions on either split, "
-    "dev 15 of 25, in 257.6 seconds: docs/calibration-report.md, Resumed after the ledger correction.",
+    "bake-off. On 23 October version 5 passed 10 of 15 against 2, 8 fixed, 0 regressions on either split, "
+    "15 of 25 development questions, in 257.6 seconds: docs/calibration-report.md, Resumed after the ledger correction.",
     "Wall time of one 70-run experiment at concurrency 8: 171.3 to 459 seconds over every 70-run "
     "experiment, two candidates at reasoning effort high taking 458.9 and 403.8; cost 0.0594 to "
     "0.0914 dollars: docs/calibration-report.md, Wall time, and Live session of 25 "
     "October 2026, What this session supersedes.",
     "Analyzer team candidates from the same kind of input: four runs at reasoning effort medium gave "
-    "11, 3, and 6 of 15 holdout passes against 2, and 2 for v3 in an earlier session, with the first "
+    "11, 3, and 6 of 15 holdout passes against 2, and 2 for version 3 in an earlier session, with the first "
     "candidate re-measured at 12: docs/calibration-report.md, Analyzer comparison; 2, 9, and 5 of 15 "
-    "at reasoning effort high from the same failed dev items: docs/calibration-report.md, Resumed "
-    "without traces. The response is two candidates chosen on the dev split only, "
+    "at reasoning effort high from the same failed development questions: docs/calibration-report.md, Resumed "
+    "without traces. The response is two candidates chosen on the development split only, "
     "`analyzer.candidates` 2 in pack.yaml; measured twice, the kept candidate passed 14 of 15 both "
     "times and the step took 326 and 377 seconds: docs/calibration-report.md, Live sessions of 23 "
     "October, afternoon and evening.",
@@ -80,33 +80,33 @@ NUMBERS = [
     "docs/calibration-report.md, Stability and the holdout. On 23 October average order value and "
     "products cleared; revenue did not: net-revenue-cyber-monday-2025 failed 3 of 3, then passed 2 "
     "of 3 more, and app-share-net-revenue-fiscal-2026 passed 1 of 3, then 1 of 3 more: "
-    "docs/calibration-report.md, Resumed after the ledger correction. In session 4 revenue, average "
+    "docs/calibration-report.md, Resumed after the ledger correction. In the afternoon session of 23 October revenue, average "
     "order value, customers, and products cleared, revenue with no re-run; orders did not: "
     "business-day-orders-november-2025 failed 3 of 3, then 0 of 3 more: docs/calibration-report.md, "
-    "Live session of 23 October, afternoon. In the evening the same four families cleared under v9: "
+    "Live session of 23 October, afternoon. In the evening the same four families cleared under version 9: "
     "docs/calibration-report.md, Live session of 23 October, evening.",
     "The finale of 23 October, morning, posted at the assisted level, labelled verified, "
     "63,986,616.77 dollars against gold 64,015,091.21, 16,291 tokens; that total is exactly the one an "
     "internal-account filter that is too broad gives, `NOT ILIKE '%harborpine%'`, which also removes "
-    "the look-alike addresses. The finale of session 4, and again the finale under v9 that evening: "
+    "the look-alike addresses. The finale of the afternoon session of 23 October, and again the finale under version 9 that evening: "
     "64,015,091.21 dollars, gold passed, posted at the unattended level: docs/calibration-report.md.",
     "The naive analyzer's first live attempt, before it was made deterministic: 21 rules, 15 of 15 "
-    "holdout and 25 of 25 dev, the gate ready for human approval; the deterministic naive analyzer, "
+    "holdout and 25 of 25 development questions, the gate ready for human approval; the deterministic naive analyzer, "
     "three times since: 21, 21, and 20 rules, all flagged, holdout 2 of 15, blocked: "
     "docs/calibration-report.md. The gate's four conditions: "
     "`platform/src/datapilot/loop4_hill_climbing/gate.py`.",
     "Experiment runs traced as a sample of about 1 run in 5, demo and check runs in full: "
     "`tracing.experiment_sample_rate` 0.2 in pack.yaml. "
     + R.format("trace sampling seen live after the LangSmith limit resets on 1 November"),
-    "Holdout 3 runs and pass on 2; an apparent dev regression re-run 2 more times under each version, "
+    "Holdout 3 runs and pass on 2; an apparent regression on the development questions re-run 2 more times under each version, "
     "counted when the candidate fails 2 of 2 and the active version passes 2 of 2; concurrency 8; "
     "overfit guard 6 words and 20 SQL tokens: from `evaluation` in "
     "`platform/packs/datapilot_us/pack.yaml`.",
     "Confirming re-run of an apparent holdout regression (3 more runs, 2 of 3 must fail again) and the "
     "calibration stability filter (5 runs per item under each version, kept at 4 or 5 of 5 or 0 or 1 of "
     "5): `evaluation` in pack.yaml.",
-    "MAGIC 56.52, 57.76, 59.13 on BIRD dev and 78.62 to 85.66 on Spider dev, when correcting only "
-    "queries already known to be wrong; 56.52 to 58.55 on BIRD dev when applied to every query: "
+    "MAGIC 56.52, 57.76, 59.13 on BIRD's development set and 78.62 to 85.66 on Spider's development set, when correcting only "
+    "queries already known to be wrong; 56.52 to 58.55 on BIRD's development set when applied to every query: "
     "Source 18, Tables 1 and 2.",
     "SEED 148 pairs (9.65 percent) without evidence, 105 (6.84 percent) with wrong evidence, CodeS-15B "
     "44.76 to 54.29: Source 20.",
@@ -122,22 +122,22 @@ NUMBERS = [
     "compare numbers to 4 significant digits: Sources 22 and 21.",
     "N, the minimum holdout questions per family before the unattended level: 3, the calibration "
     "report's recommendation, built by Assignment 4: Hill-climbing loop, not in class code.",
-    "The starting version v1 against v8 in one live session: holdout 2 and 14 of 15, dev 4 and 19 "
+    "Version 1 of the knowledge (the starting version) against version 8 in one live session: holdout 2 and 14 of 15, development questions 4 and 19 "
     "of 25, 12 of 13 holdout trap items fixed, 0 regressions on either split: docs/benefits.md, "
     "Section 4: Hill-climbing loop.",
-    "The analyzer team, 359 seconds, two candidates, A 13 of 25 dev with 8 rules, B 14 of 25 with 6 "
-    "rules, the kept candidate v11: the live session of 24 October 2026.",
-    "The candidate experiment, 212 seconds, v11 13 of 15 holdout items against 2 for v1, 0 "
+    "The analyzer team, 359 seconds, two candidates, A 13 of 25 development questions with 8 rules, B 14 of 25 with 6 "
+    "rules, the kept candidate version 11: the live session of 24 October 2026.",
+    "The candidate experiment, 212 seconds, version 11 at 13 of 15 holdout items against 2 for version 1, 0 "
     "regressions: the live session of 24 October 2026.",
-    "v11 active 5 seconds after approval; the finale held while the clearance re-runs ran: the live "
+    "Version 11 active 5 seconds after approval; the finale held while the clearance re-runs ran: the live "
     "session of 24 October 2026.",
-    "The finale under v11: 64,015,091.21 dollars, matching gold, posted at the unattended level with "
+    "The finale under version 11: 64,015,091.21 dollars, matching gold, posted at the unattended level with "
     "revenue, average order value, and customers cleared; the safeguard rehearsed after a reset, "
     "its finale correct again: the live session of 24 October 2026.",
     "The naive analyzer: 21 rules, all rejected by the overfit guard, holdout 2 of 15, blocked: the "
     "live session of 24 October 2026.",
-    "The over-broad rule on v11: 7 of 15 holdout items against 12, 4 dev and 5 holdout "
-    "regressions, blocked: the live session of 24 October 2026.",
+    "The over-broad rule on version 11: 7 of 15 holdout items against 12, 4 regressions on development "
+    "questions and 5 on holdout items, blocked: the live session of 24 October 2026.",
 ]
 
 OPEN_Q = (
@@ -166,7 +166,7 @@ SLIDES = [
             "a checkable envelope. The verification loop stops unsafe and malformed work and hands the "
             "agent reasons it can act on. The event loop runs questions as jobs, holds personal data for "
             "human approval, and stops on the kill switch. What none of them does is get better. The "
-            "spine question, net revenue in fiscal year 2025, is still wrong, because the business rules "
+            "fiscal year 2025 revenue question, net revenue in fiscal year 2025, is still wrong, because the business rules "
             "are still missing. This last section is the loop that learns those rules from failures, "
             "and the hard part is not learning. The hard part is knowing whether what was learned is "
             "true, and how much trust it earns. The baseline experiment you saw start at the poll has "
@@ -224,7 +224,7 @@ SLIDES = [
     # 3 -------------------------------------------------------------------------------------------
     dict(
         kind="question",
-        title="Hill-climbing loop: promote rules when the dev score rises?",
+        title="Hill-climbing loop: promote rules when the development score rises?",
         layout="concept",
         container="key-idea box: question line, key idea, three reason cards",
         minutes=2,
@@ -233,7 +233,7 @@ SLIDES = [
         on_slide=[
             "KEY IDEA: No. Promote only on holdout questions the analyzer never saw, with zero "
             "regressions and human approval.",
-            "- A dev score measures memory of the questions the rules came from",
+            "- A development score measures memory of the questions the rules came from",
             "- The same learned-guideline method gained on one model and dropped on another",
             "- An average can hide one broken answer behind six fixed ones",
         ],
@@ -244,7 +244,7 @@ SLIDES = [
             "guideline from training failures; in their words, \"MAGIC's guideline outperforms expert "
             "human's created ones.\" Then a later survey re-ran it. Source 19: Toward Real-World Table Agents "
             "(https://arxiv.org/html/2507.10281) found small gains over the baseline, lower scores with "
-            "Qwen2.5-Coder-32B on both Spider dev and BIRD dev; in summary, feedback refinement "
+            "Qwen2.5-Coder-32B on both Spider's development set and BIRD's development set; in summary, feedback refinement "
             "gained little for weaker models. Same method, different model, different verdict. That is the "
             "second reason on the slide, and the argument for a gate that decides on questions the "
             "learner never saw.",
@@ -276,7 +276,7 @@ SLIDES = [
             "| Run both queries live; compare results | Another join order passes |",
             "| Seed rows that trigger each trap | Cancelled and internal orders change the total |",
             "| Check a second database | One alone: 6.5 percent false positives |",
-            "| Split dev and holdout | 25 to learn from, 15 to decide |",
+            "| Split development and holdout | 25 to learn from, 15 to decide |",
             "Evidence: under the starting knowledge, 2 of 15 holdout items pass and 0 of 13 "
             "holdout trap items.",
             "At work: score outcomes on fixtures that separate right from nearly right; hold "
@@ -290,7 +290,7 @@ SLIDES = [
             "right answer wrong, and it can call a wrong answer right. Each row on this slide removes one "
             "of those errors. The first two keep you from rejecting good answers and accepting bad ones. "
             "The last two keep the score honest as soon as something starts learning from it.",
-            "Concrete example from DataPilot: The benchmark has 40 questions, 25 in the dev split and 15 "
+            "Concrete example from DataPilot: The benchmark has 40 questions, 25 in the development split and 15 "
             "in the holdout split, with no ambiguous category. Each has gold SQL written by hand. The "
             "evaluator runs the agent's SQL and the gold SQL live, on two databases, `warehouse` and "
             "`warehouse_alt`, and compares the normalized results with a numeric tolerance. The planted "
@@ -307,7 +307,7 @@ SLIDES = [
             "and keeps those that tell neighbour queries apart, about 42 per query. Two databases is the "
             "teaching-sized version of that idea. A trap-sensitivity test proves the data does its job: "
             "the naive SQL must give a different answer from the gold SQL, or the item tests nothing. One "
-            "experiment is 25 dev runs plus 15 holdout items times 3 runs, so 70 runs.",
+            "experiment is 25 development question runs plus 15 holdout items times 3 runs, so 70 runs.",
             "Source 8: Semantic Evaluation for Text-to-SQL with Distilled Test Suites "
             '(https://arxiv.org/abs/2010.02840): "Our method distills a small test suite of databases '
             'that achieves high code coverage for the gold query".',
@@ -317,7 +317,7 @@ SLIDES = [
             "tunes on the rest.",
             "Evidence from this course: the starting version passed 2 of 15 holdout items and 0 of "
             "13 holdout trap items in every baseline measured; in the live session of 23 October, "
-            "v1 passed 2 of 15 holdout and 4 of 25 dev items. That low, stable floor is what makes "
+            "version 1 passed 2 of 15 holdout and 4 of 25 development questions. That low, stable floor is what makes "
             "a later rise readable.",
             "Point at: the why line, the how-it-works column top to bottom, the second-database "
             "example, the evidence line, then the trade-offs line.",
@@ -328,7 +328,7 @@ SLIDES = [
             "repeatable; keep model judges for text you cannot execute.",
             'Likely question: "Does order matter in the comparison?" Answer: Only when the question '
             "asks for an order; each item says so, and ties are broken deterministically in the gold SQL.",
-            "Re-check after live runs: the 25 dev and 15 holdout items and the 70 runs per experiment "
+            "Re-check after live runs: the 25 development and 15 holdout items and the 70 runs per experiment "
             "against the benchmark files and `evaluation.holdout_repeats`.",
             "Transition: Now something learns from this instrument, and that is where it gets dangerous.",
         ],
@@ -362,26 +362,26 @@ SLIDES = [
             "question. So the work is split. One agent diagnoses, one proposes, one criticises, and then "
             "deterministic code rejects anything that copied the benchmark. Each step can only narrow "
             "what the previous one produced.",
-            "Concrete example from DataPilot: The failure analyst reads each failed dev item and returns "
+            "Concrete example from DataPilot: The failure analyst reads each failed development question and returns "
             "a diagnosis: what went wrong and the likely cause, with no rules. The rule writer turns the "
             'diagnoses into general rules, such as the one on the slide, "the fiscal year runs February '
             'to January and is named for its end year". The critic keeps, narrows, or drops each rule. '
             "In code, a review of a rule the writer never proposed is ignored, so the critic cannot add "
             "one. Then the overfit guard rejects any rule that shares 6 consecutive words with a "
             "benchmark question or 20 consecutive SQL tokens with a gold query, from "
-            "`evaluation.overfit_question_words` and `evaluation.overfit_sql_tokens`. The team reads dev "
-            "items only; handing it a holdout item raises an error. A rule's SQL guidance must also "
+            "`evaluation.overfit_question_words` and `evaluation.overfit_sql_tokens`. The team reads development "
+            "questions only; handing it a holdout item raises an error. A rule's SQL guidance must also "
             "run over the real schema: a check parses it against the catalog, and a placeholder or a "
             "column that does not exist goes back to the critic, then is dropped. The naive analyzer "
-            "(`BUG_NAIVE_ANALYZER`) makes no model call: it writes one rule per failed dev question, "
+            "(`BUG_NAIVE_ANALYZER`) makes no model call: it writes one rule per failed development question, "
             "quoting it word for word, and skips the critic; the guard flags every rule, unapplied.",
             "Under the hood: The research numbers show both sides. When correcting only the queries "
-            "already known to be wrong, MAGIC lifted BIRD dev from 56.52 with no self-correction, to "
-            "57.76 with DIN-SQL's human-written guideline, to 59.13 with its learned one, and Spider "
-            "dev from 78.62 to 85.66. Applied to every query, with no one saying which are wrong, the "
+            "already known to be wrong, MAGIC lifted BIRD's development set from 56.52 with no self-correction, to "
+            "57.76 with DIN-SQL's human-written guideline, to 59.13 with its learned one, and Spider's "
+            "development set from 78.62 to 85.66. Applied to every query, with no one saying which are wrong, the "
             "human guideline fell to 55.80 and MAGIC's reached 58.55. The survey re-run found the gains small, and negative on "
-            "one model. Knowledge itself is noisy too: SEED audited the human-written evidence in BIRD "
-            "dev and found 105 pairs, 6.84 percent, with wrong evidence and 148 with none.",
+            "one model. Knowledge itself is noisy too: SEED audited the human-written evidence in BIRD's "
+            "development set and found 105 pairs, 6.84 percent, with wrong evidence and 148 with none.",
             "Source 18: MAGIC: Generating Self-Correction Guideline for In-Context Text-to-SQL "
             '(https://arxiv.org/abs/2406.12692): "to iteratively generate and refine a self-correction '
             'guideline tailored to LLM mistakes".',
@@ -389,10 +389,10 @@ SLIDES = [
             "separate roles, a critic that can only subtract, and a deterministic leak check against "
             "your eval set. It applies to prompt optimisers and memory systems alike.",
             "Evidence from this course: in the live session of 24 October the naive analyzer wrote "
-            "21 rules quoting dev questions; the overfit guard rejected all 21, the holdout stayed "
+            "21 rules quoting development questions; the overfit guard rejected all 21, the holdout stayed "
             "at 2 of 15, and the gate blocked the version. The analyzer team took 359 seconds to "
-            "write two candidates from the same failures, A passing 13 of 25 dev items with 8 rules "
-            "and B 14 of 25 with 6, and kept one on the dev split alone.",
+            "write two candidates from the same failures, A passing 13 of 25 development questions with 8 rules "
+            "and B 14 of 25 with 6, and kept one on the development split alone.",
             "Point at: the why line, the three rows, stop on the critic, then the guard, the only "
             "step that is code; then the evidence line.",
             'Ask: "Why can the critic not add rules?" Expected: then it would be proposing and judging '
@@ -420,7 +420,7 @@ SLIDES = [
             "| How it works in DataPilot | Worked example |",
             "|---|---|",
             "| Holdout items: 3 runs per version, pass on 2 | 15 items, 45 runs per version |",
-            "| An apparent regression is re-run | Holdout: 3 more; dev: 2 per version |",
+            "| An apparent regression is re-run | Holdout: 3 more; development: 2 per version |",
             "| Promote: more passes, no regressions, guarded rules, approval | Four conditions, recorded |",
             "| Both experiments in one live session | The baseline started at the poll |",
             "Evidence: promoted, 13 of 15 against 2, no regressions; the over-broad rule, 7 of 15, "
@@ -440,7 +440,7 @@ SLIDES = [
             "overfit guard, and a person approves the knowledge diff. Each holdout item runs 3 times per "
             "version and passes on 2 of 3, from `evaluation.holdout_repeats` and "
             "`evaluation.holdout_pass_threshold`. An apparent holdout regression counts only if 2 of 3 "
-            "more candidate runs fail. An apparent dev regression, from single runs, counts only if the "
+            "more candidate runs fail. An apparent regression on a development question counts only if the "
             "candidate fails 2 more runs and the active version passes 2 more. The ledger shows the step "
             'as "Apparent regression: confirming". '
             "Runs go 8 at a time. The gate refuses to compare experiments from different live sessions, "
@@ -453,20 +453,20 @@ SLIDES = [
             "version: all stable under the starting version, 3 unstable under the promoted one. Their "
             "replacements were unstable on the next pass too, so the instability belonged to the "
             "version's answers, and the reviewed holdout was restored. Measured: 2 of 15 holdout passes "
-            "before, 14 of 15 after under v8 and v9, 13 of 15 under v11, 0 regressions each time. A "
+            "before, 14 of 15 after under versions 8 and 9, 13 of 15 under version 11, 0 regressions each time. A "
             "70-run experiment took 171.3 to 459 seconds. Fifteen items are still a small sample: 14 of 15 has a 95 percent interval "
             "of 0.70 to 0.99.",
             "Transfer: Use the same gate for any change to a model-backed system: a new prompt, a new "
             "model id, a new retriever. Pre-register how you measure, run both arms in one session, "
             "compare per item, confirm any regression before you believe it, and block on a confirmed one "
             "before you look at the average.",
-            "Evidence from this course: in the live session of 24 October the kept candidate, v11, "
+            "Evidence from this course: in the live session of 24 October the kept candidate, version 11, "
             "passed 13 of 15 holdout items against 2 for the starting version, with 0 regressions on "
             "either split, in 212 seconds. Then the optional demo added the over-broad rule, "
-            '"exclude discounted orders from revenue", to v11: it passed 7 of 15 against 12 for v11 '
-            "measured in that experiment, with 4 dev and 5 holdout regressions, and the gate "
-            "blocked it. Note that v11 itself measured 13 and then 12 of 15: the same version, two "
-            "measurements, one item apart, which is the flakiness the trade-offs line names.",
+            '"exclude discounted orders from revenue", to version 11: it passed 7 of 15 against 12 for version 11 '
+            "measured in that experiment, with 9 regressions (4 development, 5 holdout), and the gate "
+            "blocked it. Version 11 itself measured 13, then 12 of 15: one item apart, the flakiness "
+            "the trade-offs line names.",
             "Point at: the why line, the rows one by one, stop on the confirming-runs row, then the "
             "evidence line and the trade-offs line.",
             'Ask: "Why must both experiments come from one session?" Expected: the model, data, and '
@@ -498,7 +498,7 @@ SLIDES = [
             "| Clears: every item 2 of 3, or 2 of 3 more | Customers 3, products 3 |",
             "| Demoted: 3 escalations, or the kill switch | Average order value 1 |",
             "Evidence: after the latest promotion, revenue, average order value, and customers "
-            "cleared; the spine answer posted correct, without approval.",
+            "cleared; the answer to the fiscal year 2025 revenue question posted correct, without approval.",
             "At work: write the minimum evidence per capability before granting it.",
             "Key idea: autonomy follows evidence, one family at a time.",
         ],
@@ -511,20 +511,20 @@ SLIDES = [
             "Concrete example from DataPilot: The class starts at the report-only level. At each "
             "promotion a family clears on the gate's own confirmed standard: every holdout item of the "
             "family passes at least 2 of 3 runs, and an item that falls short gets 3 more runs and "
-            "counts if it passes 2 of them. Then the spine question arrives as a webhook and posts at "
+            "counts if it passes 2 of them. Then the fiscal year 2025 revenue question arrives as a webhook and posts at "
             "the level its family earned: without approval if revenue cleared, at the assisted level "
             "if not. Calibration is why: under the earlier rule, all 4 revenue items had to pass in one "
             "experiment, which happened in one measurement of four. Measured four times on the confirmed "
-            "standard: under v5 revenue did not clear, one item passing 1 of 3, then 1 of 3 more; under "
-            "v8, v9, and v11 it did. The "
+            "standard: under version 5 revenue did not clear, one item passing 1 of 3, then 1 of 3 more; under "
+            "versions 8, 9, and 11 it did. The "
             "families come from `autonomy.metric_families` in the pack: revenue, orders, average order "
             "value, customers, and products. Revenue, where net revenue lives, has 4 holdout questions; "
             "average order value has 1. Three consecutive escalations demote a family again, from "
             "`autonomy.demote_after_consecutive_escalations`, and the kill switch drops everything to "
             "the report-only level.",
-            "Evidence from this course: in the live session of 24 October, v11 was the active "
+            "Evidence from this course: in the live session of 24 October, version 11 was the active "
             "version 5 seconds after approval; the finale was held while the clearance re-runs ran; "
-            "then revenue, average order value, and customers had cleared, and the spine question "
+            "then revenue, average order value, and customers had cleared, and the fiscal year 2025 revenue question "
             "posted at the unattended level, 64,015,091.21 dollars, matching gold. Orders and "
             "products were not among the families cleared, so their answers stay at the assisted "
             "level. Note "
@@ -551,8 +551,8 @@ SLIDES = [
             "benchmark files, and N = 3 against the calibration report.",
             "Say: End the promotion discussion with the open question, and leave it open: "
             + OPEN_Q,
-            "Measured: revenue cleared on the confirmed standard under v8, v9, and v11, the latest "
-            "promotions, and not under v5.",
+            "Measured: revenue cleared on the confirmed standard under versions 8, 9, and 11, the latest "
+            "promotions, and not under version 5.",
             "Transition: Assignment 4 turns one answer into a rule. First, the four moves together.",
         ],
     ),
@@ -606,9 +606,9 @@ SLIDES = [
             "What to watch for:",
             "- Baseline: the trap items fail on the holdout ledger",
             "- Naive analyzer: every rule flagged, the gate blocked",
-            "- Analyzer team: two candidates, one kept on dev",
+            "- Analyzer team: two candidates, one kept on development questions",
             "- Candidate experiment: flips, zero regressions",
-            "- Finale: the spine answer, right, at its earned level",
+            "- Finale: the answer to the fiscal year 2025 revenue question, right, at its earned level",
             "Guaranteed moment: the candidate flips holdout trap items with zero regressions on "
             "either split; the gate passes once a person approves.",
             "Link: Demo page on GitHub | https://github.com/ANI-IN/loop-engineering/tree/main/"
@@ -647,7 +647,7 @@ SLIDES = [
             "failed. Measured: 2 of 15 holdout passes, 0 of 13 holdout trap items, in 236 to 386 "
             "seconds from the trigger for 70 runs, the longest on a shared machine; that is past the registry's 3-minute target, which is why it runs "
             "through the poll and the break. One experiment cost 0.0594 to 0.0914 dollars where recorded. "
-            "Shown again live on 24 October, 2 of 15 for v1.",
+            "Shown again live on 24 October, 2 of 15 for version 1.",
             "May vary: which non-trap items pass, and the wall time. If it does, say: the trap items are "
             "the ones that must fail, and they are guaranteed by the planted traps; the others vary run "
             "to run, which is why holdout items run three times and calibration removes unstable ones.",
@@ -667,7 +667,7 @@ SLIDES = [
             "is why it runs at the break. It waits behind the baseline, so if the verdict is not on the Improve "
             "page at 3:05, start the concepts and read it at 3:25.",
             "Narrate: This is concept 2, Rules learned from failures overfit, without its defences. The "
-            "naive analyzer makes no model call: it writes one rule per failed dev question, quoting the "
+            "naive analyzer makes no model call: it writes one rule per failed development question, quoting the "
             "question word for word with the query that failed, and skips the critic. The overfit guard "
             "flags every rule, but its verdict is not applied, so the knowledge diff keeps them all.",
             "Point at, in order: a rule that quotes a benchmark question; the guard's flag on every rule; "
@@ -675,7 +675,7 @@ SLIDES = [
             "rejects; and last the live stamp.",
             "Expected live result: the overfit guard flags every rule, and the gate verdict reads "
             "blocked, naming those rules, whatever the holdout count.",
-            "May vary: how many dev items failed, the dev count, and the holdout count. If the holdout "
+            "May vary: how many development questions failed, how many pass, and how many holdout items pass. If the holdout "
             "count rises, say: a higher score does not license rules that copy the test, and the gate's "
             "fourth condition blocks them anyway. Measured six times as it is now: 21, 21, 20, 21, 21, and "
             "21 rules, all flagged by the guard, holdout 2 of 15 in five runs and 0 of 15 in the "
@@ -697,19 +697,19 @@ SLIDES = [
             "the schema is dropped, and the overfit guard rejects any rule that quotes a question or "
             "copies gold SQL and passes the rest; live, it once rejected a rule the critic kept for "
             "copying 20 or more tokens of a gold query. The team writes two "
-            "candidates this way; each runs on the dev split only, and the one kept has fewer dev "
-            "regressions, then more dev passes, then fewer rules. The holdout never takes part in the "
+            "candidates this way; each runs on the development split only, and the one kept has fewer "
+            "regressions, then more passes, on the development questions, then fewer rules. The holdout never takes part in the "
             "choice.",
             "Point at, in order: one diagnosis with no rule in it, one proposed rule, the critic's "
             "decision and reason, the guard result, the line naming both candidates and the one kept, "
             "the knowledge diff waiting for human approval, and last the live stamp.",
             "Expected live result: a candidate version with general rules in the diff viewer, not yet "
             "approved, and the line naming both candidates and the one kept. Measured with two "
-            "candidates five times, in 326 to 377 seconds; the first three: 326 seconds, candidate A 18 of 25 dev with 11 rules, candidate B "
+            "candidates five times, in 326 to 377 seconds; the first three: 326 seconds, candidate A 18 of 25 development questions with 11 rules, candidate B "
             "19 of 25 with 8 rules, B kept; 377 seconds, A 21 of 25 with 8 rules, B 10 of 25 with 5, A "
             "kept; the SQL guidance check rejected none of the kept rules either time; and on 24 "
             "October, 359 seconds, A 13 of 25 with 8 rules, B 14 of 25 with 6, the kept candidate "
-            "becoming v11. With one candidate it took 62 and 98 seconds, and 7 and 8 rules passed the "
+            "becoming version 11. With one candidate it took 62 and 98 seconds, and 7 and 8 rules passed the "
             "overfit guard.",
             "May vary: the rule wording, the number of rules, and which candidate is kept. If it does, "
             "say: a different wording is fine; what matters is that no rule names a benchmark question.",
@@ -725,7 +725,7 @@ SLIDES = [
             "approval, click Approve on the knowledge diff.",
             "Narrate: Concept 3, The gate is a paired comparison. Same items, same measurement, same "
             "session. Holdout items run three times and pass on two; an apparent holdout regression is "
-            "confirmed by three more runs, and an apparent dev regression by two more runs of each "
+            "confirmed by three more runs, and an apparent regression on the development questions by two more runs of each "
             "version, before it counts.",
             "Point at, in order: the live holdout ledger with the flips marked against this session's "
             "baseline, the regression column at zero on both splits, the gate reasons, the verdict after "
@@ -736,15 +736,15 @@ SLIDES = [
             "which is scored locally either way.",
             "Expected live result: holdout flips marked against this session's baseline, no regressions, "
             "and the gate verdict passed once approved. Measured: the three latest candidates, each kept "
-            "from two: v8 and v9 each scored 14 of 15 against 2, fixing 12 of 13 holdout trap items "
-            "with 0 regressions, in 211 and 186 seconds from the trigger; v11, on 24 October, 13 of 15 "
+            "from two: versions 8 and 9 each scored 14 of 15 against 2, fixing 12 of 13 holdout trap items "
+            "with 0 regressions, in 211 and 186 seconds from the trigger; version 11, on 24 October, 13 of 15 "
             "against 2 with 0 regressions, in 212 seconds, and it was the active version 5 seconds "
             "after approval. The version promoted on 22 October scored 12 "
             "of 15. A 70-run experiment took 171.3 to 459 seconds; two, at reasoning effort high, ran past the 5-minute budget. The same input also gave candidates of 3, 6, and 11 of 15, and at "
             "reasoning effort high 2, 9, and 5 of 15, so higher effort did not narrow the spread; the "
             "best of those three passed 10 of 15 against 2 with 0 regressions when it was measured "
             "again for the finale. That spread is why the team writes two candidates and keeps the "
-            "better on dev. A weak candidate is still possible. If the gate blocks it for too few "
+            "better one on the development questions. A weak candidate is still possible. If the gate blocks it for too few "
             "holdout passes, say: the gate is refusing a version that did not earn it, which is the "
             "point.",
             'May vary: which items flip and the wall time. If the ledger shows "Apparent regression: '
@@ -761,12 +761,12 @@ SLIDES = [
             "once; on 24 October the finale was held while they ran, as designed). The status line "
             "then names the families cleared, or reads Not cleared for every "
             "family when none cleared, and the finale posts at the assisted level. Send webhook "
-            "question sends the spine question from the promotion on. The kill switch is released. "
+            "question sends the fiscal year 2025 revenue question from the promotion on. The kill switch is released. "
             "No reset.",
             "Do: Events > Send webhook question, or `make demo NAME=improve-cleared-unattended`. "
             "Both refuse, saying which step is missing, while the promotion is pending or its "
             "re-runs still run, the kill switch is engaged, or the level is lower.",
-            "Narrate: Concept 4, Autonomy is earned per metric family. The spine question, net revenue in "
+            "Narrate: Concept 4, Autonomy is earned per metric family. The fiscal year 2025 revenue question, net revenue in "
             "fiscal year 2025, arrives as a webhook under the promoted version. The moment is the "
             "correct answer, posted at the level its family has earned: without approval when revenue "
             "cleared on the gate's confirmed standard, every revenue holdout item at 2 of 3 runs or 2 "
@@ -779,13 +779,13 @@ SLIDES = [
             "and at the assisted level if it did not.",
             "May vary: the wording, the latency, and the level; the answer is correct either way. If it "
             "posts at the assisted level, say: the gate held back autonomy the evidence did not earn. "
-            "Measured four times on the confirmed standard. First, under v5, revenue did not clear, and "
+            "Measured four times on the confirmed standard. First, under version 5, revenue did not clear, and "
             "the answer was "
             "wrong, 63,986,616.77 dollars against gold 64,015,091.21: its internal-account filter was too "
             "broad and also removed the look-alike addresses, because no rule stated the email-domain "
             "predicate. The analyzer now drops a rule whose SQL guidance does not run over the schema. "
-            "Then, under v8, v9, and v11, revenue cleared and the answer, 64,015,091.21 dollars, "
-            "matching gold, posted at the unattended level; under v11, on 24 October, revenue, average "
+            "Then, under versions 8, 9, and 11, revenue cleared and the answer, 64,015,091.21 dollars, "
+            "matching gold, posted at the unattended level; under version 11, on 24 October, revenue, average "
             "order value, and customers were the families cleared.",
             "If the answer is wrong in class: use the class-day safeguard, live, from the instructor "
             'guide: `make safeguard-activate BY="<your name>"`, which makes the version verified in '
@@ -799,30 +799,30 @@ SLIDES = [
             "blocked: Improve > Add the over-broad rule to the active version, or "
             '`make demo NAME=improve-overbroad-rule-blocked`. The rule "exclude discounted orders from '
             'revenue" breaks revenue items that pass under the active version, and the gate blocks it '
-            "for regressions. Measured once, on 24 October on v11: 7 of 15 holdout items against 12, "
-            "with 4 dev and 5 holdout regressions, blocked, 862 seconds from the trigger to the "
+            "for regressions. Measured once, on 24 October on version 11: 7 of 15 holdout items against 12, "
+            "with 4 regressions on development questions and 5 on holdout items, blocked, 862 seconds from the trigger to the "
             "verdict with the confirming re-runs: it does not fit the block, so run it only if 15 "
             "minutes remain. It needs an experiment of the active version in this live session: "
             "the gate compares with one. In class order the candidate experiment is that "
             "experiment. After a safeguard activation there is none, and the first attempt on 24 "
-            "October failed after 311 seconds with NoLiveBaseline, no experiment of v11 in this "
+            "October failed after 311 seconds with NoLiveBaseline, no experiment of version 11 in this "
             "live session; run the baseline experiment on the active version first.",
             "Code walkthrough: about 5 minutes, in the order of the section's demo walkthrough page.",
             "Open `platform/src/datapilot/loop4_hill_climbing/experiment.py`, lines 192-194: implements "
             "concept 1, A benchmark is a measuring instrument, behind both experiments. Say: each "
-            "item's runs go one after another; `scheme.repeats` gives a holdout item 3 runs and a dev "
-            "item one, from the pack; a holdout item passes on 2 of its 3, and the same scheme applies "
+            "item's runs go one after another; `scheme.repeats` gives a holdout item 3 runs and a "
+            "development question one, from the pack; a holdout item passes on 2 of its 3, and the same scheme applies "
             "to both versions.",
             "Open `platform/src/datapilot/loop4_hill_climbing/analyzer.py`, lines 206-210: implements "
             "concept 2, Rules learned from failures overfit, the naive analyzer demo. Say: a holdout item "
             "in the input stops the analyzer team, so the holdout stays unseen in code, not by "
             "convention; with `BUG_NAIVE_ANALYZER` on, `naive_rules` makes no model call and writes one "
-            "rule per failed dev question, and the guard's verdict is not applied.",
+            "rule per failed development question, and the guard's verdict is not applied.",
             "Open the same file, lines 242-245: the analyzer team demo. Say: the critic can only keep, "
             "narrow, or drop a proposed rule; a rule whose SQL guidance does not parse against the "
             "catalog is dropped, such as a placeholder or a column that does not exist; the overfit "
             "guard is deterministic and runs last, 6 question words or 20 SQL tokens. Two candidates "
-            "are written this way, and `choose` in `candidates.py` keeps one on the dev split.",
+            "are written this way, and `choose` in `candidates.py` keeps one on the development split.",
             "Open `platform/src/datapilot/loop4_hill_climbing/gate.py`, lines 117-135: implements concept "
             "3, The gate is a paired comparison. Say: both experiments must come from the same live "
             "session; four conditions, all recorded: more holdout passes, zero confirmed regressions on "
@@ -859,7 +859,7 @@ SLIDES = [
             "Point at: the fixed question slide.",
             'Likely question: "What if the gate blocks a good version by noise?" Answer: It can. Holdout '
             "items run three times and pass on two, every apparent regression is confirmed by more runs, "
-            "three on the holdout and two of each version on dev, and calibration checks every item for "
+            "three on the holdout and two of each version on the development questions, and calibration checks every item for "
             "stability; for three items flaky at 0.7 that leaves about "
             "an 11 percent false-regression chance. Beyond that, a larger holdout or a statistical test "
             "is the fix.",
@@ -905,8 +905,8 @@ SLIDES = [
             "and the candidate 13, the two intervals overlap; the gate still promotes, "
             "because its rule is paired and per item, not a claim that the candidate is better in "
             'general. When an item that passed now fails, the ledger shows "Apparent regression: '
-            'confirming" before it decides: 3 more runs on the holdout, 2 more of each version on dev. '
-            "The latest promoted version, v11, measured 13 of 15 in its candidate experiment and 12 of "
+            'confirming" before it decides: 3 more runs on the holdout, 2 more of each version on the development questions. '
+            "The latest promoted version, 11, measured 13 of 15 in its candidate experiment and 12 of "
             "15 in the over-broad rule's experiment the same day: one version, one item apart.",
             "Analogy: Two coins that each landed heads 10 and 13 times out of 15 are not proven to be "
             "different coins.",
@@ -958,7 +958,7 @@ SLIDES = [
             "| Snowflake Cortex Analyst | Up to 10 verified-query suggestions at a time | A person accepts each |",
             "| Vanna 2.0 | Saves successful interactions to memory | Automatic, no gate |",
             "| LangChain's loop | Analysis agent on production traces | Not described in the post |",
-            "| DataPilot | Analyzer team on dev failures | Holdout, zero regressions, guarded rules, human approval |",
+            "| DataPilot | Analyzer team on development failures | Holdout, zero regressions, guarded rules, human approval |",
             "How to read this: the last column is what decides whether learned knowledge reaches "
             "production; each piece exists elsewhere, the combination is the difference.",
         ],
@@ -1008,7 +1008,7 @@ SLIDES = [
         container="table: failure mode, evidence, guard, read-me line",
         minutes=0.5,
         says="Failure modes of learned knowledge, their evidence, and the guard for each",
-        src="Sources 18-20; pack.yaml evaluation; knowledge v2-overbroad",
+        src="Sources 18-20; pack.yaml evaluation; knowledge/v2-overbroad.yaml",
         on_slide=[
             "| Failure mode | Evidence | Guard |",
             "|---|---|---|",
@@ -1029,7 +1029,7 @@ SLIDES = [
             "and breaks others that passed before, and the zero-regression rule blocks it.",
             "Analogy: A style guide entry written after one bad review that then forbids a pattern the "
             "whole codebase uses correctly.",
-            "Under the hood: SEED audited the human-written evidence in BIRD dev: 148 pairs, 9.65 percent, "
+            "Under the hood: SEED audited the human-written evidence in BIRD's development set: 148 pairs, 9.65 percent, "
             "had none, and 105, 6.84 percent, had wrong evidence. Fixing the wrong evidence raised "
             "CodeS-15B from 44.76 to 54.29 on those pairs, so bad knowledge costs real accuracy. The "
             "MAGIC re-run showed small gains and a drop on one model, so learned rules need a holdout. "

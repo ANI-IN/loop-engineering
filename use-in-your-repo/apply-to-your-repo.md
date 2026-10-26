@@ -6,6 +6,8 @@
 > - **Trap**: A business rule the schema does not reveal, so a plausible query gets it wrong.
 > - **Drift canary**: Three easy questions that must pass and two trap questions that must still fail.
 > - **Live session**: Everything that runs between one `make preflight` and the next.
+> - **Development split**: The benchmark questions the analyzer team may learn from.
+> - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 
 Three parts, in order. Part 1 runs the template pack, Lantern Coffee Club, on the Compose Postgres,
 so you see every file of a pack work before you write your own. Part 2 builds your own pack. Part 3
@@ -111,7 +113,7 @@ the answer is wrong: the analyst does not know refunds or test payments.
 ### Step 4: Run the template's benchmark
 
 **Why.** This is the hill-climbing loop on a new domain: a baseline experiment, the analyzer team on
-the failed dev items, and the gate on the holdout split.
+the failed development questions, and the gate on the holdout split.
 
 **Do this.** On the Improve page, Run experiment on the active version, or:
 
@@ -159,7 +161,7 @@ Write `benchmark/dev.yaml` and `benchmark/holdout.yaml`, one `BenchmarkItem` per
 - `gold_sql` for every question, written by hand and following every rule;
 - `naive_sql` and `traps` for every trap question: the query a model without the rules writes;
 - `metric_family` for every question, from `autonomy.metric_families` in `pack.yaml`;
-- holdout questions worded away from the dev questions, so the analyzer team cannot learn them.
+- holdout questions worded away from the development questions, so the analyzer team cannot learn them.
 
 The gate decides on the holdout split, and each holdout item runs 3 times per version
 (`evaluation.holdout_repeats`), so a small holdout costs little and a large one is more evidence.

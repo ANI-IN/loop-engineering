@@ -16,6 +16,12 @@ lists them. Run the commands in Ubuntu on WSL2, from the repository root.
       planted half is `make demo NAME=<demo> PLANTED=1`, its flags on for its own runs only. The
       finale and every live check refuse to start while a flag is on.
 
+## The rehearsal's images
+
+- [ ] At the end of the rehearsal, the day before: `make check-images ARGS=--rehearsal` passed. It
+      fails on any image the rehearsal still owes a retake
+      ([the instructor guide](instructor-guide.md#the-day-before), step 10).
+
 ## The services
 
 - [ ] `make up`, then `make ps`: six services up (`postgres`, `api`, `worker`, `scheduler`,
@@ -32,15 +38,16 @@ lists them. Run the commands in Ubuntu on WSL2, from the repository root.
 ## The live session
 
 - [ ] The rehearsal ran on an earlier Eastern time day than the class: preflight for the class
-      refuses while less than one class pass, about 520,000 tokens, is left of the day's token
-      budget, and the count starts again only at midnight Eastern time.
+      refuses while fewer tokens than one class run-through needs, about 520,000, are left of the
+      day's token budget, and the count starts again only at midnight Eastern time.
 - [ ] `make preflight PURPOSE=class`: every check passes, including `token budget`, the canary
       lines read `as expected`, and the last line starts `Live session started at`.
 - [ ] Only if it refuses with "Less than one class pass is left of this Eastern time day's token
       budget": no class session started, and the session open before it, often the rehearsal
-      one, stays open, so teach nothing in it. Tell the course owner. Then run the command the
-      message's last line prints, `make preflight PURPOSE=class ACCEPT_TOKENS_LEFT=<the count
-      left>`: the class session starts, knowingly, with the count the `token budget` line shows.
+      one, stays open, so teach nothing in it. Tell the course owner. Then run the command at the
+      end of the message, `make preflight PURPOSE=class ACCEPT_TOKENS_LEFT=<count>`, with the
+      digits of the printed command, without commas: the class session starts, knowingly. With 0
+      tokens left the message offers no command, and no class session starts that day.
       Plan the cuts with
       [the instructor guide's steps](instructor-guide.md#if-something-breaks) ("The token budget
       refusal"): the planted half of the unbounded rows demo goes first.

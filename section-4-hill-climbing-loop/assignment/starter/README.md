@@ -4,8 +4,9 @@ The starter is the complete working class system for Section 4: Hill-climbing lo
 removed. The analyzer team and the eligibility rule
 (`platform/src/datapilot/loop4_hill_climbing/eligibility.py`) already call every hook in
 `platform/src/datapilot/loop4_hill_climbing/extension.py`, and each does nothing yet: the critic
-gets no more guidance, the screen drops nothing, and every family has enough holdout items. Each
-place to fill is marked `# EXTENSION POINT, TODO K (hill-climbing-loop-K)`.
+gets no more guidance, the screen drops nothing, and every family has enough holdout items (the
+benchmark questions the analyzer team never sees, on which the gate decides). Each place to fill is
+marked `# EXTENSION POINT, TODO K (hill-climbing-loop-K)`.
 
 | Extension point | What you fill | Who calls it | Step |
 |---|---|---|---|

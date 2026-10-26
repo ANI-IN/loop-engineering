@@ -137,13 +137,13 @@
   section: hill-climbing-loop
   location: platform/src/datapilot/loop4_hill_climbing/analyzer.py
   trigger: "`make demo NAME=improve-naive-analyzer-blocked` (its own requests only; it plants the naive analyzer with or without PLANTED=1); or Improve > Run the naive analyzer (planted), shown while demo controls are allowed"
-  symptom: The naive analyzer quotes each failed dev question in a rule of its own; the analyzer applies no overfit guard, and the gate blocks the version because the guard rejects its rules.
+  symptom: The naive analyzer quotes each failed development question in a rule of its own; the analyzer applies no overfit guard, and the gate blocks the version because the guard rejects its rules.
   fix: The analyzer team with the critic, then the deterministic overfit guard.
   demos: [improve-naive-analyzer-blocked]
 
 # --- Harness weaknesses (the honest starting configuration) ------------------------------------
 - id: knowledge-v1-empty
-  name: the near-empty knowledge version v1
+  name: the near-empty version 1 of the knowledge (the starting version)
   chip: Starting knowledge
   kind: harness_weakness
   section: agent-loop

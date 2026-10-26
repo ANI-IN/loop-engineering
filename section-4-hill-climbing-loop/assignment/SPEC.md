@@ -8,10 +8,13 @@ and the steps.
 - The complete class system for Section 4: Hill-climbing loop, with its extension points in
   `platform/src/datapilot/loop4_hill_climbing/extension.py`, listed in
   [starter/README.md](starter/README.md).
-- The benchmark in `platform/packs/datapilot_us/benchmark/`, and the planted over-broad rule in
-  [planted-rule.yaml](planted-rule.yaml), which the check adds to the rule writer's proposals. Its
-  evidence becomes your own repeat-customer dev item that failed in the baseline (else your first
-  repeat-customer dev item), so your item ids need not match the one in the file.
+- The benchmark in `platform/packs/datapilot_us/benchmark/`, in two splits: the development
+  split, the questions the analyzer team may learn from, and the holdout split, the questions it
+  never sees, on which the gate decides.
+- The planted over-broad rule in [planted-rule.yaml](planted-rule.yaml), which the check adds to the
+  rule writer's proposals. Its evidence becomes your own repeat-customer development item that
+  failed in the baseline (else your first repeat-customer development item), so your item ids need
+  not match the one in the file.
 - Read-only: the frozen contracts in `platform/src/datapilot/contracts/`, the measurement in the
   `evaluation` block of `platform/packs/datapilot_us/pack.yaml`, the gate, and the overfit guard.
 
@@ -48,18 +51,18 @@ Deterministic, checked against the real warehouses with no model call; each must
 
 Model-dependent, run live with the class measurement:
 
-9. The analyzer team works on the failed dev items of the baseline experiment as in class: it
-   writes `analyzer.candidates` rule sets (two, in pack.yaml), each from its own run, measures each
-   on the dev split only, and keeps the one with fewer dev regressions, then more dev passes, then
-   fewer rules. In every one of its runs, since any can be kept, the critic's review of the planted
+9. The analyzer team works on the failed development items of the baseline experiment as in
+   class: it writes `analyzer.candidates` rule sets (two, in pack.yaml), each from its own run,
+   measures each on the development split only, and keeps the one with fewer regressions on the
+   development split, then more development items passed, then fewer rules. In every one of its runs, since any can be kept, the critic's review of the planted
    rule is a drop with a reason, and every accepted rule is one the rule writer proposed.
 10. The gate promotes the kept candidate, after the human approval the check gives, with zero
     confirmed regressions on both splits, and the candidate experiment covers the six new items:
     each one is measured. None of them has to pass; the result line says how many holdout items of
     the family passed, for the record.
-    The measurement is the class one: holdout items run 3 times and pass on 2; dev items run once;
-    every apparent regression is confirmed by re-runs before it counts. An apparent dev regression
-    is re-run 2 more times under each version and counts only when the candidate fails both of its
+    The measurement is the class one: holdout items run 3 times and pass on 2; development items
+    run once; every apparent regression is confirmed by re-runs before it counts. An apparent
+    regression on a development item is re-run 2 more times under each version and counts only when the candidate fails both of its
     re-runs and the active version passes both of its own, so an item that is unstable under both
     versions is not a regression; an apparent holdout regression is re-run 3 more times under the
     candidate and counts when 2 of them fail. Afterwards `aov` is not
@@ -70,16 +73,18 @@ Model-dependent, run live with the class measurement:
 **How often a correct solution passes.** Requirement 10 depends on the rule set the model writes
 in that check. In the course's verification runs of 23 October 2026, when the check wrote one
 candidate, it passed in 6 of 10 checks of correct solutions. Three were blocked by one confirmed
-dev regression: a rule the model wrote made one dev item fail under the candidate. The third of
-them was measured with re-runs of both versions: the item passed both re-runs under v1 and failed
-both under the candidate, a real regression of that rule set. The fourth candidate was no better
-than v1 on holdout. The check now writes two candidates and keeps the one with fewer dev
-regressions, then more dev passes, as the class does, which targets the first cause.
+regression on the development split: a rule the model wrote made one development item fail under
+the candidate. The third of them was measured with re-runs of both versions: the item passed both
+re-runs under version 1 of the knowledge (the starting version) and failed both under the
+candidate, a real regression of that rule set. The fourth candidate passed no more holdout items
+than version 1. The check now writes two candidates and keeps the one with fewer regressions on the
+development split, then more development items passed, as the class does, which targets the first
+cause.
 
 With two candidates, the reference passed 2 of 2 checks that evening. Those checks ran on the
 check code of that evening, before a later change to how each check counts its spend and judges.
-On 25 October 2026, before later changes that cannot alter these verdicts, the reference passed 2 of 2 checks, and each
-alternative 1 of 1; each alternative's second check is owed to rehearsal
+On 25 October 2026, before later changes that cannot alter these verdicts, the reference passed 2
+of 2 checks, and each alternative 1 of 1; neither alternative has a second check of that day
 ([evidence](../../docs/evidence/general.md#captures)). So a correct solution may still read FAIL
 on requirement 10 now and then: run the check again, and the FAIL line says when the cause is the
 model's rule set rather than your files. A starter, and a solution that leaves out a family item
@@ -108,9 +113,9 @@ requirements do not run. The command exits 0 when every line reads PASS, 1 on an
 it stopped.
 
 Agent runs: 82 for the candidate experiment, 82 more for the baseline when the live session has
-none yet, the re-runs of apparent regressions (4 for a dev item, 2 under each version; 3 for a
+none yet, the re-runs of apparent regressions (4 for a development item, 2 under each version; 3 for a
 holdout item, under the candidate), 3 for each holdout item that falls short when its family is
-judged for the unattended level, 28 for each of the two candidates on the dev split, and 3
+judged for the unattended level, 28 for each of the two candidates on the development split, and 3
 analyzer team calls for each candidate, 6 in all.
 
 ## Evidence to hand in

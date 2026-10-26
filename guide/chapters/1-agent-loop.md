@@ -1,11 +1,12 @@
 # Chapter 1: Section 1: Agent loop
 
-The analyst answers a plain question correctly, then answers the spine question, "What was our net
+The analyst answers a plain question correctly, then answers the fiscal year 2025 revenue question, "What was our net
 revenue in fiscal year 2025?", with a confident number that is wrong. Nothing in the agent loop
 checks it yet. You run each demo from the demo terminal and watch it on the console's Agent page.
 Every screenshot in this chapter comes from the live runs of 25 October 2026, from 14:43
 Coordinated Universal Time (business date 31 January 2026), and every time range from the
-calibration demo pass of 22 and 23 October 2026 and the live sessions of 23, 24, and 25 October.
+calibration's run-through of the demos on 22 and 23 October 2026 and the live sessions of 23,
+24, and 25 October.
 
 > Your output will differ: run times, ids, and the agent's wording change on every run.
 
@@ -58,7 +59,7 @@ one query, a correct count. The live stamp shows this result comes from a run st
 > 0.0005 dollars in the captured run). Say: "This is the loop you already know. The next question
 > looks just as simple."
 
-### Step 2: Ask the spine question
+### Step 2: Ask the fiscal year 2025 revenue question
 
 **Where:** The demo terminal, and the Agent page.
 
@@ -71,9 +72,9 @@ make demo NAME=agent-confident-wrong-answer
 **You should see:** the run with its status line and its tool timeline. In the captured run the
 analyst also called the schema scout.
 
-![The Agent page after the spine question: the status line at the report-only level, Holding for approval, the line that the run waits for a person's approval, and the tool calls list_tables, scout_schema, two describe_table calls, and run_query, 20.3 seconds in total](../../section-1-agent-loop/demo/expected/agent-confident-wrong-answer-run.png)
+![The Agent page after the fiscal year 2025 revenue question: the status line at the report-only level, Holding for approval, the line that the run waits for a person's approval, and the tool calls list_tables, scout_schema, two describe_table calls, and run_query, 20.3 seconds in total](../../section-1-agent-loop/demo/expected/agent-confident-wrong-answer-run.png)
 
-*25 October 2026: under the starting knowledge v1 the run holds for a person's approval; the schema scout takes 11.1 of the 20.3 seconds of tool time.*
+*25 October 2026: under version 1 of the knowledge (the starting version) the run holds for a person's approval; the schema scout takes 11.1 of the 20.3 seconds of tool time.*
 
 **Look at:** the status, **Holding for approval**, and the `scout_schema` bar in the timeline.
 
@@ -204,15 +205,16 @@ inside its budget.
 
 | Item | This run |
 |---|---|
-| Spine question against gold, both databases | Mismatch (headline) |
+| The fiscal year 2025 revenue question against gold, both databases | Mismatch (headline) |
 | The simple question | Posted, correct count |
-| The spine question's status | Holding for approval, reviewer concern |
-| Traps marked on the spine query | Fiscal year, Eastern time, internal accounts |
-| Tokens, secondary | 5,151 for the simple question; 32,421 for the spine question (the captured runs) |
+| The fiscal year 2025 revenue question's status | Holding for approval, reviewer concern |
+| Traps marked on that question's query | Fiscal year, Eastern time, internal accounts |
+| Tokens for the simple question, secondary | 5,151 (the captured run) |
+| Tokens for the fiscal year 2025 revenue question, secondary | 32,421 (the captured run) |
 
 ## Time and cost
 
-Times are wall time from the trigger to the checked result, from the calibration demo pass of 22
+Times are wall time from the trigger to the checked result, from the calibration's run-through of the demos on 22
 and 23 October 2026 and the live sessions of 23, 24, and 25 October
 (`docs/calibration-report.md`), each demo run alone with a reset between.
 
@@ -225,7 +227,7 @@ and 23 October 2026 and the live sessions of 23, 24, and 25 October
 ## What to say in class
 
 - "The loop works: three tool calls and a correct count for a plain question."
-- "The spine answer is confident, valid, and wrong. Each mistake is a rule the schema hides."
+- "The answer to the fiscal year 2025 revenue question is confident, valid, and wrong. Each mistake is a rule the schema hides."
 - "Nothing in this loop compares the answer with the truth. The gold check is a measurement, not
   part of the agent."
 - "The row cap is a tool decision: what reaches the model shapes every later step."

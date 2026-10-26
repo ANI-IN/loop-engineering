@@ -6,10 +6,15 @@ x-app: &app
   build:
     context: .
     dockerfile: platform/ops/docker/Dockerfile
-  image: datapilot:local
+  # Each Compose project its own image: the class project (datapilot) builds datapilot:local, the
+  # tests' project datapilot-tests:local, so one project's build never retags another's image.
+  image: ${COMPOSE_PROJECT_NAME:-datapilot}:local
   env_file:
     - path: .env
       required: false
+  # No extra_hosts here, on purpose: only a Postgres on the host itself, on Docker Engine for Linux,
+  # needs host.docker.internal, and use-in-your-repo/apply-to-your-repo.md gives that case its own
+  # compose.override.yaml, which make up reads on its own.
   # Inside a container, localhost is the container itself, so the services reach Postgres by
   # service name. The ops tables stay on the Compose Postgres; the agent's two databases come from
   # SERVICES_DATABASE_URL_AGENT and SERVICES_DATABASE_URL_AGENT_ALT in .env when set (.env.example).

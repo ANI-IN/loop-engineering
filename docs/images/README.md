@@ -14,7 +14,7 @@ Your output will differ: run times, ids, and the agent's wording change on every
 
 *The simple question, run 87a06dba, 25 October 2026: three tool calls, one query, a correct count, and the run posted.*
 
-![The spine question's annotated Structured Query Language (SQL) query: marks 1 on both calendar-year bounds, 2 on both order_ts comparisons, and 3 on WHERE, the Fiscal year, Eastern time, and Internal accounts notes, the answer 72,394,572.08 for calendar year 2025, and the mismatch against gold 64015091.21](agent-confident-wrong-answer-sql.png)
+![The fiscal year 2025 revenue question's annotated Structured Query Language (SQL) query: marks 1 on both calendar-year bounds, 2 on both order_ts comparisons, and 3 on WHERE, the Fiscal year, Eastern time, and Internal accounts notes, the answer 72,394,572.08 for calendar year 2025, and the mismatch against gold 64015091.21](agent-confident-wrong-answer-sql.png)
 
 *The confident wrong answer, run 9182df01, 25 October 2026: one number for calendar year 2025, three trap notes, and gold does not match on either database.*
 
@@ -48,17 +48,18 @@ Your output will differ: run times, ids, and the agent's wording change on every
 
 ## Section 4: Hill-climbing loop
 
-These come from the capture chain of 24 October 2026, whose candidate is v13; the session's main
-chain of the same day promoted v11.
+These come from the capture chain of 24 October 2026, whose candidate is version 13 of
+the knowledge (the console writes it `v13`); the main chain of that day's live session promoted
+version 11.
 
 ![The holdout ledger comparing v1 and the candidate v13: v1 passes 2 of 15, v13 passes 14 of 15, 12 fixed and 0 regressions, some rows with a Trace link and some Not traced](improve-candidate-experiment-ledger.png)
 
-*The candidate experiment, experiment 0e1cbfe7, 24 October 2026: 14 of 15 holdout items against 2, with no regressions.*
+*The candidate experiment, experiment 0e1cbfe7, 24 October 2026: 14 of 15 holdout items, the questions the analyzer team never sees, against 2 for version 1, with no regressions.*
 
 ![The status line after the promotion: revenue, average order value, customers, and products cleared for the unattended level, orders not cleared; the ledger reads Replaced, v1 and Active, v13](improve-promotion-cleared.png)
 
-*The promotion of v13, experiment 0e1cbfe7, 24 October 2026: four families are cleared on the confirmed standard, 2 of 3 runs or 2 of 3 more for an item that fell short; orders is not.*
+*The promotion of version 13, experiment 0e1cbfe7, 24 October 2026: four families are cleared on the confirmed standard, 2 of 3 runs or 2 of 3 more for an item that fell short; orders is not.*
 
-![The run board scrolled down: Done holds the posted spine question with Gold check passed: 64,015,091.21, run 59174f10, then the v13 benchmark strip, 70 of 70 runs done](improve-cleared-unattended-channel.png)
+![The run board scrolled down: Done holds the posted fiscal year 2025 revenue question with Gold check passed: 64,015,091.21, run 59174f10, then the v13 benchmark strip, 70 of 70 runs done](improve-cleared-unattended-channel.png)
 
-*The finale, run 59174f10, 24 October 2026: correct under v13, posted at the unattended level, gold check passed; the Channel post is below the frame.*
+*The finale, run 59174f10, 24 October 2026: correct under version 13, posted at the unattended level, gold check passed; the Channel post is below the frame.*

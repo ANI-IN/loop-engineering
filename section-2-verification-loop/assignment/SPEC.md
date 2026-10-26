@@ -13,16 +13,19 @@ and the steps.
 - Read-only: the frozen contracts in `platform/src/datapilot/contracts/`, the knowledge versions in
   `platform/packs/datapilot_us/knowledge/`, and `platform/packs/datapilot_us/pack.yaml`.
 
+Every suite question but one runs under version 1 of the knowledge (the starting version); the
+third adds one rule to it.
+
 | Ambiguity suite | Active knowledge | Expected |
 |---|---|---|
-| How many loyal customers do we have in Oregon? | v1 | needs_clarification naming "loyal", no model call |
-| How many VIP customers placed an order in December 2025? | v1 | needs_clarification naming "VIP", no model call |
-| How many loyal customers do we have in Oregon? | v1 plus a rule defining a loyal customer | answered |
-| How many active products are in the Backpacks category? | v1 | answered |
-| How many customers live in Oregon? | v1 | answered |
-| What was the total discount, in dollars, on orders placed in January 2026? | v1 | answered |
-| Which 3 customers placed the most orders in January 2026? Give their ids. | v1 | answered |
-| How many orders placed in January 2026 have Texas as their ship-to state? | v1 | answered |
+| How many loyal customers do we have in Oregon? | Version 1 | needs_clarification naming "loyal", no model call |
+| How many VIP customers placed an order in December 2025? | Version 1 | needs_clarification naming "VIP", no model call |
+| How many loyal customers do we have in Oregon? | Version 1 plus a rule defining a loyal customer | answered |
+| How many active products are in the Backpacks category? | Version 1 | answered |
+| How many customers live in Oregon? | Version 1 | answered |
+| What was the total discount, in dollars, on orders placed in January 2026? | Version 1 | answered |
+| Which 3 customers placed the most orders in January 2026? Give their ids. | Version 1 | answered |
+| How many orders placed in January 2026 have Texas as their ship-to state? | Version 1 | answered |
 
 The last question replaced "How many orders shipped to Texas in January 2026?", which was not
 plain: the warehouse records when an order was placed and the state it ships to, but no ship date,
@@ -63,11 +66,11 @@ names the term and offers the readings that change the answer:
 Deterministic, checked with the real knowledge versions and no model call; each must pass every
 run:
 
-1. The clarify-or-abstain grader fails the first suite question under v1 with severity `BLOCK`,
-   and its `feedback_for_agent`, which becomes the clarifying question, names "loyal".
+1. The clarify-or-abstain grader fails the first suite question under version 1 with severity
+   `BLOCK`, and its `feedback_for_agent`, which becomes the clarifying question, names "loyal".
 2. It fails the second suite question the same way, naming "VIP".
 3. It passes the third question under the version that defines a loyal customer, and passes the
-   five plain questions under v1.
+   five plain questions under version 1.
 4. Every failing `GraderResult` of the question grader has a `reason`, a `feedback_for_agent`,
    and a `Severity`.
 5. Neither grader's module calls a model, and at least one grader is registered to inspect.

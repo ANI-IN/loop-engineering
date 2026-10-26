@@ -6,6 +6,8 @@ from __future__ import annotations
 import fnmatch
 import importlib.util
 import os
+import posixpath
+import re
 import shutil
 import subprocess
 import sys
@@ -176,12 +178,15 @@ def _shipped_files() -> list[str]:
 def _excluded_inside_shipped_folders() -> list[str]:
     """What the release leaves out of a folder that ships (the deck's build files in slides/, the
     guide kit's template): a shipped file that names one points a learner at nothing. The
-    solutions are left out too, but only until the Thursday review, so pages name them."""
+    solutions are left out too, but only until the Thursday review, so pages name them; so are
+    the files withheld until they are written (`withheld_until_later`: the session notes, written
+    after the class run), which the instructor guide and the style guide name, but no page links."""
     folders = [e for e in RELEASE["include"] if e.endswith("/")]
+    later = [RELEASE["solutions"], *RELEASE.get("withheld_until_later", [])]
     return [
         e
         for e in RELEASE["exclude"]
-        if e != RELEASE["solutions"] and any(fnmatch.fnmatchcase(e, f + "?*") for f in folders)
+        if e not in later and any(fnmatch.fnmatchcase(e, f + "?*") for f in folders)
     ]
 
 
@@ -203,3 +208,79 @@ def test_no_shipped_file_names_a_file_the_release_leaves_out() -> None:
     assert problems == [], "the release does not ship what these lines name:\n" + "\n".join(
         problems
     )
+
+
+_LINK_TARGET = re.compile(r"\]\(([^)\s#]+)")
+
+
+def test_no_shipped_page_links_to_a_file_withheld_until_later() -> None:
+    """A file the release withholds until it is written (the session notes) is excluded, and no
+    shipped Markdown links to it: the link would point a learner at nothing until it ships."""
+    later = RELEASE.get("withheld_until_later", [])
+    assert "section-*/session-notes.md" in later
+    assert all(entry in RELEASE["exclude"] for entry in later), "each one is excluded too"
+    problems = []
+    for rel in _shipped_markdown():
+        text = (REPO / rel).read_text(encoding="utf-8")
+        for number, line in enumerate(text.splitlines(), 1):
+            for target in _LINK_TARGET.findall(line):
+                if "://" in target:
+                    continue
+                path = posixpath.normpath(posixpath.join(posixpath.dirname(rel), target))
+                if any(fnmatch.fnmatchcase(path, pattern) for pattern in later):
+                    problems.append(f"{rel}:{number}: links {path}")
+    assert problems == []
+
+
+def _shipped_texts() -> dict[str, str]:
+    """The text of every file the release would ship from the working tree, less the tests the
+    release drops because they name a file it leaves out (as platform/scripts/build_release.py
+    does), so a dropped test's fixtures are not read."""
+    from conftest import SKIPPED_DIRS
+
+    texts, left_out = {}, []
+    for root, dirs, files in os.walk(REPO):
+        dirs[:] = [d for d in dirs if d not in SKIPPED_DIRS]
+        for name in files:
+            rel = (Path(root) / name).relative_to(REPO).as_posix()
+            if not _ships(rel):
+                left_out.append(rel)
+                continue
+            try:
+                texts[rel] = (REPO / rel).read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+    make_release = _load("build_release").make_release
+    tests = {p: t for p, t in texts.items() if make_release._is_test(p)}
+    dropped = make_release.find_excluded_tests(tests, left_out)
+    return {p: t for p, t in texts.items() if p not in dropped}
+
+
+def test_no_shipped_file_holds_placeholder_text() -> None:
+    """The release build's placeholder check (platform/scripts/build_release.py) on the working
+    tree's shipped files, with the release list's allow entries: what a release would refuse."""
+    build_release = _load("build_release")
+    allow = RELEASE.get("placeholder_allow", [])
+    problems = build_release.placeholder_problems(_shipped_texts(), allow)
+    assert problems == [], "write the content, or withhold the page:\n" + "\n".join(problems)
+
+
+def test_every_placeholder_allow_entry_is_still_needed() -> None:
+    """Each allow entry names a reason and rules the check knows, and each of its rules still
+    allows a finding in a shipped file: an entry that no longer matches anything goes."""
+    build_release = _load("build_release")
+    known = {name for name, _, _ in build_release.PLACEHOLDER_RULES} | {build_release.EMPTY_HEADING}
+    texts = _shipped_texts()
+    findings = {
+        (path, rule)
+        for path, text in texts.items()
+        for _, rule in build_release.placeholder_findings(path, text)
+    }
+    stale = []
+    for entry in RELEASE.get("placeholder_allow", []):
+        assert entry.get("why"), entry
+        for rule in entry["rules"]:
+            assert rule in known, rule
+            if not any(r == rule and fnmatch.fnmatchcase(p, entry["path"]) for p, r in findings):
+                stale.append(f"{entry['path']}: {rule}")
+    assert stale == [], "remove these from placeholder_allow in release.toml:\n" + "\n".join(stale)

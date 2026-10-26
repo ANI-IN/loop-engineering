@@ -20,11 +20,11 @@ Every command in the guide, in class order. Run them from the repository folder.
 | Chapter 3 | Demo | `make demo NAME=events-approval-survives-restart` | Holding for approval across a worker restart |
 | Chapter 3 | Demo | `make demo NAME=events-duplicate-events PLANTED=1`, `make reset NAME=event-loop`, then without `PLANTED=1` | Bug on: three question runs, two digests. Off: one of each, duplicates absorbed |
 | Chapter 3 | Demo | `make demo NAME=events-kill-switch-in-flight PLANTED=1`, `make reset NAME=event-loop`, then without `PLANTED=1` | The run posted with the bug on; the run under Blocked by kill switch without |
-| Chapter 4 | Demo | `make demo NAME=improve-baseline-experiment` | The holdout ledger under v1 |
+| Chapter 4 | Demo | `make demo NAME=improve-baseline-experiment` | The holdout ledger under version 1 of the knowledge (the starting version) |
 | Chapter 4 | Demo | `make demo NAME=improve-naive-analyzer-blocked PLANTED=1` | The gate blocks the version |
 | Chapter 4 | Demo | `make demo NAME=improve-analyzer-team-approve` | The knowledge diff of the candidate |
 | Chapter 4 | Demo | `make demo NAME=improve-candidate-experiment` | Fixed items and regressions against the baseline |
-| Chapter 4 | Demo | `make demo NAME=improve-cleared-unattended` | The spine question answered under the new version |
+| Chapter 4 | Demo | `make demo NAME=improve-cleared-unattended` | The fiscal year 2025 revenue question answered under the new version |
 | Any time | Demo | `make reset NAME=<section slug>` | The section back at its starting state |
 
 A planted half is `make demo NAME=<demo> PLANTED=1`: the demo's planted bugs are on for its own
@@ -60,16 +60,19 @@ The terms the guide uses, in the wording of the course glossary. Every query is 
 Language (SQL).
 
 - **Agent loop**: The model calls tools, reads the results, and repeats until it answers.
-- **Analyzer team**: The failure analyst, the rule writer, and the critic, which turn failed dev
-  items into a candidate knowledge version.
+- **Analyzer team**: The failure analyst, the rule writer, and the critic, which turn failed development
+  questions into a candidate knowledge version.
 - **Autonomy level**: How much DataPilot may do unattended: report-only, assisted, or unattended.
 - **Baseline experiment**: The benchmark run under the active knowledge version, started in the open
   live session.
 - **Business date**: The day DataPilot treats as today, 31 January 2026 (`DATAPILOT_BUSINESS_DATE`).
 - **Console**: The Streamlit app that shows every loop live, on four pages.
+- **Development split**: The benchmark questions the analyzer team may learn from.
 - **Drift canary**: Three easy questions that must pass and two trap questions that must still fail.
 - **Escalated**: A run that ended without an answer because it hit a cap or a refused write.
 - **Event loop**: Events become jobs that workers run, with approvals, budgets, and a kill switch.
+- **Fiscal year 2025 revenue question**: "What was our net revenue in fiscal year 2025?", the
+  question every section asks.
 - **Gold SQL**: The query an analyst wrote by hand that gives the right answer.
 - **Hill-climbing loop**: Experiments find failures, an analyzer team proposes rules, and a gate
   decides.
@@ -87,8 +90,6 @@ Language (SQL).
 - **Regression**: An item that passed under the active version and fails under the candidate, confirmed by re-runs.
 - **Reviewer**: An independent agent that reads the question, SQL, and result after the graders
   pass.
-- **Spine question**: "What was our net revenue in fiscal year 2025?", the question every section
-  asks.
 - **Trap**: A business rule the schema does not reveal, so a plausible query gets it wrong.
 - **Verification loop**: Graders check each query and answer, and send failures back to the agent.
 

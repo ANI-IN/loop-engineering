@@ -11,11 +11,12 @@ Source: Jinyang Li et al., [Can LLM Already Serve as A Database Interface? A BIg
 
 ## Why it matters
 
-BIRD is the benchmark that named the problem behind the spine question of this course. A large
-language model (LLM) can write fluent Structured Query Language (SQL) and still get a business
-number wrong, because the rule that defines the number is not in the schema. The paper calls that
-missing rule external knowledge, and it hands the rule to the model as an "evidence" sentence.
-DataPilot's knowledge versions are the same idea, learned and gated instead of hand-written.
+BIRD is the benchmark that named the problem behind this course's fiscal year 2025 revenue question.
+A large language model (LLM) can write fluent Structured Query Language (SQL) and still get a
+business number wrong, because the rule that defines the number is not in the schema. The paper
+calls that missing rule external knowledge, and it hands the rule to the model as an "evidence"
+sentence. DataPilot's knowledge versions are the same idea, learned and gated instead of
+hand-written.
 
 ## Three key ideas
 
@@ -34,7 +35,8 @@ DataPilot's knowledge versions are the same idea, learned and gated instead of h
 3. **Evidence helps, but someone must write it.** "After being easily fed with the external
    knowledge evidence about the database values, all models have a clear improvement". In BIRD,
    experts annotated that evidence for each question. In your warehouse nobody has, which is the
-   gap the hill-climbing loop fills, with holdout questions to check the rules generalize.
+   gap the hill-climbing loop fills. It checks that the rules generalize on holdout questions: the
+   benchmark questions the analyzer team never sees.
 
 ## Apply it to your repository
 

@@ -23,4 +23,3 @@ reading time in the table is for the full source, at 200 words a minute, rounded
 - After each reading, do the first step of its "Apply it to your repository" list on a database
   you work with. It takes a few minutes and makes the idea concrete.
 - Then compare what you found with DataPilot's tools in `platform/src/datapilot/loop1_agent/tools.py`.
-- The class recap is in [session-notes.md](../session-notes.md).

@@ -73,7 +73,7 @@ The model reasons afresh on every run, so the wording, the number of tool calls,
 the timings change. Each demo page says what may vary and what never does. The `demo/expected/`
 folders hold one real captured run for you to compare with after class.
 
-### Why does the agent still get the spine question wrong after the graders?
+### Why does the agent still get the fiscal year 2025 revenue question wrong after the graders?
 
 Because the graders check that a query is safe and well formed, not that it means what the
 business means. The fiscal year rule is not in the schema, so no grader can supply it.

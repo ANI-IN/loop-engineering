@@ -101,6 +101,45 @@ def test_the_checks_own_stack_switches_every_planted_bug_off() -> None:
     assert "BUG_NO_IDEMPOTENCY" in planted.flags() and "DEMO_PACING" in planted.flags()
 
 
+def test_each_compose_project_builds_its_own_image() -> None:
+    """compose.yaml names the image after the Compose project (the owner's decision of
+    26 October 2026), so the tests' or a check's build never retags the class stack's image; the
+    check still gives every service built from it its own tag."""
+    import yaml
+
+    from datapilot.settings import REPO
+
+    compose = yaml.safe_load((REPO / "compose.yaml").read_text(encoding="utf-8"))["services"]
+    images = {name: service.get("image") for name, service in compose.items()}
+    assert {images[name] for name in stack.app_services(REPO)} == {stack.CLASS_IMAGE}
+    assert set(stack.app_services(REPO)) == set(compose) - {"postgres"}
+    assert stack.CLASS_IMAGE == "${COMPOSE_PROJECT_NAME:-datapilot}:local"
+    override = stack._override(REPO, "datapilot-assignments", "assignment-agent-loop-1a2b3c4d")
+    try:
+        services = yaml.safe_load(override.read_text(encoding="utf-8"))["services"]
+    finally:
+        shutil.rmtree(override.parent)
+    tags = {service["image"] for service in services.values()}
+    assert tags == {"datapilot-assignments-app:local"}
+
+
+@pytest.mark.parametrize(
+    ("image", "ours"),
+    [
+        ("${COMPOSE_PROJECT_NAME:-datapilot}:local", True),
+        ("${COMPOSE_PROJECT_NAME-datapilot}:local", True),
+        ("${COMPOSE_PROJECT_NAME}:local", True),
+        ("datapilot:local", True),
+        ("postgres:18.6-bookworm", False),
+        ("${COMPOSE_PROJECT_NAME:-other}:local", False),
+        ("datapilot:latest", False),
+        (None, False),
+    ],
+)
+def test_the_class_image_is_recognised_in_each_form(image: object, ours: bool) -> None:
+    assert stack.is_class_image(image) is ours
+
+
 def test_a_run_made_with_a_planted_bug_on_stops_the_check() -> None:
     detail = SimpleNamespace(run_id=uuid.uuid4(), planted_active=["BUG_NO_IDEMPOTENCY"])
     with pytest.raises(Stop) as stopped:

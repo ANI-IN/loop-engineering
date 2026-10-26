@@ -14,16 +14,17 @@ before the second ask, and its own Compose project switches every planted bug of
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from typing import Any
 
 import loops_paths  # noqa: F401  (before loops_support)
 import pytest
 from fastapi.testclient import TestClient
-from loops_support import query_then_answer
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from loops_support import call, envelope, human_messages, query_then_answer
 
 from datapilot import db
-from datapilot.assignments import assignment
+from datapilot.assignments import assignment, live
 from datapilot.assignments.report import Stop
 from datapilot.assignments.runner import load_check
 from datapilot.contracts.api import ApprovalIn, EventIn, EventSubmitted, RunDetail
@@ -41,7 +42,9 @@ DRILL = {
     # pinned with the real grader in test_event_loop_drill_down_question.py)
     "question": "Which category?",
 }
-ANSWER = query_then_answer("SELECT count(*) AS orders FROM orders", "Water Sports changed most.")
+# "rose the most": since the owner's decision of 26 October 2026 a text that says no rise names no
+# category, so "Water Sports changed most.", read before as its first-named category, now fails.
+ANSWER = query_then_answer("SELECT count(*) AS orders FROM orders", "Water Sports rose the most.")
 
 
 @pytest.fixture
@@ -132,6 +135,70 @@ def test_the_check_passes_an_answer_posted_without_a_hold(
     assert outcome.passed, outcome.what()
     assert "no approval was needed" in outcome.what()
     assert "the second ask was absorbed" in outcome.what()
+
+
+SQL = "SELECT count(*) AS orders FROM orders"
+NAMES = check.CategoryNames(("Camping", "Hiking", "Water Sports"))
+
+
+def answers_per_run(*texts: str) -> Callable[..., AIMessage]:
+    """A stub analyst that gives each new run the next text: run 1 the first, run 2 the second."""
+    runs: list[int] = []
+
+    def script(messages: Sequence[BaseMessage]) -> AIMessage:
+        last = messages[-1]
+        if isinstance(last, HumanMessage):
+            if len(human_messages(messages)) == 1:
+                runs.append(len(runs))
+            return call("run_query", {"sql": SQL}, f"q{len(runs)}")
+        return envelope(SQL, texts[runs[-1]], f"a{len(runs)}")
+
+    return script
+
+
+def _worker_for(services_for, *texts: str) -> Worker:
+    services = services_for({"analyst": answers_per_run(*texts)})
+    return Worker(
+        services,
+        models_for=lambda _run_id, _activity: services.models,
+        settings=WorkerSettings(lease_seconds=5.0, poll_seconds=0.05),
+    )
+
+
+RIGHT, WRONG = "Water Sports rose the most.", "Hiking rose the most."
+
+
+@pytest.mark.parametrize(
+    ("texts", "passed", "made"),
+    [
+        ((RIGHT, WRONG, RIGHT), True, 3),
+        ((RIGHT, WRONG, WRONG), False, 3),
+        ((RIGHT, RIGHT, WRONG), True, 2),  # the third run is never made
+    ],
+)
+def test_the_drill_down_is_judged_on_2_of_3_runs_on_the_real_stack(
+    client: TestClient,
+    services_for,
+    monkeypatch: pytest.MonkeyPatch,
+    texts: tuple[str, ...],
+    passed: bool,
+    made: int,
+) -> None:
+    """The real api, worker, and Postgres: the check clears the drill-down's event id before each
+    run, so each run is new and its second ask is absorbed; a third run only when two disagree."""
+    monkeypatch.delenv("BUG_NO_IDEMPOTENCY", raising=False)
+    # The stub's runs record tokens, so judging them asks LangSmith for each trace link: a test
+    # never reaches LangSmith (conftest), so a stand-in gives the link.
+    monkeypatch.setattr(live, "trace_link", lambda run_id, **_: f"https://smith.example/r/{run_id}")
+    api = StackApi(client, _worker_for(services_for, *texts))
+    outcomes = check.drill_down_runs(api, DRILL, GOLD, NAMES, clear=check.clear_drill_down)
+    assert len(outcomes) == made
+    assert all(o.fresh and o.once for o in outcomes), [o.what() for o in outcomes]
+    assert len({str(o.detail.run_id) for o in outcomes}) == made, "each run is a new run"
+    assert [o.passed for o in outcomes] == [GOLD in t for t in texts[:made]]
+    result = check.judge_runs(10, "the drill-down", outcomes)
+    assert result.passed is passed, result.rule
+    assert _runs() == 1, "each run cleared the one before it, as the check does"
 
 
 def test_the_missing_idempotency_on_the_stack_starts_a_second_run(

@@ -114,8 +114,8 @@ def format_result(result: QueryResult, row_cap: int) -> str:
     return json.dumps(payload, default=str)
 ```
 
-The planted bug is one guarded branch, never a fake model output. Knowledge version v1 is
-near-empty on purpose: `platform/packs/datapilot_us/knowledge/v1.yaml` states only the money rule.
+The planted bug is one guarded branch, never a fake model output. Version 1 of the knowledge (the
+starting version) is near-empty on purpose: `platform/packs/datapilot_us/knowledge/v1.yaml` states only the money rule.
 The system prompt in `platform/src/datapilot/loop1_agent/prompts.py` states the role, the method,
 and the output contract, and nothing about the business.
 
@@ -126,9 +126,9 @@ and the output contract, and nothing about the business.
 | Analyst with the schema scout | 8,648 | 24.2 seconds |
 | Analyst without the schema scout | 3,853 | 12.8 seconds |
 
-Each figure is the mean of 4 benchmark questions under v1, one run each, so it is a small sample.
-The gold result was the same in both settings: the 2 easy questions passed, the 2 trap questions
-failed. The runs are on the
+Each figure is the mean of 4 benchmark questions under version 1, one run each, so it is a small
+sample. The gold check gave the same result in both settings: the 2 easy questions passed it, the 2
+trap questions failed it. The runs are on the
 [Section 1 evidence page](../docs/evidence/section-1-agent-loop.md).
 
 ## When it helps, and when it does not

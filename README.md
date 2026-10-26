@@ -26,7 +26,7 @@ model fixes none of these failures: each one is a missing loop around the model.
 > - **Verification loop**: Graders check each query and answer, and send failures back to the agent.
 > - **Event loop**: Events become jobs that workers run, with approvals, budgets, and a kill switch.
 > - **Hill-climbing loop**: Experiments find failures, an analyzer team proposes rules, and a gate decides.
-> - **Dev split**: The benchmark questions the analyzer team may learn from.
+> - **Development split**: The benchmark questions the analyzer team may learn from.
 > - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 > - **Autonomy level**: How much DataPilot may do unattended: report-only, assisted, or unattended.
 >
@@ -82,7 +82,7 @@ only. Logs: `make logs NAME=<service>`. The [architecture page](docs/architectur
 | Section 1: Agent loop | A question | Tables, descriptions, the schema scout, queries of at most 50 rows, the answer | The analyst, inside its call, tool, and token caps |
 | Section 2: Verification loop | Every query, then the answer | Graders, read-only executor, final-answer grader, reviewer; up to 3 attempts | Code; a persistent reviewer concern goes to a person |
 | Section 3: Event loop | A webhook, the schedule, or the console | Idempotent insert, router, job, leased claim, run, approval, post or hold | The router table, the autonomy policy, a person, the kill switch |
-| Section 4: Hill-climbing loop | A request on the Improve page | Baseline, two candidates (one kept on dev), gate, approval, promotion, clearance | The promotion gate (code) and a person |
+| Section 4: Hill-climbing loop | A request on the Improve page | Baseline, two candidates (one kept), gate, approval, promotion, clearance | The promotion gate (code) and a person |
 
 ## The class plan
 
@@ -103,7 +103,7 @@ There are two breaks, 1:45-1:55 and 2:55-3:05. The minute-by-minute plan is in t
 | [Assignment 1: Agent loop](section-1-agent-loop/assignment/README.md) | A value-lookup tool for informal or misspelled product names | `make check-assignment NAME=agent-loop` | About 1.5 hours |
 | [Assignment 2: Verification loop](section-2-verification-loop/assignment/README.md) | Two graders: clarify-or-abstain, and a personal-data leak check | `make check-assignment NAME=verification-loop` | About 2 hours |
 | [Assignment 3: Event loop](section-3-event-loop/assignment/README.md) | A nightly revenue anomaly alert, at most one per day | `make check-assignment NAME=event-loop` | About 2 to 2.5 hours |
-| [Assignment 4: Hill-climbing loop](section-4-hill-climbing-loop/assignment/README.md) | A repeat-customer metric family, a critic change, a minimum-holdout rule | `make check-assignment NAME=hill-climbing-loop` | About 2 to 2.5 hours |
+| [Assignment 4: Hill-climbing loop](section-4-hill-climbing-loop/assignment/README.md) | A repeat-customer metric family, a critic change, a holdout minimum per family | `make check-assignment NAME=hill-climbing-loop` | About 2 to 2.5 hours |
 
 Each check runs live. The [final project](final-project/README.md) then uses a dataset of your own.
 
@@ -114,14 +114,14 @@ with business date 31 January 2026; every demo and assignment check ran live aga
 October. The [calibration report](docs/calibration-report.md) holds every count below, and
 [what each loop is worth](docs/benefits.md) compares each loop with its protection off and on.
 
-| Section | What we measured | Result |
-|---|---|---|
-| Section 1: Agent loop | Trap item runs that passed under the starting knowledge v1 | 0 of 99 |
-| Section 2: Verification loop | Reviewer verdicts on the wrong spine answer, that one question only | Concern in 6 of 7 runs |
-| Section 3: Event loop | Same event three times: one run, 2 duplicates absorbed | 7 of 7 demo runs |
-| Section 3: Event loop | Pending approval survived a worker restart | 7 of 7 demo runs |
-| Section 4: Hill-climbing loop | Holdout items passed, v1 against the 7 versions promoted with two candidates | 2 of 15 against 12 to 14 of 15 |
-| Section 4: Hill-climbing loop | Candidate experiments with 0 regressions | 14 of 15; the other had 1 dev regression |
+- **Section 1: Agent loop.** 0 of 99 trap item runs passed under version 1 of the knowledge (the starting version).
+- **Section 2: Verification loop.** The reviewer raised a concern in 6 of 7 runs on the wrong
+  answer to the fiscal year 2025 revenue question (7 runs of that one question).
+- **Section 3: Event loop.** In 7 of 7 demo runs each: the same event sent three times gave one run
+  and 2 duplicates absorbed, and a pending approval survived a worker restart.
+- **Section 4: Hill-climbing loop.** Holdout items passed: 2 of 15 under version 1, against 12 to
+  14 of 15 under the 7 versions promoted with two candidates. 14 of 15 candidate experiments had no
+  regressions; the fifteenth had one regression on the development questions.
 
 ### Worked examples
 
@@ -153,11 +153,11 @@ Measured on gpt-6-luna: about 0.001 dollars per analyst run, 0.0594 to 0.0914 do
 experiment, and 0.0053 dollars for `make preflight`. Each assignment check stops at its own spend
 cap, 1.00 dollar (`assignments.check_cap_usd` in `pack.yaml`). Set a 3-dollar limit on your OpenAI
 project, with an alert at 1.50 dollars: the [costs page](docs/costs.md) shows how running every
-check five times typically comes to about 1.15 dollars.
+check five times typically comes to about 1.16 dollars.
 
-**Known limitations.** Revenue was cleared for the unattended level in 7 of 11 live promotions
-(v8, v9, v11, v13, v15, v17, and v19). The two-candidate method has seven measurements so far, and
-every count is a small sample. gpt-6-luna has no dated snapshot, so `make preflight` runs a drift canary first.
+**Known limitations.** Revenue was cleared for the unattended level in 7 of 11 live promotions of a
+knowledge version (versions 8, 9, 11, 13, 15, 17, and 19). The two-candidate method has been measured
+in seven promotions, so every count is a small sample. gpt-6-luna has no dated snapshot, so `make preflight` runs a drift canary first.
 
 ## Quick start
 

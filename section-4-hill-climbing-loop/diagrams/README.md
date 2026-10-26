@@ -6,7 +6,7 @@ explained once, in [the shared diagrams page](../../docs/diagrams/README.md#colo
 
 ### The hill-climbing loop
 
-![The benchmark, 25 dev and 15 holdout items, and two databases feed the experiment runner; failed dev items go to the analyzer team of three agents, then the overfit guard, then a candidate knowledge version; the promotion gate, with its confirming runs and a person's approval, makes the active version; a band below explains autonomy per metric family](./hill-climbing-loop.svg)
+![The benchmark, 25 development and 15 holdout items, and two databases feed the experiment runner; failed development items go to the analyzer team of three agents, then the overfit guard, then a candidate knowledge version; the promotion gate, with its confirming runs and a person's approval, makes the active version; a band below explains autonomy per metric family](./hill-climbing-loop.svg)
 
 *Notice that the agents only propose: code decides whether a rule overfits and whether a version is better, and a person approves the promotion.*
 
@@ -14,7 +14,7 @@ The snippet for this folder's README or the section's `concepts.md` (both sit on
 `diagrams/`):
 
 ```markdown
-![The benchmark, 25 dev and 15 holdout items, and two databases feed the experiment runner; failed dev items go to the analyzer team of three agents, then the overfit guard, then a candidate knowledge version; the promotion gate, with its confirming runs and a person's approval, makes the active version; a band below explains autonomy per metric family](diagrams/hill-climbing-loop.svg)
+![The benchmark, 25 development and 15 holdout items, and two databases feed the experiment runner; failed development items go to the analyzer team of three agents, then the overfit guard, then a candidate knowledge version; the promotion gate, with its confirming runs and a person's approval, makes the active version; a band below explains autonomy per metric family](diagrams/hill-climbing-loop.svg)
 
 *Notice that the agents only propose: code decides whether a rule overfits and whether a version is better, and a person approves the promotion.*
 ```

@@ -26,7 +26,7 @@ You build five things, each one a piece of the course applied to your own data:
    two differently seeded databases.
 2. **At least three original traps**: business rules your schema does not reveal, none of them a
    copy of the Harbor & Pine traps or the template's.
-3. **Your own benchmark with splits**: dev and holdout questions, each with gold Structured Query
+3. **Your own benchmark with splits**: development and holdout questions, each with gold Structured Query
    Language (SQL), and a naive query for every trap question that gives a different answer.
 4. **One extension**: one capability the class code does not have, in any of the four loops.
 5. **A before-and-after report**: the baseline experiment under your starting knowledge, the
@@ -79,7 +79,7 @@ experiment on the candidate, and approve or reject it at the gate.
 
 Every model run stops at `budgets.tokens_per_run` in your `pack.yaml`; at the caps a run costs
 about 3 cents at the gpt-6-luna prices in `pack.yaml`. The baseline experiment makes three runs
-per holdout item and one per dev item, and the candidate experiment the same again, plus the
+per holdout item and one per development question, and the candidate experiment the same again, plus the
 confirming runs of any apparent regression. The [costs page](../docs/costs.md) explains the caps.
 
 ## What to watch

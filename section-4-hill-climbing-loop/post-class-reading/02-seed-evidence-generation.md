@@ -30,8 +30,8 @@ a gate, whoever wrote it.
 
 3. **Generate evidence from what the database already holds.** SEED "systematically analyzes
    database schema, description files, and values to extract relevant information". DataPilot's
-   analyzer team learns from failed dev questions instead, but the lesson is shared: generated
-   knowledge is a proposal, and it has to be measured before it is trusted.
+   analyzer team learns from failed development questions instead, but the lesson is shared:
+   generated knowledge is a proposal, and it has to be measured before it is trusted.
 
 ## Apply it to your repository
 

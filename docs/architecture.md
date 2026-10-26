@@ -7,6 +7,8 @@
 > - **Event loop**: Events become jobs that workers run, with approvals, budgets, and a kill switch.
 > - **Hill-climbing loop**: Experiments find failures, an analyzer team proposes rules, and a gate decides.
 > - **Knowledge version**: A numbered set of business rules given to the agent in its prompt.
+> - **Development split**: The benchmark questions the analyzer team may learn from.
+> - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 > - **Live session**: Everything that runs between one `make preflight` and the next.
 
 DataPilot is one analytics agent for Harbor & Pine Outfitters, wrapped in four loops. Each loop
@@ -225,10 +227,10 @@ In workflow order, each step in `loop4_hill_climbing/`:
 
 1. **Baseline experiment.** The evaluator runs each benchmark item's gold SQL and the agent's SQL
    on two differently seeded databases and compares results, never query text. Each holdout item
-   runs 3 times and passes on 2; each dev item runs once.
-2. **Two candidates.** The analyzer team reads only the failed dev items and writes
-   `analyzer.candidates` (2) rule sets. Each runs on the dev split only; the runner keeps the one
-   with fewer dev regressions, then more dev passes, then fewer rules (`candidates.py`). The kept
+   runs 3 times and passes on 2; each development question runs once.
+2. **Two candidates.** The analyzer team reads only the failed development questions and writes
+   `analyzer.candidates` (2) rule sets. Each runs on the development split only; the runner keeps the one
+   with fewer regressions, then more passes, on the development questions, then fewer rules (`candidates.py`). The kept
    one is saved as a draft.
 3. **Candidate experiment and gate.** The gate records the baseline experiment it compares with
    (`ops.experiments.gate_baseline_id`), then confirms each apparent regression with re-runs. It

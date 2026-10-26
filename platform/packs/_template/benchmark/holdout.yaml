@@ -1,4 +1,4 @@
-# Template benchmark, holdout split: 4 items, worded away from dev. The analyzer team never reads
+# Template benchmark, holdout split: 4 items, worded away from the development split. The analyzer team never reads
 # these; the promotion gate scores them 3 times per version and an item passes on 2 of 3.
 
 - id: mean-plan-price

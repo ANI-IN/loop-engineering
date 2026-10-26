@@ -3,9 +3,10 @@
 Real captures from live runs on 24 October 2026, 13:56 to 14:09 Coordinated Universal Time, and
 from 14:49 to 17:38 on 25 October 2026 for the frames that name that date (business date 31
 January 2026), for comparison after class, sent from the console's buttons with
-every planted bug off and the starting knowledge v1, except the planted halves below; the two
-paced kill switch captures of 24 October ran with demo pacing only. They are never shown in class: in class, every demo runs live. Times on the
-captures are in Coordinated Universal Time (UTC); the console shows your own local time. The build's
+every planted bug off and under version 1 of the knowledge (the starting version), except the
+planted halves below; the two paced kill switch captures of 24 October ran with demo pacing only.
+They are never shown in class: in class, every demo runs live. Times on the captures are in
+Coordinated Universal Time (UTC); the console shows your own local time. The build's
 LangSmith traces are private, so each capture names its run id instead of a trace link; the strips
 read "Trace not received (LangSmith monthly limit)" because the build's trace quota was spent.
 

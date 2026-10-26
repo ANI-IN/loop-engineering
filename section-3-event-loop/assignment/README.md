@@ -2,7 +2,7 @@
 
 Try it yourself first. The full solution is published at the start of the Thursday review.
 
-> **Deadline (instructor: set this before you share the page):** `<set by the instructor>`
+> **Deadline:** the date your instructor announces in the class chat.
 
 ## The problem
 
@@ -62,30 +62,33 @@ normal day.
 the schedule, the deterministic key, the baseline, a normal day, an anomalous day, a second
 delivery, a late order, the autonomy level, and the kill switch, all against the real Postgres and
 the running workers with no model call; then the alert's drill-down question, asked twice through
-the event loop, runs once, live on the real model, and posts an answer that says the right category rose most:
-the category in its own row with the greatest `rise_cents` when it returns that column, otherwise
-the one its text says rose most, and its text names that category. When the run holds for approval, the check approves it, as an instructor would, and
-judges the answer it then posts.
+the event loop, runs once, live on the real model, and posts an answer that says the right category
+rose most: the category in its own row with the greatest `rise_cents` when it returns that column,
+otherwise the one its text says rose most, and its text names that category. The answer depends on
+the model, so the check judges it on the fair pass rule: it runs the drill-down twice, and a third
+time only when the first two disagree, and passes on 2 of 3 runs. When a run holds for approval,
+the check approves it, as an instructor would, and judges the answer it then posts.
 
 Estimated effort: about 2 to 2.5 hours.
 
-**Cost of one full check:** one analyst run, the drill-down question. The check prints its own
-estimate before the model call and the actual tokens and cost at the end. Measured on
-gpt-6-luna in the course's clean verification runs, one full check of a working solution
-typically cost about 0.2 cents; the measured checks are in the costs table linked below.
-On the code and the drill-down question that ship (the rise in cents in a column named
-`rise_cents`, and requirement 10 judging the category the posted answer says rose most, from its
-own row or its text), on 25 October 2026 from 22:47 Coordinated Universal Time (UTC), the starter
-failed, 0 of 10, as it must, and the solutions passed 5 of their 6 checks, at 0.19 to 0.33 cents a
-check: the reference and alternative two passed both of theirs, and alternative one failed its
-first and passed its second ([evidence](../../docs/evidence/general.md#captures)). In the failed check the agent's answer named
-the wrong category, and the check was right to fail it. So a correct solution can read FAIL when
-the agent answers wrongly: read the FAIL line, and if your files are right, run the check again.
-Earlier that day, with an earlier question, the reference's run ended escalated in 2 of its 4
-checks. At the
-caps, with the run using its whole token budget at
-the output price, one check can cost at most 3 cents, below the check's own spend cap of 1.00
-dollar, at which any check stops cleanly ([costs](../../docs/costs.md#assignments)).
+**Cost of one full check:** two analyst runs of the drill-down question, and a third only when
+the first two disagree. The check prints its own estimate before the first model call and the
+actual tokens and cost at the end. A full check of a working solution is estimated at about 0.5
+cents: no check has run on the 2 of 3 rule yet, and the estimate is two drill-down runs at what
+one cost in the course's clean verification on 25 October 2026, from 22:47 Coordinated Universal
+Time (UTC), 0.19 to 0.33 cents a run ([costs](../../docs/costs.md#assignments)). That verification
+ran one drill-down run a check, with the drill-down question that ships (the rise in cents in a
+column named `rise_cents`), on an earlier version of the check named on the
+[evidence page](../../docs/evidence/general.md#captures): the starter failed, 0 of 10, as it must,
+and the solutions passed 5 of their 6 checks. The reference and alternative two passed both of
+theirs, and alternative one failed its first and passed its second: in the failed check the
+agent's answer named the wrong category, from the same question the other runs answered rightly.
+That run-to-run variation is why the check now judges 2 of 3 runs. A correct solution can still
+read FAIL when the agent answers wrongly in 2 of them: read each run's line, and if your files are
+right, run the check again. Earlier that day, with an earlier question, the reference's run ended
+escalated in 2 of its 4 checks. At the caps, with each of the 3 runs using its whole token budget
+at the output price, one check can cost at most 9 cents, below the check's own spend cap of 1.00
+dollar, at which any check stops cleanly.
 
 ## Step by step
 
@@ -126,7 +129,7 @@ This rubric is for assessing your own work. Nobody grades it.
 | One alert per day | A second delivery posts nothing new | 10 | Check line 7 |
 | Late orders | A re-run updates the alert in place | 15 | Check line 8 |
 | Autonomy and kill switch | The label follows the level; the job checks the switch before posting | 10 | Check line 9 |
-| Live drill-down | Asked twice, it runs once; the posted text names the gold category first | 10 | Check line 10 |
+| Live drill-down | Asked twice, it runs once; in 2 of 3 runs, the answer says gold rose most | 10 | Check line 10 |
 | Total | | 100 | |
 
 Every requirement and its pass rule is in [SPEC.md](SPEC.md).

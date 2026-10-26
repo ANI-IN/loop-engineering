@@ -2,8 +2,8 @@
 
 Real captures from live runs on 24 October 2026, from 13:54 Coordinated Universal Time, and two
 retaken on 25 October 2026 (the retry cap and the trap notes; business date 31 January 2026), for
-comparison after class, sent from the console's buttons under the
-starting knowledge v1. They are never shown in class: in class, every demo runs live. The captures
+comparison after class, sent from the console's buttons under version 1 of the knowledge (the
+starting version). They are never shown in class: in class, every demo runs live. The captures
 show Structured Query Language (SQL) queries. Their times are in Coordinated Universal Time (UTC);
 the console shows your own local time. The build's LangSmith traces are private, so each capture
 names its run id instead of a trace link.

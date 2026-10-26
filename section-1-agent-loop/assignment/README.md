@@ -2,7 +2,7 @@
 
 Try it yourself first. The full solution is published at the start of the Thursday review.
 
-> **Deadline (instructor: set this before you share the page):** `<set by the instructor>`
+> **Deadline:** the date your instructor announces in the class chat.
 
 ## The problem
 
@@ -62,9 +62,9 @@ before the first model call and the actual tokens and cost at the end. Measured 
 in the course's clean verification runs, one full check of a working solution typically cost
 about 0.4 cents; the measured checks are in the costs table linked below. On the check that
 ships, with requirement 6 running the lookup while the other roles' database addresses point at a
-closed port, on 25 October 2026 from 22:35 Coordinated Universal Time (UTC), the starter failed, 0
-of 11, as it must, and the reference and both alternatives each passed two checks in a row, 6 of
-6, at 0.39 to 0.47 cents a check ([evidence](../../docs/evidence/general.md#captures)). At the caps,
+closed port, on 25 October 2026 from 22:35 Coordinated Universal Time (UTC), the starter failed
+all 11 requirements, as it must, and the reference and both alternatives each passed all 11 in two
+checks in a row (6 checks of 6), at 0.39 to 0.47 cents a check ([evidence](../../docs/evidence/general.md#captures)). At the caps,
 with every run using its whole token budget at the output price, one check can cost at most 36
 cents, below the check's own spend cap of 1.00 dollar, at which any check stops cleanly
 ([costs](../../docs/costs.md#assignments)).

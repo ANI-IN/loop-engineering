@@ -6,15 +6,18 @@ baseline on Eastern time days, a normal day and an anomalous day, a second run, 
 autonomy level, and the kill switch. The check adds its own orders to the warehouse for the
 anomalous day (order ids from 900000001) and removes them at the end. Then the cost estimate and
 the OpenAI key, then the one live step: the alert's drill-down question, asked twice through the
-event loop, runs once, and the answer it posts is checked against gold (requirement 10). When the
-run holds for approval, the check approves it, as an instructor would, and judges the answer that
-is then posted, never the held one; a run that never posts fails.
+event loop, runs once, and the answer it posts is checked against gold (requirement 10), on the
+fair pass rule: it passes on 2 of 3 runs, with a third run only when the first two disagree. When
+a run holds for approval, the check approves it, as an instructor would, and judges the answer
+that is then posted, never the held one; a run that never posts, or raises an error, counts as
+wrong.
 """
 
 from __future__ import annotations
 
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from types import SimpleNamespace
@@ -27,7 +30,7 @@ from datapilot import db
 from datapilot.assignments.cost import Planned
 from datapilot.assignments.gold import rows
 from datapilot.assignments.live import live_run, settle, stop_on_blocked, stop_on_planted
-from datapilot.assignments.report import Result, Stop
+from datapilot.assignments.report import RULE, LiveRun, Result, Stop
 from datapilot.assignments.stack import running_stack
 from datapilot.contracts import RunEventKind, RunStatus
 from datapilot.contracts.api import RunDetail
@@ -140,14 +143,19 @@ RISE_WORDS = (
 RISE_NOUNS = r"rises?|increases?|gains?|growth|jumps?|risers?|gainers?"
 GREATEST = r"most|largest|biggest|highest|greatest|strongest|steepest|sharpest|top(?![\w-])"
 # The phrases that say one category rose most: "rose (by) (the) most", "the largest (sales) rise",
-# "the top category", "led (the rise)". Each belongs to the category it is said of.
+# "the top category", "the most of any", "led (the rise)". Each belongs to the category it is said
+# of. "Led the remaining categories" is said of the rest only, so it says nothing rose most.
 SAID_MOST = re.compile(
     "|".join(
         [
             _whole(rf"(?:{RISE_WORDS})(?:\s+by)?(?:\s+the)?\s+(?:most|furthest|farthest)"),
             _whole(rf"(?:{GREATEST})(?:\s+[\w-]+){{0,2}}?\s+(?:{RISE_NOUNS})"),
             _whole(r"top(?![\w-])(?:\s+[\w-]+)?\s+(?:categor(?:y|ies)|performers?)"),
-            _whole(r"led|leads|leading"),
+            _whole(r"(?:the\s+)?most\s+of\s+(?:any|all)"),
+            _whole(
+                r"(?:led|leads|leading)"
+                r"(?!\s+(?:the\s+)?(?:remaining|rest|other|others)(?![\w-]))"
+            ),
         ]
     ),
     re.I,
@@ -185,15 +193,26 @@ class Reading:
     ambiguous: bool = False
     could_mean: tuple[str, ...] = ()
     # True when a phrase plainly says this one category rose most ("Camping rose the most"),
-    # rather than the category being the only one said to rise, or the first one named.
+    # rather than the category being the only one said to rise.
     said_most: bool = False
+    # Every category some phrase says rose most, in order: one for a plain text, several for an
+    # ambiguous one.
+    claimed: tuple[str, ...] = ()
 
 
 def _subject(clause: str, start: int, end: int, names: CategoryNames, gold: str) -> list[str]:
-    """The categories a phrase at clause[start:end] is said of, in its own clause: the category
-    named nearest before it, with every category joined to that one by "and" or "or" ("Water
-    Sports and Camping rose most" is said of both); failing one before it, the first named after
-    it ("the largest rise was in Water Sports") with those joined to it."""
+    """The categories a phrase at clause[start:end] is said of (see _subject_spans)."""
+    spans = _subject_spans(clause, start, end, names, gold)
+    return list(dict.fromkeys(name for _start, _end, name in spans))
+
+
+def _subject_spans(
+    clause: str, start: int, end: int, names: CategoryNames, gold: str
+) -> list[tuple[int, int, str]]:
+    """The spans of the categories a phrase at clause[start:end] is said of, in its own clause: the
+    category named nearest before it, with every category joined to that one by "and" or "or"
+    ("Water Sports and Camping rose most" is said of both); failing one before it, the first named
+    after it ("the largest rise was in Water Sports") with those joined to it."""
     spans = _spans(clause, names, gold)
     before = [span for span in spans if span[1] <= start]
     after = [span for span in spans if span[0] >= end]
@@ -212,61 +231,104 @@ def _subject(clause: str, start: int, end: int, names: CategoryNames, gold: str)
             group.append(span)
     else:
         return []
-    return list(dict.fromkeys(name for _start, _end, name in group))
+    return group
+
+
+def _said_of(
+    clauses: list[str],
+    breaks: list[str],
+    i: int,
+    start: int,
+    end: int,
+    names: CategoryNames,
+    gold: str,
+) -> tuple[list[str], int]:
+    """The categories a phrase at clauses[i][start:end] is said of, and how far into its clause
+    a negation still belongs to it: its own clause's subject (a negation up to the phrase or that
+    subject, whichever ends later); else, when its clause ends in a colon, the next clause's first
+    category; else, when its clause follows a comma ("Water Sports rose by $9,040.00, the most of
+    any category"; "Water Sports trailed Camping, which rose most"), the category named last in the
+    clause before, unless that clause is negated ("Water Sports, not Camping, rose the most")."""
+    clause = clauses[i]
+    spans = _subject_spans(clause, start, end, names, gold)
+    if spans:
+        names_of = list(dict.fromkeys(name for _s, _e, name in spans))
+        return names_of, max(end, spans[-1][1])
+    if i < len(breaks) and breaks[i] == ":":
+        return _subject(clauses[i + 1], 0, 0, names, gold), end
+    if i > 0 and breaks[i - 1] == "," and not NEGATION.search(clauses[i - 1]):
+        before = clauses[i - 1]
+        return _subject(before, len(before), len(before), names, gold), end
+    return [], end
 
 
 def read_rise(text: str, names: CategoryNames, gold: str) -> Reading:
     """The category the text says rose most (SPEC.md, requirement 10). Each phrase that says a
-    category rose most ("rose the most", "the largest rise", "the top category", "led") belongs to
-    the category it is grammatically said of, in its own clause: the subject named before it, else
-    the category named after it; a clause ending in a colon carries it to the next clause; and a
-    phrase whose clause names no category belongs to its sentence's only category, never counting
-    one the sentence says fell or did not rise. A negated phrase ("did not rise the most") rules
-    its category out. When no phrase says what rose most, the one category a clause says rose (and
-    nothing fell) counts; failing that, the first category the text names that it did not rule
-    out. A text that says it of several categories is ambiguous, and names none."""
+    category rose most ("rose the most", "the largest rise", "the top category", "the most of
+    any", "led") belongs to the category it is grammatically said of: the subject named before it
+    in its own clause, else the category named after it; a clause ending in a colon carries it to
+    the next clause; a clause after a comma takes the category the clause before named last; and a
+    phrase that still has no category belongs to its sentence's only category, never counting one
+    the sentence says fell or did not rise. A negated phrase ("did not rise the most", "the largest
+    rise was not in Camping") rules its category out, and a "but" after it carries the phrase to
+    the next clause ("not in Camping but in Water Sports"). When no phrase says what rose most, the
+    one category a clause says rose counts, never one a clause says fell, trailed, or did not rise;
+    failing that, when a negated phrase ruled categories out, the one other category the text
+    names. Otherwise the text names none: a category merely named first, with no rise said of it,
+    never counts (the owner's decision of 26 October 2026). A text that says it of several
+    categories is ambiguous, and names none."""
     claims: list[str] = []
     unclear: list[str] = []
-    ruled_out: list[str] = []
+    denied: list[str] = []
+    fell: list[str] = []
     rose: list[str] = []
     for sentence in SENTENCE_END.split(text):
         parts = CLAUSE_BREAK.split(sentence)
-        clauses, breaks = parts[0::2], parts[1::2]
+        clauses, breaks = parts[0::2], [b.lower() for b in parts[1::2]]
         plain = [c for c in clauses if not FALLING.search(c) and not NEGATION.search(c)]
         alone = list(dict.fromkeys(n for c in plain for n in categories_named(c, names, gold)))
         for i, clause in enumerate(clauses):
             said = list(SAID_MOST.finditer(clause))
             for phrase in said:
-                subject = _subject(clause, phrase.start(), phrase.end(), names, gold)
-                if not subject and i < len(breaks) and breaks[i] == ":":
-                    subject = _subject(clauses[i + 1], 0, 0, names, gold)
-                if not subject:
-                    subject = alone
+                subject, reach = _said_of(
+                    clauses, breaks, i, phrase.start(), phrase.end(), names, gold
+                )
+                subject = subject or alone
                 if not subject:
                     continue
-                if NEGATION.search(clause[: phrase.end()]):
-                    ruled_out += subject
+                if NEGATION.search(clause[:reach]):
+                    denied += subject
+                    following = clauses[i + 1] if i < len(breaks) and breaks[i] == "but" else ""
+                    if following and not NEGATION.search(following):
+                        claims += _subject(following, 0, 0, names, gold)
                 elif len(subject) > 1:
                     unclear += subject
                 else:
                     claims += subject
+            fall = FALLING.search(clause)
+            if fall:
+                fell += _subject(clause, fall.start(), fall.end(), names, gold)
             rise = RISING.search(clause)
             if rise and not said and clause in plain:
                 rose += _subject(clause, rise.start(), rise.end(), names, gold)
     if claims or unclear:
         found = list(dict.fromkeys([*claims, *unclear]))
         if unclear or len(found) > 1:
-            return Reading(None, ambiguous=True, could_mean=tuple(found))
-        return Reading(found[0], said_most=True)
+            return Reading(None, ambiguous=True, could_mean=tuple(found), claimed=tuple(found))
+        return Reading(found[0], said_most=True, claimed=tuple(found))
+    ruled_out = {*denied, *fell}
     rose = [name for name in dict.fromkeys(rose) if name not in ruled_out]
     if len(rose) > 1:
         return Reading(None, ambiguous=True, could_mean=tuple(rose))
     if rose:
         return Reading(rose[0])
-    named = [name for name in categories_named(text, names, gold) if name not in ruled_out]
-    if ruled_out and len(named) > 1:
-        return Reading(None, ambiguous=True, could_mean=tuple(named))
-    return Reading(named[0] if named else None)
+    if denied:
+        named = [name for name in categories_named(text, names, gold) if name not in ruled_out]
+        if len(named) > 1:
+            return Reading(None, ambiguous=True, could_mean=tuple(named))
+        if named:
+            return Reading(named[0])
+    return Reading(None)
 
 
 def rose_most(text: str, names: CategoryNames, gold: str) -> str | None:
@@ -686,14 +748,19 @@ class DrillDown:
     @property
     def contradicted(self) -> str | None:
         """The category the text plainly says rose most when the answer's own row decides and
-        holds another one ("Outdoor rose the most" over a top Footwear row); None otherwise. An
-        ambiguous text is still judged by its row."""
+        holds another one ("Outdoor rose the most" over a top Footwear row); None otherwise. It
+        counts only when no phrase of the text says the row's category rose most and the text is
+        not ambiguous: an ambiguous text is still judged by its row, and a negated phrase ("the
+        largest rise was not in Camping") never says Camping rose most."""
         if self.posted is None or self.row is None:
             return None
         reading = self.reading
-        if reading.said_most and reading.category and reading.category.lower() != self.row.lower():
-            return reading.category
-        return None
+        row = self.row.lower()
+        if reading.ambiguous or not reading.said_most or reading.category is None:
+            return None
+        if row in map(str.lower, reading.claimed) or reading.category.lower() == row:
+            return None
+        return reading.category
 
     @property
     def right(self) -> bool:
@@ -812,6 +879,95 @@ def drill_down(
     )
 
 
+# --- the fair pass rule: 2 of 3 runs, at the fewest runs ---------------------------------------
+NEEDED = 2  # of RUNS runs: two runs, and a third only when the first two disagree
+RUNS = 3
+# Estimated, not measured: two drill-down runs at the 0.19 to 0.33 cents one run cost in the
+# verification of 25 October 2026, and a third run now and then (docs/costs.md).
+TYPICAL = "about 0.5 cents"
+
+
+@dataclass
+class RunError:
+    """A drill-down run that raised an error instead of ending: it counts as a wrong answer."""
+
+    error: str
+    passed: bool = False
+    fresh: bool = True
+    once: bool = True
+
+    def what(self) -> str:
+        return f"the run raised an error, so it counts as a wrong answer: {self.error}"
+
+    def fix(self) -> str:
+        return (
+            "the drill-down run must end and post an answer: it raised an error "
+            f"({self.error}); open the check's console to see the run"
+        )
+
+    def live(self) -> LiveRun:
+        return LiveRun(passed=False, detail=self.what())
+
+
+Outcome = DrillDown | RunError
+
+
+def drill_down_runs(
+    api: Any,
+    drill: dict[str, Any],
+    gold: str,
+    names: CategoryNames,
+    *,
+    clear: Callable[[str], None],
+) -> list[Outcome]:
+    """The drill-down question judged on the fair pass rule: two runs, one after the other, and a
+    third only when the first two disagree. Before each run, `clear` removes any earlier run under
+    the drill-down's event id, so each first ask starts a new run. A run that raises an error
+    counts as a wrong answer; a stop (the spend cap, a blocked or planted run) stops the check. A
+    run whose first ask was absorbed or whose second ask started another run ends the runs: that
+    part is deterministic, so it must hold in every run, and more runs decide nothing."""
+    outcomes: list[Outcome] = []
+    while len(outcomes) < RUNS:
+        if len(outcomes) == NEEDED and sum(o.passed for o in outcomes) != 1:
+            break  # two passes or two failures already decide
+        clear(str(drill["event_id"]))
+        try:
+            outcomes.append(drill_down(api, drill, gold, names))
+        except Stop:
+            raise
+        except Exception as error:  # a run that errors counts as wrong; the check goes on
+            outcomes.append(RunError(f"{type(error).__name__}: {str(error).strip()[:300]}"))
+        if not (outcomes[-1].fresh and outcomes[-1].once):
+            break
+    return outcomes
+
+
+def _live(outcome: Outcome) -> LiveRun:
+    if isinstance(outcome, RunError):
+        return outcome.live()
+    return live_run(outcome.detail, outcome.passed, outcome.what())
+
+
+def judge_runs(number: int, text: str, outcomes: list[Outcome]) -> Result:
+    """Requirement 10 on the fair pass rule: it passes when at least 2 runs posted the right
+    answer and every run's asks behaved (the first started a new run, the second was absorbed)."""
+    passes = sum(o.passed for o in outcomes)
+    steady = all(o.fresh and o.once for o in outcomes)
+    ok = passes >= NEEDED and steady
+    unsteady = [o for o in outcomes if not (o.fresh and o.once)]
+    failing = unsteady or [o for o in outcomes if not o.passed]
+    fix = "" if ok or not failing else failing[0].fix()
+    if not ok and not fix:
+        fix = "ask the drill-down question so that at least 2 of its 3 runs post the right answer"
+    rule = (
+        f"passed {passes} of {len(outcomes)} runs; {RULE}. Each run is judged against gold on "
+        "the answer it posts: a run held for approval is approved by the check, as an instructor "
+        "would; a run that never posts, or raises an error, counts as wrong; every run's second "
+        "ask must be absorbed. The added orders make the gold category unmistakable"
+    )
+    return Result(number, text, ok, fix, [_live(o) for o in outcomes], rule)
+
+
 def _cleanup(ctx, level: str) -> None:
     remove_check_orders()
     ctx.api.release()
@@ -876,22 +1032,20 @@ def run(ctx) -> None:
         report.not_run(10, text, "requirement 6 posted no alert")
         return
     ctx.live_gate(
-        [Planned("analyst run (the drill-down question, once)", 1, ctx.agent_model)],
+        [
+            Planned(
+                "analyst runs (the drill-down question, a third only when the first two disagree)",
+                NEEDED,
+                ctx.agent_model,
+                extra=RUNS - NEEDED,
+            )
+        ],
         live=[(10, text)],
-        typical="about 0.2 cents",
+        typical=TYPICAL,
+        typical_estimated=True,
     )
     drill = scenario.alert["body"]["drill_down"]
-    clear_drill_down(str(drill["event_id"]))
-    outcome = drill_down(ctx.api, drill, gold_category(DAY))
-    report.add(
-        Result(
-            10,
-            text,
-            outcome.passed,
-            outcome.fix(),
-            [live_run(outcome.detail, outcome.passed, outcome.what())],
-            "checked once against gold, on the answer that is posted: a run held for approval is "
-            "approved by the check, as an instructor would, and a run that never posts fails; the "
-            "added orders make the gold category unmistakable",
-        )
+    outcomes = drill_down_runs(
+        ctx.api, drill, gold_category(DAY), category_names(), clear=clear_drill_down
     )
+    report.add(judge_runs(10, text, outcomes))

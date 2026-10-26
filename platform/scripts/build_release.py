@@ -20,6 +20,12 @@ release with `--with-solutions`, which ships the solution folders and leaves tha
 out. Every later release keeps `--with-solutions`: an `--into` release without it refuses a clone
 that already publishes the solutions, so a release never unpublishes them by accident.
 
+Every mode first runs the placeholder check on the files it ships: a page that describes what it
+will hold instead of holding it (such as the session notes before the class run), a placeholder
+comment, a TODO, TBD, FIXME, or XXX marker, lorem ipsum, an angle-bracket or square-bracket
+placeholder outside code, or a heading with nothing under it refuses the release. The release
+list's `placeholder_allow` names each legitimate use, such as code that states the rule.
+
 Every mode then runs the public tree's own checks in the built tree: the strict style check of the
 course text, the release gate, which fails on any warning; and the unit tests (`uv run pytest`, no
 database, no model), which fail on a failing test or on a skip that the withheld solutions do not
@@ -54,6 +60,138 @@ STYLE_CHECKER = "platform/scripts/check_style.py"
 WITHHELD_SKIP = "the assignment solutions are published at the start of the Thursday review"
 
 
+# The placeholder check: a shipped file holds its content and never describes what it will hold.
+# Each rule has a readable name, the scope it reads ("text": the whole file; "prose": a Markdown
+# page with its fenced code and code spans blanked, so a command's `<slug>` is not read), and its
+# pattern. Patterns span line breaks with \s+, since a sentence wraps. The release list's
+# `placeholder_allow` names each legitimate use: a file and the rules it may break, with the reason.
+PLACEHOLDER_RULES: tuple[tuple[str, str, re.Pattern[str]], ...] = (
+    (
+        "a page written later",
+        "text",
+        re.compile(
+            r"written\s+from\s+the\s+class\s+run"
+            r"|until\s+then,?\s+each\s+part\s+says\s+what\s+it\s+will\s+hold"
+            r"|\b(?:is|are|will\s+be|gets?)\s+(?:written|added|filled(?:\s+in)?|completed)\s+"
+            r"(?:after\s+(?:the\s+)?(?:class|rehearsal|session|review)|at\s+release|later)\b"
+            r"|\bto\s+be\s+(?:written|added|filled\s+in|decided|confirmed|announced)\b"
+            r"|\bwill\s+be\s+added\b|\bcoming\s+soon\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "a placeholder comment",
+        "text",
+        re.compile(r"<!--\s*(?:placeholder|provisional|todo|tbd|fixme|fill)\b", re.IGNORECASE),
+    ),
+    (
+        "template guidance",
+        "text",
+        re.compile(r"\binstructor:\s+set\s+this\b|<set\s+by\s+the\s+instructor>", re.IGNORECASE),
+    ),
+    # TODO only as a bare word: the starter code's numbered gaps read "EXTENSION POINT, TODO 1".
+    (
+        "a leftover marker",
+        "text",
+        re.compile(r"\b(?:TBD|FIXME|XXX)\b|(?<!EXTENSION POINT, )\bTODO\b"),
+    ),
+    ("lorem ipsum", "text", re.compile(r"\blorem\s+ipsum\b", re.IGNORECASE)),
+    # <set by the instructor>, <AUTHOR>: several lower-case words, or one in capitals. A single
+    # lower-case word is an HTML tag (<details>, <br>), so it is not read.
+    (
+        "an angle-bracket placeholder",
+        "prose",
+        re.compile(r"<(?:[A-Z][A-Z0-9_]+(?:[ -][A-Z0-9_]+)*|[a-z]+(?: [a-z]+)+)>"),
+    ),
+    # [CLASS DATE], [THURSDAY REVIEW TIME]: capitals in square brackets that are not link text.
+    (
+        "a square-bracket placeholder",
+        "prose",
+        re.compile(r"\[[A-Z][A-Z0-9_']*(?: [A-Z0-9_']+)+\](?![(\[:])"),
+    ),
+)
+# A heading followed by nothing, or straight by a heading of its own level or a higher one.
+EMPTY_HEADING = "a heading with nothing under it"
+_FENCE = re.compile(r"^\s{0,3}(```|~~~)")
+_CODE_SPAN = re.compile(r"(`+)(?:(?!\1).)+?\1")
+_HEADING = re.compile(r"^(#{1,6})\s+\S")
+
+
+def _prose(text: str) -> str:
+    """A Markdown page with its fenced code and code spans blanked, line breaks kept."""
+    out, fence = [], None
+    for line in text.split("\n"):
+        opened = _FENCE.match(line)
+        if fence:
+            out.append("")
+            if opened and opened.group(1) == fence:
+                fence = None
+            continue
+        if opened:
+            fence = opened.group(1)
+            out.append("")
+            continue
+        out.append(_CODE_SPAN.sub(lambda m: " " * len(m.group(0)), line))
+    return "\n".join(out)
+
+
+def _empty_headings(text: str) -> list[int]:
+    """Heading lines outside fenced code with no content under them (a code block is content)."""
+    lines, headings, fence = text.split("\n"), [], None
+    for number, line in enumerate(lines, start=1):
+        opened = _FENCE.match(line)
+        if fence:
+            fence = None if opened and opened.group(1) == fence else fence
+        elif opened:
+            fence = opened.group(1)
+        elif _HEADING.match(line):
+            headings.append(number)
+    found = []
+    for number in headings:
+        level = len(_HEADING.match(lines[number - 1]).group(1))
+        following = next((t for t in lines[number:] if t.strip()), None)
+        after = _HEADING.match(following) if following is not None else None
+        if following is None or (after and len(after.group(1)) <= level):
+            found.append(number)
+    return found
+
+
+def placeholder_findings(path: str, text: str) -> list[tuple[int, str]]:
+    """(line, rule) for every placeholder in one shipped file, before any allow entry."""
+    found = []
+    prose = _prose(text) if path.endswith(".md") else None
+    for name, scope, pattern in PLACEHOLDER_RULES:
+        body = text if scope == "text" else prose
+        if body is None:
+            continue
+        for match in pattern.finditer(body):
+            found.append((body.count("\n", 0, match.start()) + 1, name))
+    if prose is not None:
+        found += [(number, EMPTY_HEADING) for number in _empty_headings(text)]
+    return sorted(set(found))
+
+
+def _allowed(path: str, rule: str, allow: list[dict]) -> dict | None:
+    return next(
+        (
+            entry
+            for entry in allow
+            if fnmatch.fnmatchcase(path, entry["path"]) and rule in entry["rules"]
+        ),
+        None,
+    )
+
+
+def placeholder_problems(files: dict[str, str], allow: list[dict]) -> list[str]:
+    """Placeholder text in the shipped files, each as `path:line: rule`, less the allowed uses."""
+    return [
+        f"{path}:{line}: placeholder text ({rule})"
+        for path, text in sorted(files.items())
+        for line, rule in placeholder_findings(path, text)
+        if not _allowed(path, rule, allow)
+    ]
+
+
 def _allow(entry: str) -> str:
     return entry + "**" if entry.endswith("/") else entry
 
@@ -71,18 +209,25 @@ def config(
     solutions = listed.get("solutions")
     tracked = make_release.tracked(repo, ref)
     private_dirs: list[str] = []
+    withheld_files: set[str] = set()
     for entry in listed["exclude"]:
         if with_solutions and entry == solutions:
             continue
         if "*" not in entry:
             private_dirs.append(entry)
             continue
+        if not entry.endswith("/"):
+            # A file pattern such as section-*/session-notes.md: each tracked file it names.
+            withheld_files |= {p for p in tracked if fnmatch.fnmatchcase(p, entry)}
+            continue
         depth = entry.rstrip("/").count("/") + 1
         prefixes = {"/".join(p.split("/")[:depth]) + "/" for p in tracked if p.count("/") >= depth}
         private_dirs += sorted(p for p in prefixes if fnmatch.fnmatchcase(p, entry))
     internal = set(listed.get("internal_files", []))
     private_files = sorted(
-        {p for p in tracked if p.rsplit("/", 1)[-1] in internal} | set(listed.get("build_only", []))
+        {p for p in tracked if p.rsplit("/", 1)[-1] in internal}
+        | set(listed.get("build_only", []))
+        | withheld_files
     )
     return make_release.Config(
         allow=[_allow(e) for e in listed["include"]],
@@ -97,6 +242,27 @@ def config(
         gitignore_extra=[] if with_solutions else listed.get("public_gitignore", []),
         gitignore_drop=listed.get("build_only_gitignore", []),
     )
+
+
+def public_texts(repo: Path, cfg: make_release.Config, ref: str) -> dict[str, str]:
+    """The text of every file the release ships from `ref` (binary files left out), chosen as the
+    release kit chooses them: allow-listed, not private, not a test that names a private file."""
+    included, excluded = make_release.select(make_release.tracked(repo, ref), cfg)
+    texts = {}
+    for p in included:
+        try:
+            texts[p] = make_release.blob(repo, ref, p).decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+    tests = {p: t for p, t in texts.items() if make_release._is_test(p)}
+    dropped = make_release.find_excluded_tests(tests, excluded)
+    return {p: t for p, t in texts.items() if p not in dropped}
+
+
+def release_placeholder_problems(repo: Path, cfg: make_release.Config, ref: str) -> list[str]:
+    """The placeholder check on the files the release ships from `ref`."""
+    allow = _listed(repo, ref).get("placeholder_allow", [])
+    return placeholder_problems(public_texts(repo, cfg, ref), allow)
 
 
 def _solution_files(paths: list[str], solutions: str | None) -> list[str]:
@@ -185,6 +351,8 @@ def update_clone(
     res.problems += make_release.content_problems(
         {p: texts[p] for p in res.public if p in texts}, cfg
     )
+    allow = _listed(repo, ref).get("placeholder_allow", [])
+    res.problems += placeholder_problems({p: texts[p] for p in res.public if p in texts}, allow)
     if res.problems:
         return res
     keep = set(res.public)
@@ -274,14 +442,19 @@ def main(argv: list[str] | None = None) -> int:
         if res.ok and not a.without_public_tests:
             res.problems += public_checks(a.into)
     else:
-        dest = a.build or Path(tempfile.mkdtemp(prefix="release-"))
-        try:
-            res = make_release.release(a.repo, cfg, dest, a.ref)
-            if res.ok and not a.without_public_tests:
-                res.problems += public_checks(dest)
-        finally:
-            if a.build is None:
-                shutil.rmtree(dest, ignore_errors=True)
+        placeholders = release_placeholder_problems(a.repo, cfg, a.ref)
+        if placeholders:
+            # Refused before anything is built: a release never ships a page that is not written.
+            res = make_release.Result(problems=placeholders)
+        else:
+            dest = a.build or Path(tempfile.mkdtemp(prefix="release-"))
+            try:
+                res = make_release.release(a.repo, cfg, dest, a.ref)
+                if res.ok and not a.without_public_tests:
+                    res.problems += public_checks(dest)
+            finally:
+                if a.build is None:
+                    shutil.rmtree(dest, ignore_errors=True)
     print(f"public files: {len(res.public)}")
     if a.with_solutions:
         chosen = set(solutions)

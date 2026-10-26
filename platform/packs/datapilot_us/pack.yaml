@@ -55,10 +55,10 @@ budgets:
   # The worker tokens a class day needs: make preflight PURPOSE=class refuses while less than this
   # is left of the Eastern time day. Measured on 25 October 2026 in rehearsal session c18bcc2e:
   # one full pass, 126,761 tokens with the planted halves off and 267,552 with them on, 394,313 in
-  # all (session 6 notes, pass-off.jsonl and pass-on.jsonl); the class finale and the safeguard
+  # all (the rehearsal's run records); the class finale and the safeguard
   # finale, 10,240 and 12,395. A pass and both finales: 394,313 + 10,240 + 12,395 = 416,948. A
-  # quarter more for the standing recovery, a reset and the same trigger again (session 6 review,
-  # round 2, class day): 416,948 times 1.25 = 521,185, rounded to the thousand.
+  # quarter more for the standing recovery, a reset and the same trigger again (the class-day
+  # review of 25 October 2026): 416,948 times 1.25 = 521,185, rounded to the thousand.
   class_pass_tokens: 521000
 
 # The live assignment checks (make check-assignment). Each check stops at its own spend cap in US
@@ -76,7 +76,7 @@ build_budget:
   # cap (assignments.check_cap_usd). The session limit holds whenever its
   # session is named.
   enabled_variable: DATAPILOT_BUILD_BUDGET
-  total_usd: 10.65   # an absolute maximum (raised from 10.00 by the owner, 25 October 2026)
+  total_usd: 10.65   # an absolute maximum (raised from 10.00 on 25 October 2026)
   warn_usd: 6.00
   stop_usd: 10.60    # all live work stops here, short of the total, so no run is cut off by credits
   # Every ledger activity counts under exactly one line, by its name: the line's own name, the line
@@ -86,31 +86,31 @@ build_budget:
   # message naming the line and what is left; it never spills into the reserve on its own.
   lines:
     development live checks:
-      cap_usd: 3.80   # owner, 25 October 2026: above the line's spend plus the session's needs, so only the 10.60 stop line blocks
+      cap_usd: 3.80   # 25 October 2026: above the line's spend plus the session's needs, so only the 10.60 stop line blocks
       # preflight during development and the capability check; "development" is the stack's default
       names: [development, preflight-development]
     calibration:
-      cap_usd: 4.70   # owner, 25 October 2026: above the line's spend plus the session's needs, so only the 10.60 stop line blocks
+      cap_usd: 4.70   # 25 October 2026: above the line's spend plus the session's needs, so only the 10.60 stop line blocks
     assignment verification:
-      cap_usd: 5.00   # owner, 25 October 2026: above the line's spend plus the session's needs, so only the 10.60 stop line blocks
+      cap_usd: 5.00   # 25 October 2026: above the line's spend plus the session's needs, so only the 10.60 stop line blocks
       names: [assignment]   # the reference solutions' live done-when checks during the build
     rehearsal:
-      cap_usd: 1.60   # owner, 25 October 2026: above the line's spend plus the session's needs, so only the 10.60 stop line blocks
+      cap_usd: 1.60   # 25 October 2026: above the line's spend plus the session's needs, so only the 10.60 stop line blocks
       # every screenshot, and preflight for a rehearsal, the class, and the Thursday review
       names: [screenshots, preflight-rehearsal, preflight-class, preflight-thursday-review]
     reserve:
-      cap_usd: 0.00   # moved to the other lines by the owner, 24 October 2026; the lines add up to 10.00
-      # used only with the owner's approval: DATAPILOT_USE_RESERVE=1 lets a used-up line go on into
+      cap_usd: 0.00   # moved to the other lines on 24 October 2026; the lines add up to 10.00
+      # used only with the course owner's approval: DATAPILOT_USE_RESERVE=1 lets a used-up line go on into
       # the reserve until the reserve is used up too
       approval_variable: DATAPILOT_USE_RESERVE
   # The lines are ceilings; the total stop above still holds when they add up to more, as they
-  # do from 25 October 2026, when the owner made the stop line the only limit that blocks live work.
+  # do from 25 October 2026, when the stop line became the only limit that blocks live work.
   # A second, explicit limit for one unattended session, checked before every call in addition to
   # the lines: it applies only while DATAPILOT_SESSION_SINCE names the session's start (a UTC time)
   # and counts only the spend since then. A line not listed here gets nothing this session.
   session:
     since_variable: DATAPILOT_SESSION_SINCE
-    total_usd: 2.95   # session 6, with the owner's raise of 25 October 2026 (the stop line still holds)
+    total_usd: 2.95   # the session of 25 October 2026, after the raise (the stop line still holds)
     lines:
       development live checks: 0.90
       calibration: 0.43
@@ -148,10 +148,10 @@ autonomy:
 evaluation:
   holdout_repeats: 3
   holdout_pass_threshold: 2
-  # An apparent dev regression (passed under the active version, fails under the candidate) is
-  # re-run this many times under each version, and counts only when the candidate fails at least
-  # dev_regression_threshold of its re-runs and the active version passes at least that many of
-  # its own: an item unstable under both versions is not a regression.
+  # An apparent regression on a development question (passed under the active version, fails
+  # under the candidate) is re-run this many times under each version, and counts only when the
+  # candidate fails at least dev_regression_threshold of its re-runs and the active version passes
+  # at least that many of its own: an item unstable under both versions is not a regression.
   dev_regression_reruns: 2
   dev_regression_threshold: 2
   # An apparent holdout regression is re-run this many times under the candidate and counts only
@@ -169,7 +169,7 @@ evaluation:
   overfit_question_words: 6
   overfit_sql_tokens: 20
 
-# LangSmith tracing (the owner's decision of 23 October 2026). Every demo run and every assignment
+# LangSmith tracing (decided on 23 October 2026). Every demo run and every assignment
 # check run is traced in full. A benchmark run inside an experiment (the hill-climbing runner's
 # experiments and re-runs, calibration, and the benchmark inside Assignment 4's check) is traced
 # only as this sample, decided per run by LangSmith's own sampling rule on the run id, so one
@@ -178,10 +178,10 @@ evaluation:
 tracing:
   experiment_sample_rate: 0.2   # about 1 benchmark run in 5 is traced
 
-# The analyzer team writes this many candidate rule sets from the same failed dev items, each by
-# its own run of the failure analyst, the rule writer, and the critic, through the overfit guard.
-# Each candidate runs on the dev split only, every item once, and the runner keeps one: fewer dev
-# regressions against the session's baseline, then more dev passes, then fewer rules. The holdout
+# The analyzer team writes this many candidate rule sets from the same failed development
+# questions, each by its own failure analyst, rule writer, and critic run, through the overfit guard.
+# Each runs on the development split only, every item once; the runner keeps the one with fewer
+# regressions against the session's baseline, then more passes there, then fewer rules. The holdout
 # split never takes part in the choice; only the kept candidate goes to the candidate experiment and
 # the gate. A pack without this setting writes one candidate.
 analyzer:

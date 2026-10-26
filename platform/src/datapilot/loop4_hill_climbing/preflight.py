@@ -61,6 +61,17 @@ BUDGET_SHORT = (
     "with the {left:,} tokens left, knowingly: "
     "make preflight PURPOSE=class ACCEPT_TOKENS_LEFT={left}"
 )
+# With no token left, a class session would block every run it starts: there is no knowing start,
+# so the refusal offers none and preflight takes none. Kept on purpose: no command resets or raises
+# a class stack's daily count by hand; a short day starts knowingly instead (ACCEPT_TOKENS_LEFT),
+# with the cap and the count unchanged (DECISIONS.md, 26 October 2026).
+BUDGET_SPENT = (
+    "This Eastern time day's token budget is spent: 0 tokens are left, so every run in class "
+    "would be blocked. No class session started, so the open session, if any, stays open. The "
+    "count starts again at midnight Eastern time, in {until}; rehearse on an earlier Eastern time "
+    "day. Raising or resetting the class stack's count is the course owner's decision; no command "
+    "here changes it, and no class session starts today with 0 tokens left."
+)
 # The make variable (and environment variable) that names the count left; preflight takes it only
 # when it equals the day's count, so a value set on an earlier day never starts a class unasked.
 ACCEPT_VARIABLE = "ACCEPT_TOKENS_LEFT"
@@ -211,13 +222,16 @@ def budget_check(
 
     `accepted_left` is the instructor's knowing start of a short class day: it is taken only when
     it equals the tokens left, the number the refusal prints, so the session starts with that
-    count known and the worker still blocks every run once the cap is reached."""
+    count known and the worker still blocks every run once the cap is reached. With 0 left there
+    is no knowing start: every run would be blocked, so the refusal offers none and takes none."""
     detail = (
         f"{day.used:,} of {day.cap:,} tokens used on the Eastern time day {day.day.isoformat()}, "
         f"{day.left:,} left"
     )
     if purpose is SessionPurpose.CLASS and day.left < class_pass_tokens:
         detail += f"; a class pass needs about {class_pass_tokens:,}"
+        if day.left == 0:
+            return Check("token budget", False, detail), BUDGET_SPENT.format(until=_hours(until))
         if accepted_left == day.left:
             detail += f"; started knowingly with {ACCEPT_VARIABLE}={accepted_left}"
             return Check("token budget", True, detail), None

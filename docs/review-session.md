@@ -5,11 +5,12 @@
 > - **Live session**: Everything that runs between one `make preflight` and the next.
 > - **Drift canary**: Three easy questions that must pass and two trap questions that must still fail.
 > - **Live stamp**: A result's run start time and its LangSmith trace: a check prints the time in Coordinated Universal Time (UTC), the console in your local time.
+> - **Development split**: The benchmark questions the analyzer team may learn from.
+> - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 
 The run sheet for the 120-minute review of the four assignments, held on the Thursday after the
 class. The instructor runs it from this page; learners read it to see what the session covers.
-Review time: the instructor's announcement in the class chat.
-<!-- placeholder: the instructor fills in the Thursday review time -->
+Review time: the time your instructor announces in the class chat.
 
 ## How the session works
 
@@ -38,8 +39,8 @@ Minutes per part of each block:
 
 | Part | Assignment 1 | Assignment 2 | Assignment 3 |
 |---|---|---|---|
-| Live done-when check of the reference solution | 3 | 5 | 4 |
-| Walkthrough of 3 or 4 excerpts | 8 | 10 | 11 |
+| Live done-when check of the reference solution | 3 | 5 | 5 |
+| Walkthrough of 3 or 4 excerpts | 8 | 10 | 10 |
 | Alternatives and volunteered learner approaches | 5 | 5 | 7 |
 | Common mistakes | 2 | 3 | 3 |
 | Questions | 2 | 2 | 2 |
@@ -83,9 +84,9 @@ Get the solutions first. Until the review starts, the published repository withh
 `solution/` folders, and in a clone without them `make apply-solution` stops and says the
 solutions are withheld until the Thursday review. The course owner keeps them in the course's
 source repository, which is not published: ask the course owner for a clone of it, and run the
-steps below there. At 0:00 the course owner publishes them with the command in the
-[release checklist](release-checklist.md); from then on every clone of the published repository
-has them.
+steps below there. At 0:00 the course owner publishes them with the steps in
+[the instructor guide](instructor-guide.md#publishing-the-solutions-for-the-thursday-review),
+prepared in the hour before; from then on every clone of the published repository has them.
 
 1. Start a rehearsal session with `make preflight PURPOSE=rehearsal`, then rehearse each live
    check once on the reference solutions, with `PURPOSE=rehearsal` and a reset of the check's stack
@@ -106,8 +107,9 @@ has them.
 
 ## Opening (0:00 to 0:05)
 
-- The course owner publishes the four `solution/` folders (the command in the
-  [release checklist](release-checklist.md)).
+- The course owner publishes the four `solution/` folders: the push and the continuous
+  integration run of
+  [the instructor guide's steps](instructor-guide.md#publishing-the-solutions-for-the-thursday-review).
 - Launch the chat poll.
 - Start the Assignment 4 check of the reference solution in its own terminal, so its results are
   ready at 1:22. It runs the benchmark, so it is the longest and most costly check of the session.
@@ -127,19 +129,19 @@ COMPOSE_PROJECT_NAME=datapilot-review POSTGRES_PORT=55434 API_PORT=8101 CONSOLE_
   experiment as well as the candidate. Measured on 23 October 2026 with two candidates, a check
   that shared its session's baseline took 15 and 22 minutes (two checks): about 1 minute for the
   build and the deterministic requirements, 6.5 to 7 minutes for the two analyzer team runs with
-  their 56 dev runs, and 7 to 14.5 minutes for the candidate experiment and its re-runs. A first
+  their 56 runs on development questions, and 7 to 14.5 minutes for the candidate experiment and its re-runs. A first
   check with one candidate took about 33 minutes. No clean first check with two candidates has been
   timed: the one of 24 October 2026 is suspect, because a planted flag was on when its stack
   started, and `TYPICAL_FIRST` in `section-4-hill-climbing-loop/assignment/check.py` says "no clean
   first check measured". A first check adds one 82-run baseline experiment to a later check
-  ([costs page](costs.md#assignments), note 2). Clean later checks with two candidates took 895 and
-  1,320 seconds on 23 October 2026 and 1,577 seconds (about 26 minutes) on 24 October 2026
-  ([calibration report](calibration-report.md)); no audit of planted flags covers the two of 23
-  October. Plan with the rehearsed time (step 1 above); the slot before the 0:50 break is 50
-  minutes.
+  ([costs page](costs.md#assignments), note 2). Later checks with two candidates took 895 and
+  1,320 seconds on 23 October 2026, which no audit of planted flags covers, and 1,577 seconds
+  (about 26 minutes) on 24 October 2026, which an audit found clean
+  ([calibration report](calibration-report.md)). Plan with the rehearsed time (step 1 above); the
+  slot before the 0:50 break is 50 minutes.
 - If it is still running at 0:50, leave it running and read its result at the start of the
   Assignment 4 block; start no second check. A second check in the same session shares the
-  baseline and takes 15 to 22 minutes (26 minutes, 1,577 seconds, on 24 October 2026).
+  baseline: plan 15 to 26 minutes for it.
 
 ## Assignment 1: Agent loop (0:05 to 0:25)
 
@@ -195,8 +197,8 @@ benchmark.
 
 A 5-minute break. Read the result line of the Assignment 4 check in its terminal. If it reads
 FAIL or STOPPED, keep that output on screen as the evidence, and start the same command again at
-once: it shares this session's baseline, so it takes 15 to 22 minutes and ends by about 1:17,
-before its block. In the block,
+once: it shares this session's baseline, so plan 15 to 26 minutes; started by 0:55, it ends by
+about 1:21, before its block at 1:22. In the block,
 show both outputs and what the FAIL line says, such as a gate that blocked the rule set the model
 wrote.
 
@@ -206,16 +208,22 @@ wrote.
 
 | Part | Minutes | What happens |
 |---|---|---|
-| Live done-when check | 4 | `make check-assignment NAME=event-loop` on the reference copy: the replayed job, a late order, the kill switch |
-| Walkthrough | 11 | The excerpts below |
+| Live done-when check | 5 | `make check-assignment NAME=event-loop` on the reference copy: the replayed job, a late order, the kill switch |
+| Walkthrough | 10 | The excerpts below |
 | Alternatives and learner approaches | 7 | The two alternatives in `SOLUTION.md`, then volunteers |
 | Common mistakes | 3 | From `SOLUTION.md` |
 | Questions | 2 | Overflow goes to the written list |
 
-The check can read `FAIL  10. Live: the drill-down question ...` with `Result: FAIL, 9 of 10
-requirements passed` when the agent's posted answer names another category than gold: one of 6
-solution checks on 25 October 2026 did, and the check was right. Say so, keep the output on
-screen, then reset the check's stack and run the same check again, as the rules above say.
+Requirement 10 runs the drill-down question twice, one run after the other, and a third time
+only when the first two disagree; it passes on 2 of 3. Each drill-down run took about 30 to 45
+seconds in the verification of 25 October 2026, so the check takes up to about a minute and a half
+longer than it did with one run, about 3 to 4 minutes in all: start it as the block opens and talk
+over the deterministic lines. Read the line "passed 2 of 2 runs" or "passed 2 of 3 runs", and, when
+there is one, the run whose answer named another category than gold: one of 6 single runs on 25
+October 2026 did. The check can still read `FAIL  10. Live: the drill-down question ...` when 2 of
+the 3 answers are wrong. Say so, keep the output on screen, then reset the check's stack and run
+the same check again, as the rules above say. No check has run on this rule yet; the rehearsal
+times it.
 
 Walkthrough excerpts, in
 `section-3-event-loop/assignment/solution/reference/files/platform/src/datapilot/loop3_events/extension.py`:
@@ -259,7 +267,7 @@ Walkthrough excerpts:
 3. The critic's guidance:
    `section-4-hill-climbing-loop/assignment/solution/reference/files/platform/src/datapilot/loop4_hill_climbing/extension.py`,
    lines 19 to 24.
-4. The minimum-holdout rule: the same file, lines 35 to 36, and the class eligibility it plugs
+4. The rule for a minimum number of holdout questions per family: the same file, lines 35 to 36, and the class eligibility it plugs
    into, `platform/src/datapilot/loop4_hill_climbing/eligibility.py`, lines 33 to 45; the
    confirmed standard that follows it is `confirmed_clearance` in the same file.
 

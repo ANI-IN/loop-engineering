@@ -48,7 +48,8 @@ scheduler's code, with no model call; each must pass every run:
    eligible, unattended once it is), the job is blocked at claim while the kill switch is engaged,
    and `publish` itself posts nothing while the switch is engaged.
 
-Model-dependent, run once live on the real model and checked against gold:
+Model-dependent, run live on the real model and checked against gold, on the fair pass rule:
+it passes on 2 of 3 runs, with a third run only when the first two disagree:
 
 10. The alert's drill-down question, submitted twice with its event id, runs once, and the answer
     it posts to the channel names the top-level category whose sales rose most above the
@@ -56,7 +57,9 @@ Model-dependent, run once live on the real model and checked against gold:
     the one in its own row with the greatest `rise_cents` when the answer returns that column, else
     the one its text says rose most; the text must name that category too. A text that says
     several categories rose most names none, and the requirement fails; so does an answer whose
-    text says a category other than its top row's rose most. The check's added
+    text says a category other than its top row's rose most (and never says that row's category
+    rose most). A text that says no category rose, and only names categories, names none: a
+    category named first counts for nothing. The check's added
     orders are all in one category, so the gold answer is unmistakable. The question must be one the class system can answer as it stands:
     the check runs it under knowledge version 1, which holds only the money rule, so the question
     names the measure that knowledge does not define, sales as quantity times unit price on the
@@ -69,25 +72,32 @@ Model-dependent, run once live on the real model and checked against gold:
     until its token budget, `budgets.tokens_per_run`, ends it escalated. On 25 October 2026 the
     solutions' earlier question, which asked which category's net revenue "changed the most",
     ended escalated at that budget in 2 of the reference's 4 checks (and 0 of the alternatives'
-    4). On the question and the judging that ship, from 22:47 Coordinated Universal Time the
-    same day, the starter failed, and the solutions passed 5 of their 6 checks (see "How often a
-    correct solution passes", below). When the run holds for approval (the reviewer holds an answer, or a
+    4). On the question that ships, from 22:47 Coordinated Universal Time the same day, with one
+    drill-down run a check, the starter failed, and the solutions passed 5 of their 6 checks (see
+    "How often a correct solution passes", below). When a run holds for approval (the reviewer holds an answer, or a
     tool call needs one), the check approves it, as an instructor would, and its output says
     "approved by the check"; it then waits for the run to post and judges the posted answer, never
-    the held one. A run that ends without posting fails this requirement. The drill-down's event id
-    is yours to choose; the check clears any earlier run under it first, so the first ask always
-    starts a new run, and a first ask absorbed into an earlier run fails this requirement.
+    the held one. A run that ends without posting, or raises an error, counts as a wrong answer.
+    The drill-down's event id is yours to choose; the check clears any earlier run under it before
+    each run, so each first ask starts a new run. The asks are deterministic, so they must behave in
+    every run: a first ask absorbed into an earlier run, or a second ask that starts another run,
+    fails this requirement at once, and the check makes no more runs.
 
-**How often a correct solution passes.** Requirement 10 depends on the answer the model gives in
-that check. In the course's verification on 25 October 2026 from 22:47 Coordinated Universal Time,
-correct solutions passed 5 of 6 checks: the reference 2 of 2,
-alternative one 1 of 2, and alternative two 2 of 2. In the one failure the agent's posted answer
-said Hiking rose most and the gold category was Water Sports; the same files passed the next check
-([evidence](../../docs/evidence/general.md#captures)). A later change to how requirement 10 reads
-the answer's text cannot alter the five of these verdicts judged on the answer's row. So a correct solution can read FAIL on
-requirement 10 when the agent answers wrongly, and the check is right to fail it: run the check
-again. The FAIL line names the category the answer said rose most and the gold one. A starter, and
-a solution whose job posts no alert, still fail it every time.
+**How often a correct solution passes.** Requirement 10 depends on the answers the model gives.
+In the course's verification on 25 October 2026 from 22:47 Coordinated Universal Time, under the
+earlier rule of one drill-down run a check, correct solutions passed 5 of 6 checks: the reference
+2 of 2, alternative one 1 of 2, and alternative two 2 of 2. In the one failure the agent's posted
+answer said Hiking rose most, in its own row, and the gold category was Water Sports; the same
+files passed the next check, and all three solutions ask the same drill-down question, so the
+wrong answer was the agent's run-to-run variation, not the solution
+([evidence](../../docs/evidence/general.md#captures)). That is why requirement 10 now passes on 2
+of 3 runs, as the course's other model-dependent requirements do. No check has run on this rule
+yet. Later changes to how requirement 10 reads the answer's text can alter a verdict, even one
+judged on the answer's row; the captures store each verdict and not the answer text, so only the
+failure could be judged again, and it fails under the current judge too. A correct solution can
+still read FAIL when the agent answers wrongly in 2 of 3 runs, and the check is right to fail it:
+run the check again. Each run's line names the category its answer said rose most and the gold
+one. A starter, and a solution whose job posts no alert, still fail it every time.
 
 The job exists in no class code path: the boundary test
 (`platform/tests/unit/test_assignment_boundaries.py`) keeps the router table and
@@ -99,8 +109,10 @@ the schedule hook empty in the class system, so the unchanged starter fails this
 releases the kill switch, clears the job's earlier events and alerts and the runs of their
 drill-down questions, adds its orders, and checks
 requirements 1 to 9. It then prints "This check makes live model calls, about N cents, and stops at 1.00 dollar" with its
-estimate, checks your OpenAI key, and runs requirement 10, approving any hold as an instructor
-would, printing its trace link and live stamp, and at the end the actual tokens and cost. On the way out it removes its orders and puts back your
+estimate, checks your OpenAI key, and runs requirement 10: the drill-down twice, one run after
+the other, and a third time only when the first two disagree, approving any hold as an instructor
+would, printing each run's verdict, trace link, and live stamp, and how many of the runs passed;
+at the end, the actual tokens and cost. On the way out it removes its orders and puts back your
 autonomy level. If the check reaches its spend cap of 1.00 dollar (`assignments.check_cap_usd` in pack.yaml), it stops cleanly: it starts no new run, every requirement it did not reach reads NOT RUN, and it exits 2. A missing or rejected key stops the check with "Live checks need your OpenAI key
 from the operations team"; it never falls back to anything offline. A run the stack itself
 blocked, at its daily token budget or by a kill switch the check did not engage, stops the check
@@ -110,7 +122,8 @@ a planted bug switched on (the run records it) stops the check the same way. Whe
 not run. The command exits 0 when every line reads PASS, 1 on any FAIL, and 2 when
 it stopped.
 
-Agent runs: 1. An approval resumes the same run; it starts no new one.
+Agent runs: 2, and 3 when the first two disagree. An approval resumes the same run; it starts
+no new one.
 
 ## Evidence to hand in
 

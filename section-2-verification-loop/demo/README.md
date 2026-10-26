@@ -9,8 +9,9 @@ on every retry while the bill climbs, and a revenue answer that passes every che
 wrong.
 
 These demos put all three in front of a live run. Fixed malicious statements go through each
-defense layer in turn. An injected grader that always fails tests the retry cap. The spine question
-runs under knowledge version v1, where every deterministic grader passes a wrong answer.
+defense layer in turn. An injected grader that always fails tests the retry cap. The fiscal year
+2025 revenue question runs under version 1 of the knowledge (the starting version), where every
+deterministic grader passes a wrong answer.
 
 > **Terms on this page**
 >
@@ -25,10 +26,10 @@ runs under knowledge version v1, where every deterministic grader passes a wrong
 
 ## What you'll see
 
-Malicious SQL and the cost guard send fixed SQL statements through the
-graders and the read-only role, with no model call. The retry cap and the spine question are real
-runs of the analyst with real model calls, traced to LangSmith. The console shows every grader
-result, which layer stopped each statement, and the reviewer's verdict.
+Malicious SQL and the cost guard send fixed SQL statements through the graders and the read-only
+role, with no model call. The retry cap and the fiscal year 2025 revenue question are real runs of
+the analyst with real model calls, traced to LangSmith. The console shows every grader result, which
+layer stopped each statement, and the reviewer's verdict.
 
 Times, measured live on 22 and 23 October 2026: malicious SQL 2 to 6 seconds with no model call,
 the retry cap 14 to 79 seconds, and every grader passes, still wrong 52 to 58 seconds. On the
@@ -105,7 +106,7 @@ measured times.
 - [walkthrough.md](walkthrough.md): the code behind these demos, explained
 - [The graders](../../platform/src/datapilot/loop2_verification/graders/): one file per grader
 - [The retry cap and cost limits](../../platform/packs/datapilot_us/pack.yaml): `limits` and `cost_guard`
-- [Knowledge version v1](../../platform/packs/datapilot_us/knowledge/v1.yaml): the near-empty rules
+- [Version 1 of the knowledge](../../platform/packs/datapilot_us/knowledge/v1.yaml): the near-empty rules
 - [expected/](expected/): real output from a real run, for comparison after class, never in class
 - [Evidence page](../../docs/evidence/section-2-verification-loop.md): the measured runs
 
@@ -155,8 +156,8 @@ and what may differ from run to run.
 
 - **Tier**: core
 - **Start it**: Verify > Ask the spine question in the console, or `make demo NAME=verify-graders-pass-still-wrong`
-- **Guaranteed by**: the near-empty knowledge version v1; the five traps in the seeded data
-- **What appears**: Under knowledge version v1, the spine question passes every deterministic grader and the checklist turns all green, while the gold check on both databases fails. The reviewer's verdict is shown beside it, whichever way it goes.
+- **Guaranteed by**: the near-empty version 1 of the knowledge (the starting version); the five traps in the seeded data
+- **What appears**: Under version 1 of the knowledge (the starting version), the fiscal year 2025 revenue question passes every deterministic grader and the checklist turns all green, while the gold check on both databases fails. The reviewer's verdict is shown beside it, whichever way it goes.
 - **Expected live outcome**: An all-green checklist beside a failed gold check.
 - **What can vary**: the reviewer's verdict; the wrong value
 - **Recovery**: `make reset NAME=verification-loop`, then the same trigger again
@@ -172,9 +173,9 @@ The retry cap ends a failing run after `limits.max_retries` attempts in `pack.ya
 its reasons. Without the cap, only the token budget stops the run, and the cost counter shows what
 that costs.
 
-An all-green checklist beside a failed gold check is the expected result under knowledge version
-v1. Graders check that a query is safe and well formed, not that it encodes the business rules.
-The reviewer may catch it or not; one run shows one verdict. That gap is the case for
+An all-green checklist beside a failed gold check is the expected result under version 1. Graders
+check that a query is safe and well formed, not that it encodes the business rules. The reviewer may
+catch it or not; one run shows one verdict. That gap is the case for
 [Section 4: Hill-climbing loop](../../section-4-hill-climbing-loop/README.md).
 
 ## If it fails

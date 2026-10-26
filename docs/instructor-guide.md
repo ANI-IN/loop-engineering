@@ -7,6 +7,8 @@
 > - **Baseline experiment**: The benchmark run under the active knowledge version, started in the open live session.
 > - **Live stamp**: A result's run start time in your local time and its LangSmith trace link.
 > - **Planted bug**: A defect switched on by a flag so a demo shows its failure every time.
+> - **Development split**: The benchmark questions the analyzer team may learn from.
+> - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 
 How to run the four-hour live class of Module: Loop Engineering. Every demo is live, on
 gpt-6-luna, with the class key. When a demo stalls, you reset its section and run it again:
@@ -18,7 +20,7 @@ speaker notes.
 
 | Time | Block | What you do |
 |---|---|---|
-| 0:00-0:10 | Opening | Console in F11 full screen; welcome, keys, setup checks, the spine question |
+| 0:00-0:10 | Opening | Full screen; welcome, keys, setup checks, the fiscal year 2025 revenue question |
 | 0:10-0:55 | Section 1: Agent loop | Concepts to 0:33; three core demos and the code to 0:50; questions |
 | 0:55-1:45 | Section 2: Verification loop | Concepts to 1:19; three core demos and the code to 1:37; questions |
 | 1:45-1:55 | Break | Write the return time in the chat; reset the event loop |
@@ -83,10 +85,11 @@ available to it." It never prints the key.
 **Rehearse on an earlier Eastern time day than the class.** The class stack counts its worker's
 tokens per Eastern time day, against `budgets.tokens_per_day` (2,000,000 tokens) in `pack.yaml`,
 and the count starts again at midnight Eastern time. A rehearsal's chains take a large share of a
-day: on 25 October 2026 a class pass and two retake chains took the class stack to 1,969,486
-tokens. `make preflight PURPOSE=class` therefore refuses to start the class session while less than
-one class pass is left of the day, about 520,000 tokens (`budgets.class_pass_tokens`: a class pass,
-both finales, and a margin for repeated demos). Its line `token budget` shows the day's count with
+day: on 25 October 2026 a class run-through and two more Section 4 chains, run to retake images,
+took the class stack to 1,969,486 tokens. `make preflight PURPOSE=class` therefore refuses to start the class session while less than
+the tokens of one class run-through are left of the day, about 520,000 tokens
+(`budgets.class_pass_tokens`: a run-through of every core demo, both finales, and a margin for
+repeated demos). Its line `token budget` shows the day's count with
 any purpose, so read it at the end of the rehearsal, and hold the rehearsal on the day before the
 class, never on its morning.
 
@@ -148,6 +151,11 @@ class, never on its morning.
    `demo/walkthrough.md`, so the editor tabs are ready.
 9. **Check the screen.** Present the console in F11 full screen. The status line, all five lanes,
    and the off-the-board row must be visible on the Events page without scrolling.
+10. **Check the retaken images**, last: `make check-images ARGS=--rehearsal` passes. With
+    `--rehearsal`, the image check's exceptions that expire at the rehearsal no longer excuse, so
+    it fails on any image the rehearsal still owes a retake. Remove each such exception from
+    `EXCEPTIONS` in `platform/scripts/check_images.py` with its retake: the check also fails on an
+    exception whose image no longer has the problem.
 
 ## Thirty minutes before
 
@@ -198,7 +206,7 @@ controls are allowed, whose demo has no fixed half; a chip on the status line na
 | `make demo NAME=agent-unbounded-rows PLANTED=1` | With the run's event, to the worker |
 | `make demo NAME=verify-malicious-sql PLANTED=1` | With the run's event, to the worker |
 | `make demo NAME=verify-retry-cap PLANTED=1` | With the run's event, to the worker |
-| `make demo NAME=events-duplicate-events PLANTED=1` | With its events, to the api; the digest id is made in `make demo` itself |
+| `make demo NAME=events-duplicate-events PLANTED=1` | With its events, to the `api` service; the digest id is made in `make demo` itself |
 | `make demo NAME=events-kill-switch-in-flight PLANTED=1` | With the run's event, to the worker, with demo pacing |
 | `make demo NAME=improve-naive-analyzer-blocked PLANTED=1` | With its two requests, to the hill-climbing runner |
 | `make demo NAME=events-approval-survives-restart PLANTED=1`, on request | A worker restart with it; another without it once the run ends |
@@ -227,7 +235,7 @@ a running service has a flag on, and name it: set it to 0 in `.env`, then `make 
 | 0:03-0:04 | Your key, LangSmith | The key from the operations team; LangSmith on the learner's own account |
 | 0:04-0:05 | Setup checks | Services healthy, then the preflight canary |
 | 0:05-0:06:30 | Recap, problem statement | From the Harness Engineering module to four loops; DataPilot |
-| 0:06:30-0:08 | The spine question, why it matters | "What was our net revenue in fiscal year 2025?" and its five traps |
+| 0:06:30-0:08 | The fiscal year 2025 revenue question, why it matters | "What was our net revenue in fiscal year 2025?" and its five traps |
 | 0:08-0:10 | Four loops, measurement, glossary | The loops in one picture; gold queries on two databases; the terms |
 
 ### Section 1: Agent loop (0:10-0:55)
@@ -376,7 +384,7 @@ without `PLANTED=1`; the Run analyzer button runs the analyzer team. The runner 
 for the baseline: the naive analyzer takes seconds and makes no model call, then its 70-run
 candidate experiment runs. The naive analyzer took 211 to 580 seconds from the trigger to the
 verdict in its 6 measured runs; the longest ran on a machine shared with assignment checks, and
-the class story pass of 25 October took 221. Its blocked verdict is on the Improve page by about
+the class run-through of 25 October 2026 took 221 seconds. Its blocked verdict is on the Improve page by about
 3:01 in most runs; if it is not there at 3:25, read the baseline ledger first and come back to
 it. The flag was on for those two requests alone, so the
 analyzer team runs in Section 4 with nothing to switch back.
@@ -385,7 +393,7 @@ analyzer team runs in Section 4 with nothing to switch back.
 
 | Time | Slide or demo | What you do |
 |---|---|---|
-| 3:05-3:09 | Agenda, failure story, the tempting question | "Promote rules when the dev score rises?" No |
+| 3:05-3:09 | Agenda, failure story, the tempting question | "Promote rules when the development score rises?" No |
 | 3:09-3:25 | Concepts 1 to 4, cheat sheet | The benchmark as an instrument, overfitting, the paired gate, earned autonomy |
 | 3:25-3:40 | Five core demos, in order | The five demos in the cues below |
 | 3:40-3:45 | Code walkthrough | The evaluator, the analyzer, the overfit guard, the gate |
@@ -400,14 +408,14 @@ The demos need more machine time than their 15 minutes, measured over every reco
 | The baseline experiment | 236 to 386 seconds | From the poll, done by about 2:54 to 2:57 |
 | The naive analyzer and its candidate experiment | 211 to 580 seconds | Queued at the break, done by about 3:01 in most runs |
 | The analyzer team, two candidates | 326 to 377 seconds, five runs | In the block |
-| The candidate experiment | 176 to 337 seconds; 404 and 459 at analyzer reasoning effort high | In the block |
+| The candidate experiment | 176 to 337 seconds; 404 and 459 seconds at analyzer reasoning effort high | In the block |
 | The promotion after approval, with its clearance re-runs | Active about 5 seconds after approval; the finale is held during the re-runs | In the block |
 | The finale after a promotion, from its first send | 50 seconds of holds once; then posted at 74, 115, and 162 seconds | In the block |
 | The finale on the class-day safeguard | 19 and 21 seconds | Only if the safeguard is used |
 
 So only the analyzer team, the candidate experiment, the promotion, and the finale run in the
 block: from 326 + 176 + 74 seconds, about 9.6 minutes, to 377 + 337 + 162 seconds, about 14.6
-minutes. In the class story pass of 25 October 2026, in class order, the chain took 362 + 237 + 162
+minutes. In the class run-through of 25 October 2026, in class order, the chain took 362 + 237 + 162
 seconds, about 12.7 minutes. Plan from the largest: started at 3:28, the finale can land as late as
 about 3:43, in the code walkthrough slot, so show the code walkthrough during the clearance re-runs
 when the chain runs long. The plan for 3:25-3:40:
@@ -427,8 +435,8 @@ when the chain runs long. The plan for 3:25-3:40:
    the note above the Events buttons goes away and Send webhook question turns on. The status
    line then names the families cleared or, when the promotion cleared none, reads Not cleared
    for every family: the finale then posts at the assisted level, a correct outcome.
-5. Send the finale. From the promotion on, Send webhook question sends the spine question,
-   whether a family cleared or none did.
+5. Send the finale. From the promotion on, Send webhook question sends the fiscal year 2025 revenue
+   question, whether a family cleared or none did.
 
 Cut the optional demo first, as always; it is not in the 15 minutes.
 
@@ -440,7 +448,7 @@ Demo cues:
 - **The naive analyzer, blocked.** Queued at the break: `make demo
   NAME=improve-naive-analyzer-blocked PLANTED=1` queues the analyzer with the naive analyzer
   (`BUG_NAIVE_ANALYZER`, for its own requests) and then its candidate experiment. The naive
-  analyzer makes no model call: it writes one rule per failed dev question, quoting the question
+  analyzer makes no model call: it writes one rule per failed development question, quoting the question
   word for word with the query that failed, and skips the critic. The
   overfit guard flags every rule, but its verdict is not applied, so the knowledge diff keeps them
   all. After the candidate experiment, the gate reads blocked and names the rules the overfit
@@ -448,7 +456,7 @@ Demo cues:
   not license rules that copy the test.
 - **The analyzer team and approval.** Improve > Run analyzer, or
   `make demo NAME=improve-analyzer-team-approve`. Point at one diagnosis, one rule, the critic's
-  decision, the guard, the line naming both candidates and the one kept on the dev split, and the
+  decision, the guard, the line naming both candidates and the one kept on the development split, and the
   knowledge diff waiting for approval. A rule whose SQL guidance does not run over the schema is
   dropped before the guard. The overfit guard rejects any rule that quotes a benchmark question
   or copies gold SQL and passes the rest: live, it rejected a rule the critic kept because it
@@ -490,8 +498,8 @@ on its holdout questions: 4 for revenue, 1 for average order value. Is that enou
 ### The class-day safeguard for the finale
 
 Use it only when the finale's answer is wrong: the version the gate promoted live in class posts
-a spine-question answer that the gold check marks wrong: the finale's strip on the Events page
-shows "Gold check failed" with the agent's value and the gold value. It is never a recording: the finale runs again, live,
+an answer to the fiscal year 2025 revenue question that the gold check marks wrong: the finale's
+strip on the Events page shows "Gold check failed" with the agent's value and the gold value. It is never a recording: the finale runs again, live,
 on the version that was promoted and verified in rehearsal (step 5 of the day before). When
 `make safeguard-status` names no verified version, there is no safeguard: leave the wrong answer
 on screen as the gate's evidence, and say so.
@@ -561,18 +569,21 @@ owner raises or resets the class stack's count, and no course command changes it
 owner, then follow these steps that morning:
 
 1. Read the `token budget` line: the tokens used today, the cap, and the count left. The
-   message's last line is the command to start the class anyway, with that count in it.
-2. Start the class session knowingly:
-   `make preflight PURPOSE=class ACCEPT_TOKENS_LEFT=<the count left>`. Preflight takes the count
-   only when it equals the day's count left, so a guess or a value from an earlier day is refused.
+   command at the end of the message starts the class anyway, with that count in it.
+2. Start the class session knowingly: run the command at the end of the message,
+   `make preflight PURPOSE=class ACCEPT_TOKENS_LEFT=<count>`, with the digits of the printed
+   command, without commas (`300000`, never `300,000`). Preflight takes the count only when it
+   equals the day's count left, so a guess or a value from an earlier day is refused. With 0
+   tokens left the message says the budget is spent and offers no command: every run would be
+   blocked, so no class session starts that day.
    The `token budget` line then ends "started knowingly with ACCEPT_TOKENS_LEFT=...", the canary
    runs, and the class session starts and ends the open one. The cap stays as it is.
 3. Plan the day against the count left. The comment of `budgets.class_pass_tokens` in `pack.yaml`
-   holds the measured worker tokens of 25 October 2026: 394,313 for a pass of every core demo
+   holds the measured worker tokens of 25 October 2026: 394,313 for a run-through of every core demo
    (126,761 with the planted halves off, 267,552 with them on), 10,240 for the class finale, and
    12,395 for the safeguard finale. Only worker runs count: the experiments and the analyzer team
    on the Improve page run outside the worker.
-4. With less left than a pass and both finales, cut the planted half of the unbounded rows demo in
+4. With less left than a run-through and both finales, cut the planted half of the unbounded rows demo in
    Section 1 first: alone it took 182,654 to 187,030 tokens in every recorded run
    ([Section 1 evidence](evidence/section-1-agent-loop.md)). Then run no demo twice, and cut the
    optional demos.
@@ -614,3 +625,31 @@ after class and are never opened in class.
 - Stop the services, the hill-climbing runner among them, with `make down`; the database volume
   is kept.
 - Re-run calibration before the next cohort.
+
+### Publishing the solutions for the Thursday review
+
+The four `solution/` folders are on no branch of the published repository, until the review
+starts. They stay in the course's private source repository, on its `dev` branch, and the course
+owner publishes them to the published `main` branch at 0:00 of
+[the review session](review-session.md). Steps 1 to 4 take no model call; run them in the hour
+before the review, then steps 5 and 6 at 0:00. In Ubuntu on WSL2:
+
+1. Make a fresh clone of the published `main` branch:
+   `git clone https://github.com/ANI-IN/loop-engineering.git <clone>`.
+2. From the private source repository, build the release into the clone, with the solutions:
+   `uv run python platform/scripts/build_release.py --repo . --ref dev --with-solutions --deny <word> --into <clone>`,
+   with one `--deny <word>` for each of the deny words in the private release checklist. The
+   build runs the published tree's strict style check and unit tests, prints
+   `solutions published: N files` and `staged in <clone>`, and fails on any problem: fix it on
+   `dev` and build again.
+3. Commit in the clone as a normal commit, with the identity of the course owner:
+   `git -C <clone> commit -m "release: the four assignment solutions, for the Thursday review"`.
+4. Run the continuous integration workflow's own steps on that commit:
+   `make ci-local REPO=<clone>`. It reads committed history, so commit first; go on only when it
+   exits with 0.
+5. At 0:00, push without force: `git -C <clone> push origin main`. When the push is refused
+   because `main` moved, start again from step 1; never force it.
+6. Watch the continuous integration run of the push until it passes: `gh run watch`.
+
+Every later release keeps `--with-solutions`: a release into a clone that already publishes the
+solutions refuses to run without it, so a release never unpublishes them.

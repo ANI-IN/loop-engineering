@@ -94,7 +94,8 @@ path (from the root `README.md`, `docs/diagrams/<name>.svg`; from a section page
 - **Source in the code**: `platform/src/datapilot/loop1_agent/analyst.py` and `scout.py`;
   `loop2_verification/loop.py` and `reviewer.py`; `loop3_events/router.py`, `worker.py`,
   `autonomy.py`, `killswitch.py`, and `reaper.py`; `loop4_hill_climbing/analyzer.py`,
-  `candidates.py`, `overfit_guard.py`, `gate.py`, and `runner.py`; the 25 dev and 15 holdout items in
+  `candidates.py`, `overfit_guard.py`, `gate.py`, and `runner.py`; the 25 development questions
+  (the analyzer team may learn from them) and the 15 holdout questions (it never sees them) in
   `platform/packs/datapilot_us/benchmark/`.
 
 ### The run lifecycle
@@ -162,7 +163,7 @@ committed, and nothing in the app or the learner's setup uses Node.
    the canvas, the 20-pixel labels, the embedded font, the step frames, the naming rule on every
    label, and the run lifecycle key against the contract.
 
-Run it from the repository root (the dev dependency group, once per machine
+Run it from the repository root (the `dev` dependency group, once per machine
 `uv run playwright install chromium`):
 
 ```bash
@@ -175,5 +176,5 @@ uv run python platform/tools/diagrams/export_diagrams.py --check  # report stale
 |---|---|---|
 | `@excalidraw/excalidraw` on npm | 0.18.1 | Released 2026-04-20; loaded as jsDelivr's `+esm` build |
 | React, through that build | 19.2.5 | jsDelivr fixes it inside the `+esm` build |
-| Playwright for Python | 1.63.0 | Already in the dev dependency group |
+| Playwright for Python | 1.63.0 | Already in the `dev` dependency group |
 | Chromium | 153.0.8010.12 | The build Playwright 1.63.0 installs |
