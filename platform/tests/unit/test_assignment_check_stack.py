@@ -7,6 +7,7 @@ live against the real api."""
 from __future__ import annotations
 
 import io
+import shutil
 import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -14,11 +15,24 @@ from types import SimpleNamespace
 
 import pytest
 
-from datapilot.assignments import WITHHELD_LINE, assignment, cost, live, solutions, stack
+from datapilot.assignments import (
+    WITHHELD_LINE,
+    WITHHELD_REASON,
+    assignment,
+    cost,
+    live,
+    solutions,
+    solutions_withheld,
+    stack,
+)
 from datapilot.assignments.report import Report, Stop
 from datapilot.contracts import RunStatus
 from datapilot.contracts.live import LiveSession, SessionPurpose
 from datapilot.names import SECTIONS_BY_SLUG
+
+# The check stack's refusals (the class project, its ports, demo controls off) are safety tests:
+# in make test-security's selection.
+pytestmark = pytest.mark.security
 
 NOW = datetime(2026, 10, 29, 18, 0, tzinfo=UTC)  # a Thursday, 14:00 Eastern time
 
@@ -55,6 +69,46 @@ def test_the_checks_own_kill_switch_is_judged_as_the_check_expects(ours: str) ->
 @pytest.mark.parametrize("status", [RunStatus.POSTED, RunStatus.REJECTED, RunStatus.ESCALATED])
 def test_an_ordinary_end_is_judged(status: RunStatus) -> None:
     live.stop_on_blocked(_detail(status), SimpleNamespace())
+
+
+# --- planted bugs: a class demonstration's flags in the shared .env never judge a solution -------
+def test_the_checks_own_stack_switches_every_planted_bug_off() -> None:
+    """The copy's .env links the checkout's, where a class demonstration switches flags on; on
+    25 October 2026 a stack started with BUG_NO_IDEMPOTENCY on failed alternative one of
+    Assignment 3. The override's environment wins over env_file in Compose."""
+    import yaml
+
+    from datapilot import planted
+    from datapilot.settings import REPO
+
+    override = stack._override(REPO, "datapilot-assignments", "assignment-event-loop-1a2b3c4d")
+    try:
+        services = yaml.safe_load(override.read_text(encoding="utf-8"))["services"]
+    finally:
+        shutil.rmtree(override.parent)
+    # compose.yaml's own services, read here and not through app_services: every one but the
+    # database runs the platform's code, so every one must start with each flag off
+    compose = yaml.safe_load((REPO / "compose.yaml").read_text(encoding="utf-8"))["services"]
+    assert set(services) == set(compose) - {"postgres"}
+    for name, service in services.items():
+        environment = service["environment"]
+        assert environment["DATAPILOT_SPEND_ACTIVITY"] == "assignment-event-loop-1a2b3c4d"
+        assert {flag: environment.get(flag) for flag in planted.flags()} == {
+            flag: "0" for flag in planted.flags()
+        }, name
+        # and no request can switch one on: the api refuses the planted header without them
+        assert environment["DATAPILOT_ALLOW_DEMO_CONTROLS"] == "0", name
+    assert "BUG_NO_IDEMPOTENCY" in planted.flags() and "DEMO_PACING" in planted.flags()
+
+
+def test_a_run_made_with_a_planted_bug_on_stops_the_check() -> None:
+    detail = SimpleNamespace(run_id=uuid.uuid4(), planted_active=["BUG_NO_IDEMPOTENCY"])
+    with pytest.raises(Stop) as stopped:
+        live.stop_on_planted(detail)
+    message = str(stopped.value)
+    assert "BUG_NO_IDEMPOTENCY" in message and "not judged" in message and ".env" in message
+    live.stop_on_planted(SimpleNamespace(run_id=uuid.uuid4(), planted_active=[]))  # no stop
+    live.stop_on_planted(_detail(RunStatus.POSTED))  # a detail without the field: no stop
 
 
 class _Blocked:
@@ -386,3 +440,60 @@ def test_a_stop_in_a_command_exits_stopped_with_its_message(
     monkeypatch.setattr(solutions, "apply", refused)
     assert main(["apply", "agent-loop", "reference"]) == 2
     assert "withheld until the Thursday review" in capsys.readouterr().out
+
+
+def test_a_verification_can_keep_only_some_variants(monkeypatch: pytest.MonkeyPatch) -> None:
+    """For a budget that allows only part of a verification (25 October 2026: Assignment 4's
+    reference twice), the kept variants still run as often as in a full one."""
+    ran: list[tuple[str, str]] = []
+    monkeypatch.setattr(solutions, "solutions_withheld", lambda tree=None: False)
+    # the refusal reads the checkout's .env, which this test never depends on (review, round 2)
+    monkeypatch.setattr(solutions, "refuse_planted", lambda who: None)
+    monkeypatch.setattr(solutions, "apply", lambda slug, variant, force: (slug, variant))
+    monkeypatch.setattr(
+        solutions, "_run_captured", lambda slug, tree: (ran.append(tree), (0, ""))[1]
+    )
+    monkeypatch.setattr(solutions, "_write_capture", lambda *a: None)
+    monkeypatch.setattr(solutions, "stop_stack", lambda: None)
+    assert solutions.verify(only=["hill-climbing-loop"], variants=["reference"]) == 0
+    assert ran == [("hill-climbing-loop", "reference")] * 2
+
+
+def test_a_verification_can_run_each_solution_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """25 October 2026: Assignment 4's alternatives once each, their second runs owed."""
+    names: list[str] = []
+    monkeypatch.setattr(solutions, "solutions_withheld", lambda tree=None: False)
+    monkeypatch.setattr(solutions, "refuse_planted", lambda who: None)
+    monkeypatch.setattr(solutions, "apply", lambda slug, variant, force: (slug, variant))
+    monkeypatch.setattr(solutions, "_run_captured", lambda slug, tree: (0, ""))
+    monkeypatch.setattr(solutions, "_write_capture", lambda slug, folder, c: names.append(c.name))
+    monkeypatch.setattr(solutions, "stop_stack", lambda: None)
+    variants = ["alternative-one", "alternative-two"]
+    assert solutions.verify(only=["hill-climbing-loop"], variants=variants, once=True) == 0
+    assert names == ["alternative-one-run-1", "alternative-two-run-1"]
+
+
+@pytest.mark.skipif(solutions_withheld(), reason=WITHHELD_REASON)
+def test_a_verification_run_once_says_its_earlier_second_runs_are_kept(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The security review of 26 October: ONCE=1 left an earlier verification's run-2 pages beside
+    the new run-1 and exited 0 with nothing saying so."""
+    monkeypatch.setattr(solutions, "solutions_withheld", lambda tree=None: False)
+    monkeypatch.setattr(solutions, "refuse_planted", lambda who: None)
+    monkeypatch.setattr(solutions, "apply", lambda slug, variant, force: (slug, variant))
+    monkeypatch.setattr(solutions, "_run_captured", lambda slug, tree: (0, ""))
+    monkeypatch.setattr(solutions, "_write_capture", lambda *a: None)
+    monkeypatch.setattr(solutions, "stop_stack", lambda: None)
+    assert solutions.verify(only=["agent-loop"], variants=["reference"], once=True) == 0
+    out = capsys.readouterr().out
+    assert "! agent-loop reference: run 2 not made (ONCE=1)" in out
+    assert "reference-run-2.md and its images) are kept from an earlier verification" in out
+    # the date is the page's own, never the file's time, which a fresh clone resets
+    page = assignment("agent-loop").folder / "solution/captured/reference-run-2.md"
+    said = solutions.RUN_ON.search(page.read_text(encoding="utf-8"))
+    assert said is not None and f"run on {said.group(1)} (Coordinated Universal Time)" in out
+    assert "alternative-one" not in out  # only the variants it ran
+    assert "The verification is partial: each solution's second run is still owed." in out
+    assert solutions.verify(only=["agent-loop"], variants=["reference"]) == 0
+    assert "run 2 not made" not in capsys.readouterr().out  # a full verification made it

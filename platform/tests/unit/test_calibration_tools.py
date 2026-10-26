@@ -8,6 +8,7 @@ import uuid
 from dataclasses import dataclass, field
 
 import pytest
+from budget_doubles import with_test_budget
 from loop4_doubles import SESSION, ScriptedEvaluator, answered, item
 from typer.testing import CliRunner
 
@@ -21,6 +22,8 @@ from datapilot.observability import spend
 
 @pytest.fixture
 def ledger(tmp_path, monkeypatch):
+    with_test_budget(monkeypatch)  # the mechanism's fixed allocation, not the owner's current one
+    monkeypatch.setattr(cal, "pack_config", spend.pack_config)  # the guard reads the same budget
     path = tmp_path / "ledger.sqlite"
     monkeypatch.setenv("DATAPILOT_SPEND_LEDGER", str(path))
     monkeypatch.delenv(cal.EXTRA_LEDGERS, raising=False)

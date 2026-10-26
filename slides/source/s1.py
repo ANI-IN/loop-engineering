@@ -7,11 +7,16 @@ FAILURE = (
 DEMOS = ["agent-simple-question", "agent-confident-wrong-answer", "agent-unbounded-rows"]
 R = "<!-- refresh after the session: {} -->"
 MEASURED = (
-    "the simple question shown in 37 and 39 seconds; the confident wrong answer shown in 76 "
-    "seconds, 76,981,355.95 dollars against gold 64,015,091.21 with 4 trap labels, while the second "
-    "attempt got no gold check within 90 seconds (hardened the same night); retaken twice on 23 "
-    "October, both shown, 72,394,572.08 dollars against gold with 3 trap labels each; unbounded "
-    "rows, fixed half 19,661 and 17,298 tokens per run, planted half 183,639 and 185,727 tokens."
+    "in calibration, each core demo twice with a reset between: the simple question shown in 37 "
+    "and 39 seconds; the confident wrong answer shown in 76 seconds, 76,981,355.95 dollars against "
+    "gold 64,015,091.21 with 4 trap labels, while the second attempt got no gold check within 90 "
+    "seconds (hardened the same night); retaken twice on 23 October, both shown, 72,394,572.08 "
+    "dollars against gold with 3 trap labels each; unbounded rows, fixed half 19,661 and 17,298 "
+    "tokens per run, planted half 183,639 and 185,727 tokens. In the paired measurement of 23 "
+    "October, unbounded rows took 186,689 tokens without the row cap and 27,040 with it. In the "
+    "live session of 24 October every core and optional demo showed its moment, both halves, and "
+    "the paired measurement gave 12 of 21 correct without the agent loop's tools against 17 of "
+    "21 with them, and 182,654 tokens for unbounded rows without the cap against 30,216 with it."
 )
 NUMBERS = [
     "Schema linking errors account for 68.3 percent of failures (500 sampled Spider examples, schema retrieved across all databases, DIN-SQL): Source 4, version 3, Appendix B.",
@@ -29,6 +34,10 @@ NUMBERS = [
     "Mean tokens and seconds per question over four questions: scout and reviewer on 8,648 and 24.2, scout off 3,853 and 12.8, reviewer off 5,786 and 12.8, both off 3,337 and 10.1; gold results identical in every configuration: docs/calibration-report.md, Agents on and off.",
     "Traps under the starting knowledge: 0 of 99 trap runs passed, every trap item 3 times: docs/calibration-report.md, Traps.",
     "The confident wrong answer, 76,981,355.95 dollars against gold 64,015,091.21 with 4 trap labels, in 76 seconds: docs/calibration-report.md, Demos; retaken twice, 72,394,572.08 dollars with 3 trap labels each: docs/calibration-report.md, Resumed without traces.",
+    "Seven questions without traps, 3 runs each, 21 runs per side: 12 of 21 correct with column names only, unbounded rows, and no scout, 17 of 21 with full descriptions, capped rows, and the scout, on 24 October: docs/benefits.md, Section 1: Agent loop; 4 and 6 of 7 in the earlier measurement of 23 October.",
+    "Unbounded rows, one run of each half on 24 October: 182,654 tokens and 0.0228 dollars without the row cap, escalated at the run budget; 30,216 tokens and 0.0021 dollars with it, reviewer round trip included: docs/benefits.md, Section 1: Agent loop.",
+    'The question "How many VIP customers do we have?" ended with the status needs clarification: docs/calibration-report.md, Live session of 24 October 2026 (session 5), Edge cases.',
+    "Every core and optional demo of the section showed its moment, both halves: docs/calibration-report.md, Live session of 24 October 2026 (session 5).",
 ]
 
 SLIDES = [
@@ -116,12 +125,12 @@ SLIDES = [
         on_slide=[
             "KEY IDEA: No. The rules are not in the schema. Better tools expose the error; gated "
             "knowledge fixes it.",
-            "- Knowledge, not the model: GPT-4 rises from 34.88 to 54.89 percent on the BIRD test "
-            "set once it gets domain evidence.",
-            "- Real schemas are harder: GPT-4 methods reach 91.2 percent on Spider 1.0; the best agent "
-            "solves 21.3 percent of Spider 2.0.",
-            "- No temperature dial: reasoning models reject a custom temperature, so consistency "
-            "comes from knowledge and measurement.",
+            "- Knowledge, not the model: the model GPT-4 rises from 34.88 to 54.89 percent on the "
+            "BIRD text-to-query benchmark with domain evidence.",
+            "- Real schemas are harder: methods built on GPT-4 reach 91.2 percent on the Spider "
+            "1.0 benchmark; the best agent solves 21.3 percent of Spider 2.0.",
+            "- No temperature dial: reasoning models reject a custom temperature; consistency "
+            "comes from knowledge.",
         ],
         notes=[
             "Say: No. A stronger model reads the same schema, and the rules that define net revenue "
@@ -156,17 +165,20 @@ SLIDES = [
         container="two-column cards: how it works | worked example; trade-off and at-work lines; key-idea bar",
         on_slide=[
             "Principle: the agent links words to columns only through what its tools show.",
-            "Think of it as onboarding: a data dictionary and a few rows beat a list of table names.",
-            "| How it works | Worked example |",
+            "Why it matters: a bare number hides that status 5 means cancelled, so cancelled "
+            "orders count.",
+            "| How it works in DataPilot | Worked example |",
             "|---|---|",
-            "| Linking maps question words to tables, columns, values | Names only: status is just a number |",
-            "| It happens before SQL, and SQL inherits its errors | Distinct values: status has few codes |",
-            "| Linking errors: 68.3 percent of failures (LinkAlign, Spider sample) | Still hidden: February fiscal year |",
-            "Trade-offs: every field shown costs tokens; samples also carry text the model may follow.",
-            "At work: audit what each tool returns before tuning the prompt.",
+            "| Describe returns types, comments, three sample rows | Names only: status is just a number |",
+            "| Columns with few values also list those values | Distinct values: status has a few codes |",
+            "| Linking happens before any query is written | Still hidden: the February fiscal year |",
+            "Evidence: seven easy questions, 3 runs each: names only, no cap, no scout, 12 of 21 "
+            "correct; with all three, 17 of 21.",
+            "At work: audit what each tool returns before you tune the prompt.",
             "Key idea: the agent cannot use what its tools do not show.",
         ],
         notes=[
+            "Trade-offs, said aloud: every field costs tokens; sample rows can carry text the model may follow.",
             "Plain explanation: Schema linking is the step where the agent maps the words in a "
             "question, like revenue or cancelled, onto tables, columns, and values. It happens "
             "before any SQL is written, and every later step inherits its mistakes. The agent links "
@@ -196,8 +208,16 @@ SLIDES = [
             "Transfer: Any agent over an API, a codebase, or a document store has the same step. "
             "Before tuning prompts, audit what each tool returns: is the field the agent needs "
             "visible, typed, and exemplified? Fix the view before the reasoning.",
-            "Point at: the left column, then the worked example column top to bottom: names only, "
-            "distinct values, and the rule that stays hidden; then the key-idea bar.",
+            "Evidence from this course: the paired measurement of 24 October asked seven questions "
+            "without traps, 3 times each, 21 runs per side, the reviewer off on both sides. With "
+            "column names only, unbounded rows, and no schema scout, 12 of 21 runs matched gold; with "
+            "full column descriptions, capped rows, and the scout, 17 of 21. That row mixes three "
+            "changes, so read it as what happened, not as a rate. The earlier, smaller measurement "
+            "of 23 October, one run per question, agreed in direction: 4 and 6 of 7.",
+            "Point at: the why line first, then the left column, then the worked example column top "
+            "to bottom: names only, distinct values, and the rule that stays hidden; then the "
+            "evidence line and the key-idea bar.",
+            "Re-check after live runs: 12 and 17 of 21 against the paired measurements page.",
             'Ask: "Which worked-example line would have saved the cancelled-orders trap?" Expected: '
             "distinct values; they show the status column is a code, though not what each code "
             "means.",
@@ -207,9 +227,6 @@ SLIDES = [
             'Likely question: "Why not send the whole schema up front?" Answer: On a large schema it '
             "floods the context with irrelevant tables. Describing on demand keeps the context about "
             "the question.",
-            'Misconception: "A better model links better, so the tool output matters less." '
-            "Correction: A better model reasons better about what it sees. It still cannot see what "
-            "the tool withholds.",
             "Transition: Showing more is good. Receiving too much is the next problem.",
         ],
     ),
@@ -225,19 +242,20 @@ SLIDES = [
         container="two-column cards: how it works | worked example; trade-off and at-work lines; key-idea bar",
         on_slide=[
             "Principle: the tool, not the prompt, decides how much reaches the model.",
-            "Think of it as handing a colleague a summary and a row count, not a printout of every "
-            "order.",
-            "| How it works | Worked example |",
+            "Why it matters: a large result is re-sent on every later model call, crowding out "
+            "the question.",
+            "| How it works in DataPilot | Worked example |",
             "|---|---|",
-            "| Tool results are re-sent on every later model call | Uncapped: 10,000 rows, 183,639 to 185,727 tokens |",
-            "| A cap returns 50 rows, the total count, a truncation notice | Re-sent on up to 12 model calls in one run |",
-            "| The agent then aggregates in SQL or narrows the question | Capped: 17,298 to 19,661 tokens per run |",
-            "Trade-offs: a cap can hide needed rows, so count and notice expose the truncation; "
-            "too small a cap forces extra queries.",
-            "At work: cap, count, and notice on every list-returning tool.",
+            "| The query tool returns at most 50 rows | A list question over 10,000 rows |",
+            "| It adds the total count and a truncation notice | The notice: aggregate, or narrow it |",
+            "| A 60,000-token budget, checked before each model call | It stops the uncapped run |",
+            "Evidence: uncapped, 182,654 tokens, stopped by the budget; capped, 30,216, reviewer "
+            "round trip included.",
+            "At work: give every list tool a cap, a count, and a truncation notice.",
             "Key idea: budgets in a prompt are hopes; budgets in a tool are facts.",
         ],
         notes=[
+            "Trade-offs, said aloud: a cap can hide needed rows, so the count and notice go with it.",
             "Plain explanation: Every token a tool returns stays in the conversation and is sent "
             "again on every later model call in the loop. So a large tool result is not a one-off "
             "cost; it is a tax on every remaining step. The place to bound it is the tool itself.",
@@ -245,8 +263,6 @@ SLIDES = [
             "our pack settings, plus the total row count and a notice that the result was truncated. "
             "With the planted unbounded rows bug (`BUG_UNBOUNDED_ROWS`) a 10,000-row result goes "
             "straight to the model, and you will watch the token counter jump in the demo.",
-            "Analogy: You do not hand a colleague a printout of every order to ask about one trend. "
-            "You hand them a summary and say how many rows there were.",
             "Under the hood: Measured with the planted bug on, the 10,000-row result took one run to "
             "183,639 tokens and a second run to 185,727, about ten times the capped run and three "
             "times our 60,000-token budget per run. The budget is checked before each model call, "
@@ -265,21 +281,22 @@ SLIDES = [
             "queries, which is a request to the model rather than a property of the tool.",
             "Transfer: Put a cap, a count, and a truncation notice on every tool that can return a "
             "list: search results, log lines, files, API pages. Let the agent ask for the next page "
-            "if it needs it. Budgets in the prompt are hopes; budgets in the tool are facts.",
-            "Point at: the how-it-works column first, then the worked example: uncapped, re-sent "
-            "on every call, capped and measured; both figures are measured; end on the "
-            "key-idea bar.",
+            "if it needs it.",
+            "Evidence from this course: in the paired measurement of 24 October, one run of each "
+            "half of the unbounded rows demo: without the row cap the run reached 182,654 tokens "
+            "and 0.0228 dollars and was escalated at its token budget; with the cap, 30,216 "
+            "tokens and 0.0021 dollars, held for approval after a reviewer concern. Those 30,216 "
+            "tokens include the reviewer's round trip, so the gap is not the row cap alone. The "
+            "earlier pair of 23 October agreed in direction: 186,689 against 27,040.",
+            "Point at: the why line, the how-it-works column, then the worked example: the list "
+            "question, the notice, the budget; then the evidence line; end on the key-idea bar.",
             'Ask: "What should the agent do when it sees the truncation notice?" Expected: '
             "aggregate in SQL instead of reading rows, or ask a narrower question.",
-            'Likely question: "Why 50 rows?" Answer: It is a setting, chosen so a list question '
-            "fits comfortably. Change the setting, not the code; the principle is that a cap exists.",
             'Likely question: "Does the cap ever give a wrong answer?" Answer: Only if the agent '
             "ignores the notice. That is why the count and the notice travel with the rows.",
-            'Misconception: "Large context windows remove the need for caps." Correction: A large '
-            "window raises the ceiling, not the quality. Irrelevant rows still dilute attention and "
-            "still cost money on every call.",
-            "Re-check after live runs: the capped figures, 17,298 and 19,661 tokens per run, and the "
-            "uncapped figures, 183,639 and 185,727 tokens per run, against the evidence page.",
+            "Re-check after live runs: 182,654 and 30,216 tokens against the paired measurements "
+            "page; the calibration figures, 17,298 and 19,661 tokens capped and 183,639 and "
+            "185,727 uncapped, against the calibration report.",
             "Transition: Now the other side of the loop: what the agent hands back.",
         ],
     ),
@@ -295,17 +312,19 @@ SLIDES = [
         container="two-column cards: how it works | worked example; trade-off and at-work lines; key-idea bar",
         on_slide=[
             "Principle: a structured answer can be checked; a sentence cannot.",
-            "Think of it as a pull request with a diff, not a chat message saying it is fixed.",
-            "| How it works | Worked example |",
+            "Why it matters: a sentence hides its query, and the calendar-year range in it.",
+            "| How it works in DataPilot | Worked example |",
             "|---|---|",
-            "| Provider-native: the provider returns the schema | Envelope: status, final SQL, rows, assumptions |",
-            "| Tool-based: a required tool call carries the schema | Status: answered, needs clarification, refused, escalated |",
-            "| An invalid answer goes back to the model as an error | Board-deck story: the SQL field shows the calendar year |",
-            "Trade-offs: retries spend model calls; a valid shape can still hold a wrong meaning.",
+            "| Every run returns a typed answer envelope | Status, final query, rows, assumptions |",
+            "| Four statuses, two for not answering | Needs clarification, refused |",
+            "| An invalid envelope returns as an error | The query shows the calendar year |",
+            'Evidence: asked "How many VIP customers do we have?", the run asked what VIP (very '
+            "important person) means: no rule defines it.",
             "At work: give every agent that feeds software a schema with statuses for not answering.",
             "Key idea: output other code reads needs a contract, not prose.",
         ],
         notes=[
+            "Trade-offs, said aloud: retries spend model calls; a valid shape can still hold a wrong meaning.",
             "Plain explanation: The agent's final output is an interface. Other code reads it: "
             "graders, routers, evaluators, a channel post. An interface needs a schema, and a schema "
             "needs enforcement. Free text is an interface only a human can read.",
@@ -338,8 +357,15 @@ SLIDES = [
             "Transfer: Give every agent that feeds other software an output schema with a status "
             "field, including statuses for not answering. Record assumptions as a list, not prose. "
             "Return validation errors to the model instead of crashing.",
-            "Point at: the two strategies on the left, then the status values on the right: two of "
-            "the four are ways of not answering; end on the key-idea bar.",
+            'Evidence from this course: in the live session of 24 October the question "How many '
+            'VIP customers do we have?" ended with the status needs clarification. No business '
+            "rule and no column defines VIP, so the envelope's legal way of not answering is the "
+            "right outcome, and code downstream can route it instead of posting a guessed number. "
+            "The analyst's prompt says to answer with stated assumptions and to ask only when a "
+            "question names nothing in the schema; VIP names nothing.",
+            "Point at: the why line, then the status row: of answered, needs clarification, "
+            "refused, and escalated, needs clarification and refused are the two ways of not "
+            "answering; then the evidence line; end on the key-idea bar.",
             'Ask: "Why does the envelope include needs clarification and refused?" Expected: so '
             "not answering is a legal, checkable outcome instead of a guess.",
             'Likely question: "Which strategy should I choose?" Answer: Provider-native where your '
@@ -362,23 +388,22 @@ SLIDES = [
         says="Principle: add an agent only where judgement is needed, keep it stateless, and measure it",
         src="platform/src/datapilot/contracts/agents.py",
         table=True,
-        container="labelled diagram: analyst, tool boundary, scout, brief; worked-example card; key-idea bar",
+        container="two-column cards: how it works | why this shape; evidence, trade-offs, and at-work lines; key-idea bar",
         on_slide=[
             "Principle: add an agent only where judgement is needed; keep it stateless; measure it.",
-            "Think of it as a specialist who answers a written question with a one-page memo.",
-            "How it works:",
-            "- The analyst calls one tool, scout schema, with the question only",
-            "- The scout explores tables in its own context, then forgets",
-            "- It returns a short brief: candidate tables, joins, caveats",
-            "- The brief is advice; the analyst still describes tables itself",
-            "Worked example: mean of four questions, scout and reviewer on, 8,648 tokens and 24 "
-            "seconds; scout off, 3,853 and 13; same gold results.",
-            "Trade-offs: one more model call and more latency per question.",
-            "At work: name the judgement, the stateless input, and the short output before adding "
-            "an agent.",
+            "Why it matters: each agent adds calls, latency, and a place for errors.",
+            "| How it works in DataPilot | Why this shape |",
+            "|---|---|",
+            "| The analyst sends the scout the question only | No conversation leaks in |",
+            "| The scout explores in its own context, then forgets | Its dead ends never reach the analyst |",
+            "| It returns a brief: tables, joins, caveats | Advice only: the analyst still checks |",
+            "Evidence: four questions, scout and reviewer on, 8,648 tokens and 24 seconds; scout "
+            "off, 3,853 and 13; same gold results.",
+            "At work: name the judgement, the input, and the short output first.",
             "Key idea: a subagent pays off only as a context boundary you have measured.",
         ],
         notes=[
+            "Trade-offs, said aloud: one more model call and more latency per question.",
             "Plain explanation: Multi-agent designs are easy to draw and expensive to run. Each agent "
             "adds model calls, latency, and a new place for errors. A subagent earns its place when "
             "it does a judgement task the main agent does badly, inside a clean context boundary, at "
@@ -410,9 +435,8 @@ SLIDES = [
             "Transfer: Before adding an agent, write down the judgement it makes, the context it "
             "needs, and what it returns. If you cannot name a stateless input and a short output, it "
             "is probably a tool or a step, not an agent. Then measure with it on and off.",
-            "Point at: the four how-it-works points in order: the question going in, the private "
-            "exploration, the short brief coming back, the brief as advice; then the worked "
-            "example and the key-idea bar.",
+            "Point at: the three rows in order: the question going in, the private exploration, "
+            "the short brief coming back as advice; then the evidence line and the key-idea bar.",
             'Ask: "What would break if the scout kept memory across questions?" Expected: its '
             "answers would depend on earlier questions, which makes them harder to test and to "
             "trust.",
@@ -443,7 +467,7 @@ SLIDES = [
             "|---|---|---|---|",
             "| Show the schema well | The agent links only what tools show | Names-only schema tools | Can the agent see types, samples, and codes? |",
             "| Cap at the tool | The tool bounds the context | Every row sent to the model | Does every list tool return a cap, count, and notice? |",
-            "| Return a contract | Structured answers can be checked | A fluent sentence as output | Can code read the status and the SQL? |",
+            "| Return a contract | Structured answers can be checked | A fluent sentence as output | Can code read the status and the query? |",
             "| Earn each subagent | Agents only for judgement, stateless | A crowd of agents by default | Have you measured it on and off? |",
         ],
         notes=[
@@ -466,15 +490,32 @@ SLIDES = [
         title="Section 1: Agent loop - Implementation Notes: The confident wrong answer",
         layout="demo",
         minutes=17,
-        says="Badge DEMO - 1 and title only; the demos are in the notes",
-        src="section-1-agent-loop/demo/walkthrough.md",
-        container="demo layout: badge and title only",
-        on_slide=["Badge: DEMO - 1", "Title only; no screenshot"],
+        says="Badge DEMO - 1, what to watch for, the guaranteed moment, and the demo page link; "
+        "the demos are in the notes",
+        src="section-1-agent-loop/demo/walkthrough.md; platform/demos/registry.yaml",
+        container="demo layout: laptop and badge, what to watch for, guaranteed moment, link",
+        on_slide=[
+            "Badge: DEMO - 1",
+            "What to watch for:",
+            "- The simple question: list, describe, one query, then an envelope with its "
+            "Structured Query Language (SQL)",
+            "- The confident wrong answer: a fluent number, a mismatch against gold, each trap "
+            "named on the SQL",
+            "- Unbounded rows: the token counter, cap off, then on",
+            "Guaranteed moment: under the starting knowledge, the spine question gets a "
+            "confident, wrong answer; the gold check shows the mismatch and the annotated SQL "
+            "names each trap.",
+            "Link: Demo page on GitHub | https://github.com/ANI-IN/loop-engineering/tree/main/"
+            "section-1-agent-loop/demo#the-confident-wrong-answer",
+        ],
         notes=[
             "Run sheet: about 12 minutes for three core demos on the console Agent page, then about 5 "
             "minutes of code walkthrough in the editor. Share the console full screen; keep the "
-            "editor and a terminal in separate windows. Calibration ran each core demo twice with a "
-            "reset between; the measured times are under each demo.",
+            "editor and a terminal in separate windows. Every core demo's moment has been shown live, "
+            "in calibration retakes and again on 24 October, both halves of unbounded rows and the "
+            "optional demo included; rehearse each twice in a row with a reset between before class "
+            "(instructor guide, the day before, step 4). The measured figures are under each demo. The slide's link opens the section's demo page on GitHub, the page "
+            "learners use after class.",
             "Demo: the simple question.",
             "Starting state: the Agent page, knowledge version v1 active, no planted item on, the "
             "status line at the report-only level. Reset first: `make reset NAME=agent-loop`.",
@@ -489,7 +530,7 @@ SLIDES = [
             "the live stamp: the run's start time in your local time and its trace link.",
             "Expected live result: a correct count with its SQL, tokens, cost, and a LangSmith trace "
             "link. Measured: 37 and 39 seconds from trigger to result; one analyst run costs about "
-            "0.001 dollars.",
+            "0.001 dollars. Shown again live on 24 October.",
             "May vary: the analyst's wording, the number of tool calls, latency, tokens. If it does, "
             "say: the path varies run to run because the model reasons freshly each time; the "
             "contract and the SQL are what we check.",
@@ -511,7 +552,7 @@ SLIDES = [
             "Measured: in 76 seconds, 76,981,355.95 dollars against gold 64,015,091.21, with 4 trap "
             "labels; retaken twice, both shown, 72,394,572.08 dollars with 3 trap labels each, then "
             "held by two reviewer concerns; under the starting knowledge 0 of 99 trap runs passed in "
-            "calibration.",
+            "calibration. Shown again live on 24 October.",
             "May vary: which traps the SQL hits, the wrong value, the wording, and whether the run "
             "posts or holds. If it does, say: the exact mistake varies, the fact of a mistake does "
             "not, because the knowledge it needs is absent. If the strip shows held for approval, "
@@ -523,15 +564,11 @@ SLIDES = [
             "retakes got their gold check. A run that gives no number gets no gold check: reset and "
             "ask again.",
             "Demo: unbounded rows.",
-            "Starting state: the Agent page; the unbounded rows bug (`BUG_UNBOUNDED_ROWS`) switched "
-            "on: once the confident wrong answer's gold check showed, `BUG_UNBOUNDED_ROWS=1` was set "
-            "in `.env` "
-            "and `make up` ran, during its narration, so the first two demos ran on the fixed system; "
-            "its chip shows on the status line once the run starts. Reset first: "
-            "`make reset NAME=agent-loop`.",
-            "Do: Agent > Run large query, or `make demo NAME=agent-unbounded-rows`. Then set "
-            "`BUG_UNBOUNDED_ROWS=0` in `.env`, run `make up` so the services read it, and run it "
-            "again.",
+            "Starting state: the Agent page, on the fixed system; the planted half switches the "
+            "unbounded rows bug (`BUG_UNBOUNDED_ROWS`) on for its own run only, and its chip shows on "
+            "the status line once the run starts. Reset first: `make reset NAME=agent-loop`.",
+            "Do: `make demo NAME=agent-unbounded-rows PLANTED=1`, the bug on for that run; then "
+            "Agent > Run large query, or `make demo NAME=agent-unbounded-rows`, with it off.",
             "Narrate: tie it to concept 2, Context is a budget. With the bug on, a 10,000-row result "
             "goes to the model and every later call carries it. With it off, the tool returns the "
             "row cap, the total count, and the truncation notice.",
@@ -539,9 +576,12 @@ SLIDES = [
             "the truncation notice and the total count under the rows; and last the live stamp: the "
             "run's start time in your local time and its trace link.",
             "Expected live result: tokens per run jump with the bug on and drop back with it off. "
-            "Measured with the bug on: 183,639 and 185,727 tokens per run, stopped by the run budget "
-            "after 18 or 19 seconds. With the bug off: 19,661 and 17,298 tokens per run; one of the "
-            "two runs was held by a reviewer concern, which does not change the token story.",
+            "Measured in calibration with the bug on: 183,639 and 185,727 tokens per run, stopped by "
+            "the run budget after 18 or 19 seconds. With the bug off: 19,661 and 17,298 tokens per "
+            "run; one of the two runs was held by a reviewer concern, which does not change the "
+            "token story. In the paired measurement of 24 October: 182,654 tokens without the cap, "
+            "escalated at the run budget, against 30,216 with it, held after a reviewer concern; "
+            "on 23 October, 186,689 against 27,040.",
             "May vary: exact token counts, the list question's wording. If it does, say: the size of "
             "the jump depends on the rows, but the direction never changes.",
             "If it stalls: reset and run it again, `make reset NAME=agent-loop`, then the same "
@@ -550,7 +590,7 @@ SLIDES = [
             "four-table join for Texas customers over the last completed fiscal quarter, August to "
             "October 2025 against the business date of 31 January 2026, with the join path "
             'visible in the SQL. Say "last completed fiscal quarter": on 31 January the current '
-            "fiscal quarter is still open.",
+            "fiscal quarter is still open. Shown live on 24 October.",
             "Code walkthrough: about 5 minutes, in the order of the section's demo walkthrough page.",
             "Open `platform/src/datapilot/loop1_agent/analyst.py`, lines 56-58: the knowledge "
             "injection, the base of concept 1, Schema linking, and of the confident wrong answer. "
@@ -674,7 +714,7 @@ SLIDES = [
             "|---|---|---|",
             "| Provider-native | The model provider | Not every model supports it |",
             "| Tool-based | A required tool call | Validation error, model retries |",
-            "| Prompt-only JSON | Nothing | Parse errors, silent drift |",
+            "| Prompt-only JavaScript Object Notation (JSON) | Nothing | Parse errors, silent drift |",
         ],
         notes=[
             "Plain explanation: There are three ways to get a structured answer from a model, and "

@@ -95,11 +95,20 @@ def _context(echo: Callable[[str], None] = typer.echo) -> Any:
 @data_app.command()
 def preflight(
     purpose: str = typer.Option(..., help="class, rehearsal, thursday-review, or development."),
+    accept_tokens_left: int | None = typer.Option(
+        None,
+        envvar="ACCEPT_TOKENS_LEFT",
+        help=(
+            "For a class with less than one class pass left of the day's tokens: the exact count "
+            "left, as the refusal prints it, to start the class session knowingly."
+        ),
+    ),
 ) -> None:
     """Check the services, the OpenAI key, and the drift canary; then start the live session."""
     from datapilot import db
+    from datapilot.config import pack_config
     from datapilot.contracts.live import SessionPurpose
-    from datapilot.loop3_events import sessions
+    from datapilot.loop3_events import budget, sessions
     from datapilot.loop4_hill_climbing import preflight as checks
     from datapilot.loop4_hill_climbing import versions
     from datapilot.loop4_hill_climbing.calibration import use_activity
@@ -132,12 +141,21 @@ def preflight(
             target, ExecutionEvaluator.live(), load_benchmark(), checks.canary_ids(), tracer
         )
 
+    def tokens() -> tuple[checks.Check, str | None]:
+        with db.connect(db.Role.APP) as conn:
+            day = budget.today(conn)
+        per_pass = int(pack_config()["budgets"]["class_pass_tokens"])
+        return checks.budget_check(
+            chosen, day, per_pass, budget.until_next_day(), accept_tokens_left
+        )
+
     report = checks.preflight(
         chosen,
         settings,
         canary=canary,
         start_session=sessions.start_session,
         services=lambda: checks.service_checks(settings),
+        budget=tokens,
         key=lambda: checks.key_check(settings),
         install=install,
     )
@@ -168,7 +186,7 @@ def hill_climbing_runner() -> None:
     import threading
     from dataclasses import replace
 
-    from datapilot import db
+    from datapilot import db, planted
     from datapilot.config import pack_config
     from datapilot.loop3_events import improvement
     from datapilot.loop4_hill_climbing.evaluator import ExecutionEvaluator
@@ -187,6 +205,9 @@ def hill_climbing_runner() -> None:
     if serving:
         typer.echo(f"x {ALREADY_SERVING}")
         raise typer.Exit(2)
+    with db.connect(db.Role.APP) as conn:  # what a live check and the finale read
+        planted.report_service(conn, "hill-climbing-runner")
+        conn.commit()
     tracer, links = _tracing()
     runner = HillClimbingRunner(
         items=load_benchmark(),

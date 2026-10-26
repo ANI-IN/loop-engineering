@@ -81,6 +81,7 @@ markers = [
     "integration: needs the Compose Postgres (zero model calls)",
     "live: calls OpenAI or LangSmith; never runs in CI",
     "slow: takes more than a few seconds",
+    "security: in make test-security's selection (-k security matches the marker)",
 ]
 
 [tool.importlinter]

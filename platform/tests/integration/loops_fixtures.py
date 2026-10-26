@@ -6,6 +6,7 @@ touched; ops tables are emptied before each event-loop test.
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Callable, Iterator
 from typing import Any
 
@@ -96,11 +97,18 @@ def services_for(
 
 @pytest.fixture
 def clean_ops() -> Iterator[None]:
+    """Empty ops, then open a development session: the api refuses a run asked for over HTTP
+    while no live session is open (events.require_session), as make preflight opens one live."""
     with db.connect(db.Role.OWNER) as conn:
         conn.execute(f"TRUNCATE {OPS_TABLES} RESTART IDENTITY CASCADE")
         conn.execute(
             "UPDATE ops.control SET kill_switch = 'released', autonomy_level = 'report_only', "
             "reason = NULL, worker_restart_requested_at = NULL"
+        )
+        conn.execute(
+            "INSERT INTO ops.live_sessions (session_id, purpose, started_by, timezone) "
+            "VALUES (%s, 'development', 'integration tests', 'UTC')",
+            (uuid.uuid4(),),
         )
         conn.commit()
     yield

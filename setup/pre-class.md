@@ -5,6 +5,8 @@
 > - **Console**: The Streamlit app that shows every loop live, on four pages.
 > - **Live session**: Everything that runs between one `make preflight` and the next.
 > - **Drift canary**: Three easy questions that must pass and two trap questions that must still fail.
+>
+> All terms: [glossary](../docs/glossary.md).
 
 Finish this checklist before class day, then once more on the morning of the class. Each item
 names the command to run and what it must print. If an item fails, the

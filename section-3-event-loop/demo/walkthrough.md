@@ -85,6 +85,22 @@ The claim is one statement. `FOR UPDATE SKIP LOCKED` lets several workers claim 
 taking the same job. The lease, not an open transaction, marks the job as taken, so the claim
 commits at once and no lock is held through the model calls.
 
+### platform/src/datapilot/loop3_events/scheduler.py, lines 28-31
+
+```python
+# platform/src/datapilot/loop3_events/scheduler.py (lines 28-31)
+def digest_event_id(day: date, occasion: str | None = None) -> str:
+    if planted("BUG_RANDOM_DIGEST_ID"):
+        return f"digest:{uuid.uuid4()}"  # planted: a new id every time, so nothing is absorbed
+    return f"digest:{day.isoformat()}" + (f":{occasion}" if occasion else "")
+```
+
+This is the digest now. The digest's event id is made from the business day and the firing, so it
+is deterministic for each firing: the 8 a.m. schedule fires once a day, and each press of Run
+digest now is a new firing with an id of its own. A repeated delivery of one firing has the same id
+and is absorbed. With the random digest id (`BUG_RANDOM_DIGEST_ID`) on, every delivery gets a new
+id, and nothing is absorbed.
+
 ### platform/src/datapilot/loop3_events/approvals.py, lines 44-47
 
 ```python

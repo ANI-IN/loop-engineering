@@ -2,9 +2,11 @@
 
 The verification loop stops unsafe Structured Query Language (SQL) and bounds the agent's retries.
 Then it passes every grader on the spine answer, and the answer is still wrong. You run each demo
-from the demo terminal and watch it on the console's Verify page. Every screenshot and number in
-this chapter comes from the live runs of 22 October 2026 (business date 31 January 2026), and
-every time range from the calibration demo pass of 22 and 23 October 2026.
+from the demo terminal and watch it on the console's Verify page. Every screenshot in this chapter
+comes from the live runs of 24 October 2026, from 13:54 Coordinated Universal Time (business date
+31 January 2026), except two retaken on 25 October 2026 (the retry cap and the trap notes), and
+every time range from the calibration demo pass of 22 and 23 October 2026 and the live sessions of
+23, 24, and 25 October.
 
 > Your output will differ: run times, ids, and the agent's wording change on every run.
 
@@ -21,9 +23,9 @@ make demo NAME=verify-malicious-sql
 **You should see:** the **Defense layers** panel, one block per statement, each with the layer
 that stopped it.
 
-![The Verify page's defense layers for three statements: the guard stops the stacked statements on parse, the guard's statement policy stops the data-modifying CTE, and the role grants stop the raw DELETE with SQLSTATE 42501](../../section-2-verification-loop/demo/expected/verify-malicious-sql-layers.png)
+![The Verify page's defense layers for three statements: the guard stops the stacked statements on parse, the guard's statement policy stops the data-modifying CTE, and the role grants stop the raw DELETE with SQLSTATE 42501; 0 tokens](../../section-2-verification-loop/demo/expected/verify-malicious-sql-layers.png)
 
-*With the syntax-tree guard, the guard stops two statements before execution and the role grants stop the third.*
+*Run 5a2b10bb, 24 October 2026: the syntax-tree guard stops two statements before execution, and the role grants stop the third.*
 
 **Look at:** the red **Stopped it** line under each statement, and which layer it names.
 
@@ -35,7 +37,7 @@ it (SQLSTATE 42501). No model call is made: the run shows 0 tokens.
 > Every statement shows **Stopped it**, and no statement changed a row.
 
 > [!IFDIFFERENT]
-> A layer you did not expect → check that `BUG_NAIVE_GUARD` is `0` in `.env`, then `make up`.
+> A layer you did not expect → the run was sent with `PLANTED=1`; send it again without it.
 > The panel is empty → scroll up to the run's status; reset with `make reset NAME=verification-loop` and run it again.
 
 > [!INSTRUCTOR]
@@ -44,17 +46,18 @@ it (SQLSTATE 42501). No model call is made: the run shows 0 tokens.
 
 ### Step 2: Send them again with the naive guard planted
 
-**Where:** `.env` in an editor, the demo terminal, and the Verify page.
+**Where:** The demo terminal, and the Verify page.
 
-**Type:** set `BUG_NAIVE_GUARD=1` in `.env`, then:
+**Type:** this. `PLANTED=1` turns the naive guard on for this demo's own runs only; `.env` keeps
+every planted flag at `0`.
 
 ```bash
-make up
-make demo NAME=verify-malicious-sql
+make demo NAME=verify-malicious-sql PLANTED=1
 ```
 
 **You should see:** both statements pass the naive guard, and a deeper layer stops each one. The
-terminal of the captured run:
+terminal only prints the queued run's id; the captured run's defense layers, as the Verify page
+shows them, in text:
 
 ```text
 statement: SELECT 1; DELETE FROM orders
@@ -71,24 +74,24 @@ statement: DELETE FROM orders
 orders before 405738, after 405738: unchanged True
 ```
 
-![The defense layers with the naive guard planted: two statements pass the guard and the read-only transaction stops them with SQLSTATE 25006, then the role grants stop the raw DELETE with 42501](../../section-2-verification-loop/demo/expected/verify-malicious-sql-naive-guard-layers.png)
+![The defense layers with the naive guard planted: two statements pass the guard's statement policy and the read-only transaction stops each with SQLSTATE 25006, then the role grants stop the raw DELETE with 42501](../../section-2-verification-loop/demo/expected/verify-malicious-sql-naive-guard-layers.png)
 
-*With the naive guard, the read-only transaction stops the first two statements; the grants still stop the third.*
+*Run 65a1ebe3, 24 October 2026: with the naive guard, the read-only transaction stops the first two statements; the grants still stop the third, on the frame's last line.*
 
-**Look at:** the last terminal line: the order count before and after.
+**Look at:** the last line: the order count before and after.
 
 **What it means:** a guard that checks how a statement starts is not a boundary. The read-only
 transaction and the role's grants are, and no order row changes.
 
 > [!CHECKPOINT]
-> The terminal ends with `unchanged True`.
+> The order count is the same before and after: the defense check ends with `unchanged True`.
 
 > [!IFDIFFERENT]
-> The guard still stops the statements → the services did not read `.env`; run `make up` again.
+> The guard still stops the statements → the run was sent without `PLANTED=1`; run `make demo NAME=verify-malicious-sql PLANTED=1`.
 > A row count changed → stop the demo and tell the class; this is a security failure, not a varied result.
 
 > [!INSTRUCTOR]
-> Set `BUG_NAIVE_GUARD` back to `0` and run `make up` before the next demo. Say: "Defense in
+> Nothing to switch back: the naive guard was on for that one demo's runs only. Say: "Defense in
 > depth: the layer you forgot is caught by the next one."
 
 ### Step 3: Inject a grader that always fails
@@ -105,7 +108,9 @@ make demo NAME=verify-retry-cap
 attempts (`limits.max_retries` in `platform/packs/datapilot_us/pack.yaml`). It ends escalated, with
 every reason.
 
-<!-- capture: the retry cap with the fix: the Verify page with the attempts, the cost counter, and the escalated status -->
+![The Verify page after the retry cap demo: the checklist on attempt 3 of 3 with the injected grader failed, the line Stopped at the cap: escalated, and the tokens line](../../section-2-verification-loop/demo/expected/verify-retry-cap-escalated.png)
+
+*25 October 2026: the injected grader fails every attempt; the cap stops the run after attempt 3 of 3 and it ends escalated, at 12,910 of the 60,000 tokens a run may use.*
 
 **Look at:** the attempt count and the run's final status, **Escalated**.
 
@@ -116,14 +121,17 @@ and a person sees why.
 > The run ends escalated after 3 attempts.
 
 > [!IFDIFFERENT]
-> The run keeps going → check that `BUG_NO_RETRY_CAP` is `0` in `.env`, then `make up`.
+> The run keeps going → the run was sent with `PLANTED=1`; send it again without it.
 > The run ends in fewer attempts → read its reasons; a model or token cap may have ended it first.
 
 > [!INSTRUCTOR]
 > In calibration this demo escalated after 3 attempts in both runs. If time allows, show the planted
-> half with `BUG_NO_RETRY_CAP=1`: the cost counter keeps climbing until the 60,000-token cap per run.
+> half with `make demo NAME=verify-retry-cap PLANTED=1`: the cost counter keeps climbing until the
+> 60,000-token cap per run (13 attempts on 25 October 2026).
 
-<!-- capture: the retry cap with the missing retry cap planted: the cost counter climbing on the Verify page -->
+![The Verify page with the missing retry cap planted: the checklist past attempt 3, the run still verifying, and the tokens bar climbing](../../section-2-verification-loop/demo/expected/verify-retry-cap-no-cap-climbing.png) <!-- check-style: allow SC06 awaiting its live capture, live_manifest.AWAITING_CAPTURE -->
+
+*With the missing retry cap the run is past attempt 3 and still going; the tokens line keeps climbing toward the cap of 60,000 tokens per run.*
 
 ### Step 4: Ask the spine question through every grader
 
@@ -138,15 +146,18 @@ make demo NAME=verify-graders-pass-still-wrong
 **You should see:** the checklist turns green, the gold check fails, and the reviewer gives its
 verdict.
 
-![The run holding for approval with the line that it waits for a person's approval, the checklist on attempt 3 of 3 with every grader passed, the answer against gold showing a mismatch on both databases, and the reviewer's concern about the fiscal year](../../section-2-verification-loop/demo/expected/verify-graders-pass-still-wrong-checklist.png)
+![The run holding for approval with the line that it waits for a person's approval, the checklist on attempt 2 of 3 with all seven graders passed, the agent's answer 72394572.08 against gold 64015091.21 with a mismatch on both databases, and the reviewer's concern that the query assumes fiscal year 2025 is the calendar year](../../section-2-verification-loop/demo/expected/verify-graders-pass-still-wrong-checklist.png)
 
-*Every grader passes; the gold check fails on both databases; the reviewer raises a concern.*
+*Run ccfd37fb, 24 October 2026: all seven graders pass on attempt 2 of 3, the gold check fails on both databases, and the reviewer's concern holds the run.*
 
 **Look at:** the green checklist on the left, then **Mismatch** on the right.
 
 **What it means:** the graders check that the query is safe and well formed. None of them knows
 what "fiscal year 2025" means at Harbor & Pine. The reviewer's concern holds the answer for human
-approval.
+approval. In the captured run the answer hedged and still gave a number: "The warehouse does not
+define a fiscal calendar, so I cannot confirm the organization's fiscal-year convention.", then,
+assuming fiscal year 2025 is the calendar year in Coordinated Universal Time, 72,394,572.08
+dollars.
 
 > [!CHECKPOINT]
 > Every checklist line reads **Passed**, and the gold check reads **Mismatch**.
@@ -167,15 +178,17 @@ approval.
 
 **You should see:** the query with numbered marks and one note per trap.
 
-![The annotated query below the checklist, with three trap notes: fiscal year, Eastern time, and internal accounts, each numbered on a fragment of the query](../../section-2-verification-loop/demo/expected/verify-graders-pass-still-wrong-sql.png)
+![The annotated query of a run of the same demo: mark 1 after both calendar-year bounds, mark 2 on orders, mark 3 on both order_ts comparisons, and mark 4 on WHERE; four trap notes for the fiscal year, cancelled orders, Eastern time, and internal accounts; 17,605 tokens](../../section-2-verification-loop/demo/expected/verify-graders-pass-still-wrong-sql.png)
 
-*The query that passed every grader, with the three traps it hits.*
+*25 October 2026, a different run of the same demo from the checklist above: the query that passed every grader on attempt 2, each of its four trap notes numbered on a fragment.*
 
-1. Trap: Fiscal year. The query reads calendar year 2025.
-2. Trap: Eastern time. `order_ts` is compared in Coordinated Universal Time (UTC).
-3. Trap: Internal accounts. The query keeps the staff and test accounts.
+1. Trap: Fiscal year. The query reads calendar year 2025; mark 1 follows both bounds.
+2. Trap: Cancelled orders. The query has no status filter, so it keeps cancelled orders; mark 2
+   is on `orders`.
+3. Trap: Eastern time. `order_ts` is compared in Coordinated Universal Time (UTC).
+4. Trap: Internal accounts. The query keeps the staff and test accounts; mark 4 is on `WHERE`.
 
-**Look at:** the tokens line at the bottom: 23,181 tokens and 0.0020 dollars in the captured run.
+**Look at:** the tokens line at the bottom: 17,605 tokens and 0.0018 dollars in the captured run.
 
 **What it means:** a grader can only check what someone wrote down. The missing business rules
 are the case for Section 4: Hill-climbing loop.
@@ -202,14 +215,14 @@ are the case for Section 4: Hill-climbing loop.
 ## Time and cost
 
 Times are wall time from the trigger to the checked result, from the calibration demo pass of 22
-and 23 October 2026 and the live sessions of 23 October, afternoon and evening
+and 23 October 2026 and the live sessions of 23, 24, and 25 October
 (`docs/calibration-report.md`), each demo run alone with a reset between.
 
 | Demo | Time | Cost of the captured run | Cap |
 |---|---|---|---|
-| Malicious SQL | 2 to 6 s | 0 tokens | No model call |
-| The retry cap | 14 to 79 s | Not captured | 3 attempts; 60,000 tokens per run |
-| Every grader passes, still wrong | 52 to 58 s; shown in 4 of 5 later runs | 0.0020 dollars | 60,000 tokens per run |
+| Malicious SQL | 2 to 6 seconds | 0 tokens | No model call |
+| The retry cap | 14 to 79 seconds | 0.0006 dollars | 3 attempts; 60,000 tokens per run |
+| Every grader passes, still wrong | 48 to 58 seconds; shown in 4 of 5 later runs, then on 24 and 25 October | 0.0018 dollars | 60,000 tokens per run |
 
 "Later runs" are those after the change that keeps one run's gold check from blocking another. In
 the one not shown, on the evening of 23 October, every grader passed but the run posted with no

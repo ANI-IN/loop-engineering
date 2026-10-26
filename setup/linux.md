@@ -6,6 +6,8 @@
 > - **Live session**: Everything that runs between one `make preflight` and the next.
 > - **Drift canary**: Three easy questions that must pass and two trap questions that must still fail.
 > - **Trace**: The record of one run's steps, each model call and tool call, stored in LangSmith.
+>
+> All terms: [glossary](../docs/glossary.md).
 
 This page takes a Linux machine with `apt` (Ubuntu or Debian) to a first live run, watched on the
 console. The course machine runs these commands in Ubuntu on WSL2, with Docker Engine and the
@@ -16,8 +18,13 @@ your package manager for git and make; every step from the clone onwards is the 
 ## Before you start
 
 - Ubuntu or Debian with `sudo` rights.
-- Free disk for the Postgres image, the DataPilot image, and the two seeded warehouses.
-- Your OpenAI key from the operations team. LangSmith needs no card.
+- Free disk for the Postgres image, the DataPilot image, and the two seeded warehouses. On the
+  course's build machine (Ubuntu on WSL2), on 25 October 2026, the six class services used about
+  625 mebibytes (MiB) of memory; Docker held 4.2 gigabytes (GB) of volumes and 6.6 GB of
+  images, and uv's cache 1.2 GB, the build's own assignment and test stacks included
+  ([evidence](../docs/evidence/general.md#results)).
+- Your OpenAI key from the operations team, or from your own OpenAI project (step 1). LangSmith
+  needs no card.
 
 Every command below runs in a terminal. On Ubuntu, open one with Ctrl+Alt+T.
 
@@ -41,6 +48,10 @@ works and whether it can use gpt-6-luna. It uses no tokens for that check.
 
 **If it fails.** If the key ever lands in a chat, an issue, or a screenshot, tell the operations
 team at once so they replace it.
+
+**Not in a cohort?** Create your own OpenAI project for the course, set its budget to 3
+dollars with an alert at 1.50 dollars ([costs](../docs/costs.md#the-learner-key-limit)), and
+create a key in that project. `make preflight` tells you if the key cannot use gpt-6-luna.
 
 ### Step 2: Create the LangSmith account and a key (no card)
 
@@ -67,8 +78,8 @@ region, step 7 changes one more line in `.env`.
 
 ### Step 3: Install Docker Engine and the Compose plugin
 
-**Why.** `make up` starts five containers with Docker Compose: Postgres, the api, the worker, the
-scheduler, and the console (`compose.yaml`). Docker Engine and its Compose plugin are free.
+**Why.** `make up` starts six services and the one-shot migrate with Docker Compose
+(`compose.yaml`): postgres, migrate, api, worker, scheduler, hill-climbing-runner, and console. Docker Engine and its Compose plugin are free.
 
 **Do this.** These are Docker's commands for Ubuntu, "Install using the apt repository"
 ([Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/), read
@@ -193,7 +204,7 @@ LANGSMITH_API_KEY`.
 
 | Problem | Fix |
 |---|---|
-| `make: uv: No such file or directory` | Open a new terminal (step 5) |
+| `/bin/bash: line 1: uv: command not found` | Open a new terminal (step 5) |
 | uv reports the lock file is out of date | You edited `pyproject.toml`; restore it with `git checkout pyproject.toml` |
 
 ### Step 7: Put your keys in the .env file
@@ -224,7 +235,8 @@ key.
 ### Step 8: Start the services
 
 **Why.** `make up` builds the DataPilot image, then starts Postgres, applies the ops migrations,
-and starts the api, the worker, the scheduler, and the console. It waits until every service with
+and starts the API, the worker, the scheduler, the hill-climbing runner, and the console. It
+waits until every service with
 a health check is healthy.
 
 **Do this.**
@@ -234,22 +246,12 @@ make up
 make ps
 ```
 
-**You should see.** The image build, then the containers starting. `make ps` on the course
-machine:
-
-```text
-NAME                    IMAGE                    COMMAND                  SERVICE     CREATED          STATUS                    PORTS
-datapilot-api-1         datapilot:local          "uvicorn datapilot.l…"   api         32 minutes ago   Up 31 minutes (healthy)   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
-datapilot-console-1     datapilot:local          "streamlit run app.p…"   console     32 minutes ago   Up 31 minutes             0.0.0.0:8501->8501/tcp, [::]:8501->8501/tcp
-datapilot-postgres-1    postgres:18.6-bookworm   "docker-entrypoint.s…"   postgres    40 minutes ago   Up 40 minutes (healthy)   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
-datapilot-scheduler-1   datapilot:local          "datapilot scheduler"    scheduler   32 minutes ago   Up 31 minutes
-datapilot-worker-1      datapilot:local          "datapilot worker"       worker      32 minutes ago   Up 31 minutes
-```
-
-This capture was taken before the hill-climbing runner became a service, and before every port was
-bound to this machine only. Your `make ps` also lists `datapilot-hill-climbing-runner-1`, running
-`datapilot hill-climbing-runner`, with status `Up`, and its ports read `127.0.0.1:8000->8000/tcp`,
-`127.0.0.1:8501->8501/tcp`, and `127.0.0.1:5432->5432/tcp`, with no `0.0.0.0` or `[::]` entries.
+**You should see.** The image build, then the containers starting. `make ps` lists the six
+running services, each as a container named `datapilot-<service>-1`: `api`, `console`,
+`hill-climbing-runner`, `postgres`, `scheduler`, and `worker`, each with status `Up`. The
+one-shot `migrate` has already exited, so it is not listed. The ports read
+`127.0.0.1:5432->5432/tcp`, `127.0.0.1:8000->8000/tcp`, and `127.0.0.1:8501->8501/tcp`: every
+port listens on this machine only (`compose.yaml`).
 
 **Check it worked.** Six services show `Up` (postgres, api, worker, scheduler,
 hill-climbing-runner, and console), and `api` and `postgres` show `(healthy)`.
@@ -258,7 +260,7 @@ hill-climbing-runner, and console), and `api` and `postgres` show `(healthy)`.
 
 | Problem | Fix |
 |---|---|
-| `Bind for 0.0.0.0:5432 failed: port is already allocated` | Another Postgres uses the port: set `POSTGRES_PORT` in `.env` |
+| `Bind for 127.0.0.1:5432 failed: port is already allocated` | Another Postgres uses the port: set `POSTGRES_PORT` in `.env` |
 | `Cannot connect to the Docker daemon` | `sudo systemctl start docker` |
 | A service keeps restarting | `make logs NAME=<service>` shows why; the [troubleshooting page](../docs/troubleshooting.md) lists the common lines |
 
@@ -276,7 +278,8 @@ make seed
 make check-data
 ```
 
-**You should see.** One line per warehouse with its row counts and content hash, then the check.
+**You should see.** Two lines per warehouse from `make seed`, its row counts and then its content
+hash, and `seed: done in ... s`; then the one line of `make check-data`.
 The last line of `make check-data` on the course machine:
 
 ```text
@@ -336,7 +339,10 @@ make demo NAME=agent-simple-question
 **You should see.** The terminal prints the demo name with the run it started. On the console's
 Agent page the run appears with its tool calls, its Structured Query Language (SQL), its answer,
 and a live stamp: the start time in your local time and a trace link.
-<!-- screenshot: the console Agent page after the simple question, with the live stamp -->
+
+![The Agent page after the simple question: its tool calls list_tables, describe_table, and run_query, the live stamp with its start time and trace link, the query, and the answer](../docs/images/agent-simple-question-answer.png)
+
+*The live stamp above the query: this run's start time and its trace link, the link you open in the next check.*
 
 **Check it worked.** The trace link on the console opens the run in LangSmith, in the project
 `datapilot-live` (`LANGSMITH_PROJECT` in `.env.example`).
@@ -345,7 +351,7 @@ and a live stamp: the start time in your local time and a trace link.
 
 | Problem | Fix |
 |---|---|
-| `No live session is open: run make preflight first.` | Step 10 |
+| `No live session is open: run make preflight PURPOSE=class\|rehearsal\|thursday-review\|development first` | Step 10 |
 | The console does not open in your browser | Check `make ps`; try http://127.0.0.1:8501 |
 | The run stays in one lane | `make reset NAME=agent-loop`, then the same `make demo` again |
 
@@ -358,6 +364,7 @@ and a live stamp: the start time in your local time and a trace link.
 | `permission denied` on the Docker socket | Log out and back in after step 3 |
 | The console is blank after a restart | Run `make up`, then `make preflight PURPOSE=development` |
 | A demo ran but the console shows no trace link | Check `LANGSMITH_API_KEY` and `LANGSMITH_TRACING=true` in `.env`, then `make up` |
+| `sqlite3.OperationalError: attempt to write a readonly database` in `make logs NAME=worker` | `sudo chown -R $USER ~/.datapilot`, then `make up` ([troubleshooting](../docs/troubleshooting.md#starting-the-services)) |
 
 Every other message, with its cause and fix: [troubleshooting](../docs/troubleshooting.md).
 

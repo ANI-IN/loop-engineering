@@ -15,7 +15,7 @@ from typing import Any, Literal, TypeVar, cast
 
 import httpx
 
-from datapilot import demo_questions, finale
+from datapilot import demo_questions, finale, planted
 from datapilot.contracts import api as contract
 from datapilot.contracts.lifecycle import EventType
 from datapilot.observability import spend
@@ -28,6 +28,9 @@ TIMEOUT_SECONDS = 2.0
 # from datapilot.demo_questions, the table `make demo NAME=` reads too; so does the export request.
 SPINE_QUESTION = demo_questions.SPINE_QUESTION
 OVERBROAD_RULE = "knowledge-v2-overbroad"
+# Improve > Run the naive analyzer (planted): the naive analyzer demo's planted half, the console's
+# copy of `make demo NAME=improve-naive-analyzer-blocked PLANTED=1`.
+NAIVE_ANALYZER_DEMO = "improve-naive-analyzer-blocked"
 
 # Events > Send webhook question starts two registry demos: the event loop's webhook question, and
 # the finale's spine question once the finale is the demo being shown.
@@ -78,9 +81,16 @@ class ApiClient:
         activity = spend.starter_activity(session_purpose, "console") if session_purpose else None
         return cls(get_settings().datapilot_api_url.rstrip("/"), spend_activity=activity)
 
-    def send(self, method: str, path: str, body: dict[str, Any] | None) -> tuple[int, Any]:
+    def send(
+        self,
+        method: str,
+        path: str,
+        body: dict[str, Any] | None,
+        extra_headers: dict[str, str] | None = None,
+    ) -> tuple[int, Any]:
         """One raw request: (status code, decoded json). The contract test's seam."""
         headers = {spend.ACTIVITY_HEADER: self.spend_activity} if self.spend_activity else {}
+        headers.update(extra_headers or {})
         if self.http is not None:
             response = self.http.request(method, path, json=body, headers=headers)
         else:
@@ -98,13 +108,14 @@ class ApiClient:
         path: str,
         expect: type[Reply],
         request: contract.Request | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Reply:
         entry = contract.endpoint(method, path)
         if entry.response is not expect or (entry.request is None) != (request is None):
             raise TypeError(f"{method} {path} does not match contracts.api.ENDPOINTS")
         body = request.model_dump(mode="json") if request is not None else None
         try:
-            status, data = self.send(method, path, body)
+            status, data = self.send(method, path, body, headers)
         except httpx.HTTPError as error:
             raise ApiError(API_DOWN) from error
         if status >= 400:
@@ -209,6 +220,22 @@ class ApiClient:
     def run_analyzer(self) -> contract.ImprovementRequestOut:
         request = contract.AnalyzerIn(requested_by="console")
         return self._call("POST", "/analyzer/run", contract.ImprovementRequestOut, request)
+
+    def run_naive_analyzer(self) -> list[contract.ImprovementRequestOut]:
+        """The naive analyzer demo's planted half, as `make demo NAME=improve-naive-analyzer-blocked
+        PLANTED=1` queues it: the analyzer, then the candidate experiment, each with the demo's
+        own flags in the planted header and the demo's name beside them (planted.header), so the
+        flags are on for these two requests alone. The api takes them only while demo controls
+        are allowed (DATAPILOT_ALLOW_DEMO_CONTROLS)."""
+        flags = planted.header(planted.for_one_run(NAIVE_ANALYZER_DEMO), demo=NAIVE_ANALYZER_DEMO)
+        analyzer = contract.AnalyzerIn(requested_by="console")
+        candidate = contract.ExperimentIn(target="candidate", requested_by="console")
+        return [
+            self._call("POST", "/analyzer/run", contract.ImprovementRequestOut, analyzer, flags),
+            self._call(
+                "POST", "/experiments/run", contract.ImprovementRequestOut, candidate, flags
+            ),
+        ]
 
     def approve_version(self, version: str) -> contract.KnowledgeApproved:
         request = contract.KnowledgeApprovalIn(approved_by="console")

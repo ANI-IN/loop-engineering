@@ -33,7 +33,9 @@ You build five things, each one a piece of the course applied to your own data:
    candidate after the analyzer team and the gate, and what your extension changed.
 
 The run time and cost depend on your benchmark: `run.sh` prints the number of model runs before it
-starts. <!-- screenshot: the Improve page holdout ledger for a learner's own pack -->
+starts. Your own pack's holdout ledger appears on the Improve page, laid out as the class pack's in
+[Section 4: Hill-climbing loop](../section-4-hill-climbing-loop/demo/expected/README.md), with your
+own items and versions.
 
 ## Run it
 

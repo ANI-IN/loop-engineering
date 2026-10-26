@@ -9,43 +9,45 @@ Every command in the guide, in class order. Run them from the repository folder.
 | Part 0 | Stack | `make up`, then `make ps` | Every service up; `api` and `postgres` healthy |
 | Part 0 | Stack | `make check-data` | `check-data: both warehouses match expected.yaml` |
 | Part 0 | Demo | `make reset NAME=agent-loop`, and the other three sections | Each reset ends without an error line |
-| Part 0 | Demo | `make preflight PURPOSE=class` | A last line that starts `Live session started at` |
+| Part 0 | Demo | `make preflight PURPOSE=class` (on your own copy, `PURPOSE=development`) | A last line that starts `Live session started at` |
 | Chapter 1 | Demo | `make demo NAME=agent-simple-question` | A posted count on the Agent page |
 | Chapter 1 | Demo | `make demo NAME=agent-confident-wrong-answer` | A mismatch against gold, with trap notes |
-| Chapter 1 | Demo | `make demo NAME=agent-unbounded-rows` | Tokens jump with the bug on; a truncation notice with it off |
-| Chapter 2 | Demo | `make demo NAME=verify-malicious-sql` | The layer that stopped each statement |
+| Chapter 1 | Demo | `make demo NAME=agent-unbounded-rows PLANTED=1`, then without `PLANTED=1` | Tokens jump with the bug on; a truncation notice with it off |
+| Chapter 2 | Demo | `make demo NAME=verify-malicious-sql`, then with `PLANTED=1` | The layer that stopped each statement |
 | Chapter 2 | Demo | `make demo NAME=verify-retry-cap` | Escalated after 3 attempts |
 | Chapter 2 | Demo | `make demo NAME=verify-graders-pass-still-wrong` | A green checklist beside a failed gold check |
 | Chapter 3 | Demo | `make demo NAME=events-webhook-question` | One post at the report-only level, unverified |
 | Chapter 3 | Demo | `make demo NAME=events-approval-survives-restart` | Holding for approval across a worker restart |
-| Chapter 3 | Demo | `make demo NAME=events-duplicate-events` | One run, 2 duplicates absorbed |
-| Chapter 3 | Demo | `make demo NAME=events-kill-switch-in-flight` | The run under Blocked by kill switch |
+| Chapter 3 | Demo | `make demo NAME=events-duplicate-events PLANTED=1`, `make reset NAME=event-loop`, then without `PLANTED=1` | Bug on: three question runs, two digests. Off: one of each, duplicates absorbed |
+| Chapter 3 | Demo | `make demo NAME=events-kill-switch-in-flight PLANTED=1`, `make reset NAME=event-loop`, then without `PLANTED=1` | The run posted with the bug on; the run under Blocked by kill switch without |
 | Chapter 4 | Demo | `make demo NAME=improve-baseline-experiment` | The holdout ledger under v1 |
-| Chapter 4 | Demo | `make demo NAME=improve-naive-analyzer-blocked` | The gate blocks the version |
+| Chapter 4 | Demo | `make demo NAME=improve-naive-analyzer-blocked PLANTED=1` | The gate blocks the version |
 | Chapter 4 | Demo | `make demo NAME=improve-analyzer-team-approve` | The knowledge diff of the candidate |
 | Chapter 4 | Demo | `make demo NAME=improve-candidate-experiment` | Fixed items and regressions against the baseline |
 | Chapter 4 | Demo | `make demo NAME=improve-cleared-unattended` | The spine question answered under the new version |
 | Any time | Demo | `make reset NAME=<section slug>` | The section back at its starting state |
 
-A planted half needs its flag in `.env` set to `1`, then `make up`; set it back to `0` and run
-`make up` again afterwards. The flags are `BUG_UNBOUNDED_ROWS`, `BUG_NAIVE_GUARD`,
-`BUG_NO_RETRY_CAP`, `BUG_MEMORY_CHECKPOINTER`, `BUG_NO_IDEMPOTENCY`,
-`BUG_KILLSWITCH_AT_CLAIM_ONLY`, and `BUG_NAIVE_ANALYZER`; the kill switch demo also needs
-`DEMO_PACING=1`.
+A planted half is `make demo NAME=<demo> PLANTED=1`: the demo's planted bugs are on for its own
+runs and requests only. `.env` keeps every planted flag (`BUG_UNBOUNDED_ROWS`, `BUG_NAIVE_GUARD`,
+`BUG_NO_RETRY_CAP`, `BUG_MEMORY_CHECKPOINTER`, `BUG_NO_IDEMPOTENCY`, `BUG_RANDOM_DIGEST_ID`,
+`BUG_KILLSWITCH_AT_CLAIM_ONLY`, `BUG_NAIVE_ANALYZER`) and `DEMO_PACING` at `0` all day, so no
+`make up` falls between the halves; the finale and every live check refuse to start while one is
+on. The kill switch demo switches demo pacing on for its own run. The approval demo's planted half
+restarts the worker twice and holds the terminal until its run ends; Ctrl+C ends the wait sooner.
 
 ## Troubleshooting
 
 | What you see | Cause | Fix |
 |---|---|---|
-| `No live session is open: run make preflight first.` | No class session yet | `make preflight PURPOSE=class`, once |
+| `No live session is open: run make preflight PURPOSE=class\|rehearsal\|thursday-review\|development first` | No live session yet | `make preflight PURPOSE=class`, once (on your own copy, `PURPOSE=development`) |
 | `Your OpenAI key was not accepted. Check it with the operations team.` | The key is missing or rejected | Ask the operations team |
 | `The drift canary failed: ...` | The model no longer behaves as measured | Do not teach the measured results; re-run calibration |
 | `Cannot connect to the Docker daemon` | Docker is not running | Start Docker, then `make up` |
 | The console is blank | The console service is down | `make ps`, then `make up` |
 | A run stays in one lane | The worker stalled or a run hung | `make reset NAME=<section slug>`, then the same demo |
-| A planted half looks like the fixed system | The services hold the old `.env` | `make up` after each change to `.env` |
+| A planted half looks like the fixed system | It was sent without `PLANTED=1` | `make demo NAME=<demo> PLANTED=1` |
 | Restart worker does nothing | Demo controls are off | `DATAPILOT_ALLOW_DEMO_CONTROLS=1` in `.env`, then `make up` |
-| The kill switch run finishes first | Demo pacing is off | `DEMO_PACING=1` in `.env`, then `make up` |
+| The kill switch run finishes first | It was sent from the console, which sends no pacing | `make demo NAME=events-kill-switch-in-flight` |
 | "No baseline run in this session yet." | The baseline experiment never started | Start it now, as the page offers |
 | The Improve page does not move | The hill-climbing runner service is down | `make ps`, then `make up` |
 | The trace list in LangSmith is still empty | Traces arrive later than the ledger | Read the console's holdout ledger; open the traces later |
@@ -114,7 +116,8 @@ The section slugs are `agent-loop`, `verification-loop`, `event-loop`, and `hill
 **You should see:** every service up, the reset's confirmation, and a new run with a new live stamp
 on the console.
 
-<!-- capture: the terminal output of a reset followed by the same demo, on the class machine -->
+The reset prints what it cleared, as in Part 0's image of the four resets, and `make demo` then
+prints one line with the queued run's id.
 
 **Look at:** the live stamp of the new run: a start time from just now.
 

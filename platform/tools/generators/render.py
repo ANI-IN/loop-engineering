@@ -118,9 +118,23 @@ def outputs() -> list[Output]:
         )
     ]
     planted_by_id = {i.id: i for i in planted_registry.items}
+    # What each section's run.sh passes PLANTED=1 to, when the script runs with PLANTED=1: the
+    # demos with a planted code bug, the only ones make demo takes it for.
+    planted_demos = {
+        d.id
+        for d in demo_registry.demos
+        if any(
+            p in planted_by_id and planted_by_id[p].kind is PlantedKind.CODE_BUG for p in d.planted
+        )
+    }
     for section in SECTIONS:
         demos = demo_registry.for_section(section.slug)
-        context = {"demos": demos, "section": section, "planted": planted_by_id}
+        context = {
+            "demos": demos,
+            "section": section,
+            "planted": planted_by_id,
+            "planted_demos": planted_demos,
+        }
         out.append(
             Output(
                 REPO / section.folder / "demo" / "README.md",

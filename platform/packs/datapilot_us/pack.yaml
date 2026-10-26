@@ -51,7 +51,15 @@ limits:
 # Token budgets sized for gpt-6-luna (reasoning tokens included). Calibration confirms them.
 budgets:
   tokens_per_run: 60000
-  tokens_per_day: 2000000
+  tokens_per_day: 2000000   # worker runs only, per Eastern time calendar day (loop3_events/budget.py)
+  # The worker tokens a class day needs: make preflight PURPOSE=class refuses while less than this
+  # is left of the Eastern time day. Measured on 25 October 2026 in rehearsal session c18bcc2e:
+  # one full pass, 126,761 tokens with the planted halves off and 267,552 with them on, 394,313 in
+  # all (session 6 notes, pass-off.jsonl and pass-on.jsonl); the class finale and the safeguard
+  # finale, 10,240 and 12,395. A pass and both finales: 394,313 + 10,240 + 12,395 = 416,948. A
+  # quarter more for the standing recovery, a reset and the same trigger again (session 6 review,
+  # round 2, class day): 416,948 times 1.25 = 521,185, rounded to the thousand.
+  class_pass_tokens: 521000
 
 # The live assignment checks (make check-assignment). Each check stops at its own spend cap in US
 # dollars, counted from the spend ledger's rows of that check alone, so it holds with the build
@@ -68,9 +76,9 @@ build_budget:
   # cap (assignments.check_cap_usd). The session limit holds whenever its
   # session is named.
   enabled_variable: DATAPILOT_BUILD_BUDGET
-  total_usd: 10.00   # an absolute maximum
+  total_usd: 10.65   # an absolute maximum (raised from 10.00 by the owner, 25 October 2026)
   warn_usd: 6.00
-  stop_usd: 10.00    # all live work stops here
+  stop_usd: 10.60    # all live work stops here, short of the total, so no run is cut off by credits
   # Every ledger activity counts under exactly one line, by its name: the line's own name, the line
   # name followed by "-" and a step (calibration-traps), or one of the line's other names, itself
   # alone or followed by "-" and a step (assignment-agent-loop-1a2b3c4d, one assignment check). A call
@@ -78,34 +86,36 @@ build_budget:
   # message naming the line and what is left; it never spills into the reserve on its own.
   lines:
     development live checks:
-      cap_usd: 1.50
+      cap_usd: 3.80   # owner, 25 October 2026: above the line's spend plus the session's needs, so only the 10.60 stop line blocks
       # preflight during development and the capability check; "development" is the stack's default
       names: [development, preflight-development]
     calibration:
-      cap_usd: 2.20   # 0.30 moved to assignment verification by the owner, 23 October 2026
+      cap_usd: 4.70   # owner, 25 October 2026: above the line's spend plus the session's needs, so only the 10.60 stop line blocks
     assignment verification:
-      cap_usd: 2.80   # 0.30 moved from calibration by the owner, 23 October 2026
+      cap_usd: 5.00   # owner, 25 October 2026: above the line's spend plus the session's needs, so only the 10.60 stop line blocks
       names: [assignment]   # the reference solutions' live done-when checks during the build
     rehearsal:
-      cap_usd: 2.50
+      cap_usd: 1.60   # owner, 25 October 2026: above the line's spend plus the session's needs, so only the 10.60 stop line blocks
       # every screenshot, and preflight for a rehearsal, the class, and the Thursday review
       names: [screenshots, preflight-rehearsal, preflight-class, preflight-thursday-review]
     reserve:
-      cap_usd: 1.00   # the lines add up to exactly the 10-dollar total
+      cap_usd: 0.00   # moved to the other lines by the owner, 24 October 2026; the lines add up to 10.00
       # used only with the owner's approval: DATAPILOT_USE_RESERVE=1 lets a used-up line go on into
       # the reserve until the reserve is used up too
       approval_variable: DATAPILOT_USE_RESERVE
-  # The lines are ceilings; the total stop above still holds when they add up to more.
+  # The lines are ceilings; the total stop above still holds when they add up to more, as they
+  # do from 25 October 2026, when the owner made the stop line the only limit that blocks live work.
   # A second, explicit limit for one unattended session, checked before every call in addition to
   # the lines: it applies only while DATAPILOT_SESSION_SINCE names the session's start (a UTC time)
   # and counts only the spend since then. A line not listed here gets nothing this session.
   session:
     since_variable: DATAPILOT_SESSION_SINCE
-    total_usd: 2.35
+    total_usd: 2.95   # session 6, with the owner's raise of 25 October 2026 (the stop line still holds)
     lines:
-      development live checks: 0.30
-      calibration: 0.95
-      assignment verification: 1.10
+      development live checks: 0.90
+      calibration: 0.43
+      assignment verification: 1.23
+      rehearsal: 0.39
 
 cost_guard:
   max_plan_cost: 500000
@@ -198,3 +208,9 @@ preflight:
   canary:
     easy: [product-count, camping-subcategories, marketable-customers-california]
     traps: [net-revenue-fiscal-2025, average-order-value-fiscal-2025]
+
+# The class-day safeguard (make safeguard-activate): it takes the newest verification only when it
+# is at most this many days old and comes from a rehearsal session of this stack, so a previous
+# cohort's verification is never carried into class; naming a version (NAME=<version>) overrides.
+safeguard:
+  verification_age_limit_days: 7

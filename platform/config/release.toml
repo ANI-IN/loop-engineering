@@ -83,7 +83,7 @@ pages = ["setup", "section-*", "final-project", "use-in-your-repo", "guide", "do
 other_markdown = [
     "SECURITY.md",  # the security policy, shown by GitHub
     "slides/outline.md",  # generated from slides/source/; also read by `make check-names`
-    "platform/before-class/README.md",  # the instructor's machine check
+    "platform/README.md",  # the map of the platform folder
     "platform/console/DESIGN.md",  # the console's design notes
     "platform/packs/_template/README.md",  # the domain pack template
     "platform/packs/*/benchmark/business_rules.md",  # a pack's business rules, read by the agent

@@ -1,14 +1,18 @@
 """Hill-climbing requests (enqueue only) and the human approval of a knowledge version.
 
 Models: datapilot.contracts.api (ExperimentIn and AnalyzerIn -> ImprovementRequestOut,
-ImprovementRequestList, KnowledgeApprovalIn -> KnowledgeApproved).
+ImprovementRequestList, KnowledgeApprovalIn -> KnowledgeApproved). A demo's planted flags for its
+own request come in the DataPilot-Planted header and are kept in the request's params; the runner
+switches them on for that request alone.
 """
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 
-from datapilot import db
+from datapilot import db, planted
 from datapilot.config import active_pack
 from datapilot.contracts.api import (
     AnalyzerIn,
@@ -19,13 +23,23 @@ from datapilot.contracts.api import (
     KnowledgeApproved,
 )
 from datapilot.loop3_events import improvement
+from datapilot.loop3_events.api.events import DemoName, PlantedFlags, requested_flags
 
 api = APIRouter()
 
 
+def _with_flags(params: dict[str, Any], flags: str | None, demo: str | None) -> dict[str, Any]:
+    """The request's params, with the planted flags of the demo the DataPilot-Demo header names,
+    only its own (requested_flags)."""
+    chosen = requested_flags(flags, demo)
+    return {**params, planted.REQUESTED_KEY: chosen} if chosen else params
+
+
 @api.post("/experiments/run", response_model=ImprovementRequestOut)
-def run_experiment(body: ExperimentIn) -> ImprovementRequestOut:
-    params = body.model_dump(exclude={"requested_by"})
+def run_experiment(
+    body: ExperimentIn, flags: PlantedFlags = None, demo: DemoName = None
+) -> ImprovementRequestOut:
+    params = _with_flags(body.model_dump(exclude={"requested_by"}), flags, demo)
     with db.connect(db.Role.APP) as conn:
         row = improvement.enqueue(conn, "experiment", params, requested_by=body.requested_by)
         conn.commit()
@@ -33,9 +47,12 @@ def run_experiment(body: ExperimentIn) -> ImprovementRequestOut:
 
 
 @api.post("/analyzer/run", response_model=ImprovementRequestOut)
-def run_analyzer(body: AnalyzerIn) -> ImprovementRequestOut:
+def run_analyzer(
+    body: AnalyzerIn, flags: PlantedFlags = None, demo: DemoName = None
+) -> ImprovementRequestOut:
+    params = _with_flags({}, flags, demo)
     with db.connect(db.Role.APP) as conn:
-        row = improvement.enqueue(conn, "analyzer", {}, requested_by=body.requested_by)
+        row = improvement.enqueue(conn, "analyzer", params, requested_by=body.requested_by)
         conn.commit()
     return ImprovementRequestOut.model_validate(row)
 

@@ -4,6 +4,8 @@
 SECTION="{{ section.slug }}"
 CORE_DEMOS=({% for demo in core %}{{ demo.id }}{{ " " if not loop.last }}{% endfor %})
 OPTIONAL_DEMOS=({% for demo in optional %}{{ demo.id }}{{ " " if not loop.last }}{% endfor %})
+# The demos with a planted code bug: PLANTED=1 in front of this script runs their planted half.
+PLANTED_DEMOS=({% for demo in demos if demo.id in planted_demos %}{{ demo.id }}{{ " " if not loop.last }}{% endfor %})
 # The class plan's target minutes, not measured times.
 CORE_TARGET_MINUTES={{ core | sum(attribute="target_minutes") | round | int }}
 OPTIONAL_TARGET_MINUTES={{ optional | sum(attribute="target_minutes") | round | int }}

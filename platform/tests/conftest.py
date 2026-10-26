@@ -19,11 +19,29 @@ from pathlib import Path
 import pytest
 import stack_for_tests
 
-from datapilot.settings import REPO
+from datapilot import tests_database_guard
+from datapilot.settings import REPO, get_settings
 
 # Every test reaches only the tests' own database (Compose project datapilot-tests, its own port),
 # never the live stack: see stack_for_tests.py and `make test-integration`.
 stack_for_tests.use_test_database()
+# And every connection is checked where it opens: an address that is not the tests' is refused
+# (datapilot/tests_database_guard.py; the package installs it under pytest, this makes sure).
+tests_database_guard.install()
+
+
+@pytest.fixture(autouse=True)
+def _only_the_tests_database() -> Iterator[None]:
+    """A refused connection fails its test even when the code under test swallows the error; and
+    settings cached during a test never outlive it (on 25 October settings built while a test
+    had the address variables deleted carried the class stack's address into later tests)."""
+    start = len(tests_database_guard.refused)
+    yield
+    get_settings.cache_clear()
+    refused = tests_database_guard.refused[start:]
+    del tests_database_guard.refused[start:]
+    if refused:
+        pytest.fail(f"the test tried to reach {', '.join(refused)}, not the tests' database")
 
 
 @pytest.fixture(autouse=True)
@@ -36,13 +54,16 @@ def _no_budget_switches_from_env_file(tmp_path_factory, monkeypatch) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _no_planted_flags_from_the_shell(monkeypatch: pytest.MonkeyPatch) -> None:
+def _no_planted_flags_from_the_shell(tmp_path_factory, monkeypatch: pytest.MonkeyPatch) -> None:
     """A planted-item flag or demo pacing exported in the shell (to rehearse a demo) never reaches
     a test: the suite checks the fixed paths, and a test that needs a flag sets it itself."""
+    from datapilot import planted
     from datapilot.contracts import registries
 
     for flag in [*registries.planted().flags, "DEMO_PACING"]:
         monkeypatch.delenv(flag, raising=False)
+    # Nor from the repository's .env, which a check and the finale read before they start.
+    monkeypatch.setattr(planted, "ENV_FILE", tmp_path_factory.mktemp("planted") / ".env")
 
 
 @pytest.fixture(autouse=True)

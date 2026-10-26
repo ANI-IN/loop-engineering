@@ -14,14 +14,14 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
 import psycopg
 import yaml
 
-from datapilot.config import active_pack
+from datapilot.config import active_pack, pack_config
 from datapilot.contracts import KnowledgeVersion
 from datapilot.loop4_hill_climbing.pack_files import load_knowledge, pack_root
 
@@ -110,6 +110,14 @@ def active_name(conn: psycopg.Connection[Any]) -> str:
 
 def status_of(conn: psycopg.Connection[Any], name: str) -> dict[str, Any] | None:
     return conn.execute(ONE, (active_pack(), name)).fetchone()
+
+
+def created_by(conn: psycopg.Connection[Any], name: str) -> str | None:
+    row = conn.execute(
+        "SELECT created_by FROM ops.knowledge_versions WHERE pack = %s AND version = %s",
+        (active_pack(), name),
+    ).fetchone()
+    return row["created_by"] if row else None
 
 
 def latest_candidate(conn: psycopg.Connection[Any]) -> str | None:
@@ -216,13 +224,22 @@ VALUES (%(pack)s, %(version)s, %(verified_by)s, %(session_id)s, %(run_id)s, %(qu
     %(level)s, %(agent_value)s, %(gold_value)s, %(langsmith_url)s, %(families)s)
 RETURNING verified_at
 """
+# With the verification's session as this stack knows it: none when the session is not on it.
 LATEST_VERIFICATION = """
-SELECT version, verified_by, verified_at, session_id, finale_run_id, finale_question,
-       finale_level, agent_value, gold_value, langsmith_url, cleared_families
-FROM ops.rehearsal_verifications
-WHERE pack = %(pack)s AND (%(version)s::text IS NULL OR version = %(version)s)
-ORDER BY verified_at DESC, verification_id DESC LIMIT 1
+SELECT v.version, v.verified_by, v.verified_at, v.session_id, v.finale_run_id, v.finale_question,
+       v.finale_level, v.agent_value, v.gold_value, v.langsmith_url, v.cleared_families,
+       s.purpose AS session_purpose, s.started_at AS session_started_at
+FROM ops.rehearsal_verifications v
+LEFT JOIN ops.live_sessions s ON s.session_id = v.session_id
+WHERE v.pack = %(pack)s AND (%(version)s::text IS NULL OR v.version = %(version)s)
+ORDER BY v.verified_at DESC, v.verification_id DESC LIMIT 1
 """
+VERIFY_AGAIN = (
+    "verify again in this cohort's rehearsal: make preflight PURPOSE=rehearsal, run the chain to a "
+    'correct finale, then make safeguard-verify NAME=<version> RUN=<finale run id> BY="<your '
+    'name>"; or name a verified version on purpose: make safeguard-activate NAME=<version> '
+    'BY="<your name>"'
+)
 INSERT_SAFEGUARD_DECISION = """
 INSERT INTO ops.promotion_decisions (pack, candidate_version, active_version, verdict, reasons,
     sentence, approved_by, kind)
@@ -249,6 +266,35 @@ class RehearsalVerification:
     gold_value: str | None
     langsmith_url: str | None
     cleared_families: list[str]
+    session_purpose: str | None = None  # None: the session is not on this stack
+    session_started_at: datetime | None = None
+
+    def age(self, now: datetime | None = None) -> timedelta:
+        return (now or datetime.now(UTC)) - self.verified_at
+
+    def provenance(self, now: datetime | None = None) -> str:
+        """Its age and its live session, as the safeguard commands print them."""
+        if self.session_purpose is None:
+            where = "a session that is not on this stack"
+        else:
+            started = self.session_started_at
+            when = f", started {started.isoformat(timespec='seconds')}" if started else ""
+            where = f"a {self.session_purpose.replace('_', '-')} session{when}"
+        return f"verified {_span(self.age(now))} ago, in live session {self.session_id} ({where})"
+
+    def problems(self, age_limit_days: int, now: datetime | None = None) -> list[str]:
+        """Why the safeguard would not take it unasked: too old, or not this stack's rehearsal."""
+        found = []
+        if self.age(now) > timedelta(days=age_limit_days):
+            found.append(
+                f"it is older than {age_limit_days} days "
+                "(safeguard.verification_age_limit_days in pack.yaml)"
+            )
+        if self.session_purpose is None:
+            found.append("its live session is not on this stack")
+        elif self.session_purpose != "rehearsal":
+            found.append(f"its live session is {self.session_purpose}, not a rehearsal")
+        return found
 
     def describe(self) -> str:
         families = ", ".join(self.cleared_families) or "none"
@@ -268,6 +314,19 @@ class SafeguardActivation:
     activated_by: str
     verification: RehearsalVerification
     sentence: str
+    cautions: tuple[str, ...] = ()  # what the safeguard would have refused, had it not been named
+
+
+def age_limit_days() -> int:
+    return int(pack_config()["safeguard"]["verification_age_limit_days"])
+
+
+def _span(span: timedelta) -> str:
+    hours = max(0, int(span.total_seconds() // 3600))
+    days, hours = divmod(hours, 24)
+    if days:
+        return f"{days} day{'' if days == 1 else 's'} {hours} hour{'' if hours == 1 else 's'}"
+    return f"{hours} hour{'' if hours == 1 else 's'}"
 
 
 def _verification(row: dict[str, Any]) -> RehearsalVerification:
@@ -283,6 +342,8 @@ def _verification(row: dict[str, Any]) -> RehearsalVerification:
         gold_value=row["gold_value"],
         langsmith_url=row["langsmith_url"],
         cleared_families=list(row["cleared_families"] or []),
+        session_purpose=row.get("session_purpose"),
+        session_started_at=row.get("session_started_at"),
     )
 
 
@@ -348,6 +409,7 @@ def verify_in_rehearsal(
             "finale_question": run["question"],
             "finale_level": run["autonomy_level_applied"],
             "cleared_families": families,
+            "session_purpose": run["purpose"],
         }
     )
 
@@ -361,13 +423,21 @@ def latest_verification(
 
 
 def activate_verified(
-    conn: psycopg.Connection[Any], *, activated_by: str, name: str | None = None
+    conn: psycopg.Connection[Any],
+    *,
+    activated_by: str,
+    name: str | None = None,
+    now: datetime | None = None,
 ) -> SafeguardActivation:
     """The class-day safeguard: make the version verified in rehearsal (the newest, or `name`)
     active through `activate`, record a safeguard activation in ops.promotion_decisions, and give
     each family it had cleared in rehearsal the unattended level under it, noted as cleared in
     rehearsal. A family it had not cleared gets no clearance under it. Nothing of the gate's own
-    record changes: the class candidate's experiments and decisions stay."""
+    record changes: the class candidate's experiments and decisions stay.
+
+    Unnamed, the newest verification is refused when it is older than the pack's limit or not
+    from a rehearsal session of this stack, such as a previous cohort's; a named one is taken,
+    with those problems kept as cautions."""
     from datapilot.loop3_events import autonomy
 
     found = latest_verification(conn, name)
@@ -376,6 +446,12 @@ def activate_verified(
             "no knowledge version is verified in rehearsal"
             + (f" under the name {name}" if name else "")
             + ": mark one with `datapilot safeguard verify` during rehearsal"
+        )
+    problems = found.problems(age_limit_days(), now)
+    if problems and name is None:
+        raise SafeguardRefused(
+            f"the newest verification, of {found.version} ({found.provenance(now)}), is not "
+            f"taken: {'; and '.join(problems)}. Nothing changed. To {VERIFY_AGAIN}"
         )
     replaced = active_name(conn)
     if replaced == found.version:
@@ -422,4 +498,5 @@ def activate_verified(
         activated_by=activated_by,
         verification=found,
         sentence=sentence,
+        cautions=tuple(problems),
     )

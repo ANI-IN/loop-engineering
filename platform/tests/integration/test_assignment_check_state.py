@@ -166,6 +166,8 @@ def test_a_baseline_is_shared_until_an_items_gold_sql_changes(
 ) -> None:
     session_id = uuid.uuid4()
     with db.connect(db.Role.APP) as conn:
+        # this test's own session replaces the one clean_ops opened: one is open at a time
+        conn.execute("UPDATE ops.live_sessions SET ended_at = now() WHERE ended_at IS NULL")
         conn.execute(
             "INSERT INTO ops.live_sessions (session_id, started_by, timezone) "
             "VALUES (%s, 'test', 'UTC')",

@@ -29,7 +29,7 @@ from datapilot import config, db
 from datapilot.contracts import AnswerEnvelope, AnswerStatus
 from datapilot.contracts.live import SessionPurpose
 from datapilot.loop2_verification.executor import Executor
-from datapilot.loop3_events import sessions
+from datapilot.loop3_events import budget, sessions
 from datapilot.loop4_hill_climbing import preflight as checks
 from datapilot.loop4_hill_climbing import versions
 from datapilot.loop4_hill_climbing.evaluator import ExecutionEvaluator
@@ -156,6 +156,11 @@ def every_page_answers() -> httpx.Client:
     return httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200)))
 
 
+def todays_budget() -> budget.DayBudget:
+    with db.connect(db.Role.APP) as conn:
+        return budget.today(conn)
+
+
 def install() -> list[str]:
     with db.connect(db.Role.APP) as conn:
         added = versions.install(conn)
@@ -182,6 +187,12 @@ def test_the_template_pack_passes_preflight_on_its_own_databases(
             canary=canary,
             start_session=sessions.start_session,
             services=lambda: checks.service_checks(settings, client=every_page_answers()),
+            budget=lambda: checks.budget_check(
+                SessionPurpose.DEVELOPMENT,
+                todays_budget(),
+                int(config.pack_config()["budgets"]["class_pass_tokens"]),
+                budget.until_next_day(),
+            ),
             key=lambda: checks.Check("openai key", True, "stub-model"),
             install=install,
         )
@@ -196,6 +207,7 @@ def test_the_template_pack_passes_preflight_on_its_own_databases(
     assert report.session is not None
     by_name = {c.name: c for c in report.checks}
     assert by_name["pack"].detail == TEMPLATE
+    assert by_name["token budget"].ok and "2,000,000 tokens used" in by_name["token budget"].detail
     assert re.fullmatch(r"[\d,]+ payments in club\.payments", by_name["data"].detail)
 
     # The data check counted the template's table, on the template's database, as the agent.

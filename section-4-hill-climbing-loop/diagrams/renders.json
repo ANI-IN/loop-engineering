@@ -3,9 +3,9 @@
   "excalidraw": "0.18.1",
   "renders": {
     "hill-climbing-loop": {
-      "source": "edf829d361f8dbab9fb866b6baac2e590b37eba7896c30091cceb2fe98b929b9",
-      "svg": "97cf4523ed9690fd7f1711ea18974050a43a227777863014fe9b2edd8e8b3704",
-      "png": "0c66fad8686af4b3ae45dd4c30245fffdd06b6cff1a0908bff3f7efa87ec8120"
+      "source": "46c7b9f502f0b9ad02a7de9fcc654c72aa166720c99bbf8dbd6fd5c3f2227946",
+      "svg": "e1491cbac0f815742d1a26aaafc0348e5902907c35e4b67f0e2eff3b0db0485b",
+      "png": "37cc008fd9c6f21b10d2619f9c390ced269f6fb001e82cd81c5c83929cfff958"
     },
     "hill-climbing-loop-step-1": {
       "source": "f86d8048a4f701af0910d3b0ef93b047fe5f84cdf06d12d335ab819117a9d5d1",
@@ -18,19 +18,19 @@
       "png": "c60d24a94d5e654456f078bae73a3a3a56bc0e13013041d37d6402f7c1fcc578"
     },
     "hill-climbing-loop-step-3": {
-      "source": "7823db57c6d2e3a0e43bcf7d67c973235c3f9e7a1a2e074022d4f908322d1e2f",
-      "svg": "d29c87ba2cac8bbaa1edf99136c72c9ca5685287b246e757927ceaaf9f7015c7",
-      "png": "a5da0b56dda80b50a54b671af058049ec32eeb0583efb134120e0181bf04cb1c"
+      "source": "1dfbb7b15637feda74f0541274dd674606fbff08c03a4302385ec6a999905f4f",
+      "svg": "fbc6e53c0fcf1968c3ca56462f82c96edf33b7960e01b893d5abf47a2280209e",
+      "png": "81ea88050b6b469d8b80f7852dc990bc2d94fd574888daacabc526510dd61b9c"
     },
     "hill-climbing-loop-step-4": {
-      "source": "95e12e6296c4dd5dabb2dc602a801cdfd00c112ee15b3680b96029803f402a79",
-      "svg": "5fa332a489de5581b64fce9a66e59caea306f3b5f25e19f571c9a5f574318384",
-      "png": "b3667a42d95b07693e60f4a9fb3af6860114751337898349a889e46ca7375bf3"
+      "source": "ce8f90c51943acb2107d60f632c234b1d1d5d666fa1c08def121de7b7598b64d",
+      "svg": "c33a90aad6aa8a5e4042804fe284739e8832eb4cb0d0defbc8d1d2cb9905770e",
+      "png": "f73daeb52396cd54e970557159aa3b80d0b2230d61fbee87b5ed266003f811a9"
     },
     "hill-climbing-loop-step-5": {
-      "source": "edf829d361f8dbab9fb866b6baac2e590b37eba7896c30091cceb2fe98b929b9",
-      "svg": "97cf4523ed9690fd7f1711ea18974050a43a227777863014fe9b2edd8e8b3704",
-      "png": "0c66fad8686af4b3ae45dd4c30245fffdd06b6cff1a0908bff3f7efa87ec8120"
+      "source": "46c7b9f502f0b9ad02a7de9fcc654c72aa166720c99bbf8dbd6fd5c3f2227946",
+      "svg": "e1491cbac0f815742d1a26aaafc0348e5902907c35e4b67f0e2eff3b0db0485b",
+      "png": "37cc008fd9c6f21b10d2619f9c390ced269f6fb001e82cd81c5c83929cfff958"
     }
   }
 }

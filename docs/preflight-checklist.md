@@ -3,7 +3,7 @@
 > **Terms on this page**
 >
 > - **Live session**: Everything that runs between one `make preflight` and the next.
-> - **Planted bug**: A defect switched on by a flag in `.env` so a demo shows its failure every time.
+> - **Planted bug**: A defect switched on by a flag so a demo shows its failure every time.
 > - **Class-day safeguard**: The version verified in rehearsal, activated with one command if the finale's answer is wrong.
 
 One tick list for the thirty minutes before the four-hour class. Each line is one command or one
@@ -12,10 +12,9 @@ lists them. Run the commands in Ubuntu on WSL2, from the repository root.
 
 ## The planted flags
 
-- [ ] `.env` sets every `BUG_` flag and `DEMO_PACING` to 0: the class opens on the fixed system.
-      The first planted flag, `BUG_UNBOUNDED_ROWS=1`, is set in Section 1: Agent loop, after the
-      confident wrong answer. Set the flags first: the services read `.env` when `make up` starts
-      them, so a flag changed after it needs a second restart.
+- [ ] `.env` sets every `BUG_` flag and `DEMO_PACING` to 0, and keeps them there all day: each
+      planted half is `make demo NAME=<demo> PLANTED=1`, its flags on for its own runs only. The
+      finale and every live check refuse to start while a flag is on.
 
 ## The services
 
@@ -32,8 +31,19 @@ lists them. Run the commands in Ubuntu on WSL2, from the repository root.
 
 ## The live session
 
-- [ ] `make preflight PURPOSE=class`: every check passes, the canary lines read `as expected`, and
-      the last line starts `Live session started at`.
+- [ ] The rehearsal ran on an earlier Eastern time day than the class: preflight for the class
+      refuses while less than one class pass, about 520,000 tokens, is left of the day's token
+      budget, and the count starts again only at midnight Eastern time.
+- [ ] `make preflight PURPOSE=class`: every check passes, including `token budget`, the canary
+      lines read `as expected`, and the last line starts `Live session started at`.
+- [ ] Only if it refuses with "Less than one class pass is left of this Eastern time day's token
+      budget": no class session started, and the session open before it, often the rehearsal
+      one, stays open, so teach nothing in it. Tell the course owner. Then run the command the
+      message's last line prints, `make preflight PURPOSE=class ACCEPT_TOKENS_LEFT=<the count
+      left>`: the class session starts, knowingly, with the count the `token budget` line shows.
+      Plan the cuts with
+      [the instructor guide's steps](instructor-guide.md#if-something-breaks) ("The token budget
+      refusal"): the planted half of the unbounded rows demo goes first.
 
 ## The console
 
@@ -43,8 +53,10 @@ lists them. Run the commands in Ubuntu on WSL2, from the repository root.
 
 ## The class-day safeguard
 
-- [ ] `make safeguard-status` names a version verified in rehearsal. If it says no version is
-      verified, the finale runs without the safeguard: read
+- [ ] `make safeguard-status` names a version verified in rehearsal and prints the line
+      `ok make safeguard-activate takes it`. If it prints `x  make safeguard-activate refuses it`,
+      the version is older than 7 days or not from a rehearsal session of this stack: treat it as
+      no version. If it says no version is verified, the finale runs without the safeguard: read
       [the instructor guide](instructor-guide.md#the-class-day-safeguard-for-the-finale) once.
 
 ## LangSmith

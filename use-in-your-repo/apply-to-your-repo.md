@@ -203,15 +203,23 @@ password:
 
 ```sql
 CREATE ROLE datapilot_agent_ro LOGIN PASSWORD 'choose-a-password';
+REVOKE ALL ON ALL TABLES IN SCHEMA club FROM datapilot_agent_ro;
 GRANT USAGE ON SCHEMA club TO datapilot_agent_ro;
 GRANT SELECT ON ALL TABLES IN SCHEMA club TO datapilot_agent_ro;
+ALTER DEFAULT PRIVILEGES IN SCHEMA club GRANT SELECT ON TABLES TO datapilot_agent_ro;
 ALTER ROLE datapilot_agent_ro SET default_transaction_read_only = on;
 ALTER ROLE datapilot_agent_ro SET statement_timeout = '5000ms';
 ALTER ROLE datapilot_agent_ro SET idle_in_transaction_session_timeout = '10000ms';
+ALTER ROLE datapilot_agent_ro SET temp_file_limit = '102400kB';
+ALTER ROLE datapilot_agent_ro SET search_path = club;
 ```
 
-The timeouts are the values of `limits.statement_timeout_ms` and
-`limits.idle_in_transaction_timeout_ms` in `pack.yaml`.
+The values are `limits.statement_timeout_ms`, `limits.idle_in_transaction_timeout_ms`, and
+`limits.temp_file_limit_kb` in `pack.yaml`. The revoke comes first, so the role starts from
+nothing even if it existed. The default privileges cover tables created later, but only those
+created by the role that runs the line: run it as the role that creates your tables. Setting
+`temp_file_limit` needs a superuser; without one, leave that line out, and nothing caps the
+temporary files one query writes. `search_path` makes an unqualified table name resolve in your schema only.
 
 **Check it worked.** As that role, a write fails with `permission denied` or `cannot execute ...
 in a read-only transaction`. If a write succeeds, stop: revoke every privilege except `SELECT`.
@@ -237,7 +245,26 @@ SERVICES_DATABASE_URL_AGENT_ALT=postgresql://datapilot_agent_ro:choose-a-passwor
 Inside a container, `localhost` is the container itself, so the `SERVICES_` lines need an address
 the containers can reach. Without the `SERVICES_` lines, the services use the Compose Postgres.
 Keep `DATABASE_URL_OWNER` and `DATABASE_URL_APP` on the Compose Postgres: the ops tables, the
-queue, and the approvals stay there. `compose.yaml` needs no change.
+queue, and the approvals stay there. For a database on another machine, `compose.yaml` needs no
+change.
+
+**A Postgres on this same machine.** In the `SERVICES_` lines, use `host.docker.internal` as
+`your-host`. Docker Desktop on Windows and macOS provides that name. Docker Engine on Linux, the
+course machine's setup, provides it only when a service asks for it. Add a file
+`compose.override.yaml` next to `compose.yaml`; `docker compose`, and so `make up`, reads it on its
+own:
+
+```yaml
+services:
+  api: {extra_hosts: ["host.docker.internal:host-gateway"]}
+  worker: {extra_hosts: ["host.docker.internal:host-gateway"]}
+  scheduler: {extra_hosts: ["host.docker.internal:host-gateway"]}
+  hill-climbing-runner: {extra_hosts: ["host.docker.internal:host-gateway"]}
+  console: {extra_hosts: ["host.docker.internal:host-gateway"]}
+```
+
+Your Postgres must also accept connections from the Docker network: `listen_addresses` in
+`postgresql.conf` and a `pg_hba.conf` line for that network.
 
 ### Step 4: Run it
 

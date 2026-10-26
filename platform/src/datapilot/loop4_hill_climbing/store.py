@@ -20,7 +20,7 @@ from uuid import UUID
 
 import psycopg
 
-from datapilot import db
+from datapilot import db, planted
 from datapilot.config import active_pack
 from datapilot.contracts import ItemResult, Split
 from datapilot.contracts.live import NoLiveBaseline, NoLiveSession
@@ -31,10 +31,10 @@ OPEN_SESSION = "SELECT session_id FROM ops.live_sessions WHERE ended_at IS NULL"
 INSERT_EXPERIMENT = """
 INSERT INTO ops.experiments (experiment_id, session_id, pack, knowledge_version, split,
     holdout_repeats, concurrency, pass_count, total, per_example, started_at, finished_at,
-    wall_seconds)
+    wall_seconds, planted_active)
 VALUES (%(experiment_id)s, %(session_id)s, %(pack)s, %(knowledge_version)s, %(split)s,
     %(holdout_repeats)s, %(concurrency)s, %(pass_count)s, %(total)s, %(per_example)s,
-    %(started_at)s, %(finished_at)s, %(wall_seconds)s)
+    %(started_at)s, %(finished_at)s, %(wall_seconds)s, %(planted_active)s)
 """
 APPEND_EXAMPLE = """
 UPDATE ops.experiments SET per_example = per_example || %(entry)s::jsonb
@@ -52,6 +52,7 @@ SELECT experiment_id, session_id, knowledge_version, per_example, started_at, wa
 FROM ops.experiments
 WHERE session_id = %(session_id)s AND pack = %(pack)s
   AND knowledge_version = %(knowledge_version)s AND finished_at IS NOT NULL
+  AND cardinality(planted_active) = 0
 ORDER BY started_at DESC
 LIMIT 1
 """
@@ -66,7 +67,8 @@ SELECT b.experiment_id, b.session_id, b.knowledge_version, b.per_example, b.star
        b.wall_seconds
 FROM ops.experiments c JOIN ops.experiments b ON b.experiment_id = c.gate_baseline_id
 WHERE c.experiment_id = %(experiment_id)s AND b.session_id = %(session_id)s
-  AND b.finished_at IS NOT NULL
+  AND b.finished_at IS NOT NULL AND cardinality(b.planted_active) = 0
+  AND cardinality(c.planted_active) = 0
 """
 # Write one item's confirmation into the experiment's per-example data, in place, so the console
 # ledger shows each step as it happens.
@@ -152,6 +154,7 @@ def save_experiment(
             "started_at": experiment.started_at,
             "finished_at": experiment.started_at + timedelta(seconds=experiment.wall_seconds),
             "wall_seconds": round(experiment.wall_seconds, 2),
+            "planted_active": planted.active(),  # as ops.runs records them for a run
         },
     )
 
@@ -181,6 +184,7 @@ class OpsItemSink:
                     "started_at": experiment.started_at,
                     "finished_at": None,
                     "wall_seconds": None,
+                    "planted_active": planted.active(),  # the request's own flags included
                 },
             )
             conn.commit()
@@ -219,7 +223,9 @@ def _confirmation(entry: dict[str, Any]) -> Confirmation:
 
 
 def baseline_for(conn: psycopg.Connection, knowledge_version: str) -> ExperimentResult:
-    """The latest finished experiment of `knowledge_version` started in the open live session."""
+    """The latest finished experiment of `knowledge_version` started in the open live session,
+    made with no planted flag on: one a planted evaluator or analyzer made is never a comparison
+    point, nor a candidate a promotion decides on."""
     session_id = open_session(conn)
     row = conn.execute(
         LATEST_IN_SESSION,
@@ -227,8 +233,8 @@ def baseline_for(conn: psycopg.Connection, knowledge_version: str) -> Experiment
     ).fetchone()
     if row is None:
         raise NoLiveBaseline(
-            f"no experiment of {knowledge_version} was started in this live session: run the "
-            "baseline experiment now"
+            f"no experiment of {knowledge_version} was started and finished in this live session "
+            "with no planted flag on: run the baseline experiment now"
         )
     return _result(row)
 

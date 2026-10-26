@@ -27,23 +27,12 @@ make up
 make ps
 ```
 
-**You should see:** the image build, then the containers starting. `make ps` on the course machine:
+**You should see:** the image build, then the containers starting. `make ps` on the course machine
+on 25 October 2026:
 
-```text
-NAME                    IMAGE                    COMMAND                  SERVICE     CREATED          STATUS                    PORTS
-datapilot-api-1         datapilot:local          "uvicorn datapilot.l…"   api         32 minutes ago   Up 31 minutes (healthy)   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
-datapilot-console-1     datapilot:local          "streamlit run app.p…"   console     32 minutes ago   Up 31 minutes             0.0.0.0:8501->8501/tcp, [::]:8501->8501/tcp
-datapilot-postgres-1    postgres:18.6-bookworm   "docker-entrypoint.s…"   postgres    40 minutes ago   Up 40 minutes (healthy)   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
-datapilot-scheduler-1   datapilot:local          "datapilot scheduler"    scheduler   32 minutes ago   Up 31 minutes
-datapilot-worker-1      datapilot:local          "datapilot worker"       worker      32 minutes ago   Up 31 minutes
-```
+![The terminal output of make ps: six services, api, console, hill-climbing-runner, postgres, scheduler, and worker, each with status Up, api and postgres marked healthy, and the ports of api, console, and postgres bound to 127.0.0.1 only](../docs/images/part0-make-ps-terminal.png)
 
-This capture was taken before the hill-climbing runner became a service, and before every port was
-bound to this machine only. Your `make ps` also lists `datapilot-hill-climbing-runner-1`, running
-`datapilot hill-climbing-runner`, with status `Up`, and its ports read `127.0.0.1:8000->8000/tcp`,
-`127.0.0.1:8501->8501/tcp`, and `127.0.0.1:5432->5432/tcp`, with no `0.0.0.0` or `[::]` entries.
-
-<!-- capture: make ps on the class machine with the hill-climbing-runner service listed -->
+*Six services up, the hill-climbing runner among them; `api` and `postgres` are healthy, and every port is bound to `127.0.0.1`, this machine only.*
 
 **Look at:** the STATUS column.
 
@@ -105,12 +94,15 @@ make reset NAME=hill-climbing-loop
 
 **You should see:** one confirmation per section. The hill-climbing reset says what it kept.
 
-<!-- capture: the terminal output of the four resets on the class machine -->
+![The terminal output of the four resets: each section's reset lists the tables it cleared; the hill-climbing reset also names the baseline experiment it kept, the candidate version it removed, the retired versions it kept, the active knowledge version v1, and the reset archive of the rows it changed](../docs/images/part0-four-resets-terminal.png)
+
+*Each reset says what it cleared; the hill-climbing reset keeps the session's baseline, leaves v1 active, and archives every row it changed.*
 
 **Look at:** the last line of each reset.
 
 **What it means:** each section's live run state is cleared and the kill switch is released.
-Planted bugs are flags in `.env`; the reset does not change them.
+The reset does not change the planted flags: they stay at `0` in `.env` all day, and each planted
+half sets its own with `make demo NAME=<demo> PLANTED=1`.
 
 > [!CHECKPOINT]
 > Every reset ends without an error line.
@@ -132,10 +124,15 @@ Planted bugs are flags in `.env`; the reset does not change them.
 make preflight PURPOSE=class
 ```
 
+The class session is the instructor's. On your own copy after class, type
+`make preflight PURPOSE=development` instead.
+
 **You should see:** one line per check starting with `ok`, one `canary` line per question ending in
 `as expected` with its trace link, and a last line that starts with `Live session started at`.
 
-<!-- capture: the terminal output of make preflight PURPOSE=class on the class machine -->
+![The terminal output of make preflight: seven ok lines for the pack, postgres, the data, the api, the console, the OpenAI key with gpt-6-luna, and the knowledge, then five canary lines, three easy questions passed and two trap questions failed, each as expected with its trace link, and the line Live session started at 12:42:50 with model id gpt-6-luna](../docs/images/part0-preflight-terminal.png)
+
+*PURPOSE=rehearsal shown; class prints the same lines with purpose class. Each canary line ends "as expected"; 12 warning lines and a trace-limit notice are left out.*
 
 **Look at:** the last line: the session's start time and the model id, `gpt-6-luna`.
 
@@ -149,9 +146,12 @@ still fail. Everything from now until the next preflight belongs to this class s
 > [!IFDIFFERENT]
 > `Your OpenAI key was not accepted. Check it with the operations team.` → the key in `.env` is missing or rejected; ask the operations team.
 > `The drift canary failed: ...` → the model changed; do not teach the measured results as they are, and re-run calibration.
+> `Less than one class pass is left of this Eastern time day's token budget ...` (only with `PURPOSE=class`) → no class session started, and the session open before it, often the rehearsal one, stays open: teach nothing in it. Less than about 520,000 tokens is left of the stack's daily token budget. Tell the course owner, then run the command the message's last line prints, `make preflight PURPOSE=class ACCEPT_TOKENS_LEFT=<the count left>`, with the count the `token budget` line shows: the class session starts knowingly, and the worker blocks every run once the cap is reached. Cut the planted half of the unbounded rows demo first, as [the instructor guide](../docs/instructor-guide.md#if-something-breaks) says under "The token budget refusal".
 
 > [!INSTRUCTOR]
 > Run preflight once. Never run it again during class: a new session orphans the class baseline.
+> Rehearse on an earlier Eastern time day than the class: the `token budget` line shows the day's
+> count, which starts again only at midnight Eastern time.
 > The canary asks five questions, each one agent run: about 40 model calls, under a cent.
 
 ### Step 5: Put the console on screen
@@ -164,7 +164,7 @@ still fail. Everything from now until the next preflight belongs to this class s
 
 ![The status line and run board as they look in class: the report-only level, no family cleared, the session start, the business date 31 January 2026, tokens today against the daily cap, Planted None: the fixed system, and the five lanes](../section-3-event-loop/demo/expected/events-webhook-question-board.png)
 
-*The status line in class: report-only level, business date 31 January 2026, and no planted bug; this capture already holds one posted run.*
+*The status line in class: report-only level, business date 31 January 2026, and no planted bug; this capture, of 24 October 2026, already holds one posted run, run ce15ac5d.*
 
 **Look at:** "Planted None: the fixed system" and "Business date: 31 January 2026".
 

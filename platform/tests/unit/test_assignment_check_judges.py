@@ -8,14 +8,17 @@ test doubles, in a unit test only; every check runs live."""
 from __future__ import annotations
 
 import importlib.util
+import os
 import uuid
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 
+import psycopg
 import pytest
 
+from datapilot import db, tests_database_guard
 from datapilot.assignments import WITHHELD_REASON, assignment, solutions_withheld
 from datapilot.assignments.report import Stop
 from datapilot.assignments.runner import load_check
@@ -29,6 +32,7 @@ from datapilot.contracts import (
     Stage,
 )
 from datapilot.contracts.api import EventSubmitted
+from datapilot.settings import REPO
 
 agent_loop = load_check(assignment("agent-loop").check_file)
 verification_loop = load_check(assignment("verification-loop").check_file)
@@ -41,15 +45,87 @@ NOW = datetime(2026, 10, 23, tzinfo=UTC)
 def test_the_read_only_requirement_fails_while_there_is_no_lookup(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(agent_loop, "_warehouse", lambda: None)
+    monkeypatch.setattr(agent_loop, "_warehouse", lambda *marker: None)
     with pytest.raises(NotImplementedError, match="agent-loop-1"):
         agent_loop._read_only_role()
+
+
+@pytest.fixture
+def closed_port_allowed() -> Any:
+    """The check's closed address (127.0.0.1, port 1) is refused under pytest as any address but
+    the tests' is; a lookup that tries it is what these tests show, so its refusal is expected."""
+    start = len(tests_database_guard.refused)
+    yield
+    closed = f":{agent_loop.CLOSED_PORT}/"  # the check's closed port, on any host
+    kept = [a for a in tests_database_guard.refused[start:] if closed not in a]
+    tests_database_guard.refused[start:] = kept
+
+
+def test_the_read_only_requirement_closes_the_port_and_the_superuser_too(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Review of session 6, round 2: an owner address built from POSTGRES_PORT, or the superuser
+    address, still reached the database while the lookup ran."""
+    monkeypatch.setenv("POSTGRES_PORT", "55432")
+    with agent_loop.only_the_agent_role():
+        assert os.environ["POSTGRES_PORT"] == agent_loop.CLOSED_PORT
+        assert os.environ["DATABASE_URL_SUPERUSER"] == agent_loop.CLOSED
+        from datapilot.settings import Settings
+
+        assert Settings(_env_file=None).postgres_port == int(agent_loop.CLOSED_PORT)
+    assert os.environ["POSTGRES_PORT"] == "55432"  # put back afterwards
+
+
+def _lookup_as(url_of: Any) -> Any:
+    """A lookup that connects to the address `url_of(warehouse)` gives and finds one value."""
+
+    def lookup(warehouse: Any, kind: str, wording: str) -> Any:
+        with psycopg.connect(url_of(warehouse), connect_timeout=2):
+            pass
+        return SimpleNamespace(candidates=["Alpine Trek 45L Backpack"])
+
+    return lookup
+
+
+@pytest.mark.parametrize(
+    "url_of",
+    [
+        lambda warehouse: db.url_for(db.Role.OWNER),
+        lambda warehouse: os.environ["DATABASE_URL_" + "APP"],
+    ],
+    ids=["the owner role by its enum", "the application role by a built name"],
+)
+@pytest.mark.usefixtures("closed_port_allowed")
+def test_the_read_only_requirement_fails_a_lookup_that_connects_as_another_role(
+    monkeypatch: pytest.MonkeyPatch, url_of: Any
+) -> None:
+    """Review of session 6, round 1: a text search passed `db.Role["OWNER"]` and
+    `os.environ["DATABASE_URL_" + role]`. The check now closes every other role's address while
+    the lookup runs, so the role it connects as decides."""
+    monkeypatch.setattr(agent_loop, "_warehouse", lambda *marker: None)
+    monkeypatch.setattr(agent_loop.extension, "lookup_values", _lookup_as(url_of))
+    problem = agent_loop._read_only_role()
+    assert problem is not None and "could not connect" in problem
+    assert os.environ.get("DATABASE_URL_OWNER") != agent_loop.CLOSED  # put back afterwards
+
+
+def test_the_read_only_requirement_passes_a_lookup_that_reads_its_own_address(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(agent_loop, "_warehouse", lambda *marker: SimpleNamespace(url="unused"))
+
+    def lookup(warehouse: Any, kind: str, wording: str) -> Any:
+        assert db.url_for(db.Role.OWNER) == agent_loop.CLOSED  # closed while the lookup runs
+        return SimpleNamespace(candidates=["Alpine Trek 45L Backpack"])
+
+    monkeypatch.setattr(agent_loop.extension, "lookup_values", lookup)
+    assert agent_loop._read_only_role() is None
 
 
 def test_the_registration_requirement_names_its_extension_point(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(agent_loop, "_warehouse", lambda: None)
+    monkeypatch.setattr(agent_loop, "_warehouse", lambda *marker: None)
     assert agent_loop._registered().startswith("agent-loop-2:")
 
 
@@ -155,13 +231,18 @@ class _Absorbed:
             created_at=NOW,
         )
 
+    def run(self, run_id: str) -> SimpleNamespace:
+        """The run as the check reads it after the first ask: no planted bug on."""
+        return SimpleNamespace(run_id=run_id, planted_active=[])
+
 
 def test_a_drill_down_absorbed_into_an_earlier_run_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     posted = SimpleNamespace(status=RunStatus.POSTED, posts=[])
     monkeypatch.setattr(event_loop, "settle", lambda api, run_id, approver: posted)
     monkeypatch.setattr(event_loop, "posted_text", lambda detail: "Water Sports led it")
     drill = {"event_id": "drill-down:2026-01-30", "question": "Which category?"}
-    outcome = event_loop.drill_down(_Absorbed(), drill, "Water Sports")
+    names = event_loop.CategoryNames(("Water Sports",))
+    outcome = event_loop.drill_down(_Absorbed(), drill, "Water Sports", names)
     assert outcome.right and not outcome.passed
     assert "earlier run" in outcome.what()
     assert "new run" in outcome.fix()
@@ -454,9 +535,25 @@ def test_a_baseline_without_fingerprints_or_with_other_items_is_not_shared() -> 
 
 
 def test_a_first_check_prints_its_own_typical_cost() -> None:
-    assert "13.58 and 23.95" in hill_climbing_loop.typical(first=False)
-    assert "30.66" in hill_climbing_loop.typical(first=True)
+    assert "12.62 to 23.95 in seven later checks" in hill_climbing_loop.typical(first=False)
+    assert "an estimate" in hill_climbing_loop.typical(first=True)  # no clean first check yet
     assert hill_climbing_loop.typical(first=True) != hill_climbing_loop.typical(first=False)
+
+
+def _costs_row(name: str) -> str:
+    costs = (REPO / "docs" / "costs.md").read_text(encoding="utf-8")
+    return next(line for line in costs.splitlines() if line.startswith(f"| {name} |"))
+
+
+def test_the_printed_typical_costs_are_the_costs_page_figures() -> None:
+    """docs/costs.md is the one source: a learner sees the same figure in the terminal and on the
+    page the check points to (review of session 6, round 1)."""
+    later = _costs_row("Assignment 4, each later check")
+    assert "About 13 to 24 cents (12.62 to 23.95, seven checks" in later
+    assert hill_climbing_loop.TYPICAL_LATER.startswith("about 13 to 24 cents (12.62 to 23.95")
+    assert "About 0.2 cents" in _costs_row("Assignment 3: Event loop")
+    source = assignment("event-loop").check_file.read_text(encoding="utf-8")
+    assert 'typical="about 0.2 cents"' in source
 
 
 class _PlanContext:

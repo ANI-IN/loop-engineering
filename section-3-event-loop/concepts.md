@@ -4,10 +4,10 @@ Reading time: about 9 minutes.
 
 ## The problem
 
-**Illustrative scenario.** At Harbor & Pine Outfitters the morning digest posts twice after a
-worker retries, and the finance channel argues about which copy is right. A California marketing
-export with customer emails runs while nobody watches. When someone presses stop, new runs stop,
-but the run already in flight keeps going and posts.
+**Illustrative scenario.** Take the three failures from the
+[section page](README.md#the-problem): the morning digest that posts twice after a worker retry,
+while the finance channel argues about which copy is right; the California marketing export that
+runs while nobody watches; and the stop button that leaves the run already in flight to post.
 
 > **Terms on this page**
 >
@@ -114,7 +114,7 @@ The worker claims a job in one short transaction and finishes it only while it s
 lease of the same attempt. These are the three statements:
 
 ```python
-# platform/src/datapilot/loop3_events/worker.py (lines 69-89)
+# platform/src/datapilot/loop3_events/worker.py (lines 70-90)
 CLAIM_SQL = """
 UPDATE ops.jobs
 SET status = 'running', attempts = attempts + 1, lease_owner = %(owner)s,
@@ -153,9 +153,9 @@ parts live beside it:
 
 | Check | Result |
 |---|---|
-| Duplicate event: answers posted | 1 answer and 2 duplicates absorbed, in 5 of 5 runs |
-| Approval after a worker restart | Survived the restart and posted after approval, in 5 of 5 runs |
-| In-flight run after the kill switch | Stopped in flight, at the report-only level, in 7 of 7 runs |
+| Duplicate event: answers posted | 1 answer and 2 duplicates absorbed, in 7 of 7 runs |
+| Approval after a worker restart | Survived the restart and posted after approval, in 7 of 7 runs |
+| In-flight run after the kill switch | Stopped in flight, at the report-only level, in 9 of 9 runs |
 
 With each planted bug on, the failure appeared in every run: three answers, a lost approval, a post
 after the switch. The kill switch count includes the paced capture. The runs are on the

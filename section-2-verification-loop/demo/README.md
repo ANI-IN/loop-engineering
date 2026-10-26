@@ -2,11 +2,11 @@
 
 ## The problem
 
-**Illustrative scenario.** A product name in the Harbor & Pine Outfitters catalogue reads like an
-instruction to delete old orders. The agent stacks a second Structured Query Language (SQL)
-statement after its SELECT, and a guard that only checks the first word lets it through. In another
-run a check keeps failing, and the agent retries until the bill climbs. Then a revenue answer
-passes every check and is still wrong.
+**Illustrative scenario.** The three failures from the
+[section page](../README.md#the-problem): a second Structured Query Language (SQL) statement
+stacked after the SELECT that a guard checking only the first word lets through, a check that fails
+on every retry while the bill climbs, and a revenue answer that passes every check and is still
+wrong.
 
 These demos put all three in front of a live run. Fixed malicious statements go through each
 defense layer in turn. An injected grader that always fails tests the retry cap. The spine question
@@ -30,13 +30,13 @@ graders and the read-only role, with no model call. The retry cap and the spine 
 runs of the analyst with real model calls, traced to LangSmith. The console shows every grader
 result, which layer stopped each statement, and the reviewer's verdict.
 
-Times and cost, measured live on 22 and 23 October 2026: each demo twice with a reset between in
-calibration, then once in each live session of 23 October, afternoon and evening, on the code as it
-stood that day (later changes, made with no model call, are owed a live re-run): malicious SQL 2 to 6
-s with no model call, the retry cap 14 to 79 s, every grader passes but the answer is wrong 52 to
-58 s. That last demo was shown in 4 of 5 live attempts since the change that keeps one run's gold
-check from blocking another; in the one not shown, the run posted with no gold check. The runs are on the
-[evidence page](../../docs/evidence/section-2-verification-loop.md), and `run.sh` states the most a
+Times, measured live on 22 and 23 October 2026: malicious SQL 2 to 6 seconds with no model call,
+the retry cap 14 to 79 seconds, and every grader passes, still wrong 52 to 58 seconds. On the
+code of 24 October 2026, measured live once that day: malicious SQL 2 seconds, the retry cap 20
+seconds, and every grader passes, still wrong 50 seconds. The last demo was shown in 5 of 6 live
+attempts after the change that keeps one run's gold check from blocking another, the last two in a
+row; in the other, the run posted with no gold check. The runs are on the
+[evidence page](../../docs/evidence/section-2-verification-loop.md#results), and `run.sh` states the most a
 run can cost at the caps in `platform/packs/datapilot_us/pack.yaml`.
 
 ```mermaid
@@ -56,13 +56,19 @@ flowchart LR
 ## Run it
 
 Finish the [setup pages](../../setup/README.md) first, including the
-[pre-class checks](../../setup/pre-class.md). Then start the services and confirm the data in a
-terminal at the repository root:
+[pre-class checks](../../setup/pre-class.md). Then start the services, confirm the data, and open
+a live session in a terminal at the repository root:
 
 ```bash
 make up
 make check-data
+make preflight PURPOSE=development
 ```
+
+Every run belongs to a live session, which `make preflight` opens; with none open, a demo fails
+with "No live session is open". Preflight first asks five questions that show the model still
+behaves as the course measured it, one agent run each. In class the instructor runs
+`make preflight PURPOSE=class` instead.
 
 Open the console at http://localhost:8501 on the Verify page. Run every core demo of this section
 from the same terminal, one at a time, with:
@@ -76,8 +82,8 @@ Each `make demo` prints the run ids it started; the run itself shows up in the c
 
 Three demos run twice, once with their planted bug on and once with it off: malicious SQL
 (`BUG_NAIVE_GUARD`), the cost guard (`BUG_NO_COST_GUARD`), and the retry cap
-(`BUG_NO_RETRY_CAP`). Set the flag to `1` in `.env`, run `make up` so the services read it, and run
-the demo; then set it back to `0`, run `make up`, and run the demo again.
+(`BUG_NO_RETRY_CAP`). `make demo NAME=<demo> PLANTED=1` switches the bug on for that demo's run
+alone; then `make demo NAME=<demo>` runs the fixed half. `.env` never changes.
 
 <!-- generated:demo-table -->
 | Demo | Tier | Run it | Target minutes |
@@ -120,7 +126,7 @@ and what may differ from run to run.
 - **Tier**: core
 - **Start it**: Verify > Send malicious SQL in the console, or `make demo NAME=verify-malicious-sql`
 - **Guaranteed by**: the naive guard (`BUG_NAIVE_GUARD`)
-- **What appears**: With the naive guard, "SELECT 1; DELETE FROM orders" and a data-modifying CTE pass the guard and the read-only role refuses them (SQLSTATE 25006); with the syntax-tree guard, layer 2 rejects them before execution. A raw DELETE as the agent role is refused by the role.
+- **What appears**: With the naive guard, "SELECT 1; DELETE FROM orders" and a data-modifying CTE pass the guard and the read-only role refuses them (SQLSTATE 25006); with the syntax-tree guard, its parse step stops the stacked statements and its statement policy the data-modifying CTE, before execution. A raw DELETE as the agent role is refused by the role.
 - **Expected live outcome**: The defense-layer panel shows which layer stopped each statement; no warehouse row changes.
 - **What can vary**: nothing in the outcome; timings only
 - **Recovery**: `make reset NAME=verification-loop`, then the same trigger again
@@ -176,7 +182,7 @@ The reviewer may catch it or not; one run shows one verdict. That gap is the cas
 | What you see | Why | What to do |
 |---|---|---|
 | `run.sh` says the services do not answer | The services are not running | `make up`, then `make ps` until every service is healthy |
-| The same layer stops the statements with the bug on and off | The flag did not reach the services | Run `make up` after each change to `.env` |
-| The retry-cap run never escalates with the bug off | The services still hold `BUG_NO_RETRY_CAP=1` | Set it to `0`, run `make up`, and run it again |
+| The same layer stops the statements with the bug on and off | The planted half was sent without `PLANTED=1` | `make demo NAME=verify-malicious-sql PLANTED=1` |
+| The retry-cap run never escalates with the bug off | `.env` sets `BUG_NO_RETRY_CAP=1` | Set it to `0`, run `make up`, and run it again |
 | The run stays in Queued | The worker is not running or is restarting | `make ps`; `make logs NAME=worker` for the reason |
 | Anything else | A stale run or an engaged kill switch | `make reset NAME=verification-loop`, then the same trigger again |

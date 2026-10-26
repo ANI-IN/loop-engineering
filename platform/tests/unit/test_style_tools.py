@@ -100,6 +100,58 @@ def test_a_folder_that_vanishes_during_the_walk_does_not_end_the_check(
     assert ".venv" not in entered and "lib" not in entered, "dot folders are never entered"
 
 
+@pytest.mark.parametrize(
+    ("line", "phrase"),
+    [
+        ("In today's fast-paced world, agents fail.", "In today's"),
+        ("It is important to note that the guard runs first.", "It is important to note"),
+        ("Let us dive into the verification loop.", "dive into"),
+        ("A deep-dive on graders.", "deep-dive"),
+        ("The kill switch is a game changer.", "game changer"),
+        ("In conclusion, the router is a table.", "In conclusion"),
+        ("Needless to say, the lease expires.", "Needless to say"),
+        ("At the end of the day the reviewer reads the answer.", "At the end of the day"),
+        ("This will unlock faster reviews.", "unlock"),
+    ],
+)
+def test_the_prose_lint_finds_filler_phrases(line: str, phrase: str) -> None:
+    assert _load("lint_prose").lint_text(line) == [(1, f"banned word or phrase: '{phrase}'")]
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "The worker calls `pg_advisory_unlock` when the job ends.",
+        "The reaper can unlock the lease of a dead worker.",
+        "Each claim takes a row lock; commit unlocks the row.",
+    ],
+)
+def test_the_prose_lint_allows_the_technical_uses_of_unlock(line: str) -> None:
+    assert _load("lint_prose").lint_text(line) == []
+
+
+def test_an_allowed_use_spares_only_itself() -> None:
+    line = "Commit unlocks the row and unlocks new ideas."
+    assert _load("lint_prose").lint_text(line) == [(1, "banned word or phrase: 'unlocks'")]
+
+
+def test_the_prose_lint_reads_the_slide_sources() -> None:
+    lint_prose = _load("lint_prose")
+    assert "slides/source/opening.py" in lint_prose.SLIDE_SOURCES
+    assert all(name.endswith(".py") for name in lint_prose.SLIDE_SOURCES)
+
+
+def test_the_prose_lint_reports_file_line_and_phrase(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    page = tmp_path / "page.md"
+    page.write_text("# Page\n\nNeedless to say, it works ✨\n", encoding="utf-8")
+    assert _load("lint_prose").main([str(page)]) == 1
+    output = capsys.readouterr().out
+    assert f"x {page}:3: banned word or phrase: 'Needless to say'" in output
+    assert f"x {page}:3: emoji" in output
+
+
 def test_the_plain_status_symbols_are_allowed() -> None:
     line = "pass ✓, fail ✗, warning ⚠, waiting ⏳"
     assert _load("lint_prose").lint_text(line) == []

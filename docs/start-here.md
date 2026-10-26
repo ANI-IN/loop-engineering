@@ -21,7 +21,7 @@ Two kinds of time appear on these pages:
   concepts pages, and to 5 minutes for the post-class readings.
 - **Run time** is what a command took on the course machine, as the range over the measured runs
   with their date. The run times on these pages come from the calibration and live sessions of 22
-  and 23 October 2026.
+  to 24 October 2026.
 
 The assignment effort is the planned time for one learner, stated in each assignment's README.
 

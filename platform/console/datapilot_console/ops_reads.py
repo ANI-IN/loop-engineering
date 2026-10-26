@@ -47,13 +47,17 @@ WHERE d.pack = %(pack)s AND d.kind = 'safeguard'
                   AND newer.verdict = 'promoted' AND newer.decision_id > d.decision_id)
 ORDER BY d.decision_id DESC LIMIT 1
 """
-# The newest budget row is the current Eastern time day; reading it avoids the system clock.
-BUDGET = "SELECT day, token_limit, tokens_used FROM ops.budgets ORDER BY day DESC LIMIT 1"
+# The daily token budget counts per Eastern time day (loop3_events/budget.py, eastern_day). The
+# worker writes a day's row at its first claim, so before then the day has none and has used
+# nothing: the newest row may be an earlier day's, which the gauge never shows.
+EASTERN_ZONE = "America/New_York"
+TODAY = f"(now() AT TIME ZONE '{EASTERN_ZONE}')::date"
+BUDGET = f"SELECT day, token_limit, tokens_used FROM ops.budgets WHERE day = {TODAY}"
 LATEST_PLANTED = """
 SELECT planted_active FROM ops.runs
 WHERE session_id = %(session)s ORDER BY created_at DESC LIMIT 1
 """
-WATERMARK = """
+WATERMARK = f"""
 SELECT
   (SELECT max(e.id) FROM ops.run_events e) AS run_events,
   (SELECT max(p.post_id) FROM ops.posts p) AS posts,
@@ -63,8 +67,8 @@ SELECT
      AS control,
   (SELECT string_agg(metric_family || level, ',' ORDER BY metric_family)
      FROM ops.autonomy_policy) AS families,
-  (SELECT tokens_used::text || '/' || token_limit::text FROM ops.budgets
-     ORDER BY day DESC LIMIT 1) AS budget,
+  ({TODAY}::text || ':' || coalesce((SELECT tokens_used::text || '/' || token_limit::text
+     FROM ops.budgets WHERE day = {TODAY}), '')) AS budget,
   (SELECT string_agg(version || status, ',' ORDER BY version) FROM ops.knowledge_versions
      WHERE pack = %(pack)s) AS versions,
   (SELECT string_agg(experiment_id::text || ':' || jsonb_array_length(per_example)::text || ':'
@@ -78,7 +82,7 @@ SELECT
 """
 BOARD_RUNS = """
 SELECT r.run_id, r.event_id, r.demo_name, r.question, r.status, r.autonomy_level_applied,
-       r.langsmith_url, r.created_at, r.started_at,
+       r.langsmith_url, r.trace_refused_at, r.created_at, r.started_at,
        (SELECT count(*) FROM ops.event_duplicates d WHERE d.event_id = r.event_id) AS duplicates
 FROM ops.runs r
 WHERE r.session_id = %(session)s AND r.event_id IS NOT NULL
@@ -98,14 +102,16 @@ ORDER BY run_id, id DESC
 """
 LATEST_RUN_FOR = """
 SELECT run_id, event_id, demo_name, question, status, knowledge_version, model, tokens_in,
-       tokens_out, cost_usd, langsmith_url, answer, created_at, started_at, finished_at
+       tokens_out, cost_usd, langsmith_url, trace_refused_at, answer, created_at, started_at,
+       finished_at
 FROM ops.runs
 WHERE session_id = %(session)s AND demo_name LIKE %(prefix)s
 ORDER BY created_at DESC LIMIT 1
 """
 RUN_BY_ID = """
 SELECT run_id, event_id, demo_name, question, status, knowledge_version, model, tokens_in,
-       tokens_out, cost_usd, langsmith_url, answer, created_at, started_at, finished_at
+       tokens_out, cost_usd, langsmith_url, trace_refused_at, answer, created_at, started_at,
+       finished_at
 FROM ops.runs WHERE run_id = %(run)s AND session_id = %(session)s
 """
 RUN_EVENTS = """

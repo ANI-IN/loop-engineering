@@ -3,7 +3,8 @@
 Every request and response model, and the endpoint table, is in datapilot.contracts.api.
 
 At startup it probes the agent role: a write inside a read-only transaction must fail with SQLSTATE
-25006, or the process refuses to start.
+25006, or the process refuses to start. It then reports the planted flags its environment switched
+on (ops.service_planted), which a live check and the finale read.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from contextlib import asynccontextmanager
 import psycopg
 from fastapi import FastAPI, HTTPException
 
-from datapilot import db
+from datapilot import db, planted
 from datapilot.config import pack_config
 from datapilot.contracts.api import Health
 from datapilot.loop2_verification.config import VerificationConfig
@@ -32,6 +33,9 @@ def probe_agent_role() -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     probe_agent_role()
+    with db.connect(db.Role.APP) as conn:
+        planted.report_service(conn, "api")
+        conn.commit()
     yield
 
 

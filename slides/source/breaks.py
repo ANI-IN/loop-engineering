@@ -71,6 +71,7 @@ BLOCKS = {
         {
             "kind": "break",
             "title": "Time for a Break",
+            "allow_commands": True,
             "layout": "blank",
             "minutes": 10,
             "says": "A 10-minute break is starting now. Please return when the timer ends to "
@@ -82,12 +83,19 @@ BLOCKS = {
                 "continue the presentation",
             ],
             "notes": [
+                "Do, at the start of the break, in the demo terminal: `make demo "
+                "NAME=improve-naive-analyzer-blocked PLANTED=1`. It queues the naive analyzer and "
+                "its candidate experiment behind the baseline, with the planted bug on for those two "
+                "requests only. The command plants it with or without PLANTED=1. The console's "
+                "Improve > Run the naive analyzer (planted), shown while demo controls are allowed, "
+                "queues the same two requests; its Run analyzer button runs the analyzer team.",
                 "Say: Write the return time, 3:05, in the chat. Check once that the grouped "
                 "benchmark progress strip on the run board is counting up.",
                 "Point at: the timer.",
                 'Likely question: "Will the experiment finish in time?" Answer: yes; at '
-                "concurrency 8 a 70-run experiment took 182 to 459 seconds in calibration, and the "
-                "baseline itself 266 to 285 seconds, inside the poll and the break.",
+                "concurrency 8 a 70-run experiment took 171.3 to 459 seconds of experiment wall time, "
+                "and the baseline 236 to 386 seconds from the trigger, the longest on a shared "
+                "machine, inside the poll and the break.",
                 "Transition: Welcome back. The poll asked how much autonomy to grant; now "
                 "we earn it.",
             ],

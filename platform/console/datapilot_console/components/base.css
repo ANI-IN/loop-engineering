@@ -38,6 +38,10 @@ a.trace {
 }
 a.trace:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .stamp { font-size: 0.889em; white-space: nowrap; }
+/* A refused trace: muted words, never a link; the stamp wraps, the run's label stays whole. */
+.stamp.refused { white-space: normal; }
+.trace-note { color: var(--graphite); }
+.run-label { white-space: nowrap; }
 [hidden] { display: none !important; }
 .mark { display: inline-block; width: 12px; height: 12px; vertical-align: -1px; flex: none; }
 .mark.filled { background: currentColor; }

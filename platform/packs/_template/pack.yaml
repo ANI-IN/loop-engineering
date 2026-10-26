@@ -53,7 +53,10 @@ limits:
 # Token budgets sized for gpt-6-luna (reasoning tokens included). Calibration confirms them.
 budgets:
   tokens_per_run: 60000
-  tokens_per_day: 2000000
+  tokens_per_day: 2000000   # worker runs only, per Eastern time calendar day
+  # YOURS: the worker tokens of one full pass of your class; make preflight PURPOSE=class refuses
+  # while less than this is left of the day. Measure it in rehearsal (the ops.budgets row's growth).
+  class_pass_tokens: 394000
 
 # The live assignment checks (make check-assignment). Each check stops at its own spend cap in US
 # dollars, counted from the spend ledger's rows of that check alone, with the build budget on or off.
@@ -181,6 +184,11 @@ preflight:
   canary:
     easy: [plan-count, members-north, members-joined-2024]
     traps: [net-revenue-march-2025, charges-june-2025]
+
+# The class-day safeguard (make safeguard-activate) takes the newest verification only when it is
+# at most this many days old and comes from a rehearsal session of this stack.
+safeguard:
+  verification_age_limit_days: 7
 
 console:
   kill_switch_disarm_seconds: 5   # an armed kill switch disarms after this; rehearsal may raise it

@@ -7,7 +7,6 @@ files, add keys and indexes, apply the agent role's grants and settings (superus
 from __future__ import annotations
 
 import hashlib
-import os
 import tempfile
 import time
 from dataclasses import dataclass
@@ -21,7 +20,7 @@ from psycopg.conninfo import make_conninfo
 
 from datapilot import db
 from datapilot.config import pack_config
-from datapilot.settings import PLATFORM
+from datapilot.settings import PLATFORM, get_settings
 
 from .generator import PROFILES, TABLES, HarborPineGenerator
 
@@ -52,8 +51,9 @@ def owner_url(warehouse: str) -> str:
 
 def superuser_url(warehouse: str) -> str:
     """The local Compose superuser (POSTGRES_PASSWORD in compose.yaml); role settings such as
-    temp_file_limit can only be set by a superuser. DATABASE_URL_SUPERUSER overrides it."""
-    base = os.environ.get("DATABASE_URL_SUPERUSER")
+    temp_file_limit can only be set by a superuser. DATABASE_URL_SUPERUSER, in .env or the
+    environment, overrides it."""
+    base = get_settings().database_url_superuser
     if not base:
         base = make_conninfo(db.url_for(db.Role.OWNER), user="postgres", password="postgres")
     return make_conninfo(base, dbname=DATABASES[warehouse])

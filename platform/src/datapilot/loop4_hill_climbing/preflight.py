@@ -3,12 +3,15 @@ of its live session (`make preflight PURPOSE=...`, the only code path that start
 
 1. Services: the selected pack (DATAPILOT_PACK), Postgres with the ops migrations, the pack's data
    as the agent's role sees it (preflight.data_check in pack.yaml), the api, and the console.
-2. The OpenAI key: one model lookup, no tokens; a missing or rejected key stops here.
-3. The starting knowledge is installed (v1 active when no version is).
-4. The drift canary (preflight.canary in pack.yaml): three easy questions must pass and two trap
+2. The daily token budget of the Eastern time day (budgets in pack.yaml): used, cap, and left.
+   For the class it stops here while less than one class pass is left (budgets.class_pass_tokens),
+   unless the instructor names the exact count left (ACCEPT_TOKENS_LEFT): a knowing start.
+3. The OpenAI key: one model lookup, no tokens; a missing or rejected key stops here.
+4. The starting knowledge is installed (v1 active when no version is).
+5. The drift canary (preflight.canary in pack.yaml): three easy questions must pass and two trap
    questions must still fail under the starting knowledge. The class model has no dated snapshot,
    so a trap that passes means it moved and calibration must run again.
-5. A new live session with the given purpose starts, ending the previous one.
+6. A new live session with the given purpose starts, ending the previous one.
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ import os
 import uuid
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -30,6 +33,7 @@ from datapilot.contracts import BenchmarkItem, Split
 from datapilot.contracts.live import LiveSession, SessionPurpose
 from datapilot.loop2_verification.config import VerificationConfig
 from datapilot.loop2_verification.executor import ExecutionError, Executor
+from datapilot.loop3_events.budget import DayBudget
 from datapilot.loop4_hill_climbing import versions
 from datapilot.loop4_hill_climbing.experiment import ExperimentRunner, RunTracer, Target
 from datapilot.loop4_hill_climbing.measurement import Scheme
@@ -48,6 +52,18 @@ EASY_FAILED = (
     "model and the warehouse, then run preflight again."
 )
 APPLIED = "SELECT count(*) AS n FROM ops.schema_migrations"
+BUDGET_SHORT = (
+    "Less than one class pass is left of this Eastern time day's token budget, so the class would "
+    "reach the cap part way and every later run would be blocked. No class session started, so "
+    "the open session, if any, stays open. The count starts again at midnight Eastern time, in "
+    "{until}; rehearse on an earlier Eastern time day. Raising or resetting the class stack's "
+    "count is the course owner's decision; no command here changes it. To hold the class today "
+    "with the {left:,} tokens left, knowingly: "
+    "make preflight PURPOSE=class ACCEPT_TOKENS_LEFT={left}"
+)
+# The make variable (and environment variable) that names the count left; preflight takes it only
+# when it equals the day's count, so a value set on an earlier day never starts a class unasked.
+ACCEPT_VARIABLE = "ACCEPT_TOKENS_LEFT"
 
 
 @dataclass(frozen=True)
@@ -180,7 +196,40 @@ def service_checks(
 def settings_console_url(settings: Settings) -> str:
     """The console sits beside the api on the console port (CONSOLE_PORT, 8501 by default)."""
     host = httpx.URL(settings.datapilot_api_url).host
-    return f"http://{host}:{os.environ.get('CONSOLE_PORT', '8501')}/"
+    return f"http://{host}:{settings.console_port}/"
+
+
+def budget_check(
+    purpose: SessionPurpose,
+    day: DayBudget,
+    class_pass_tokens: int,
+    until: timedelta,
+    accepted_left: int | None = None,
+) -> tuple[Check, str | None]:
+    """The day's tokens against the cap, and for the class the refusal while less than one class
+    pass is left. Only worker runs count; the canary and experiments run outside the worker.
+
+    `accepted_left` is the instructor's knowing start of a short class day: it is taken only when
+    it equals the tokens left, the number the refusal prints, so the session starts with that
+    count known and the worker still blocks every run once the cap is reached."""
+    detail = (
+        f"{day.used:,} of {day.cap:,} tokens used on the Eastern time day {day.day.isoformat()}, "
+        f"{day.left:,} left"
+    )
+    if purpose is SessionPurpose.CLASS and day.left < class_pass_tokens:
+        detail += f"; a class pass needs about {class_pass_tokens:,}"
+        if accepted_left == day.left:
+            detail += f"; started knowingly with {ACCEPT_VARIABLE}={accepted_left}"
+            return Check("token budget", True, detail), None
+        refusal = BUDGET_SHORT.format(until=_hours(until), left=day.left)
+        return Check("token budget", False, detail), refusal
+    return Check("token budget", True, detail), None
+
+
+def _hours(span: timedelta) -> str:
+    minutes = max(0, int(span.total_seconds() // 60))
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours} hour{'' if hours == 1 else 's'} {minutes} minute{'' if minutes == 1 else 's'}"
 
 
 def key_check(settings: Settings, lookup: Callable[[str, str], str] | None = None) -> Check:
@@ -244,6 +293,7 @@ def preflight(
     canary: Callable[[], list[CanaryRun]],
     start_session: Callable[[SessionPurpose, str, str], LiveSession],
     services: Callable[[], list[Check]],
+    budget: Callable[[], tuple[Check, str | None]],
     key: Callable[[], Check],
     install: Callable[[], list[str]],
 ) -> Preflight:
@@ -251,6 +301,11 @@ def preflight(
     report.checks = services()
     if not all(c.ok for c in report.checks):
         report.stopped = "A service is not ready: run make up, then preflight again."
+        return report
+    tokens, refusal = budget()
+    report.checks.append(tokens)
+    if refusal:
+        report.stopped = refusal
         return report
     found = key()
     report.checks.append(found)

@@ -18,8 +18,17 @@ TEST_LOCK ?= /tmp/datapilot-tests-database.lock
 VARIANT ?=
 TREE ?=
 PACK ?=
+PLANTED ?=
+ONCE ?=
+# The variables a target reads count only when given on make's command line (make demo NAME=x).
+# A shell may export any of them for its own reasons: WSL sets NAME to the computer's name in
+# every shell. One that comes from the environment is emptied here and kept out of every recipe's
+# environment, so no target acts on it. MAKEFLAGS is make's own command line, as a parent make
+# passes it to a sub-make: a variable defined there counts as given on the command line.
+COMMAND_LINE_ONLY := NAME PURPOSE STEP ARGS VARIANT TREE PACK PLANTED ONCE LEVEL BY RUN REPO FORCE
+$(foreach variable,$(COMMAND_LINE_ONLY),$(if $(filter command line,$(origin $(variable))),,$(eval unexport $(variable))$(eval override $(variable) :=)))
 
-.PHONY: verify help setup up down ps logs migrate seed check-data spend test-stack test-stack-down live-smoke preflight hill-climbing-runner calibrate style-tile demos registries outline docs docs-check test test-integration test-console 	lint format import-lint lint-prose check-style check-style-strict check-short-forms check-names check 	demo reset reset-discarding-baseline archive archive-show safeguard-status safeguard-verify safeguard-activate autonomy open-code test-security 	check-assignment apply-solution verify-assignments diagrams check-pack
+.PHONY: verify help setup up down ps logs migrate seed check-data spend test-stack test-stack-down live-smoke preflight hill-climbing-runner calibrate style-tile demos registries outline docs docs-check test test-integration test-console 	lint format import-lint lint-prose check-style check-style-strict check-short-forms check-names check 	demo reset reset-discarding-baseline archive archive-show safeguard-status safeguard-verify safeguard-activate autonomy open-code test-security 	check-assignment apply-solution verify-assignments diagrams check-pack ci-local check-images
 
 help: ## List every target
 	@grep -E '^[a-zA-Z0-9_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-20s %s\n", $$1, $$2}'
@@ -115,6 +124,9 @@ ci-local: ## The continuous integration workflow's own steps in a clean clone, n
 	@test -n "$(REPO)" || { echo "x name the release clone: make ci-local REPO=<folder>"; exit 2; }
 	$(UV) run python platform/scripts/ci_local.py --repo "$(REPO)"
 
+check-images: ## Published images: size, blank areas, clipped edges, alt text (not in the gate until the screenshots are retaken)
+	$(UV) run python platform/scripts/check_images.py
+
 check-short-forms: ## The naming rule on this branch's commit messages (the build only; read without a pipe)
 	$(UV) run python platform/scripts/check_repo_guards.py --commit-messages
 
@@ -138,8 +150,8 @@ check-pack: ## Check a domain pack, with both databases, before any model call: 
 	@test -n "$(PACK)" || (echo 'name the pack: make check-pack PACK=<a folder under platform/packs>'; exit 2)
 	$(UV) run python use-in-your-repo/check_pack.py $(PACK) --database
 
-demo: ## Trigger a live demo through the api: make demo NAME=<demo slug>
-	$(UV) run datapilot demo $(NAME)
+demo: ## Trigger a live demo through the api: make demo NAME=<demo slug> [PLANTED=1: its planted bugs on for its own runs only]
+	$(UV) run datapilot demo $(NAME) $(if $(and $(filter command line,$(origin PLANTED)),$(filter 1,$(PLANTED))),--planted)
 
 reset: ## Clear a section's live run state and release the kill switch: make reset NAME=<section>
 	$(UV) run datapilot reset $(NAME)
@@ -159,8 +171,8 @@ safeguard-status: ## The version verified in rehearsal for the class-day safegua
 safeguard-verify: ## In rehearsal: make safeguard-verify NAME=<version> RUN=<finale run id> BY="<your name>"
 	$(UV) run datapilot safeguard verify "$(NAME)" --run "$(RUN)" --by "$(BY)"
 
-safeguard-activate: ## In class, when the finale answer is wrong: make safeguard-activate BY="<your name>"
-	$(UV) run datapilot safeguard activate --by "$(BY)"
+safeguard-activate: ## In class, when the finale answer is wrong: make safeguard-activate BY="<your name>" [NAME=<version>: a verified version whatever its age]
+	$(UV) run datapilot safeguard activate --by "$(BY)" $(if $(filter command line,$(origin NAME)),--version "$(NAME)")
 
 autonomy: ## Set the system's autonomy level through the api: make autonomy LEVEL=unattended BY="<your name>"
 	@test -n "$(LEVEL)" || (echo 'name the level: make autonomy LEVEL=report-only|assisted|unattended BY="<your name>"'; exit 2)
@@ -193,8 +205,8 @@ check-assignment: ## The live check of one assignment (model calls): make check-
 apply-solution: ## A scratch copy of the starter with one solution: make apply-solution NAME=<slug> VARIANT=<reference|alternative-one|alternative-two>
 	$(UV) run python -m datapilot.assignments apply $(NAME) $(VARIANT)
 
-verify-assignments: ## The build's live verification (model calls): each starter once, each solution twice, with captures [NAME=<slug>]
-	DATAPILOT_SPEND_ACTIVITY="assignment verification" $(UV) run python -m datapilot.assignments verify $(if $(NAME),--only $(NAME))
+verify-assignments: ## The build's live verification (model calls): each starter once, each solution twice, with captures [NAME=<slug>] [VARIANT=<variant>] [ONCE=1]
+	DATAPILOT_SPEND_ACTIVITY="assignment verification" $(UV) run python -m datapilot.assignments verify $(if $(NAME),--only $(NAME)) $(foreach v,$(VARIANT),--variant $(v)) $(if $(filter 1,$(ONCE)),--once)
 
 diagrams: ## Render the Excalidraw diagrams to SVG and PNG (authoring time; Playwright, dev group): ARGS=--build or --check
 	$(UV) run python platform/tools/diagrams/export_diagrams.py $(ARGS)

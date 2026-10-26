@@ -50,10 +50,15 @@ def lifecycle_transitions() -> dict[tuple[str, str], str]:
 
 # --- 1. System architecture ----------------------------------------------------------------------
 def system_architecture() -> Scene:
-    """compose.yaml (services and ports); platform/src/datapilot/db.py (database roles);
-    platform/src/datapilot/loop3_events/api/*.py (routes); loop3_events/scheduler.py;
-    loop3_events/worker.py; loop3_events/improvement.py; platform/ops/sql/ops/*.sql (tables);
-    platform/ops/sql/roles.sql; platform/packs/datapilot_us/pack.yaml (models)."""
+    """compose.yaml (services, the one-shot migrate, ports); platform/src/datapilot/db.py (database
+    roles, ops.schema_migrations); platform/src/datapilot/loop3_events/api/*.py (19 routes,
+    listed in contracts/api.py ENDPOINTS); loop3_events/scheduler.py; loop3_events/worker.py;
+    loop3_events/trace_refusals.py (ops.runs.trace_refused_at); loop3_events/improvement.py (the
+    runner's advisory lock); loop4_hill_climbing/runner.py (requests, two candidates through
+    candidates.py, promotions with clearance re-runs, gold checks of live runs);
+    platform/ops/sql/ops/*.sql (tables, 018 schema_migrations owner only, 020 trace_refused_at,
+    021 gate_baseline_id); platform/ops/sql/roles.sql; platform/packs/datapilot_us/pack.yaml
+    (models)."""
     s = Scene("system-architecture")
     # Row 2 first, so the page spells out "application programming interface" before any
     # other label says API.
@@ -63,10 +68,11 @@ def system_architecture() -> Scene:
         60,
         360,
         380,
-        "Application\nprogramming interface\n(API), FastAPI\n\nPOST /events\n"
-        "POST /approvals/{run_id}"
-        "\nPOST /control/kill-switch\nPOST /experiments/run\nPOST /analyzer/run",
-        size=24,
+        "Application\nprogramming interface\n(API), FastAPI\n\n19 routes, among them:\n"
+        "POST /events\nPOST /approvals/{run_id}\nPOST /control/kill-switch\n"
+        "POST /control/autonomy\nPOST /experiments/run\nPOST /analyzer/run\n"
+        "POST /knowledge/\n{version}/approve",
+        size=22,
     )
     # Column A: who sends work in.
     s.shape("outside", 50, 60, 340, 90, "Webhook sender")
@@ -90,25 +96,27 @@ def system_architecture() -> Scene:
     s.shape("agent", 1165, 214, 205, 100, "Reviewer\nagent", size=22)
     s.shape("code", 950, 330, 420, 92, "Seven graders and the\nread-only executor", size=24)
 
-    s.shape("boundary", 1460, 60, 410, 380)
-    s.text(1482, 72, "Hill-climbing loop runner", size=26)
+    s.shape("boundary", 1440, 60, 460, 380)
+    s.text(1462, 72, "Hill-climbing loop runner", size=26)
     s.shape(
         "agent",
-        1480,
-        116,
-        370,
-        150,
+        1460,
+        110,
+        420,
+        112,
         "Analyzer team agents:\nfailure analyst, rule\nwriter, critic",
-        size=22,
+        size=20,
     )
     s.shape(
         "code",
-        1480,
-        284,
-        370,
-        138,
-        "Experiment runner,\nevaluator, overfit guard,\npromotion gate",
-        size=24,
+        1460,
+        232,
+        420,
+        196,
+        "Experiment runner, evaluator,\noverfit guard, promotion gate\n"
+        "Two candidates, one kept on dev\nPromotion, then clearance re-runs\n"
+        "Gold checks of live runs\nOne runner per database",
+        size=20,
     )
 
     # Row 3: the services outside, and the data the agents read.
@@ -119,9 +127,10 @@ def system_architecture() -> Scene:
         "outside",
         480,
         640,
-        250,
-        120,
-        "LangSmith\ndemo and check runs\nin full; about 1\nexperiment run in 5",
+        270,
+        162,
+        "LangSmith\ndemo and check runs\nin full; about 1\nexperiment run in 5;\n"
+        "a refused trace is\nrecorded on its run",
         size=20,
     )
     s.shape("store", 950, 520, 180, 120, "Schema lg\ncheckpoints", size=24)
@@ -136,10 +145,11 @@ def system_architecture() -> Scene:
         1390,
         210,
         "PostgreSQL 18.6, database datapilot, schema ops: the shared state\n"
-        "events, event duplicates, jobs, runs, run events, approvals, posts, control,\n"
-        "budgets, autonomy policy, knowledge versions, experiments, promotion decisions,\n"
-        "improvement requests, live sessions, analyzer candidates, rehearsal verifications,\n"
-        "reset archives and their rows",
+        "events, event duplicates, jobs, runs (with any trace refusal), run events, approvals,\n"
+        "posts, control, budgets, autonomy policy, knowledge versions, experiments (with the\n"
+        "gate's recorded baseline), promotion decisions, improvement requests, live sessions,\n"
+        "analyzer candidates, rehearsal verifications, reset archives and their rows,\n"
+        "schema migrations (written by the owner role only)",
         size=22,
     )
 
@@ -160,6 +170,11 @@ def system_architecture() -> Scene:
     s.arrow([(1520, 442), (1520, 818)], both=True)
     s.text(1532, 740, "requests,\nexperiments", size=20)
     s.text(1612, 655, "execution match\non both databases", size=20)
+    # The one-shot service every other one waits on (compose.yaml, depends_on).
+    s.shape(
+        "code", 1110, 680, 380, 100, "migrate: applies the ops\nmigrations, then exits", size=22
+    )
+    s.arrow([(1300, 782), (1300, 818)], dashed=True)
     return s
 
 
@@ -167,8 +182,9 @@ def system_architecture() -> Scene:
 def four_loops() -> Scene:
     """platform/src/datapilot/loop1_agent/{analyst,scout}.py; loop2_verification/{loop,
     reviewer}.py; loop3_events/{router,api/events,worker,autonomy,killswitch,reaper}.py;
-    loop4_hill_climbing/{analyzer,overfit_guard,gate}.py;
-    platform/packs/datapilot_us/benchmark/{dev,holdout}.yaml (25 and 15 items)."""
+    loop4_hill_climbing/{analyzer,candidates,overfit_guard,gate,runner}.py; pack.yaml
+    (analyzer.candidates 2); platform/packs/datapilot_us/benchmark/{dev,holdout}.yaml (25 and 15
+    items)."""
     s = Scene("four-loops")
     # Step 1: Section 1: Agent loop.
     s.step = 1
@@ -233,48 +249,59 @@ def four_loops() -> Scene:
     s.step = 4
     s.shape("boundary", 1350, 30, 540, 1020)
     s.text(1374, 42, "Section 4: Hill-climbing loop", size=26)
-    s.shape("store", 1380, 100, 480, 90, "Benchmark: 25 dev items,\n15 holdout items", size=22)
+    s.shape("store", 1380, 96, 480, 84, "Benchmark: 25 dev items,\n15 holdout items", size=22)
     s.shape(
         "code",
         1380,
-        228,
+        208,
         480,
-        100,
+        90,
         "Experiment runner and evaluator:\nexecution match on two databases",
         size=20,
     )
-    s.shape("agent", 1380, 370, 140, 110, "Failure\nanalyst", size=20)
-    s.shape("agent", 1550, 370, 140, 110, "Rule\nwriter", size=20)
-    s.shape("agent", 1720, 370, 140, 110, "Critic", size=20)
-    s.text(1380, 490, "Analyzer team: failed dev items only", size=20)
+    s.shape("agent", 1380, 326, 140, 104, "Failure\nanalyst", size=20)
+    s.shape("agent", 1550, 326, 140, 104, "Rule\nwriter", size=20)
+    s.shape("agent", 1720, 326, 140, 104, "Critic", size=20)
+    s.text(1380, 438, "Analyzer team: failed dev items only", size=20)
     s.shape(
         "code",
         1380,
-        530,
+        476,
         480,
-        90,
+        80,
         "Overfit guard: no quoted question,\nno copied gold query",
         size=20,
     )
     s.shape(
         "code",
         1380,
-        660,
+        584,
         480,
-        100,
-        "Promotion gate: more holdout\npasses, zero regressions",
-        size=22,
+        72,
+        "Two candidates, each run on dev;\nthe better one becomes the draft",
+        size=20,
     )
-    s.shape("human", 1490, 790, 260, 120, "Human\napproval", size=22)
-    s.arrow([(1620, 192), (1620, 226)])
-    s.arrow([(1450, 330), (1450, 368)])
-    s.arrow([(1522, 425), (1548, 425)])
-    s.arrow([(1692, 425), (1718, 425)])
-    s.arrow([(1790, 482), (1790, 528)])
-    s.arrow([(1620, 622), (1620, 658)])
-    s.arrow([(1620, 762), (1620, 788)])
-    s.arrow([(1620, 912), (1620, 965), (622, 965)])
-    s.text(700, 975, "promoted: the new active version", size=20)
+    s.shape(
+        "code",
+        1380,
+        684,
+        480,
+        128,
+        "Promotion gate: more holdout passes,\nzero confirmed regressions, every\n"
+        "new rule passes the overfit guard,\nand human approval",
+        size=20,
+    )
+    s.shape("human", 1490, 836, 260, 116, "Human\napproval", size=22)
+    s.arrow([(1620, 182), (1620, 206)])
+    s.arrow([(1450, 300), (1450, 324)])
+    s.arrow([(1522, 378), (1548, 378)])
+    s.arrow([(1692, 378), (1718, 378)])
+    s.arrow([(1800, 432), (1800, 474)])
+    s.arrow([(1620, 558), (1620, 582)])
+    s.arrow([(1620, 658), (1620, 682)])
+    s.arrow([(1620, 814), (1620, 834)])
+    s.arrow([(1620, 954), (1620, 985), (622, 985)])
+    s.text(700, 995, "promoted: the new active version", size=20)
     return s
 
 
@@ -483,9 +510,10 @@ def event_loop() -> Scene:
     """platform/src/datapilot/loop3_events/api/events.py (ON CONFLICT, duplicates, one
     transaction); scheduler.py (digest:YYYY-MM-DD at 8 a.m. Eastern time); router.py; worker.py
     (claim, lease 30 seconds, heartbeat at a third of it, fenced finish, parked jobs, the checks at
-    claim); reaper.py; killswitch.py; approvals.py (AsyncPostgresSaver in schema lg, thread_id =
-    run_id); api/control.py (POST /approvals/{run_id}); budget.py; platform/ops/sql/ops/001 and
-    002 (jobs columns, max_attempts 3); pack.yaml (tokens_per_day 2000000)."""
+    claim); router.py (ROUTES, DEFENSE_CHECK, job_route over extension.JOB_QUEUES); reaper.py;
+    killswitch.py; approvals.py (AsyncPostgresSaver in schema lg, thread_id = run_id);
+    api/control.py (POST /approvals/{run_id}); budget.py; platform/ops/sql/ops/001 and 002 (jobs
+    columns, max_attempts 3); pack.yaml (tokens_per_day 2000000)."""
     s = Scene("event-loop")
     s.step = 1
     s.text(400, 30, "Idempotency key: event_id", size=26)
@@ -515,12 +543,13 @@ def event_loop() -> Scene:
         400,
         480,
         460,
-        150,
+        182,
         "Router: a fixed table\nquestion.asked: default queue\nexport.requested: default queue"
-        "\ndigest.requested: scheduled queue",
+        "\ndigest.requested: scheduled queue\na defense check: default queue\n"
+        "a scheduled job: its listed queue",
         size=22,
     )
-    s.shape("no-agent", 390, 645, 480, 90, "No agent: the route is a lookup", size=22)
+    s.shape("no-agent", 390, 672, 480, 90, "No agent: the route is a lookup", size=22)
     s.arrow([(630, 442), (630, 478)])
     s.shape(
         "store",
@@ -618,7 +647,10 @@ def event_loop() -> Scene:
 def hill_climbing_loop() -> Scene:
     """platform/packs/datapilot_us/benchmark/{dev,holdout}.yaml (25 and 15 items);
     platform/src/datapilot/loop4_hill_climbing/{evaluator,experiment,measurement,analyzer,
-    overfit_guard,gate}.py; loop3_events/autonomy.py (eligibility and demotion);
+    overfit_guard,gate,candidates}.py; loop4_hill_climbing/runner.py (the gate records its baseline;
+    a promotion after approval decides only against that baseline, while the active version is
+    unchanged and the gate has finished); loop4_hill_climbing/store.py (record_gate_baseline,
+    gate_baseline; migration 021); loop3_events/autonomy.py (eligibility and demotion);
     pack.yaml (evaluation: holdout_repeats 3, holdout_pass_threshold 2, dev_regression_reruns 2,
     dev_regression_threshold 2, holdout_regression_reruns 3, holdout_regression_fail_threshold 2,
     concurrency 8, overfit_question_words 6, overfit_sql_tokens 20; autonomy: metric_families,
@@ -685,8 +717,9 @@ def hill_climbing_loop() -> Scene:
         1160,
         710,
         720,
-        80,
-        "Two candidates measured on the dev split;\nthe better one becomes the draft",
+        140,
+        "Two candidates, each measured on the dev split; the\ndraft is the one with fewer dev"
+        " regressions, then\nmore dev passes, then fewer rules",
         size=22,
     )
     s.arrow([(1520, 672), (1520, 708)])
@@ -698,8 +731,9 @@ def hill_climbing_loop() -> Scene:
         420,
         560,
         260,
-        "Promotion gate\n\n1. more holdout passes than the\nactive version\n2. zero regressions on"
-        " dev and\non holdout\n3. every new rule passes the\noverfit guard\n4. human approval",
+        "Promotion gate\n\n1. more holdout passes than the\nbaseline experiment of the active"
+        "\nversion, recorded at the gate\n2. zero regressions on dev and\non holdout\n"
+        "3. every new rule passes the\noverfit guard\n4. human approval",
         size=20,
     )
     s.arrow([(1158, 750), (1082, 600)])
@@ -715,6 +749,7 @@ def hill_climbing_loop() -> Scene:
         size=20,
     )
     s.arrow([(800, 682), (800, 713)], both=True)
+    s.text(40, 372, "An approval given before the\ngate finishes waits for it", size=20)
     s.shape("human", 40, 440, 400, 200, "Human\napproval", size=26)
     s.arrow([(518, 540), (442, 540)])
     s.shape("store", 40, 690, 400, 100, "Active knowledge version:\nthe next baseline", size=22)

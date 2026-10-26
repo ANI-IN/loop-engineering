@@ -82,6 +82,8 @@ in a code span: the naive guard (`BUG_NAIVE_GUARD`). The list, with what each on
 - **Domain pack**: The folder that holds one warehouse's settings, rules, benchmark, and knowledge.
 - **Drift canary**: Three easy questions that must pass and two trap questions that must still fail.
 - **Escalated**: A run that ended without an answer because it hit a cap or a refused write.
+- **Evaluator**: The code that runs a benchmark answer's query and the gold query on both
+  warehouses and compares their results.
 - **Event loop**: Events become jobs that workers run, with approvals, budgets, and a kill switch.
 - **Failure analyst**: The agent of the analyzer team that diagnoses why each failed dev item
   failed.
@@ -106,6 +108,8 @@ in a code span: the naive guard (`BUG_NAIVE_GUARD`). The list, with what each on
 - **Metric family**: A group of benchmark questions about one kind of measure, such as revenue.
 - **Naive SQL**: The plausible query a model without the business rules writes; a trap makes it
   wrong.
+- **Ops schema**: The `ops` tables in Postgres that hold runs, events, approvals, experiments, and
+  budgets; `make up` applies its migrations.
 - **Overfit guard**: The code check that rejects a rule copying a benchmark question or a gold
   query.
 - **Personal data**: Customer emails, phone numbers, and names; a query that reads them waits for
@@ -126,6 +130,8 @@ in a code span: the naive guard (`BUG_NAIVE_GUARD`). The list, with what each on
   asks.
 - **Stability filter**: The calibration check that keeps only holdout items that pass or fail
   consistently.
+- **Starting knowledge**: Knowledge version v1, the rules DataPilot starts with: only the money
+  rule.
 - **Structured Query Language (SQL)**: The language of every query the analyst writes.
 - **Trace**: The record of one run's steps, each model call and tool call, stored in LangSmith.
 - **Trace sample**: The share of experiment runs that send a trace, about 1 in 5

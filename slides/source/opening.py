@@ -1,4 +1,4 @@
-"""Opening block: 15 slides, 0:00-0:10."""
+"""Opening block: 16 slides, 0:00-0:10."""
 
 R = "<!-- refresh after the session: {} -->"
 
@@ -12,7 +12,8 @@ SLIDES = [
         "src": "README.md",
         "on_slide": [
             "Module: Loop Engineering",
-            "Agent, verification, event, and hill-climbing loops: build each, then measure it",
+            "Agent, verification, event, and hill-climbing loops: build each, then measure it.",
+            "[CLASS DATE]",
         ],
         "notes": [
             "Say: Welcome to Module: Loop Engineering. You already build agents. Today is about "
@@ -21,6 +22,7 @@ SLIDES = [
             "one data agent and measure each one. Every demo you see runs live against the real "
             "model.",
             "Point at: the four loop names in the subtitle.",
+            "Placeholder: the class date in square brackets is replaced before class.",
             'Likely question: "Is this specific to SQL agents?" Answer: SQL makes every check '
             "concrete, so we use it; each principle transfers to any agent whose output you can "
             "check.",
@@ -35,10 +37,12 @@ SLIDES = [
         "minutes": 0.5,
         "says": "Who is teaching, and how to reach them",
         "src": "-",
-        "on_slide": ["Instructor name, role, and contact"],
+        "on_slide": ["Instructor", "[INSTRUCTOR NAME AND CONTACT]"],
         "notes": [
             "Say: Introduce yourself in two sentences: what you build, and one loop that saved or "
             "cost you in production. Say how learners reach you during and after class.",
+            "Placeholder: the instructor's name and contact in square brackets are replaced "
+            "before class.",
             "Point at: the contact line.",
             'Likely question: "Where do I ask during class?" Answer: in the chat; questions that '
             "do not fit go to the Thursday review.",
@@ -115,15 +119,15 @@ SLIDES = [
             "Thursday, and you post it with that word. The Thursday review session is two hours on "
             "the four assignments; it also answers the parking lot in writing.",
             "Point at: the Thursday line.",
-            'Likely question: "When is the Thursday review?" Answer: the instructor posts the '
-            "time; the solutions are published when it starts.",
+            'Likely question: "When is the Thursday review?" Answer: [THURSDAY REVIEW TIME], a '
+            "placeholder replaced before class; the solutions are published when it starts.",
             "Transition: Keys next.",
         ],
         "container": "icon row: chat, parking lot",
     },
     {
         "kind": "opening",
-        "title": "Your API key from the operations team",
+        "title": "Your OpenAI key and its limit",
         "layout": "concept",
         "minutes": 0.5,
         "says": "Your OpenAI key comes from the operations team; it lives in your environment file, "
@@ -168,6 +172,9 @@ SLIDES = [
             "so one learner stays well inside the free plan's 5,000 traces a month; every run is "
             "still scored locally. Use your own free account; feedback is written with extended "
             "retention off.",
+            "If LangSmith refuses traces when its free plan's monthly limit is spent, a trace link "
+            "never fills; say so once, and point at the run's start time and run id as the "
+            "evidence. Every result is still scored locally.",
             "Point at: the local-scoring line.",
             'Likely question: "Do I need a paid plan?" Answer: no; the class keeps to base traces '
             "on the free plan.",
@@ -197,11 +204,13 @@ SLIDES = [
             "the trap questions start passing, the model changed under us, so calibration runs "
             "again before anyone teaches with it. When every check passes, preflight starts the "
             "class's live session; the console's status line shows when it started, and every run "
-            "until the next preflight belongs to it. In calibration the canary passed in all four "
-            "runs. Preflight reads its data check and its canary from the selected domain pack.",
-            "Instructor reference, not on the slide: `make ps`, then `make preflight "
-            "PURPOSE=class`.",
-            "Point at: the two canary lines.",
+            "until the next preflight belongs to it. In every preflight recorded in calibration, the "
+            "canary read as expected. Preflight reads its data check and its canary from the selected domain pack.",
+            "Instructor reference, not on the slide: do not run preflight now. You ran `make ps`, "
+            "then `make preflight PURPOSE=class`, thirty minutes before class (the preflight "
+            "checklist); a second preflight would start a new live session and leave the class "
+            "session's runs behind.",
+            "Point at: the two canary lines of that output, in the terminal where it ran.",
             'Likely question: "Why must a check fail?" Answer: the demos teach a failure the loops '
             "then fix; a trap that passes unaided would make the story untrue, so the canary "
             "proves it still fails.",
@@ -260,7 +269,8 @@ SLIDES = [
         "src": "README.md",
         "on_slide": [
             "Harbor & Pine Outfitters: a fictional outdoor retailer; data ends 31 January 2026",
-            "DataPilot answers business questions in SQL, live in a console:",
+            "DataPilot answers business questions in Structured Query Language (SQL), live in a "
+            "console:",
             "- Agent: the tool timeline, the SQL, the answer against gold",
             "- Verify: the grader checklist and which defense layer stopped what",
             "- Events: the run board lanes, approvals, and the channel",
@@ -292,7 +302,7 @@ SLIDES = [
             "1. **Fiscal year**: calendar dates; the fiscal year runs February to January",
             "2. **Net revenue**: the total adds tax and shipping; use subtotal minus discount",
             "3. **Cancelled orders**: no status filter; status 5 is undocumented",
-            "4. **Eastern time**: timestamps are UTC; evening orders cross the date",
+            "4. **Eastern time**: universal timestamps move evening orders to the next day",
             "5. **Internal accounts**: no email filter; they hold 3 of the top 10",
         ],
         "diagram": {
@@ -349,7 +359,7 @@ SLIDES = [
             "Wrong but confident: a board deck carries a number nobody can trace",
             "Unsafe or unbounded: a stacked write reaches the warehouse; a loop bills without end",
             "Duplicated or unstoppable: a digest posts twice; a stop misses the running job",
-            "Right on the test, wrong next month: a rule fits the cases it was written from",
+            "**Right on the test, wrong next month:** a rule fits the cases it was written from",
             "Each loop removes one of these, at a cost you will see",
         ],
         "notes": [
@@ -365,37 +375,140 @@ SLIDES = [
         "container": "four cards: one failure per loop",
     },
     {
-        "kind": "opening_content",
-        "title": "Four loops: one system",
+        "kind": "diagram",
+        "title": "Four loops: one system, the answer path",
         "layout": "diagram",
-        "minutes": 1,
-        "says": "Answer, check, run on events, improve; agents only where judgement is needed",
-        "src": "docs/architecture.md",
-        "on_slide": [
-            "Agent loop: the analyst, plus a stateless schema scout behind one tool",
-            "Verification loop: seven deterministic graders, then an independent reviewer",
-            "Event loop: a deterministic router, no agent; approvals and a kill switch",
-            "Hill-climbing loop: failure analyst, rule writer, critic; then guard, gate, human "
-            "approval",
-            "Rule: an agent only where judgement is needed",
-        ],
+        "minutes": 0.5,
+        "says": "Answer, check, run on events: three nested loops, agents only where judgement is needed",
+        "src": "docs/architecture.md; docs/diagrams/four-loops.png (the same boxes, redrawn)",
+        "on_slide": [],
+        "diagram": {
+            "kind": "boxes",
+            "describe": "The left part of the four-loops diagram, redrawn from shapes with 18-point "
+            "labels: the agent loop inside the verification loop, inside the event loop.",
+            "frames": [
+                (0.6, 1.05, 12.13, 5.45, "Section 3: Event loop"),
+                (0.75, 2.45, 9.3, 3.95, "Section 2: Verification loop"),
+                (0.9, 2.85, 4.8, 3.45, "Section 1: Agent loop"),
+            ],
+            "boxes": [
+                (0.8, 1.45, 2.2, 0.75, "edge", "Event: webhook or schedule"),
+                (3.2, 1.45, 2.2, 0.75, "step", "Insert with a key: one run"),
+                (5.6, 1.45, 2.2, 0.75, "step", "Router: a table, no agent"),
+                (8.0, 1.45, 2.2, 0.75, "data", "Jobs table: claim, lease"),
+                (10.4, 1.45, 2.2, 0.75, "step", "Reaper: requeue expired"),
+                (1.05, 3.3, 1.45, 0.6, "edge", "Question"),
+                (2.75, 3.25, 2.75, 0.7, "agent", "Analyst agent"),
+                (1.05, 4.2, 2.15, 0.95, "step", "Tools: list, describe, query"),
+                (3.4, 4.2, 2.15, 0.95, "agent", "Schema scout agent"),
+                (1.05, 5.35, 4.5, 0.8, "data", "Active knowledge version, in every prompt"),
+                (5.85, 3.25, 1.95, 0.95, "step", "Seven graders"),
+                (8.0, 3.2, 1.9, 1.05, "agent", "Reviewer agent"),
+                (5.85, 4.45, 1.95, 1.25, "stop", "Retry with feedback; cap at 3"),
+                (8.0, 4.45, 1.9, 0.95, "person", "Human approval"),
+                (10.3, 3.2, 2.3, 0.95, "step", "Autonomy policy: post or hold"),
+                (10.3, 4.35, 2.3, 0.6, "edge", "Channel post"),
+                (10.3, 5.15, 2.3, 0.95, "stop", "Kill switch: before every call"),
+            ],
+            "arrows": [
+                (3.0, 1.825, 3.2, 1.825),
+                (5.4, 1.825, 5.6, 1.825),
+                (7.8, 1.825, 8.0, 1.825),
+                (10.2, 1.825, 10.4, 1.825),
+                (8.6, 2.2, 8.6, 2.45),
+                (2.5, 3.6, 2.75, 3.6),
+                (3.3, 3.95, 2.6, 4.2),
+                (4.45, 3.95, 4.45, 4.2),
+                (5.5, 3.6, 5.85, 3.6),
+                (7.8, 3.7, 8.0, 3.7),
+                (6.8, 4.2, 6.8, 4.45),
+                (8.95, 4.25, 8.95, 4.45),
+                (9.9, 3.7, 10.3, 3.7),
+                (11.45, 4.15, 11.45, 4.35),
+            ],
+        },
         "notes": [
-            "Say: The agent loop answers; the verification loop checks; the event loop runs work "
-            "on events with approvals and a stop; the hill-climbing loop improves from failures "
-            "behind a gate. Look at where the agents are: the analyst and one helper, one reviewer "
-            "after the deterministic checks, none at all in the event loop, and an analyzer team "
-            "whose output code and a person must accept. Agents appear only where judgement is "
-            "needed.",
+            "On the slide: the left part of the four-loops diagram, redrawn from shapes so every "
+            "label is 18-point text; the full picture is in the course repository. The agents are "
+            "the orange ovals: the analyst and the schema scout in the agent loop, the reviewer in "
+            "the verification loop, and none in the event loop.",
+            "Say: The agent loop answers; the verification loop checks every query and the answer; "
+            "the event loop runs work on events, with keys, approvals, and a stop. Look at where the "
+            "agents are: the analyst and one helper, one reviewer after the deterministic checks, "
+            "none at all in the event loop.",
+            "Point at: the router box, a table with no agent, then the three orange ovals.",
+            "Transition: The fourth loop sits beside them and feeds them.",
+        ],
+        "container": "box diagram drawn from shapes: Sections 1 to 3",
+    },
+    {
+        "kind": "diagram",
+        "title": "Four loops: the hill-climbing loop feeds back",
+        "layout": "diagram",
+        "minutes": 0.5,
+        "says": "The hill-climbing loop improves the others from failures, behind a gate",
+        "src": "docs/architecture.md; docs/diagrams/four-loops.png (the same boxes, redrawn)",
+        "on_slide": [],
+        "diagram": {
+            "kind": "boxes",
+            "describe": "The right part of the four-loops diagram, redrawn from shapes with "
+            "18-point labels: the hill-climbing loop from the benchmark to the new active version.",
+            "frames": [
+                (0.6, 1.05, 12.13, 5.45, "Section 4: Hill-climbing loop"),
+                (5.85, 1.2, 6.85, 1.65, "Analyzer team: failed dev items only"),
+            ],
+            "boxes": [
+                (0.8, 1.6, 2.2, 0.95, "data", "Benchmark: 25 dev, 15 holdout"),
+                (3.3, 1.6, 2.35, 0.95, "step", "Experiment: two databases"),
+                (6.0, 1.6, 2.05, 0.95, "agent", "Failure analyst"),
+                (8.3, 1.6, 2.05, 0.95, "agent", "Rule writer"),
+                (10.6, 1.6, 1.95, 0.95, "agent", "Critic: only cuts"),
+                (10.35, 3.3, 2.2, 1.0, "step", "Overfit guard: no quoted question"),
+                (7.85, 3.3, 2.2, 1.0, "step", "Two candidates, kept on dev"),
+                (5.1, 3.3, 2.45, 1.0, "step", "Promotion gate: four conditions"),
+                (2.85, 3.3, 1.95, 1.0, "person", "Human approval"),
+                (0.8, 4.75, 4.0, 0.95, "data", "The new active version, in every prompt"),
+                (
+                    5.1,
+                    4.75,
+                    7.45,
+                    0.95,
+                    "step",
+                    "Autonomy per metric family, from its holdout items",
+                ),
+            ],
+            "arrows": [
+                (3.0, 2.075, 3.3, 2.075),
+                (5.65, 2.075, 6.0, 2.075),
+                (8.05, 2.075, 8.3, 2.075),
+                (10.35, 2.075, 10.6, 2.075),
+                (11.55, 2.55, 11.55, 3.3),
+                (10.35, 3.8, 10.05, 3.8),
+                (7.85, 3.8, 7.55, 3.8),
+                (5.1, 3.8, 4.8, 3.8),
+                (3.8, 4.3, 3.8, 4.75),
+                (6.3, 4.3, 6.3, 4.75),
+            ],
+        },
+        "notes": [
+            "On the slide: the right part of the four-loops diagram, redrawn from shapes with "
+            "18-point labels. The orange ovals are the "
+            "analyzer team: the failure analyst, the rule writer, and the critic. Their output meets "
+            "code, the overfit guard and the promotion gate, and then a person.",
+            "Say: The hill-climbing loop improves from failures behind a gate, and a promoted "
+            "version becomes the active knowledge version every analyst prompt carries. An analyzer "
+            "team whose output code and a person must accept: agents appear only where judgement "
+            "is needed.",
             "Source 1: The art of loop engineering "
             '(https://www.langchain.com/blog/the-art-of-loop-engineering): "The fourth (and arguably '
             'most important) automates improvement!" It names the same four loops; the fourth is '
             "the hill-climbing loop.",
-            "Point at: the empty agent slot in the event loop.",
+            "Point at: the promotion gate, then the human approval beside it.",
             'Likely question: "How does this differ from LangChain\'s version?" Answer: theirs '
             "climbs on production traces; ours climbs on benchmark failures behind a holdout gate.",
             "Transition: How we will know any of it works.",
         ],
-        "container": "labelled diagram: four loops in a ring, agents marked",
+        "container": "box diagram drawn from shapes: Section 4",
     },
     {
         "kind": "opening_content",
@@ -436,8 +549,8 @@ SLIDES = [
             "| Term | Meaning |",
             "|---|---|",
             "| Trap | A business rule the schema does not reveal |",
-            "| Gold SQL | The hand-written query with the right answer |",
-            "| Answer envelope | The structured result of a run |",
+            "| Gold query | The hand-written query with the right answer |",
+            "| Holdout split | Questions the analyzer team never sees |",
             "| Grader | A deterministic check of one stage |",
             "",
             "| Term | Meaning |",

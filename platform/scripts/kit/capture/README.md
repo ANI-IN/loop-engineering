@@ -1,6 +1,6 @@
 # capture: screenshots, terminal renders, and callouts for a guide
 
-Four scripts, no model calls. Run them with the course repository's environment (`uv run python ...`);
+The first four scripts make no model calls; `live_captures.py` drives live demos. Run them with the course repository's environment (`uv run python ...`);
 they need Pillow, and `capture.py` also needs Playwright Chromium
 (`uv run playwright install chromium`).
 
@@ -10,6 +10,9 @@ they need Pillow, and `capture.py` also needs Playwright Chromium
 | `capture.py` | Screenshots of a web app from a JSON configuration file (base URL, viewport, shots, callout targets). |
 | `term_render.py` | A terminal capture (`terminal.txt`) as a clean dark PNG, with line ranges and highlights. |
 | `callouts.py` | Numbered circles, arrows, and outlines on an image; colours from the app's CSS tokens. |
+| `framing.py` | Whole-viewport frames of a Streamlit page (1280 by 720 at scale 2, Coordinated Universal Time): an element placed under the fixed header, then nudged until no edge, and nothing under the header, cuts a line. |
+| `live_manifest.py` | DataPilot's live console captures: each image, the demo or chain step that produces it, its frame, its caption, and the state checks on the api's records. |
+| `live_captures.py` | The runner the lead uses on the live stack: reset, trigger, wait for the state, capture, check, and log. Its usage is in its docstring. |
 
 ## Rules the tools enforce
 
@@ -40,4 +43,5 @@ The configuration format is in the docstring of `capture.py`. Each run merges en
 `<out>/images.json` (`file, screen, moment, alt, callouts, source_run_id, recorded_or_live`),
 which the guide's captions and numbered lists are checked against.
 
-Its tests live with the course kit, outside this repository.
+The tests of `framing.py`, `live_captures.py`, `live_manifest.py`, and `term_render.py` are in
+`platform/tests/unit/test_live_captures.py`.

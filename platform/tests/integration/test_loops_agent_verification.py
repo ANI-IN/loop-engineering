@@ -22,7 +22,7 @@ from loops_support import (
     usage,
 )
 
-from datapilot import db
+from datapilot import db, tests_database_guard
 from datapilot.contracts import KnowledgeRule, KnowledgeVersion, RunStatus
 from datapilot.loop1_agent.catalog import PERSONAL_SAMPLE
 from datapilot.loop1_agent.tools import Warehouse
@@ -106,7 +106,9 @@ def test_the_startup_probe_refuses_a_connection_that_is_not_read_only(executor) 
     app = replace(executor, url=db.url_for(db.Role.APP))
     with pytest.raises(ReadOnlyProbeFailed, match="temporary tables"):
         app.probe_read_only()
-    broken = replace(executor, url="postgresql://nobody:nobody@localhost:1/none")
+    # a role and database that do not exist, on the tests' own server: no other address is reached
+    port = tests_database_guard.tests_port()
+    broken = replace(executor, url=f"postgresql://nobody:nobody@localhost:{port}/none")
     with pytest.raises(ReadOnlyProbeFailed, match="could not connect"):
         broken.probe_read_only()
 

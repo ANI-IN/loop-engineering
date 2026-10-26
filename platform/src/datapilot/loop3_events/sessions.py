@@ -14,6 +14,11 @@ import psycopg
 from datapilot import db
 from datapilot.contracts.live import LiveSession, NoLiveSession, SessionPurpose
 
+# What the api answers (409) and make demo prints when a run is asked for with no session open.
+NO_SESSION = (
+    "No live session is open: run make preflight "
+    "PURPOSE=class|rehearsal|thursday-review|development first"
+)
 _OPEN = (
     "SELECT session_id, purpose, started_at, started_by, timezone FROM ops.live_sessions "
     "WHERE ended_at IS NULL"

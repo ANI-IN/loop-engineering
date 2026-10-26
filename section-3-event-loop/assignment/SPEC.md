@@ -29,7 +29,7 @@ alert is a row in `ops.posts` whose body holds `alert_key`, `day`, `net_revenue_
 
 ## Requirements
 
-Deterministic, checked against the real Postgres, the running api and workers, and the
+Deterministic, checked against the real Postgres, the running api service and workers, and the
 scheduler's code, with no model call; each must pass every run:
 
 1. The router table maps the job `revenue-anomaly` to its handler: no agent chooses it.
@@ -51,17 +51,47 @@ scheduler's code, with no model call; each must pass every run:
 Model-dependent, run once live on the real model and checked against gold:
 
 10. The alert's drill-down question, submitted twice with its event id, runs once, and the answer
-    it posts to the channel names the top-level category whose sales changed most against the
-    four-week same-weekday average. The check's added orders are all in one category, so the gold
-    answer is unmistakable. When the run holds for approval (the reviewer holds an answer, or a
+    it posts to the channel names the top-level category whose sales rose most above the
+    four-week same-weekday average. The check judges the category the answer says rose most:
+    the one in its own row with the greatest `rise_cents` when the answer returns that column, else
+    the one its text says rose most; the text must name that category too. A text that says
+    several categories rose most names none, and the requirement fails; so does an answer whose
+    text says a category other than its top row's rose most. The check's added
+    orders are all in one category, so the gold answer is unmistakable. The question must be one the class system can answer as it stands:
+    the check runs it under knowledge version 1, which holds only the money rule, so the question
+    names the measure that knowledge does not define, sales as quantity times unit price on the
+    order lines (net revenue is an order-level rule, and no rule splits an order's discount over
+    its lines), with each category rolled up to its top-level parent, and asks for the rise in
+    dollars of the top category alone, in one row with the rise in cents in a column not named
+    for revenue (such as `rise_cents`). A change in percent passes 100 percent on the anomalous day, and a
+    change in revenue is negative for most categories; the final-answer grader blocks both (it
+    blocks any column named for revenue that holds a negative value), so such a run retries
+    until its token budget, `budgets.tokens_per_run`, ends it escalated. On 25 October 2026 the
+    solutions' earlier question, which asked which category's net revenue "changed the most",
+    ended escalated at that budget in 2 of the reference's 4 checks (and 0 of the alternatives'
+    4). On the question and the judging that ship, from 22:47 Coordinated Universal Time the
+    same day, the starter failed, and the solutions passed 5 of their 6 checks (see "How often a
+    correct solution passes", below). When the run holds for approval (the reviewer holds an answer, or a
     tool call needs one), the check approves it, as an instructor would, and its output says
     "approved by the check"; it then waits for the run to post and judges the posted answer, never
     the held one. A run that ends without posting fails this requirement. The drill-down's event id
     is yours to choose; the check clears any earlier run under it first, so the first ask always
     starts a new run, and a first ask absorbed into an earlier run fails this requirement.
 
-The job exists in no class code path: the course build's boundary test keeps the router table and
-the schedule hook empty on the class branch, so the unchanged starter fails this check.
+**How often a correct solution passes.** Requirement 10 depends on the answer the model gives in
+that check. In the course's verification on 25 October 2026 from 22:47 Coordinated Universal Time,
+correct solutions passed 5 of 6 checks: the reference 2 of 2,
+alternative one 1 of 2, and alternative two 2 of 2. In the one failure the agent's posted answer
+said Hiking rose most and the gold category was Water Sports; the same files passed the next check
+([evidence](../../docs/evidence/general.md#captures)). A later change to how requirement 10 reads
+the answer's text cannot alter the five of these verdicts judged on the answer's row. So a correct solution can read FAIL on
+requirement 10 when the agent answers wrongly, and the check is right to fail it: run the check
+again. The FAIL line names the category the answer said rose most and the gold one. A starter, and
+a solution whose job posts no alert, still fail it every time.
+
+The job exists in no class code path: the boundary test
+(`platform/tests/unit/test_assignment_boundaries.py`) keeps the router table and
+the schedule hook empty in the class system, so the unchanged starter fails this check.
 
 ## Live check
 
@@ -74,7 +104,9 @@ would, printing its trace link and live stamp, and at the end the actual tokens 
 autonomy level. If the check reaches its spend cap of 1.00 dollar (`assignments.check_cap_usd` in pack.yaml), it stops cleanly: it starts no new run, every requirement it did not reach reads NOT RUN, and it exits 2. A missing or rejected key stops the check with "Live checks need your OpenAI key
 from the operations team"; it never falls back to anything offline. A run the stack itself
 blocked, at its daily token budget or by a kill switch the check did not engage, stops the check
-(exit 2) with that reason instead of failing a line. When no alert was posted, the live step does
+(exit 2) with that reason instead of failing a line. On its own Compose project the check switches
+every planted bug off, whatever `.env` says; on services already running, a drill-down run made with
+a planted bug switched on (the run records it) stops the check the same way. When no alert was posted, the live step does
 not run. The command exits 0 when every line reads PASS, 1 on any FAIL, and 2 when
 it stopped.
 
@@ -89,8 +121,9 @@ Nothing is submitted, and there is no hidden grader. Bring these to the Thursday
 
 ## Limits
 
-- Every model call records its spend in the build-wide ledger under the activity "assignment";
-  `make spend` shows the total.
+- Every model call records its spend in your own spend ledger,
+  `~/.datapilot/spend-ledger.sqlite`, under an activity of its own for this check run, such as
+  `assignment-event-loop-1a2b3c4d` (`platform/src/datapilot/assignments/cost.py`); `make spend` lists it.
 - Each run stays within `budgets.tokens_per_run` and the day within `budgets.tokens_per_day` in
   `platform/packs/datapilot_us/pack.yaml`.
 - The row cap `limits.row_cap` and the retry cap `limits.max_retries` in the same file still apply.

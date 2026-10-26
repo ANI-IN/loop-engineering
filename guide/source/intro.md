@@ -13,5 +13,5 @@ matters, "What was our net revenue in fiscal year 2025?", is fixed before any ru
 
 There is one chapter per section, one loop per chapter. The results are measured, not promised:
 the starting knowledge fails every trap, the graders pass a wrong answer, and the promoted
-knowledge answers the spine question correctly without earning the unattended level for revenue
-in any measured run. Each chapter shows what its run found and what to say about it in class.
+knowledge answers the spine question correctly, with revenue cleared for the unattended level in
+7 of 11 live promotions. Each chapter shows what its run found and what to say about it in class.

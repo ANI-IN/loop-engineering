@@ -34,7 +34,9 @@ Next month's questions are still wrong, and one question that used to be right n
 
 An experiment runs the benchmark by execution on two databases. The analyzer team reads the
 failed dev items: the failure analyst diagnoses, the rule writer proposes, and the critic keeps,
-narrows, or drops each rule. A deterministic overfit guard and the promotion gate follow. The gate
+narrows, or drops each rule. The team writes two candidates; the runner keeps the one with fewer
+dev regressions, then more dev passes, then fewer rules, and the holdout split never takes part.
+A deterministic overfit guard and the promotion gate follow. The gate
 decides on the holdout split, with zero regressions, every new rule passing the overfit guard, and
 human approval.
 
@@ -44,27 +46,58 @@ human approval.
 
 A promoted version clears a metric family for the unattended level on the gate's own confirmed
 standard: every holdout item of the family passes 2 of 3 runs, and an item that falls short counts
-only if it passes 2 of 3 more runs. The pieces exist in other
-systems; their combination is one we have not seen documented. What the course measured is on the
-[evidence page](../docs/evidence/section-4-hill-climbing-loop.md).
+only if it passes 2 of 3 more runs. The full idea is in [concepts.md](concepts.md) (in class,
+minutes 0 to 20).
 
 ## How to work through this section
 
-| Part | What it gives you | In class |
-|---|---|---|
-| [concepts.md](concepts.md) | Execution match, the analyzer team, the gate, earned autonomy | Minutes 0-20 |
-| [demo/](demo/README.md) | Five live demos, from the baseline experiment to the unattended level | Minutes 20-35 |
-| [demo/walkthrough.md](demo/walkthrough.md) | The evaluator, the critic, the overfit guard, the gate | Minutes 35-40 |
-| [assignment/](assignment/README.md) | Add a metric family, improve the critic, add the minimum-holdout rule | After class |
-| [post-class-reading/](post-class-reading/README.md) | Readings on evidence, evaluation, and self-correction | After class |
-| [session-notes.md](session-notes.md) | What class showed, questions, what to try next | After class |
+### How it works in the code
 
-In class, every demo result on the console shows a live stamp: its run's start time in the
-viewer's local time and its LangSmith trace link. Experiment runs are traced as a sample, about
-1 in 5, so a holdout ledger row may read "Not traced". The `demo/expected/` folder is for you
-after class; it is never opened in class.
+- [`ExperimentRunner`](../platform/src/datapilot/loop4_hill_climbing/experiment.py) runs the
+  benchmark, and [`ExecutionEvaluator`](../platform/src/datapilot/loop4_hill_climbing/evaluator.py)
+  scores each answer by its result on both warehouses.
+- [`AnalyzerTeam`](../platform/src/datapilot/loop4_hill_climbing/analyzer.py) runs the failure
+  analyst, the rule writer, and the critic; `choose` in
+  [`candidates.py`](../platform/src/datapilot/loop4_hill_climbing/candidates.py) keeps one candidate.
+- [`OverfitGuard`](../platform/src/datapilot/loop4_hill_climbing/overfit_guard.py) rejects a rule
+  that copies a benchmark question or gold query.
+- [`decide`](../platform/src/datapilot/loop4_hill_climbing/gate.py) applies the gate's four
+  conditions, and `find_regressions` confirms each apparent regression by re-runs.
+- [`gate`](../platform/src/datapilot/loop4_hill_climbing/runner.py) records the baseline it
+  compared with, and a later approval promotes against that same experiment.
 
-The baseline experiment starts at the poll before the second break, so it finishes during it.
+The [walkthrough](demo/walkthrough.md) explains these lines (minutes 35 to 40).
+
+### The demo
+
+Five core demos, live, in minutes 20 to 35: the baseline experiment, the naive analyzer blocked,
+the analyzer team and approval, the candidate experiment, and cleared for the unattended level
+(`improve-baseline-experiment` to `improve-cleared-unattended`). The baseline starts at the poll
+before the second break, so it finishes during it. Experiment runs are traced as a sample, about
+1 in 5, so a holdout ledger row may read "Not traced". Run them with the
+[demo page](demo/README.md); the measured runs are on the
+[evidence page](../docs/evidence/section-4-hill-climbing-loop.md).
+
+### The assignment
+
+[Assignment 4: Hill-climbing loop](assignment/README.md) adds a repeat-customer metric family, a
+critic that drops an over-broad rule, and a rule that a family needs at least three holdout items
+before the unattended level. It is done when `make check-assignment NAME=hill-climbing-loop` reads
+PASS on every line. Effort: about 2 to 2.5 hours; it runs the benchmark, so it is the costly
+check ([costs page](../docs/costs.md#assignments)).
+
+### Apply it in a real system
+
+- Keep a holdout split that the improvement process never reads, and decide only on it.
+- Confirm an apparent regression with re-runs before it counts, and accept zero.
+- Let code decide and a person approve: agents propose rules; a guard and a gate judge them.
+  Grant autonomy per metric family, from measured results.
+
+### Further reading
+
+The [reading list](post-class-reading/README.md) has three: rules learned from failures, evidence
+written by a machine, and the post that names the four loops. After class,
+[session-notes.md](session-notes.md) recaps what class showed.
 
 ## Where next
 

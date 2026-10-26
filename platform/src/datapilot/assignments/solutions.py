@@ -27,7 +27,7 @@ from pathlib import Path
 from datapilot.assignments import VARIANTS, assignment, solutions_withheld
 from datapilot.assignments.cost import VERIFICATION
 from datapilot.assignments.report import Stop
-from datapilot.assignments.stack import CLASS_PROJECT, DEFAULTS, running_stack
+from datapilot.assignments.stack import CLASS_PROJECT, DEFAULTS, refuse_planted, running_stack
 from datapilot.names import SECTIONS
 from datapilot.settings import PLATFORM, REPO
 
@@ -216,7 +216,9 @@ def _terminal_image(text: str, out: Path, command: str) -> str | None:
     try:
         from term_render import render  # the course kit's renderer: it refuses key-like text
 
-        render(text, out, command=command, ranges="-60", title="Terminal")
+        # At most 4 rows of one input line: a line of a megabyte (a LangSmith refusal printed
+        # whole) would otherwise make an image too tall to read or to check.
+        render(text, out, command=command, ranges="-60", title="Terminal", max_line_rows=4)
     except Exception as error:  # a missing image is reported on the page, never invented
         return f"{type(error).__name__}: {error}"
     return None
@@ -231,7 +233,13 @@ def _console_image(slug: str, out: Path) -> str | None:
 
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch()
-            page = browser.new_page(viewport={"width": 1280, "height": 720})
+            # The screenshot standard (docs/STYLE.md): 1280 by 720 at device scale factor 2, times
+            # in Coordinated Universal Time.
+            page = browser.new_page(
+                viewport={"width": 1280, "height": 720},
+                device_scale_factor=2,
+                timezone_id="UTC",
+            )
             page.goto(url)
             page.locator(ready).first.wait_for(timeout=60_000)
             page.wait_for_timeout(2500)  # two fragment ticks, so every component has its data
@@ -298,12 +306,20 @@ def _write_capture(slug: str, folder: Path, capture: Capture) -> None:
     (folder / f"{capture.name}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def verify(only: list[str] | None = None) -> int:
+def verify(
+    only: list[str] | None = None, variants: list[str] | None = None, once: bool = False
+) -> int:
     """Every assignment: the starter once, each solution twice. Returns 0 when all came out as
     expected (the starter FAIL, every solution PASS). The verification makes its own copies, so it
-    replaces them; in a public copy it stops before any check, as apply does."""
+    replaces them; in a public copy it stops before any check, as apply does. `variants` keeps only
+    those (starter, reference, alternative-one, alternative-two), for a verification the budget
+    allows only in part; each kept variant still runs as often as in a full one, unless `once`
+    runs each a single time (its second run is then owed). It does not start
+    while .env or its environment switches a planted flag on, so no check is judged on a planted
+    bug (each check also refuses one in its stack's services)."""
     if solutions_withheld():
         raise Stop(WITHHELD.format(variant="solution", slug="<slug>"))
+    refuse_planted("The verification of the solutions")
     problems = []
     for section in SECTIONS:
         slug = section.slug
@@ -311,19 +327,61 @@ def verify(only: list[str] | None = None) -> int:
             continue
         folder = assignment(slug).folder / "solution" / "captured"
         plan = [("starter", 1), *[(variant, 2) for variant in VARIANTS]]
+        plan = [(v, times) for v, times in plan if not variants or v in variants]
+        if once:
+            plan = [(v, 1) for v, _ in plan]
         for variant, times in plan:
             tree = apply(slug, variant, force=True)
             for n in range(1, times + 1):
                 code, text = _run_captured(slug, tree)
-                name = f"{variant}-run-{n}" if times > 1 else variant
+                name = variant if variant == "starter" else f"{variant}-run-{n}"
                 _write_capture(slug, folder, Capture(name, code, text))
                 expected = 1 if variant == "starter" else 0
                 if code != expected:
                     problems.append(f"{slug} {name}: exit {code}, expected {expected}")
     stop_stack()
+    if once:
+        for line in kept_second_runs(only, variants):
+            print(line)
     for problem in problems:
         print(f"x {problem}")
     return 1 if problems else 0
+
+
+def kept_second_runs(only: list[str] | None, variants: list[str] | None) -> list[str]:
+    """With ONCE=1 the verification is partial: each solution's second-run captures are kept as an
+    earlier verification left them (pages link them), and these lines say so, naming each one and
+    when it was written, so a fresh first run is never read as paired with a fresh second."""
+    lines = []
+    for section in SECTIONS:
+        if only and section.slug not in only:
+            continue
+        folder = assignment(section.slug).folder / "solution" / "captured"
+        for variant in VARIANTS:
+            page = folder / f"{variant}-run-2.md"
+            if (variants and variant not in variants) or not page.is_file():
+                continue
+            written = captured_on(page.read_text(encoding="utf-8"))
+            lines.append(
+                f"! {section.slug} {variant}: run 2 not made (ONCE=1); its captures "
+                f"({page.relative_to(REPO)} and its images) are kept from an earlier "
+                f"verification, run {written}, and do not show this code"
+            )
+    if lines:
+        lines.append("! The verification is partial: each solution's second run is still owed.")
+    return lines
+
+
+RUN_ON = re.compile(r"\brun on (\d{1,2} [A-Z][a-z]+ \d{4}(?:, \d{2}:\d{2})?)")
+
+
+def captured_on(page_text: str) -> str:
+    """When a captured run was made, as its own page says ("run on 23 October 2026, 09:52"),
+    never the file's time, which a fresh clone sets to the clone's."""
+    found = RUN_ON.search(page_text)
+    if found is None:
+        return "on a date its page does not give"
+    return f"on {found.group(1)} (Coordinated Universal Time)"
 
 
 def stop_stack() -> None:

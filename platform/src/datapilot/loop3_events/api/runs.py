@@ -51,7 +51,7 @@ def current_session() -> SessionOut:
     with db.connect(db.Role.APP) as conn:
         session = sessions.open_session(conn)
     if session is None:
-        raise HTTPException(404, "No live session is open: run `make preflight` first.")
+        raise HTTPException(404, sessions.NO_SESSION)
     return session_out(session)
 
 

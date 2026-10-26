@@ -59,40 +59,26 @@ covering the new family with zero confirmed regressions, after a human approval 
 
 Estimated effort: about 2 to 2.5 hours.
 
-**Cost of one full check:** the benchmark is the costly part, and the check prints its estimate
-apart from the rest. One experiment is 82 analyst runs (28 dev items once, 18 holdout items 3 times
-each), and every apparent regression is confirmed by re-runs. The first check in a live session
-runs the baseline experiment and the candidate experiment, 164 runs; every later check in the same
-session shares that session's baseline, as the class gate does, and runs only the candidate, 82
-runs, unless one of your items changed since that baseline measured it (its question, gold SQL,
-split, or tolerance). Then the check runs a new baseline and costs as a first check does; it prints
-that reason, and the first-check estimate, before its first model call. As in class, the analyzer team writes two candidates, 3 calls each, and each candidate runs on
-the 28 dev items once, 56 analyst runs, before one is kept. The check prints its own estimate before
-the first model call and the actual tokens and cost at the end. Measured on gpt-6-luna in the
-build's verification on 23 October 2026 with two candidates, each later check in a live session
-cost about 14 to 24 cents (13.58 and 23.95 cents, two checks); a first check, with the baseline,
-is about 38 cents (30.66 cents measured when the check wrote one candidate, plus about 7 cents for
-the second candidate's dev runs). The measured checks are in the costs table linked below. At the
-caps, with every run using its whole token budget at the output price, the runs of
-a first check would come to 678 cents and those of a later one to 432 cents, with re-runs on top,
-but the check stops cleanly
-at its own spend cap of 1.00 dollar, so one check costs at most 100 cents. A check stopped at the
-cap puts back the active knowledge version, as a normal end does
-([costs](../../docs/costs.md#assignments)).
+**Cost and time of one full check:**
 
-**How often a correct solution passes.** Requirement 10 depends on the rule set the model writes
-in that check. In the build's verification and the checks of 23 October, with one candidate per
-check, it passed in 6 of 10 checks of correct solutions. Three were blocked by one confirmed dev
-regression: a rule the model wrote made one dev item fail under the candidate. The third of them,
-measured with the current re-runs of both versions, passed that item in both re-runs under v1 and
-failed it in both under the candidate, so it was a real regression of that rule set, not noise in
-v1. The fourth candidate was no better than v1 on holdout. The check now writes two candidates and
-keeps the one with fewer dev regressions, then more dev passes, as the class does, which targets
-the first cause. Measured on 23 October 2026 with two candidates, the reference passed 2 of 2
-checks (13.58 and 23.95 cents, 15 and 22 minutes); two checks are a small sample, so a correct
-solution may still read FAIL on requirement 10 now and then: run the check again, and the FAIL line
-says when the cause is the model's rule set rather than your files. A starter, and a solution that
-leaves out a family item or lets `aov` reach the unattended level, still fail it every time.
+- **Typical:** about 13 to 24 cents for a later check in a live session, from seven later checks
+  with two candidates each: five audited clean and two not confirmed clean
+  ([costs](../../docs/costs.md#assignments), note 2). The five audited clean: alternative two at
+  19.22 cents on 24 October 2026, and on 25 October the reference twice, at 14.53 and 12.91 cents,
+  and each alternative once, at 12.62 and 17.09 cents. The two not confirmed clean: the reference
+  at 13.58 and 23.95 cents on 23 October 2026, a day no audit of planted flags covers. The checks
+  of 25 October ran before changes to the check's stack and the platform that cannot alter their
+  verdicts ([evidence](../../docs/evidence/general.md#captures)). No clean first check, which
+  also runs the baseline experiment, has been measured: the one of 24 October (23.59 cents) ran
+  while a planted bug was on.
+- **Ceiling:** the check prints its own estimate before the first model call, and it stops cleanly
+  at its spend cap of 1.00 dollar, putting back the active knowledge version.
+- **How long:** the two later checks of 23 October took 15 and 22 minutes; on 25 October the two
+  later checks of the reference finished 15 minutes apart.
+
+Why a first check costs more, every figure, and the ceilings are on the
+[costs page](../../docs/costs.md#assignments). How often a correct solution passes requirement 10
+is in [SPEC.md](SPEC.md).
 
 ## Step by step
 
@@ -119,7 +105,7 @@ leaves out a family item or lets `aov` reach the unattended level, still fail it
    requirements 6 to 8 read PASS, and the live requirements 9 and 10 run and read PASS, with their
    trace links and live stamps.
 
-**Tests that pin the starter.** The class branch keeps the starter unchanged, and some of its
+**Tests that pin the starter.** The course repository ships the starter unchanged, and some of its
 tests pin exactly that, so they fail once your work is in place. That is expected, not a sign your
 work is wrong. With every step done, `make test` fails these, and only these, for that reason:
 

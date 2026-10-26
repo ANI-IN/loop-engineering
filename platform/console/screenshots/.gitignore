@@ -1,3 +1,3 @@
-# The console's fit check writes these shots on every run; they are measurements, not pages,
-# and no page shows them, so they are never committed.
+# The console's fit check once wrote its shots here; it now writes them to .runs/console-fit/,
+# outside the published image folders. They are measurements, not pages, and never committed.
 events-fit-*.png

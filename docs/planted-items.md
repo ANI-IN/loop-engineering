@@ -21,7 +21,7 @@ JavaScript Object Notation (JSON), and Coordinated Universal Time (UTC) by their
 - **Identifier**: `BUG_UNBOUNDED_ROWS`
 - **Section**: Section 1: Agent loop
 - **Where**: `platform/src/datapilot/loop1_agent/tools.py`
-- **Trigger**: BUG_UNBOUNDED_ROWS=1, then Agent > Run large query
+- **Trigger**: `make demo NAME=agent-unbounded-rows PLANTED=1` (its own run only)
 - **Symptom**: run_query returns every row; a 10,000-row result reaches the model and tokens spike.
 - **Fix**: Cap rows at limits.row_cap, return the total row count and a truncation notice.
 - **Demos**: Unbounded rows (`agent-unbounded-rows`)
@@ -42,7 +42,7 @@ JavaScript Object Notation (JSON), and Coordinated Universal Time (UTC) by their
 - **Identifier**: `BUG_NAIVE_GUARD`
 - **Section**: Section 2: Verification loop
 - **Where**: `platform/src/datapilot/loop2_verification/graders/statement_policy.py`
-- **Trigger**: BUG_NAIVE_GUARD=1, then Verify > Send malicious SQL
+- **Trigger**: `make demo NAME=verify-malicious-sql PLANTED=1` (its own run only)
 - **Symptom**: A prefix check (the text starts with select or with) passes "SELECT 1; DELETE FROM orders" and a data-modifying CTE; only the read-only role stops them.
 - **Fix**: Syntax-tree guard - one statement, a SELECT or set-operation root, no write node anywhere, a function denylist, warehouse schema only.
 - **Demos**: Malicious SQL (`verify-malicious-sql`)
@@ -52,7 +52,7 @@ JavaScript Object Notation (JSON), and Coordinated Universal Time (UTC) by their
 - **Identifier**: `BUG_NO_COST_GUARD`
 - **Section**: Section 2: Verification loop
 - **Where**: `platform/src/datapilot/loop2_verification/graders/cost.py`
-- **Trigger**: BUG_NO_COST_GUARD=1, then Verify > Send cartesian query
+- **Trigger**: `make demo NAME=verify-cost-guard PLANTED=1` (its own run only)
 - **Symptom**: A cartesian join runs until the statement timeout.
 - **Fix**: EXPLAIN (FORMAT JSON) cost and row thresholds from pack.yaml reject it at once with feedback.
 - **Demos**: The cost guard (`verify-cost-guard`)
@@ -63,7 +63,7 @@ JavaScript Object Notation (JSON), and Coordinated Universal Time (UTC) by their
 - **Identifier**: `BUG_NO_RETRY_CAP`
 - **Section**: Section 2: Verification loop
 - **Where**: `platform/src/datapilot/loop2_verification/limits.py`
-- **Trigger**: BUG_NO_RETRY_CAP=1, then Verify > Inject failing grader
+- **Trigger**: `make demo NAME=verify-retry-cap PLANTED=1` (its own run only)
 - **Symptom**: The run loops on a failing grader and its cost keeps climbing.
 - **Fix**: Cap retries at limits.max_retries, then end the run escalated with the reasons.
 - **Demos**: The retry cap (`verify-retry-cap`)
@@ -73,7 +73,7 @@ JavaScript Object Notation (JSON), and Coordinated Universal Time (UTC) by their
 - **Identifier**: `BUG_NO_IDEMPOTENCY`
 - **Section**: Section 3: Event loop
 - **Where**: `platform/src/datapilot/loop3_events/api/events.py`
-- **Trigger**: BUG_NO_IDEMPOTENCY=1, then Events > Send the same event three times
+- **Trigger**: `make demo NAME=events-duplicate-events PLANTED=1` (its own events only)
 - **Symptom**: The same event three times gives three answers in the channel.
 - **Fix**: INSERT ... ON CONFLICT (event_id) DO NOTHING; one answer and "2 duplicates ignored".
 - **Demos**: Duplicate events (`events-duplicate-events`)
@@ -83,7 +83,7 @@ JavaScript Object Notation (JSON), and Coordinated Universal Time (UTC) by their
 - **Identifier**: `BUG_RANDOM_DIGEST_ID`
 - **Section**: Section 3: Event loop
 - **Where**: `platform/src/datapilot/loop3_events/scheduler.py`
-- **Trigger**: BUG_RANDOM_DIGEST_ID=1, then Events > Run digest now twice
+- **Trigger**: `make demo NAME=events-duplicate-events PLANTED=1`, which fires the digest twice
 - **Symptom**: Firing the digest twice posts two digests.
 - **Fix**: The deterministic event id digest:YYYY-MM-DD.
 - **Demos**: Duplicate events (`events-duplicate-events`)
@@ -93,7 +93,7 @@ JavaScript Object Notation (JSON), and Coordinated Universal Time (UTC) by their
 - **Identifier**: `BUG_MEMORY_CHECKPOINTER`
 - **Section**: Section 3: Event loop
 - **Where**: `platform/src/datapilot/loop3_events/approvals.py`
-- **Trigger**: BUG_MEMORY_CHECKPOINTER=1, then Events > Request California export, then Restart worker
+- **Trigger**: `make demo NAME=events-approval-survives-restart PLANTED=1` (the worker restarts with it, then without it once the run ends), then Restart worker
 - **Symptom**: The pending approval is lost when the worker restarts.
 - **Fix**: AsyncPostgresSaver in schema lg with thread_id = run_id; resume with Command(resume=...).
 - **Demos**: The approval that survives a restart (`events-approval-survives-restart`)
@@ -103,7 +103,7 @@ JavaScript Object Notation (JSON), and Coordinated Universal Time (UTC) by their
 - **Identifier**: `BUG_KILLSWITCH_AT_CLAIM_ONLY`
 - **Section**: Section 3: Event loop
 - **Where**: `platform/src/datapilot/loop3_events/killswitch.py`
-- **Trigger**: BUG_KILLSWITCH_AT_CLAIM_ONLY=1 and DEMO_PACING=1, then engage the kill switch during a run
+- **Trigger**: `make demo NAME=events-kill-switch-in-flight PLANTED=1` (its own run only, with demo pacing); it engages the kill switch during the run
 - **Symptom**: An in-flight run keeps going after the kill switch is engaged.
 - **Fix**: Check before every model call (jump to end) and every tool call (short-circuit).
 - **Demos**: The kill switch in flight (`events-kill-switch-in-flight`)
@@ -133,7 +133,7 @@ JavaScript Object Notation (JSON), and Coordinated Universal Time (UTC) by their
 - **Identifier**: `BUG_NAIVE_ANALYZER`
 - **Section**: Section 4: Hill-climbing loop
 - **Where**: `platform/src/datapilot/loop4_hill_climbing/analyzer.py`
-- **Trigger**: BUG_NAIVE_ANALYZER=1, then Improve > Run analyzer
+- **Trigger**: `make demo NAME=improve-naive-analyzer-blocked` (its own requests only; it plants the naive analyzer with or without PLANTED=1); or Improve > Run the naive analyzer (planted), shown while demo controls are allowed
 - **Symptom**: The naive analyzer quotes each failed dev question in a rule of its own; the analyzer applies no overfit guard, and the gate blocks the version because the guard rejects its rules.
 - **Fix**: The analyzer team with the critic, then the deterministic overfit guard.
 - **Demos**: The naive analyzer, blocked (`improve-naive-analyzer-blocked`)
@@ -235,7 +235,7 @@ JavaScript Object Notation (JSON), and Coordinated Universal Time (UTC) by their
 - **Identifier**: `DEMO_PACING`
 - **Section**: Section 3: Event loop
 - **Where**: `platform/src/datapilot/loop3_events/pacing.py`
-- **Trigger**: DEMO_PACING=1 (pause DEMO_PACING_SECONDS between lifecycle stages)
+- **Trigger**: `make demo NAME=events-kill-switch-in-flight`, for its own run only (a pause of `DEMO_PACING_SECONDS` between lifecycle stages)
 - **Symptom**: Runs move visibly across lanes, so the kill switch can catch one in flight. Results never change.
 - **Fix**: Not a defect; off outside demos.
 - **Demos**: The kill switch in flight (`events-kill-switch-in-flight`)

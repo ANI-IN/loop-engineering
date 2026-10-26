@@ -3,9 +3,10 @@
 The same analyst now runs from events: a webhook, an export request, a repeated delivery, and a
 stop. You watch runs move across the run board on the console's Events page, an approval survive
 a worker restart, three deliveries become one answer, and the kill switch stop a run in flight.
-Every screenshot and number in this chapter comes from the live runs of 22 October 2026 (business
-date 31 January 2026), and every time range from the calibration demo pass of 22 and 23 October
-2026.
+Every screenshot in this chapter comes from the live runs of 24 October 2026, 13:56 to 14:09
+Coordinated Universal Time, or of 25 October 2026, from 14:49, as each caption says (business date
+31 January 2026), and every time range from the calibration demo pass of 22 and 23 October 2026
+and the live sessions of 23, 24, and 25 October.
 
 > Your output will differ: run times, ids, and the agent's wording change on every run.
 
@@ -22,9 +23,9 @@ make demo NAME=events-webhook-question
 **You should see:** the status line at the report-only level, and one run that moves across the
 lanes to **Done**.
 
-![The Events page: the status line at the report-only level with no family cleared, the run board with one posted run for the question about the previous day's orders in Done, and the empty off-the-board lanes](../../section-3-event-loop/demo/expected/events-webhook-question-board.png)
+![The Events page: the status line at the report-only level with no family cleared, the run board with one posted run, the question about the previous day's orders, in Done, the empty off-the-board lanes, and the row of buttons](../../section-3-event-loop/demo/expected/events-webhook-question-board.png)
 
-*The webhook question becomes an event and a job, and moves to Done.*
+*Run ce15ac5d, 24 October 2026: the webhook question becomes an event and a job, and moves to Done, posted at the report-only level.*
 
 **Look at:** the run's card in **Done**: "Posted at the report-only level" and its live stamp.
 
@@ -51,9 +52,9 @@ Agent loop.
 
 **You should see:** the answer, labelled with its level.
 
-![The Channel with one post: "Posted at the report-only level, unverified" and the answer 291 orders](../../section-3-event-loop/demo/expected/events-webhook-question-channel.png)
+![The Events page scrolled to the Channel: the baseline benchmark strip in Done, the empty off-the-board columns, the buttons, and the Channel's one post, Posted at the report-only level, unverified, with the answer 300 orders](../../section-3-event-loop/demo/expected/events-webhook-question-channel.png)
 
-*At the report-only level the answer is posted labelled unverified.*
+*25 October 2026, a different run of the same demo from step 1: the post is labelled "Posted at the report-only level, unverified", and its answer is 300 orders.*
 
 **Look at:** the label "Posted at the report-only level, unverified".
 
@@ -82,9 +83,9 @@ make demo NAME=events-approval-survives-restart
 
 **You should see:** a new card in **Holding for approval**, with a **Review** button.
 
-![The run board with the export of every marketable California customer's email and first name in Holding for approval, its reason "the query reads personal" cut off, and its Review button](../../section-3-event-loop/demo/expected/events-approval-held.png)
+![The run board with the export, Export the California customers who may receive marketing, in Holding for approval, its reason starting the query reads personal, its live stamp, and its Review button](../../section-3-event-loop/demo/expected/events-approval-held.png)
 
-*The California marketing export reads personal data, so the run holds before the query runs.*
+*25 October 2026: the California marketing export reads personal data, so the run holds before its query runs. Steps 4 and 5 show a run of the same demo from 24 October.*
 
 **Look at:** the card's reason line, which starts "the query reads personal".
 
@@ -109,9 +110,9 @@ before it runs.
 
 **You should see:** a line under the buttons about the pending approval.
 
-![After Restart worker: the line "Worker restart requested. The pending approval survived: run ef5eb601 still holding." above the Channel](../../section-3-event-loop/demo/expected/events-approval-after-restart.png)
+![After Restart worker: the export still in Holding for approval and the line Worker restart requested. The pending approval survived: run b1b1453b still holding. above an empty Channel](../../section-3-event-loop/demo/expected/events-approval-after-restart.png)
 
-*The worker restarts; the Postgres checkpointer keeps the pending approval.*
+*24 October 2026: the worker restarts, and the Postgres checkpointer keeps the pending approval.*
 
 **Look at:** "The pending approval survived".
 
@@ -122,7 +123,7 @@ lose it.
 > The card is still in **Holding for approval** after the restart.
 
 > [!IFDIFFERENT]
-> **Restart worker** does nothing → demo controls are off; set `DATAPILOT_ALLOW_DEMO_CONTROLS=1` in `.env`, then `make up`.
+> **Restart worker** does nothing → demo controls are off; set `DATAPILOT_ALLOW_DEMO_CONTROLS=1` in `.env`, then `make up` (a setting, not a planted flag).
 
 > [!INSTRUCTOR]
 > Point at the run's short id in the line, then at the same card on the board.
@@ -136,11 +137,13 @@ lose it.
 **You should see:** the dialog with the exact query and its row count; after approval, the run
 resumes and the export is posted.
 
-<!-- capture: the Review dialog of the California export, with the exact query and the row count -->
+![The Review dialog, Approve this export?, with the row estimate, the reason it holds, the exact query, and the Approve and run and Reject buttons](../../section-3-event-loop/demo/expected/events-approval-review-dialog.png)
 
-![After approval: "Worker restart requested. Run ef5eb601 moved on after the restart." and the export posted at the report-only level, unverified](../../section-3-event-loop/demo/expected/events-approval-approved-posted.png)
+*25 October 2026, a third run of the same demo: before anything runs, the dialog states the exact query, about how many rows it returns, and why it holds: the query reads personal data.*
 
-*Approving resumes the run, and the export is posted.*
+![After approval: the export posted in Done, the line Worker restart requested. Run b1b1453b moved on after the restart., and the post Posted at the report-only level, unverified, with 5,261 California customers who may receive marketing](../../section-3-event-loop/demo/expected/events-approval-approved-posted.png)
+
+*24 October 2026, the run of step 4: approving resumes the same run, and the export is posted: 5,261 customers, a preview of the first 50 rows.*
 
 **Look at:** the line "moved on after the restart" and the new post in the channel.
 
@@ -153,25 +156,32 @@ resumes and the export is posted.
 > The dialog asks again for a rewritten query → expected when you ask for changes; each new query is approved before it runs, and an approved query is never asked about twice.
 
 > [!INSTRUCTOR]
-> In the captured run the reviewer asked for changes, and the analyst rewrote its query three
-> times. Say so if it happens: each version still needed a person.
+> In the captured run the reviewer approved the first query. In an earlier run it asked for
+> changes, and the analyst rewrote its query three times. Say so if it happens: each version
+> still needed a person.
 
 ### Step 6: Show the lost approval with the in-memory checkpointer
 
-**Where:** `.env` in an editor, the demo terminal, and the Events page.
+**Where:** The demo terminal, and the Events page.
 
-**Type:** set `BUG_MEMORY_CHECKPOINTER=1` in `.env`, then repeat steps 3 and 4.
+**Type:** this, then press **Restart worker**, wait for the worker to come back, and approve the
+held export. `PLANTED=1` restarts the worker with the in-memory checkpointer, holds the demo
+terminal until the run ends, then restarts the worker without it; Ctrl+C ends the wait sooner.
+`.env` keeps every planted flag at `0`.
 
 ```bash
-make up
-make demo NAME=events-approval-survives-restart
+make demo NAME=events-approval-survives-restart PLANTED=1
 ```
 
-**You should see:** after **Restart worker**, the pending approval is lost.
+**You should see:** after **Restart worker** the card still reads **Holding for approval**: the
+run's record is in Postgres. Its checkpoint was in the worker's memory, so when you approve, there
+is nothing to resume: the run fails, and the pending approval is lost.
 
-<!-- capture: the approval with the in-memory checkpointer planted: the Events page after Restart worker -->
+![After Restart worker and approval with the in-memory checkpointer planted: the line that the pending approval was lost and the run failed, above a Channel with no export](../../section-3-event-loop/demo/expected/events-approval-lost-after-restart.png)
 
-**Look at:** the line under the buttons after the restart.
+*25 October 2026: with the in-memory checkpointer the record still says holding after the restart, but the checkpoint died with the worker: approving fails the run, and the pending approval is lost.*
+
+**Look at:** the line under the buttons after the approval.
 
 **What it means:** state held in process memory dies with the process.
 
@@ -179,10 +189,11 @@ make demo NAME=events-approval-survives-restart
 > You can compare this screen with step 4.
 
 > [!IFDIFFERENT]
-> The approval survives → the services did not read `.env`; run `make up` again.
+> The approval survives → the run was sent without `PLANTED=1`; run `make demo NAME=events-approval-survives-restart PLANTED=1`.
 
 > [!INSTRUCTOR]
-> Set the flag back to `0` and run `make up`. In 3 of 3 measured runs the approval was lost.
+> Wait for the terminal's line that it restarted the worker without the demo's flags before the
+> next demo. The approval was lost in every recorded run of this half, 24 and 25 October included.
 
 ### Step 7: Send the same event three times
 
@@ -194,13 +205,15 @@ make demo NAME=events-approval-survives-restart
 make demo NAME=events-duplicate-events
 ```
 
-**You should see:** one new run in **Done**, marked with the duplicates it absorbed.
+**You should see:** one new question run in **Done**, marked with the duplicates it absorbed, and
+one digest run.
 
-![The run board: the webhook question posted once and marked "2 duplicates absorbed", below it the posted California export, and "1 more"](../../section-3-event-loop/demo/expected/events-duplicate-events-board.png)
+![The board with Done holding 3 runs, of which the frame shows one: the webhook question about the previous day's orders, posted at the report-only level, marked 2 duplicates absorbed, then 1 more](../../section-3-event-loop/demo/expected/events-duplicate-events-board.png)
 
-*The same event three times: one run, one post, and 2 duplicates absorbed.*
+*25 October 2026: the question posted once, and its two repeats were absorbed as duplicates.*
 
-**Look at:** "2 duplicates absorbed" on the newest card.
+**Look at:** "2 duplicates absorbed" on the question's card (in the captured run, the answer was 300
+orders).
 
 **What it means:** the event's id is stored once; the second and third deliveries find it and add
 nothing. One answer is posted, not three.
@@ -209,27 +222,33 @@ nothing. One answer is posted, not three.
 > One new card, and the channel has one new post.
 
 > [!IFDIFFERENT]
-> Three cards → check that `BUG_NO_IDEMPOTENCY` is `0` in `.env`, then `make up`.
+> Three cards → the run was sent with `PLANTED=1`, or the board still holds the planted half's runs; `make reset NAME=event-loop`, then run it again.
 
 > [!INSTRUCTOR]
 > Say: "Webhooks retry. The effect must happen once, however many times the event arrives."
 
-### Step 8: Show three posts with the missing idempotency
+### Step 8: Show the repeated posts with the missing idempotency
 
-**Where:** `.env` in an editor, the demo terminal, and the Events page.
+**Where:** The demo terminal, and the Events page.
 
-**Type:** set `BUG_NO_IDEMPOTENCY=1` in `.env`, then:
+**Type:** this; `PLANTED=1` turns the missing idempotency on for this demo's own events only. In
+class the planted half runs first; reset between the halves.
 
 ```bash
-make up
-make demo NAME=events-duplicate-events
+make demo NAME=events-duplicate-events PLANTED=1
+make reset NAME=event-loop
 ```
 
-**You should see:** three runs and three posts for the same event.
+**You should see:** three question runs and two digests, and their posts: three answers to the
+same question and two digests for one day.
 
-<!-- capture: duplicate events with the missing idempotency planted: three posted runs on the board and three posts in the channel -->
+![The Channel with the missing idempotency planted: four posts in view, two digests for 30 January 2026 with different figures, and two answers of 300 orders to the same question](../../section-3-event-loop/demo/expected/events-duplicate-events-no-idempotency-channel.png)
 
-**Look at:** the count in **Done** and the channel.
+*25 October 2026: without the stored event id, each delivery ran again: two digests and repeated answers to one question.*
+
+**Look at:** the count in **Done** (the board shows the newest two strips per lane, so
+the three question runs sit under its "more" link) and the posts in the Channel: the repeated
+answers and the two digests.
 
 **What it means:** without the stored event id, every delivery is a new job.
 
@@ -237,19 +256,21 @@ make demo NAME=events-duplicate-events
 > You can compare the count with step 7.
 
 > [!IFDIFFERENT]
-> Only one post → the services did not read `.env`; run `make up` again.
+> Only one post → the run was sent without `PLANTED=1`; run `make demo NAME=events-duplicate-events PLANTED=1`.
 
 > [!INSTRUCTOR]
-> Set the flag back to `0` and run `make up`. In 3 of 3 measured runs the same event posted three answers.
+> Nothing to switch back: the flags went with this demo's events only. The same event ran more
+> than once in every recorded run of this half, 24 and 25 October included.
 
 ### Step 9: Engage the kill switch on a run in flight
 
-**Where:** `.env` in an editor, the demo terminal, and the Events page.
+**Where:** The demo terminal, and the Events page.
 
-**Type:** set `DEMO_PACING=1` in `.env` so a run stays in flight long enough, then:
+**Type:** this. `make demo` switches demo pacing on for this run, so it stays in flight long
+enough, and engages the kill switch while it runs. In class the planted half of step 10 runs
+first, then `make reset NAME=event-loop`, then this.
 
 ```bash
-make up
 make demo NAME=events-kill-switch-in-flight
 ```
 
@@ -258,13 +279,13 @@ On the console, the same demo is **Kill switch** on the status line: arm, then s
 **You should see:** the kill switch engages while a run is in the **Running** lane; the run stops
 at its next step and moves to **Blocked by kill switch**.
 
-![With demo pacing on: the status line forced to the report-only level by the kill switch, a pacing chip of 2 seconds between stages, and the run still in the Running lane, claimed by a worker](../../section-3-event-loop/demo/expected/events-kill-switch-paced-running.png)
+![With demo pacing on: the status line forced to the report-only level by the kill switch, the chip Demo pacing on: 2 s between stages, and the run still in the Running lane, claimed by a worker](../../section-3-event-loop/demo/expected/events-kill-switch-paced-running.png)
 
-*With demo pacing on, the run is visibly in flight when the kill switch is engaged.*
+*Run 1c76de06, 24 October 2026: with demo pacing on, the run is visibly in flight when the kill switch is engaged.*
 
-![With demo pacing on: the Running lane empty and the run under Blocked by kill switch, stopped by the kill switch](../../section-3-event-loop/demo/expected/events-kill-switch-paced-stopped.png)
+![With demo pacing on: the Running lane empty and the same run under Blocked by kill switch, stopped by the kill switch](../../section-3-event-loop/demo/expected/events-kill-switch-paced-stopped.png)
 
-*It stops at its next step and moves off the board to Blocked by kill switch.*
+*Run 1c76de06, 24 October 2026: it stops at its next step and moves off the board to Blocked by kill switch.*
 
 **Look at:** the status line, "report-only level, forced by the kill switch", and the card under
 **Blocked by kill switch**.
@@ -276,29 +297,30 @@ job is claimed, so it reaches runs already in flight.
 > The run is under **Blocked by kill switch**, and the status line shows the report-only level.
 
 > [!IFDIFFERENT]
-> The run finishes before the switch → demo pacing is off; set `DEMO_PACING=1` in `.env`, then `make up`.
-> The run keeps going after the switch → check that `BUG_KILLSWITCH_AT_CLAIM_ONLY` is `0` in `.env`, then `make up`.
+> The run finishes before the switch → it was sent from the console, which sends no pacing; run `make demo NAME=events-kill-switch-in-flight`.
+> The run keeps going after the switch → the run was sent with `PLANTED=1`; `make reset NAME=event-loop`, then run it again without it.
 
 > [!INSTRUCTOR]
-> The status line in these captures also shows two families suspended: they were taken after the
-> Section 4: Hill-climbing loop promotion. In class you see "Not cleared" for every family. The
-> kill switch stays engaged until `make reset NAME=event-loop` releases it.
+> The status line in these captures reads "Not cleared" for every family, as in class. The kill
+> switch stays engaged until `make reset NAME=event-loop` releases it.
 
 ### Step 10: Show the kill switch at claim only
 
-**Where:** `.env` in an editor, the demo terminal, and the Events page.
+**Where:** The demo terminal, and the Events page.
 
-**Type:** set `BUG_KILLSWITCH_AT_CLAIM_ONLY=1` in `.env`, keep `DEMO_PACING=1`, then:
+**Type:** this; `PLANTED=1` sends the run with the kill switch at claim only, and with demo
+pacing. The switch stays engaged afterwards, so reset before the next half.
 
 ```bash
+make demo NAME=events-kill-switch-in-flight PLANTED=1
 make reset NAME=event-loop
-make up
-make demo NAME=events-kill-switch-in-flight
 ```
 
 **You should see:** the run in flight keeps going after the kill switch engages.
 
-<!-- capture: the kill switch at claim only planted: the Events page with the run still moving after the kill switch -->
+![With the kill switch at claim only and demo pacing on: the status line with the kill switch engaged at the report-only level, and the run finished on the board, not blocked](../../section-3-event-loop/demo/expected/events-kill-switch-at-claim-only-board.png)
+
+*25 October 2026: with the kill switch checked at claim only, the run in flight never sees it: the status line says the switch is engaged, and the run still posted.*
 
 **Look at:** the run's lane after the switch.
 
@@ -308,11 +330,12 @@ make demo NAME=events-kill-switch-in-flight
 > You can compare the run's lane with step 9.
 
 > [!IFDIFFERENT]
-> The run stops → the services did not read `.env`; run `make up` again.
+> The run stops → the run was sent without `PLANTED=1`; `make reset NAME=event-loop`, then `make demo NAME=events-kill-switch-in-flight PLANTED=1`.
 
 > [!INSTRUCTOR]
-> Set both flags back to `0`, run `make up`, then `make reset NAME=event-loop`. This half has no
-> measured run yet.
+> Nothing to switch back; `make reset NAME=event-loop` releases the kill switch. The run posted
+> despite the switch in every recorded run of this half, 24 and 25 October included (16 and 30
+> seconds).
 
 ## Result summary
 
@@ -320,21 +343,21 @@ make demo NAME=events-kill-switch-in-flight
 |---|---|
 | Pending approval across a worker restart | Survived; approved and posted (headline) |
 | The webhook question | Posted at the report-only level, unverified |
-| The same event three times | One run, 2 duplicates absorbed |
+| The same event three times | One question run, 2 duplicates absorbed, and one digest |
 | The kill switch | Run stopped in flight; report-only level forced |
 
 ## Time and cost
 
 Times are wall time from the trigger to the checked result, from the calibration demo pass of 22
-and 23 October 2026 and the live sessions of 23 October, afternoon and evening
+and 23 October 2026 and the live sessions of 23, 24, and 25 October
 (`docs/calibration-report.md`), each demo run alone with a reset between.
 
 | Demo | Time | Shown in calibration | Cap |
 |---|---|---|---|
-| The webhook question | 14 to 46 s | 5 of 6; one held by the reviewer, since fixed | 60,000 tokens per run |
-| The approval that survives a restart | 50 to 84 s | 4 of 4 | 60,000 tokens per run |
-| Duplicate events | 35 to 78 s | 4 of 4 | 60,000 tokens per run |
-| The kill switch in flight | 3 to 33 s | 4 of 4 | 60,000 tokens per run |
+| The webhook question | 12 to 46 seconds | 5 of 6 in calibration (one held, since fixed); shown on 24 and 25 October | 60,000 tokens per run |
+| The approval that survives a restart | 50 to 84 seconds | 4 of 4 in calibration; shown on 24 and 25 October | 60,000 tokens per run |
+| Duplicate events | 35 to 78 seconds | 4 of 4 in calibration; shown on 24 and 25 October | 60,000 tokens per run |
+| The kill switch in flight | 3 to 33 seconds | 4 of 4 in calibration; shown on 24 and 25 October | 60,000 tokens per run |
 
 The daily cap is 2,000,000 tokens (`budgets.tokens_per_day` in `pack.yaml`), shown as "Tokens
 today" on the status line. One analyst run costs about 0.001 dollars.

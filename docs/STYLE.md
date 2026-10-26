@@ -10,6 +10,12 @@ make check-style
 uv run python platform/scripts/lint_prose.py
 ```
 
+Before you commit an image, run the image check of rule 11 as well:
+
+```bash
+uv run python platform/scripts/check_images.py
+```
+
 `make check-style` runs `platform/scripts/check_style.py`; `--list-checks` lists every check.
 Errors fail the check. Length limits, template headings, the scenario label, the glossary box,
 and template guidance left on a page are warnings, and so are the shorthand words and technical
@@ -60,6 +66,14 @@ course measures whether it helps), and then the how-to.
 
 ### 3. Plain short sentences
 
+- Every paragraph says something specific and true about this course or its code. A paragraph
+  that would fit any other course is cut.
+- No generic opening or closing paragraph, no filler or hype words, and no emoji. The prose lint
+  fails on the list in `platform/scripts/lint_prose.py`, in the pages and in the slide sources
+  (`slides/source/*.py`). The same file holds the few technical uses it allows, such as releasing
+  a lock, each with its reason.
+- Explain an idea once, where it belongs, and link to that place from every other page.
+- Write for experienced engineers: plain words, no background they already have.
 - One idea per sentence. Aim for 25 words or fewer.
 - Write to the reader as "you". Use the active voice and the present tense.
 - Say what happens, not what something "allows" or "enables".
@@ -67,7 +81,8 @@ course measures whether it helps), and then the how-to.
 - Report results as counts ("0 of 3 runs"), never as percentages.
 - Short paragraphs: at most 5 lines.
 - The eight technical terms of rule 18 are spelled out on their first use on each page, then
-  used bare. Spell out any less common term on first use on each page, in a few plain words.
+  used bare. Spell out every other abbreviation and any less common term on first use on each
+  page and each slide, in a few plain words.
   Every such term is in the [glossary](glossary.md), one line each, in alphabetical order.
 
 ### 4. One glossary box per page
@@ -116,10 +131,11 @@ Words from how the course was built mean nothing to learners: "owner scope", "th
 `PENDING` or `CAPTURE` markers, "generated when released", "(private)", and the dated words of
 rule 15. Say who does it ("you", "the instructor"), give the command to run, or cut the sentence.
 
-### 7. No invented numbers
+### 7. No invented numbers, no claim without evidence
 
-Every number comes from a file in this repository (name the file) or a real run listed in an
-evidence page. Do not estimate times or costs. Caps are stated as caps, with their variable name in
+Every claim comes with its evidence: a command, real output, a file in this repository, or a
+linked source. A claim you cannot back is cut. Every number comes from a file in this repository
+(name the file) or a real run listed in an evidence page. Do not estimate times or costs. Caps are stated as caps, with their variable name in
 `.env.example`. If a number is missing, run the command and capture it. Never commit a placeholder.
 
 ### 8. One "your output will differ" note per page
@@ -148,6 +164,19 @@ Screenshots are real, from real runs, stored in the repository: section screensh
 Each image stands on its own line with alt text, then a blank line, then an italic caption that
 says what to notice. Alt text says what the image shows, never a file name or one word such as
 "image". Colour never carries meaning alone. The one remote image allowed is the continuous integration status badge.
+
+How a screenshot is taken:
+
+- Playwright, at a 1280 by 720 viewport and a device scale factor of 2: 2560 by 1440 pixels.
+- The same zoom and the same theme on every screenshot.
+- Nothing clipped: no header and no line of text cut by an edge.
+- No browser chrome unless the browser is the point, and no stray cursor or notification.
+- The text is readable when the image fills a slide.
+
+`platform/scripts/check_images.py` checks every image in the published image folders: the size
+(terminal renders and diagrams have their own minimum, listed in the script with its reason),
+large blank areas of one colour, content cut by the top or bottom edge, and alt text on every
+Markdown reference to the image. It prints one line per problem and the count per kind.
 
 ### 12. Code blocks
 
@@ -231,6 +260,17 @@ How the check reports, while pages are still being written:
 Each finding names its rule in plain words, such as
 `Shorthand in prose: 'repo': write 'repository'`. To keep a quoted line as it is, end it with an allow marker that names the check
 id from `--list-checks` (shorthand is `SC32`, a term not spelled out is `SC33`) and the reason.
+
+### 19. Code
+
+The code a learner reads, runs, or copies follows four rules:
+
+- No dead code: no unused function, commented-out block, or unreachable branch. Delete it; git
+  keeps the history.
+- No unexplained magic numbers: a value that is not obvious gets a named constant and a comment
+  that says where the value comes from.
+- Clear names that say what a thing is or does, in full words.
+- Comments only where they explain why. A comment never repeats what the next line does.
 
 ---
 

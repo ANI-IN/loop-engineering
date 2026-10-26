@@ -70,15 +70,19 @@ UNCHANGED = {
 EVALUATION = "c0b5512d82d0d3ffb162146b9fec95f00dac9b20413c8984cf2519096c5025dc"
 RUNNER = ReadOnlyRunner()
 # What a check of a working solution spent in the build's verification, as docs/costs.md gives it
-# (the Assignments table there is the one source of these figures). A later check of a live session
-# was measured on 23 October 2026 with two candidates, 13.58 and 23.95 cents; a first check, which
-# also runs the baseline, was measured only with one candidate, 30.66 cents, so its figure is an
+# (the Assignments table there and its note 2 are the one source of these figures), all with two
+# candidates: seven later checks of a live session, from 23 to 25 October 2026. Five, of 24 and 25
+# October, are audited clean; the two of 23 October are not confirmed clean, since no audit of
+# planted flags covers that day, and the range includes them. No
+# first check, which also runs the baseline, has been measured on a clean stack; its figure is an
 # estimate, and the check prints it as one. A later check whose items changed since the session's
 # baseline runs a new baseline too, and costs as a first check does.
-TYPICAL_LATER = "about 14 to 24 cents (13.58 and 23.95, two later checks with two candidates)"
+TYPICAL_LATER = (
+    "about 13 to 24 cents (12.62 to 23.95 in seven later checks, two of them not confirmed clean; "
+    "docs/costs.md, note 2)"
+)
 TYPICAL_FIRST = (
-    "about 38 cents for a check that runs the baseline (30.66 measured with one candidate, and "
-    "about 7 more for the second candidate's 56 dev runs)"
+    "about 24 cents for a check that runs the baseline (an estimate: no clean first check measured)"
 )
 
 

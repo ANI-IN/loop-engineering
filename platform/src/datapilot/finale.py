@@ -8,6 +8,10 @@ approved: the hill-climbing runner then runs the clearance re-runs and makes it 
 minutes. A finale sent before that answers under the previous version. A finale sent at the
 report-only level posts labelled unverified, whatever its family cleared, and the kill switch
 blocks every run it meets. Each of the three is refused here with the step that fixes it.
+
+The finale shows the fixed system, so it is refused first while any running service reports a
+planted flag on (ops.service_planted, each service's own report at its start); `make demo` adds the
+flags .env and its own environment switch on (datapilot.planted.switched_on).
 """
 
 from __future__ import annotations
@@ -16,6 +20,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import psycopg
+
+from datapilot import planted
 
 FINALE_DEMO = "improve-cleared-unattended"
 UNATTENDED = "unattended"
@@ -80,7 +86,9 @@ SELECT c.kill_switch, c.autonomy_level,
                 AND d.verdict = 'promoted'
                 AND d.decided_at >= COALESCE(
                     (SELECT started_at FROM ops.live_sessions WHERE ended_at IS NULL),
-                    'infinity'))) AS promoted
+                    'infinity'))) AS promoted,
+       ARRAY(SELECT ARRAY[f, s.service] FROM ops.service_planted s, unnest(s.planted_active) AS f
+             ORDER BY s.service, f) AS planted_on
 FROM ops.control c WHERE c.id = 1
 """
 
@@ -92,6 +100,8 @@ class FinaleState:
     pending_promotion: str | None
     clearing: str | None = None  # the active version, while its clearance re-runs still run
     promoted: str | None = None  # the active version, promoted in the open live session
+    # (flag, where it is on): each running service's report, and for make demo also .env
+    planted_on: tuple[tuple[str, str], ...] = ()
 
     @property
     def finale_due(self) -> bool:
@@ -111,6 +121,7 @@ def read(conn: psycopg.Connection[Any], pack: str) -> FinaleState:
         row["pending_promotion"],
         row["clearing"],
         row.get("promoted"),
+        tuple((flag, f"the {service} service") for flag, service in row.get("planted_on") or []),
     )
 
 
@@ -152,8 +163,19 @@ def waiting_for_promotion(state: FinaleState) -> str | None:
     )
 
 
+def planted_refusal(state: FinaleState) -> str | None:
+    """Why the finale may not be sent while planted flags are on, naming each and how to turn it
+    off; None when none is."""
+    on: dict[str, list[str]] = {}
+    for flag, where in state.planted_on:
+        on.setdefault(flag, []).append(where)
+    return planted.refusal(on, "The finale")
+
+
 def refusal(state: FinaleState) -> str | None:
     """Why the finale may not be sent now, with the step that fixes it; None when it may."""
+    if stop := planted_refusal(state):
+        return stop
     waiting = waiting_for_promotion(state)
     if waiting:
         return waiting

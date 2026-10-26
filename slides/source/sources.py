@@ -1,5 +1,5 @@
-"""The deck's source register, numbered in order of first use. Every 'Source N' in the notes uses
-these numbers. Each entry gives the title, link, author, and date as the source publishes them."""
+"""The deck's source register, numbered by section: Source 1, then a range per section. Every
+'Source N' in the notes uses these numbers. Each entry gives the title, link, author, and date as the source publishes them."""
 
 SOURCES = [
     "Source 1: The art of loop engineering, https://www.langchain.com/blog/the-art-of-loop-engineering, Sydney Runkle (LangChain), 2026-06-16",

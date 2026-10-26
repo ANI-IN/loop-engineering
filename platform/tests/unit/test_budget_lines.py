@@ -7,6 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from budget_doubles import with_test_budget
 from typer.testing import CliRunner
 
 from datapilot.cli import app
@@ -18,6 +19,7 @@ MODEL = next(iter(pack_config()["prices"]))
 
 @pytest.fixture
 def ledger(tmp_path: Path, monkeypatch) -> Path:
+    with_test_budget(monkeypatch)
     path = tmp_path / "ledger.sqlite"
     monkeypatch.setenv("DATAPILOT_SPEND_LEDGER", str(path))
     monkeypatch.delenv("DATAPILOT_USE_RESERVE", raising=False)
@@ -40,18 +42,19 @@ def _spend(dollars: float, activity: str, path: Path, calls: int = 1) -> None:
 
 def test_the_allocation_is_the_owners() -> None:
     budget = pack_config()["build_budget"]
-    assert (budget["total_usd"], budget["warn_usd"], budget["stop_usd"]) == (10.0, 6.0, 10.0)
+    # the owner raised the total to 10.65 on 25 October 2026, stopping live work at 10.60
+    assert (budget["total_usd"], budget["warn_usd"], budget["stop_usd"]) == (10.65, 6.0, 10.6)
     caps = {line.name: line.cap_usd for line in spend.budget_lines()}
     assert caps == {
-        "development live checks": 1.5,
-        "calibration": 2.2,
-        "assignment verification": 2.8,
-        "rehearsal": 2.5,
-        "reserve": 1.0,
+        "development live checks": 3.8,
+        "calibration": 4.7,
+        "assignment verification": 5.0,
+        "rehearsal": 1.6,
+        "reserve": 0.0,
     }
-    # the owner's allocation of 23 October, with 0.30 moved from calibration to assignment
-    # verification before session 3: the lines add up to exactly the 10-dollar total
-    assert sum(caps.values()) == budget["total_usd"] == budget["stop_usd"]
+    # the owner's allocation of 24 October moved rehearsal and the reserve to the other lines; since
+    # 25 October 2026 the stop line is the only limit that blocks: the lines add up to more
+    assert sum(caps.values()) > budget["total_usd"] > budget["stop_usd"]
 
 
 @pytest.mark.parametrize(
@@ -144,11 +147,12 @@ def session(ledger: Path, monkeypatch) -> Path:
 def test_the_session_limits_are_the_owners() -> None:
     limits = spend.session_limits()
     assert limits is not None and limits.since_variable == "DATAPILOT_SESSION_SINCE"
-    assert limits.total_usd == 2.35  # session 4, set by the owner on 23 October
+    assert limits.total_usd == 2.95  # session 6, with the owner's raise of 25 October
     assert limits.lines == {
-        "development live checks": 0.3,
-        "calibration": 0.95,
-        "assignment verification": 1.1,
+        "development live checks": 0.9,
+        "calibration": 0.43,
+        "assignment verification": 1.23,
+        "rehearsal": 0.39,
     }
 
 

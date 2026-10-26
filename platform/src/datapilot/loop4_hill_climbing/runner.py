@@ -12,6 +12,9 @@ process claims them and runs them live:
   analyzer.candidates above one (pack.yaml), the team writes that many candidates, each runs on the
   dev split only, and one is kept (candidates.choose); the holdout split never takes part.
 
+A demo's planted flags for its own request (in its params) are on while that request runs, in
+every thread it starts, and for nothing after it; the request's result records every flag on.
+
 Between requests it promotes an approved candidate whose gate was ready, and writes the gold check
 of every live run that answered a benchmark question. A promotion's last step clears metric families
 for the unattended level on the gate's own confirmed standard (eligibility.confirmed_clearance):
@@ -23,19 +26,20 @@ from __future__ import annotations
 import threading
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 from uuid import UUID
 
 import psycopg
 import structlog
 
-from datapilot import db, finale
+from datapilot import db, finale, planted
 from datapilot.config import active_pack, pack_config
 from datapilot.contracts import (
     AnswerEnvelope,
     AnswerStatus,
     BenchmarkItem,
+    ItemResult,
     KnowledgeVersion,
     Split,
 )
@@ -59,7 +63,6 @@ from datapilot.loop4_hill_climbing.experiment import (
 from datapilot.loop4_hill_climbing.gate import GateDecision, Regressions, decide, find_regressions
 from datapilot.loop4_hill_climbing.measurement import Scheme
 from datapilot.loop4_hill_climbing.overfit_guard import OverfitGuard, new_rule_flags
-from datapilot.planted import planted
 
 log = structlog.get_logger("hill_climbing_runner")
 
@@ -202,7 +205,7 @@ class HillClimbingRunner:
             name = versions.next_name(conn)
         failed = failed_dev_items(self.items, baseline)
         team = live_team(self.items).stopping(stop.check)  # checked before each model call
-        naive = planted("BUG_NAIVE_ANALYZER")
+        naive = planted.planted("BUG_NAIVE_ANALYZER")
         if naive or candidates.count() == 1:  # the naive analyzer writes the same rules each time
             runs = [candidates.CandidateRun("A", name, team.run(failed, knowledge, name))]
         else:
@@ -213,7 +216,7 @@ class HillClimbingRunner:
         chosen = candidates.choose(runs)
         report = chosen.report
         draft = report.candidate.model_copy(update={"version": name})
-        created_by = "naive analyzer" if report.planted_active else "analyzer team"
+        created_by = NAIVE_WRITER if report.planted_active else "analyzer team"
         with db.connect(db.Role.APP) as conn:
             versions.save_draft(conn, draft, created_by=created_by)
             said = candidates.save(
@@ -277,7 +280,11 @@ class HillClimbingRunner:
         stop: KillSwitchStop | None = None,
     ) -> GateDecision:
         stop = stop or KillSwitchStop(self.kill_switch_engaged)
+        planted_on = planted.active()  # the flags the candidate's experiment ran with
+        refuse_planted_gate(planted_on)
         with db.connect(db.Role.APP) as conn:
+            written_by = versions.created_by(conn, candidate.knowledge_version)
+            refuse_naive_on_another(planted_on, written_by)
             baseline = store.baseline_for(conn, active)
             store.record_gate_baseline(conn, candidate, baseline)  # what the promotion decides on
             conn.commit()  # no transaction stays open through the confirming re-runs
@@ -293,8 +300,11 @@ class HillClimbingRunner:
             found = versions.status_of(conn, candidate.knowledge_version)
             approved_by = found["approved_by"] if found and found["status"] == "approved" else None
             flags = self.overfit_flags(conn, candidate.knowledge_version, active)
-            decision = decide(
-                baseline, candidate, regressions, approved_by=approved_by, overfit_flags=flags
+            decision = blocked_if_planted(
+                decide(
+                    baseline, candidate, regressions, approved_by=approved_by, overfit_flags=flags
+                ),
+                planted_on,
             )
             save_decision(conn, decision)
             if decision.verdict == "promoted":
@@ -401,9 +411,10 @@ class HillClimbingRunner:
         self, *, stream: bool = True, stop: KillSwitchStop | None = None
     ) -> ExperimentRunner:
         sink = store.OpsItemSink(self.scheme.holdout_repeats, self.concurrency)
-        return ExperimentRunner(
-            target=stop.target(self.target) if stop else self.target,
-            evaluator=self.evaluator,
+        target = stop.target(self.target) if stop else self.target
+        return ExperimentRunner(  # its threads get this request's planted flags, as it has them
+            target=planted.carried(target),
+            evaluator=CarriedEvaluator(planted.carried(self.evaluator.evaluate)),
             scheme=self.scheme,
             concurrency=self.concurrency,
             tracer=self.tracer,
@@ -421,6 +432,7 @@ class HillClimbingRunner:
             candidate = versions.latest_candidate(conn)
             if candidate is None:
                 raise RequestFailed("no candidate version yet: run the analyzer team first")
+            refuse_naive_on_another(planted.active(), versions.created_by(conn, candidate))
             return candidate
         return active
 
@@ -432,11 +444,16 @@ class HillClimbingRunner:
             conn.commit()
         if request is None:
             return False
-        try:
-            result, failed = self.run(request), False
-        except Exception as error:  # the request fails, the runner keeps serving
-            log.exception("request failed", request_id=str(request["request_id"]))
-            result, failed = {"error": f"{type(error).__name__}: {error}"}, True
+        requested = (request.get("params") or {}).get(planted.REQUESTED_KEY) or []
+        with planted.for_this_run(requested):  # a demo's flags, for this request alone
+            try:
+                result, failed = self.run(request), False
+            except Exception as error:  # the request fails, the runner keeps serving
+                log.exception("request failed", request_id=str(request["request_id"]))
+                result, failed = {"error": f"{type(error).__name__}: {error}"}, True
+            result["planted_active"] = planted.merged(
+                result.get("planted_active") or [], planted.active()
+            )
         with db.connect(db.Role.APP) as conn:
             improvement.finish(conn, str(request["request_id"]), result=result, failed=failed)
             conn.commit()
@@ -476,6 +493,16 @@ class HillClimbingRunner:
             if not self.tick():
                 stop.wait(poll_seconds)
         watcher.join(timeout=poll_seconds * 2)
+
+
+@dataclass(frozen=True)
+class CarriedEvaluator:
+    """An evaluator whose evaluate runs with the planted flags of the request that made it."""
+
+    evaluate_with_flags: Callable[[BenchmarkItem, AnswerEnvelope], ItemResult]
+
+    def evaluate(self, item: BenchmarkItem, answer: AnswerEnvelope) -> ItemResult:
+        return self.evaluate_with_flags(item, answer)
 
 
 def experiment_summary(result: ExperimentResult) -> dict[str, Any]:
@@ -530,6 +557,50 @@ def failed_dev_items(
         answer = AnswerEnvelope(status=AnswerStatus.ANSWERED, final_sql=sql) if sql else None
         out.append(FailedItem(item, answer, baseline.results[item.id]))
     return out
+
+
+# The one planted bug whose candidate goes through the gate: the naive analyzer's, to be blocked.
+NAIVE_ANALYZER = "BUG_NAIVE_ANALYZER"
+NAIVE_WRITER = "naive analyzer"  # ops.knowledge_versions.created_by of the versions it writes
+
+
+def refuse_planted_gate(planted_on: Sequence[str]) -> None:
+    """RequestFailed when the candidate's experiment ran with a planted flag on, other than the
+    naive analyzer's: a planted evaluator's numbers never decide a promotion."""
+    others = [flag for flag in planted_on if flag != NAIVE_ANALYZER]
+    if others:
+        raise RequestFailed(
+            f"the gate does not decide on an experiment made with planted flags on "
+            f"({', '.join(others)}): run the experiment again on the fixed system"
+        )
+
+
+def refuse_naive_on_another(planted_on: Sequence[str], written_by: str | None) -> None:
+    """RequestFailed when the naive analyzer's flag is on for a candidate it did not write: its
+    candidate experiment runs, and its gate blocks, only the version it wrote itself. Otherwise a
+    failed analyzer step would brand, and retire, the analyzer team's candidate."""
+    if NAIVE_ANALYZER in planted_on and written_by != NAIVE_WRITER:
+        raise RequestFailed(
+            f"the naive analyzer's candidate experiment runs only on a version the naive analyzer "
+            f"wrote; the newest candidate was written by {written_by or 'nobody known'}: nothing "
+            f"was run (did its analyzer step fail?)"
+        )
+
+
+def blocked_if_planted(decision: GateDecision, planted_on: Sequence[str]) -> GateDecision:
+    """The decision, never promoted, nor ready for approval, for a candidate the naive analyzer
+    wrote (its experiment ran with the planted flag on)."""
+    already = decision.verdict == "blocked" and not decision.ready_for_approval
+    if NAIVE_ANALYZER not in planted_on or already:
+        return decision  # the gate's own reasons stand: the demo shows them
+    return replace(
+        decision,
+        verdict="blocked",
+        ready_for_approval=False,
+        reasons=[*decision.reasons, f"fail: written by the naive analyzer ({NAIVE_ANALYZER})"],
+        sentence=f"Blocked: {decision.candidate_version} was written by the naive analyzer, a "
+        "planted bug, and is never promoted.",
+    )
 
 
 def save_decision(conn: psycopg.Connection[Any], decision: GateDecision) -> None:

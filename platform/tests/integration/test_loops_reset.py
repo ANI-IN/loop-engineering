@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterator
+from typing import Any
 
 import loops_paths  # noqa: F401  (before loops_support)
 import psycopg
@@ -17,7 +18,7 @@ from datapilot.contracts.live import SessionPurpose
 from datapilot.loop3_events import autonomy, commands, sessions
 
 pytest_plugins = ["loops_fixtures"]
-pytestmark = [pytest.mark.integration, pytest.mark.usefixtures("clean_ops")]
+pytestmark = [pytest.mark.integration, pytest.mark.security, pytest.mark.usefixtures("clean_ops")]
 
 KNOWLEDGE_TABLES = "ops.promotion_decisions, ops.experiments, ops.knowledge_versions"
 
@@ -50,10 +51,12 @@ def knowledge_state() -> Iterator[dict[str, str]]:
         older.session_id,
     )
     current = sessions.start_session(SessionPurpose.CLASS, "test", "UTC")
+    # Both finished (decision of 26 October: an unfinished experiment is never the baseline).
     execute(
         "INSERT INTO ops.experiments (experiment_id, knowledge_version, split, session_id, "
-        "started_at) VALUES (%s, 'v1', 'all', %s, now() + interval '1 second'), "
-        "(%s, 'candidate-1', 'all', %s, now() + interval '2 seconds')",
+        "started_at, finished_at) VALUES (%s, 'v1', 'all', %s, now() + interval '1 second', "
+        "now() + interval '1 minute'), "
+        "(%s, 'candidate-1', 'all', %s, now() + interval '2 seconds', now() + interval '1 minute')",
         ids["baseline"],
         current.session_id,
         ids["candidate"],
@@ -127,6 +130,16 @@ def test_a_reset_with_no_baseline_says_so() -> None:
     sessions.start_session(SessionPurpose.DEVELOPMENT, "test", "UTC")
     report = commands.reset("hill-climbing-loop")
     assert "no baseline experiment in this session to keep" in report.lines()
+
+
+def test_with_no_baseline_the_reset_makes_the_starting_knowledge_active(knowledge_state) -> None:
+    """Live, 24 October: after a rehearsal ended with v11 active, a reset in the next session (no
+    baseline yet) kept v11, so Sections 1 to 3 would have run under rules learned in Section 4."""
+    sessions.start_session(SessionPurpose.CLASS, "test", "UTC")  # a new session, no baseline
+    assert versions()["candidate-1"] == "active"
+    report = commands.reset("hill-climbing-loop")
+    assert "no baseline experiment in this session to keep" in report.lines()
+    assert versions()["v1"] == "active" and report.active_version == "v1"
 
 
 # --- the reset archive (decision 9 on session report 2) ---
@@ -255,3 +268,132 @@ def test_the_reset_archives_and_clears_this_sessions_analyzer_candidates(knowled
     assert [(r["action"], r["row"]["label"]) for r in rows] == [("deleted", "A")]
     assert "1 analyzer candidate deleted" in report.archived.describe()
     assert "ops.analyzer_candidates (this session)" in report.cleared
+
+
+# --- the reset never makes a version active that nobody approved (security review, 26 October) ---
+def _versions_and_session(*rows: tuple[str, str, str]) -> Any:
+    """Only the given versions (name, status, created_by), and a new open session."""
+    execute(f"TRUNCATE {KNOWLEDGE_TABLES} CASCADE")
+    for version, status, created_by in rows:
+        execute(
+            "INSERT INTO ops.knowledge_versions (version, yaml, status, created_by) "
+            "VALUES (%s, %s, %s, %s)",
+            version,
+            f"version: {version}",
+            status,
+            created_by,
+        )
+    return sessions.start_session(SessionPurpose.CLASS, "test", "UTC")
+
+
+def _experiment(
+    session: Any,
+    version: str,
+    *,
+    seconds: int,
+    finished: bool = True,
+    planted_active: tuple[str, ...] = (),
+) -> str:
+    experiment_id = str(uuid.uuid4())
+    execute(
+        "INSERT INTO ops.experiments (experiment_id, knowledge_version, split, session_id, "
+        "started_at, finished_at, planted_active) VALUES (%s, %s, 'all', %s, "
+        "now() + make_interval(secs => %s), "
+        "CASE WHEN %s THEN now() + interval '1 hour' END, %s)",
+        experiment_id,
+        version,
+        session.session_id,
+        seconds,
+        finished,
+        list(planted_active),
+    )
+    return experiment_id
+
+
+STARTING = ("v1", "active", "pack")
+
+
+@pytest.fixture
+def only_these_versions() -> Iterator[None]:
+    yield
+    execute(f"TRUNCATE {KNOWLEDGE_TABLES} CASCADE")
+
+
+@pytest.mark.usefixtures("only_these_versions")
+def test_a_pack_without_its_starting_knowledge_loaded_keeps_its_active_version() -> None:
+    """Session 6 review, round 2 (tests): with no v1 row, the reset would retire the active
+    version and activate none; it keeps the active one instead."""
+    _versions_and_session(("v3", "active", "analyzer"))
+    report = commands.reset("hill-climbing-loop")
+    assert versions() == {"v3": "active"}
+    assert report.active_version == "v3"
+
+
+@pytest.mark.usefixtures("only_these_versions")
+def test_a_first_experiment_on_a_draft_never_makes_the_draft_active() -> None:
+    """The review's probe: the session's first experiment was on an analyzer's draft."""
+    session = _versions_and_session(STARTING, ("candidate-2", "draft", "analyzer"))
+    _experiment(session, "candidate-2", seconds=1)
+    report = commands.reset("hill-climbing-loop")
+    assert report.active_version == "v1" and versions()["v1"] == "active"
+    assert report.kept_baseline is None
+    assert "no baseline experiment in this session to keep" in report.lines()
+
+
+@pytest.mark.usefixtures("only_these_versions")
+def test_a_first_experiment_on_the_over_broad_rule_never_makes_it_active() -> None:
+    session = _versions_and_session(STARTING, ("v2-overbroad", "draft", "pack"))
+    _experiment(session, "v2-overbroad", seconds=1)
+    later = _experiment(session, "v1", seconds=2)
+    report = commands.reset("hill-climbing-loop")
+    assert report.active_version == "v1"
+    assert report.kept_baseline and report.kept_baseline.experiment_id == later
+    assert experiments() == {later}
+
+
+@pytest.mark.usefixtures("only_these_versions")
+def test_an_unfinished_or_planted_experiment_is_never_the_baseline() -> None:
+    session = _versions_and_session(STARTING)
+    _experiment(session, "v1", seconds=1, finished=False)  # the kill switch stopped it
+    _experiment(session, "v1", seconds=2, planted_active=("BUG_SQL_TEXT_EVAL",))
+    finished = _experiment(session, "v1", seconds=3)
+    report = commands.reset("hill-climbing-loop")
+    assert report.kept_baseline and report.kept_baseline.experiment_id == finished
+
+
+def _approved_and_promoted(version: str) -> None:
+    execute(
+        "UPDATE ops.knowledge_versions SET approved_by = 'a person', approved_at = now() "
+        "WHERE version = %s",
+        version,
+    )
+    execute(
+        "INSERT INTO ops.promotion_decisions (candidate_version, active_version, verdict, "
+        "reasons, sentence) VALUES (%s, 'v1', 'promoted', '[]', 'promoted')",
+        version,
+    )
+
+
+@pytest.mark.usefixtures("only_these_versions")
+def test_an_approved_and_promoted_baseline_stays_active_and_discarded_returns_to_v1() -> None:
+    session = _versions_and_session(("v1", "retired", "pack"), ("v3", "active", "analyzer"))
+    _approved_and_promoted("v3")
+    baseline = _experiment(session, "v3", seconds=1)
+    kept = commands.reset("hill-climbing-loop")
+    assert kept.kept_baseline and kept.kept_baseline.experiment_id == baseline
+    assert kept.active_version == "v3"
+    _approved_and_promoted("v3")  # the reset cleared this session's decisions
+    discarded = commands.reset("hill-climbing-loop", discard_baseline=True)
+    assert discarded.discarded_baseline and discarded.active_version == "v1"
+    assert versions() == {"v1": "active", "v3": "retired"}
+
+
+@pytest.mark.usefixtures("only_these_versions")
+def test_a_version_promoted_without_a_persons_approval_is_never_the_baseline() -> None:
+    session = _versions_and_session(STARTING, ("v3", "draft", "analyzer"))
+    execute(
+        "INSERT INTO ops.promotion_decisions (candidate_version, active_version, verdict, "
+        "reasons, sentence) VALUES ('v3', 'v1', 'promoted', '[]', 'promoted')"
+    )
+    _experiment(session, "v3", seconds=1)
+    assert commands.reset("hill-climbing-loop").active_version == "v1"

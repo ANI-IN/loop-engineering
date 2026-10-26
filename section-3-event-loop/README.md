@@ -45,26 +45,55 @@ a lookup you can test and audit. The section adds no agent.
 
 *Notice that every safeguard here is a row in Postgres, not memory: the event id, the lease, the parked job, and the checkpoint, so a restart loses nothing.*
 
-What the course measured for this section is on the
-[evidence page](../docs/evidence/section-3-event-loop.md).
+The full idea is in [concepts.md](concepts.md) (in class, minutes 0 to 24).
 
 ## How to work through this section
 
-| Part | What it gives you | In class |
-|---|---|---|
-| [concepts.md](concepts.md) | Jobs, idempotency, durable approvals, autonomy and the kill switch | Minutes 0-24 |
-| [demo/](demo/README.md) | Four live demos: webhook, approval across a restart, duplicates, kill switch | Minutes 24-39 |
-| [demo/walkthrough.md](demo/walkthrough.md) | The claim, the dedup insert, the checkpointer, the kill switch check | Minutes 39-46 |
-| [assignment/](assignment/README.md) | Build a nightly revenue anomaly alert | After class |
-| [post-class-reading/](post-class-reading/README.md) | Readings on queues, idempotency, and approvals | After class |
-| [session-notes.md](session-notes.md) | What class showed, questions, what to try next | After class |
+### How it works in the code
 
-In class, every demo result on the console shows a live stamp: its run's start time in the
-viewer's local time and its LangSmith trace link. The `demo/expected/` folder is for you
-after class; it is never opened in class.
+- [`submit_event`](../platform/src/datapilot/loop3_events/api/events.py) inserts each event once
+  per `event_id` and queues its job; a duplicate is counted, not run.
+- [`CLAIM_SQL`](../platform/src/datapilot/loop3_events/worker.py) claims a job with
+  `FOR UPDATE SKIP LOCKED` and a lease that the worker's heartbeat extends; `reap` in `reaper.py`
+  requeues a job whose lease ran out.
+- [`checkpointer`](../platform/src/datapilot/loop3_events/approvals.py) keeps a paused run in
+  Postgres, so a held approval survives a restart.
+- [`KillSwitchMiddleware`](../platform/src/datapilot/loop3_events/killswitch.py) checks the switch
+  before every model call and every tool call.
+- [`route`](../platform/src/datapilot/loop3_events/router.py) looks up the handler and the queue
+  for an event type in a fixed table.
 
-The poll after this section asks which autonomy level you would grant the revenue digest today.
-Section 4: Hill-climbing loop answers it: autonomy is earned from evidence.
+The [walkthrough](demo/walkthrough.md) explains these lines (minutes 39 to 46).
+
+### The demo
+
+Four core demos, live, in minutes 24 to 39: the webhook question (`events-webhook-question`), the
+approval that survives a restart (`events-approval-survives-restart`), duplicate events
+(`events-duplicate-events`), and the kill switch in flight (`events-kill-switch-in-flight`).
+Each shows one safeguard on the run board, and every result carries a live stamp. Run them with
+the [demo page](demo/README.md); the measured runs are on the
+[evidence page](../docs/evidence/section-3-event-loop.md). The poll after this section asks which
+autonomy level you would grant the revenue digest; Section 4: Hill-climbing loop answers it.
+
+### The assignment
+
+[Assignment 3: Event loop](assignment/README.md) adds a nightly revenue anomaly alert: a scheduled
+job with a deterministic key, at most one alert a day, that follows the autonomy level and the
+kill switch. It is done when `make check-assignment NAME=event-loop` reads PASS on every line.
+Effort: about 2 to 2.5 hours; the cost of a check is on the
+[costs page](../docs/costs.md#assignments).
+
+### Apply it in a real system
+
+- Give every external event a deterministic id and a unique constraint, so a retry is harmless.
+- Keep paused runs and their approvals in a durable checkpointer, never in process memory.
+- Check the stop control before every model call and tool call, not only when a job is claimed.
+
+### Further reading
+
+The [reading list](post-class-reading/README.md) has three: a job queue in Postgres, idempotency
+keys, and durable human approval. After class, [session-notes.md](session-notes.md) recaps what
+class showed.
 
 ## Where next
 

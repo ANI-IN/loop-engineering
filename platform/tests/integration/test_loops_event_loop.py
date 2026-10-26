@@ -16,7 +16,7 @@ import pytest
 from fastapi.testclient import TestClient
 from loops_support import call, human_messages, query_then_answer
 
-from datapilot import db
+from datapilot import db, planted
 from datapilot.contracts import RunStatus
 from datapilot.contracts.live import NoLiveSession, SessionPurpose
 from datapilot.loop3_events import approvals, autonomy, killswitch, lifecycle, scheduler, sessions
@@ -674,11 +674,15 @@ def test_the_cost_guard_demo_rejects_at_once(client, make_worker, monkeypatch) -
 
 
 # --- sessions, live stamps, demo controls ---
+def end_sessions() -> None:
+    sql("UPDATE ops.live_sessions SET ended_at = now() WHERE ended_at IS NULL")
+
+
 def test_runs_belong_to_the_open_session_and_carry_live_stamps(client) -> None:
+    end_sessions()
     with pytest.raises(NoLiveSession):
         sessions.current_session()
     assert client.get("/sessions/current").status_code == 404
-    before = ask(client)
     first = sessions.start_session(SessionPurpose.DEVELOPMENT, "test", "America/New_York")
     inside = ask(client)
     listed = client.get("/runs").json()
@@ -687,11 +691,30 @@ def test_runs_belong_to_the_open_session_and_carry_live_stamps(client) -> None:
     assert listed["runs"][0]["session_id"] == str(first.session_id)
     assert stamp["run_id"] == inside["run_id"] and stamp["started_at_utc"].endswith("+00:00")
     assert listed["session"]["session_id"] == str(first.session_id)
-    assert run(client, before["run_id"])["live_stamp"] is None
     second = sessions.start_session(SessionPurpose.CLASS, "test", "America/New_York")
     assert sessions.current_session().session_id == second.session_id != first.session_id
     assert client.get("/runs").json()["runs"] == []
-    assert len(client.get("/runs", params={"all_sessions": True}).json()["runs"]) == 2
+    assert len(client.get("/runs", params={"all_sessions": True}).json()["runs"]) == 1
+
+
+def test_with_no_live_session_open_a_run_is_refused_before_any_model_call(client) -> None:
+    """Session 6 review, learner path: a run asked for with no session open belonged to none,
+    spent tokens, and never showed on the console. Now the api refuses it, and makes nothing;
+    the scheduler's own digest, which no person asks for, still goes in without one."""
+    end_sessions()
+    body = {"event_id": f"test:{uuid.uuid4().hex}", "type": "question.asked"}
+    refused = client.post("/events", json={**body, "payload": {"question": "How many orders?"}})
+    assert refused.status_code == 409 and refused.json()["detail"] == sessions.NO_SESSION
+    assert client.post("/demo/large-query").status_code == 409
+    # before the planted header rules: an unknown flag, or another demo's, still gets the 409
+    unknown = {planted.PLANTED_HEADER: "BUG_NOT_IN_THE_REGISTRY"}
+    assert client.post("/demo/large-query", headers=unknown).status_code == 409
+    foreign = {planted.PLANTED_HEADER: "BUG_NAIVE_GUARD"}
+    assert client.post("/demo/large-query", headers=foreign).status_code == 409
+    assert sql("SELECT count(*) AS n FROM ops.runs")[0]["n"] == 0
+    assert sql("SELECT count(*) AS n FROM ops.jobs")[0]["n"] == 0
+    digest = scheduler.request_digest(date(2026, 1, 31))
+    assert not digest.duplicate and run(client, str(digest.run_id))["status"] == "queued"
 
 
 def test_the_restart_control_is_off_unless_demo_controls_are_on(

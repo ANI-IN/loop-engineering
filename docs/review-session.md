@@ -18,9 +18,9 @@ work, `make check-assignment NAME=<slug>`, against the real stack with your own 
 submission and no hidden grader. At the start of this session the instructor publishes the four
 `solution/` folders. You compare them with your own work, and the class discusses them.
 
-The session lasts exactly 120 minutes. Each assignment gets its own block, and each block runs its
-own live check of the reference solution, from the solution just published. There is no combined
-end-to-end run, and no check is shown from a saved output.
+Each assignment gets its own block, and each block runs its own live check of the reference
+solution, from the solution just published. There is no combined end-to-end run, and no check is
+shown from a saved output.
 
 ## Timetable
 
@@ -79,6 +79,14 @@ Minutes per part of each block:
 
 ## Before the session
 
+Get the solutions first. Until the review starts, the published repository withholds the four
+`solution/` folders, and in a clone without them `make apply-solution` stops and says the
+solutions are withheld until the Thursday review. The course owner keeps them in the course's
+source repository, which is not published: ask the course owner for a clone of it, and run the
+steps below there. At 0:00 the course owner publishes them with the command in the
+[release checklist](release-checklist.md); from then on every clone of the published repository
+has them.
+
 1. Start a rehearsal session with `make preflight PURPOSE=rehearsal`, then rehearse each live
    check once on the reference solutions, with `PURPOSE=rehearsal` and a reset of the check's stack
    between. Rehearse the Assignment 4 check with the review's own project and ports, as in the
@@ -98,7 +106,8 @@ Minutes per part of each block:
 
 ## Opening (0:00 to 0:05)
 
-- Publish the four `solution/` folders.
+- The course owner publishes the four `solution/` folders (the command in the
+  [release checklist](release-checklist.md)).
 - Launch the chat poll.
 - Start the Assignment 4 check of the reference solution in its own terminal, so its results are
   ready at 1:22. It runs the benchmark, so it is the longest and most costly check of the session.
@@ -118,13 +127,19 @@ COMPOSE_PROJECT_NAME=datapilot-review POSTGRES_PORT=55434 API_PORT=8101 CONSOLE_
   experiment as well as the candidate. Measured on 23 October 2026 with two candidates, a check
   that shared its session's baseline took 15 and 22 minutes (two checks): about 1 minute for the
   build and the deterministic requirements, 6.5 to 7 minutes for the two analyzer team runs with
-  their 56 dev runs, and 7 to 14.5 minutes for the candidate experiment and its re-runs. The
-  baseline experiment adds one 82-run experiment, so a first check takes about 20 to 30 minutes,
-  and at most about 38 counted from the one-candidate first check's 33. It ends before the 0:50
-  break.
+  their 56 dev runs, and 7 to 14.5 minutes for the candidate experiment and its re-runs. A first
+  check with one candidate took about 33 minutes. No clean first check with two candidates has been
+  timed: the one of 24 October 2026 is suspect, because a planted flag was on when its stack
+  started, and `TYPICAL_FIRST` in `section-4-hill-climbing-loop/assignment/check.py` says "no clean
+  first check measured". A first check adds one 82-run baseline experiment to a later check
+  ([costs page](costs.md#assignments), note 2). Clean later checks with two candidates took 895 and
+  1,320 seconds on 23 October 2026 and 1,577 seconds (about 26 minutes) on 24 October 2026
+  ([calibration report](calibration-report.md)); no audit of planted flags covers the two of 23
+  October. Plan with the rehearsed time (step 1 above); the slot before the 0:50 break is 50
+  minutes.
 - If it is still running at 0:50, leave it running and read its result at the start of the
   Assignment 4 block; start no second check. A second check in the same session shares the
-  baseline and takes 15 to 22 minutes.
+  baseline and takes 15 to 22 minutes (26 minutes, 1,577 seconds, on 24 October 2026).
 
 ## Assignment 1: Agent loop (0:05 to 0:25)
 
@@ -197,13 +212,19 @@ wrote.
 | Common mistakes | 3 | From `SOLUTION.md` |
 | Questions | 2 | Overflow goes to the written list |
 
+The check can read `FAIL  10. Live: the drill-down question ...` with `Result: FAIL, 9 of 10
+requirements passed` when the agent's posted answer names another category than gold: one of 6
+solution checks on 25 October 2026 did, and the check was right. Say so, keep the output on
+screen, then reset the check's stack and run the same check again, as the rules above say.
+
 Walkthrough excerpts, in
 `section-3-event-loop/assignment/solution/reference/files/platform/src/datapilot/loop3_events/extension.py`:
 
 1. The schedule and the deterministic event id: lines 72 to 108.
 2. The baseline query and the measurement: lines 37 to 46 and 111 to 132.
-3. One alert per day, updated in place, with the kill switch checked first: lines 158 to 195.
+3. One alert per day, updated in place, with the kill switch checked first: lines 175 to 207.
 4. The router table entry: line 33.
+5. The drill-down question the class system can answer as it stands: lines 150 to 163.
 
 Point at: one alert after the replayed job, and its text changing after the late order.
 
@@ -249,4 +270,3 @@ Point at: the critic's drop decision with its reason, and the gate verdict with 
 - Introduce the [final project](../final-project/README.md): your own dataset, at least three
   original traps, your own benchmark with splits, one extension, and a before-and-after report.
 - Say where the written answers will appear: the [frequently asked questions](faq.md).
-- Thank the class and close on time.

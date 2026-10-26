@@ -3,38 +3,29 @@
 New here? [Start here](docs/start-here.md).
 
 This module builds four loops around one analytics agent, DataPilot, and measures each one live on
-the same benchmark of business questions.
+the same benchmark of business questions. It is for experienced engineers who already use
+LangChain, LangGraph, LangSmith, the Model Context Protocol, and multi-agent patterns: none of
+those is taught here. The class is a 4-hour Sunday session where every demo runs live, followed by
+four assignments and a 2-hour Thursday review.
 
 ## The problem
 
 A finance manager at Harbor & Pine Outfitters asks the analytics agent for last fiscal year's net
-revenue. The agent reads the schema, sums an order column over the calendar year, and answers in
-one confident sentence. The number goes into a board deck. Nobody can say where it came from.
+revenue. The agent sums an order column over the calendar year and answers in one confident
+sentence. The number goes into a board deck. Nobody can say where it came from.
 
-The team adds checks. Every check on the query passes: one statement, allowed tables, a fair cost,
-a read-only role. The answer is still wrong, because no check knows what "net revenue" means at
-Harbor & Pine.
-
-Then the team wires the agent to a webhook. A retried webhook posts the same answer three times.
-An export that waited for approval vanishes when the worker restarts. The stop button stops new
-jobs but not the run already in flight.
-
-So the team writes rules from the failures. The score on its own test questions rises, and the
-rules quote those questions. A new rule fixes one revenue question and quietly breaks another that
-used to pass.
-
-Each failure has a price: a wrong number in front of the board, duplicate posts in a shared
-channel, a lost approval, and a regression shipped as an improvement. A stronger model fixes none
-of them, because each one is a missing loop around the model, not a weak model.
+The team adds checks, and every check on the query passes; the answer is still wrong, because no
+check knows what "net revenue" means at Harbor & Pine. A retried webhook then posts the same answer
+three times, and an approval vanishes when the worker restarts. Rules written from the failures
+raise the score on the team's own test questions and quietly break another question. A stronger
+model fixes none of these failures: each one is a missing loop around the model.
 
 > **Terms on this page**
 >
 > - **Agent loop**: The model calls tools, reads the results, and repeats until it answers.
 > - **Verification loop**: Graders check each query and answer, and send failures back to the agent.
 > - **Event loop**: Events become jobs that workers run, with approvals, budgets, and a kill switch.
-> - **Hill-climbing loop**: Experiments find failures, an analyzer team proposes rules, and a gate
->   decides.
-> - **Knowledge version**: A numbered set of business rules given to the agent in its prompt.
+> - **Hill-climbing loop**: Experiments find failures, an analyzer team proposes rules, and a gate decides.
 > - **Dev split**: The benchmark questions the analyzer team may learn from.
 > - **Holdout split**: The benchmark questions the analyzer team never sees; the gate decides on them.
 > - **Autonomy level**: How much DataPilot may do unattended: report-only, assisted, or unattended.
@@ -69,21 +60,29 @@ Every source and finding is on the [evidence page](docs/evidence.md).
 
 *Notice that the application programming interface (API), the worker, and the runner never call each other: they meet in the ops schema, and the agents read the warehouse through a read-only role.*
 
-- **Section 1: Agent loop.** The analyst gets better tools before it gets more rules: a table
-  description with sample values, a row cap, and a structured answer. A stateless schema scout
-  suggests tables and joins.
-- **Section 2: Verification loop.** Deterministic graders and a read-only role stop unsafe
-  SQL before and during execution. A retry cap and an independent
-  reviewer bound the loop, and a gold check on two databases shows what the graders miss.
-- **Section 3: Event loop.** Webhooks, schedules, and people become jobs in Postgres, with
-  idempotent effects and approvals that survive a restart. A kill switch stops runs in flight and
-  drops DataPilot to the report-only level.
-- **Section 4: Hill-climbing loop.** An analyzer team writes rules from failed dev items, and an
-  overfit guard and a gate on holdout items decide. A person approves, and a metric family earns
-  the unattended level only when every holdout item of that family passes on the gate's confirmed
-  standard.
+### The services
 
-Every demo runs live in class, on the class model, with a live stamp on every result.
+`make up` starts six services and the one-shot migrate (`compose.yaml`); ports listen on this machine
+only. Logs: `make logs NAME=<service>`. The [architecture page](docs/architecture.md#services) walks through each.
+
+| Service | Port | What it does | What it reads and writes |
+|---|---|---|---|
+| `postgres` | 5432 | PostgreSQL 18.6 | Database `datapilot` (schemas `warehouse`, `ops`, `lg`) and `warehouse_alt` |
+| `migrate` | none | Applies the ops migrations, then exits; every other service waits for it | Writes `ops`, records each file in `ops.schema_migrations` |
+| `api` | 8000 | Takes events, approvals, controls, and hill-climbing requests (19 routes) | Writes events, jobs, runs, approvals, control, requests |
+| `worker` | none | Claims jobs with a lease and runs the analyst, schema scout, and reviewer | Reads the warehouse read-only; writes runs, run events, posts |
+| `scheduler` | none | Sends the daily digest event at 8 a.m. Eastern time | Writes the event the way the API does |
+| `hill-climbing-runner` | none | Experiments, analyzer team, promotions, gold checks; one per database | Writes experiments, candidates, knowledge versions, decisions |
+| `console` | 8501 | The Streamlit console: the Agent, Verify, Events, and Improve pages | Reads `ops` directly; acts only through the API |
+
+### Each loop's workflow
+
+| Loop | Starts on | Steps, in order | What decides |
+|---|---|---|---|
+| Section 1: Agent loop | A question | Tables, descriptions, the schema scout, queries of at most 50 rows, the answer | The analyst, inside its call, tool, and token caps |
+| Section 2: Verification loop | Every query, then the answer | Graders, read-only executor, final-answer grader, reviewer; up to 3 attempts | Code; a persistent reviewer concern goes to a person |
+| Section 3: Event loop | A webhook, the schedule, or the console | Idempotent insert, router, job, leased claim, run, approval, post or hold | The router table, the autonomy policy, a person, the kill switch |
+| Section 4: Hill-climbing loop | A request on the Improve page | Baseline, two candidates (one kept on dev), gate, approval, promotion, clearance | The promotion gate (code) and a person |
 
 ## The class plan
 
@@ -94,119 +93,150 @@ Every demo runs live in class, on the class model, with a live stamp on every re
 | Section 3: Event loop | [section-3-event-loop/](section-3-event-loop/README.md) | The webhook question, the approval across a restart, duplicates, the kill switch | 1:55-2:50 |
 | Section 4: Hill-climbing loop | [section-4-hill-climbing-loop/](section-4-hill-climbing-loop/README.md) | The baseline and candidate experiments, the analyzer team, the gate, the finale | 3:05-3:50 |
 
-The class runs four hours. It opens at 0:00 with the setup checks and the spine question, and
-closes at 3:50 with all results. There are two breaks, 1:45-1:55 and 2:55-3:05, and a poll at
-2:50, when the baseline experiment starts and runs through the second break. The minute-by-minute
-plan is in the [instructor guide](docs/instructor-guide.md); the step-by-step demo guide is in
-[guide/](guide/README.md).
+There are two breaks, 1:45-1:55 and 2:55-3:05. The minute-by-minute plan is in the
+[instructor guide](docs/instructor-guide.md); every live demo, step by step, is in [guide/](guide/README.md).
 
-After class: four assignments, one per section, each checked live; the
-[final project](final-project/README.md); and a review session on Thursday.
+### What you build
+
+| Assignment | What you build | Live check | Effort |
+|---|---|---|---|
+| [Assignment 1: Agent loop](section-1-agent-loop/assignment/README.md) | A value-lookup tool for informal or misspelled product names | `make check-assignment NAME=agent-loop` | About 1.5 hours |
+| [Assignment 2: Verification loop](section-2-verification-loop/assignment/README.md) | Two graders: clarify-or-abstain, and a personal-data leak check | `make check-assignment NAME=verification-loop` | About 2 hours |
+| [Assignment 3: Event loop](section-3-event-loop/assignment/README.md) | A nightly revenue anomaly alert, at most one per day | `make check-assignment NAME=event-loop` | About 2 to 2.5 hours |
+| [Assignment 4: Hill-climbing loop](section-4-hill-climbing-loop/assignment/README.md) | A repeat-customer metric family, a critic change, a minimum-holdout rule | `make check-assignment NAME=hill-climbing-loop` | About 2 to 2.5 hours |
+
+Each check runs live. The [final project](final-project/README.md) then uses a dataset of your own.
 
 ## What we measured
 
 Calibration ran every core demo and the benchmark live on 22 and 23 October 2026, on gpt-6-luna,
-with business date 31 January 2026; the live sessions of 23 October, afternoon and evening, ran them
-again on the code as it stood that evening; the demo and check changes made later that night, with
-no model call, are owed a live re-run. Each count below is in the [calibration report](docs/calibration-report.md). For each loop measured with its protection off
-and on, on the same questions, including where a loop did not help, see
-[what each loop is worth](docs/benefits.md).
+with business date 31 January 2026; every demo and assignment check ran live again on 24 and 25
+October. The [calibration report](docs/calibration-report.md) holds every count below, and
+[what each loop is worth](docs/benefits.md) compares each loop with its protection off and on.
 
 | Section | What we measured | Result |
 |---|---|---|
 | Section 1: Agent loop | Trap item runs that passed under the starting knowledge v1 | 0 of 99 |
 | Section 2: Verification loop | Reviewer verdicts on the wrong spine answer, that one question only | Concern in 6 of 7 runs |
-| Section 2: Verification loop | Reviewer on six wrong trap answers | 2 concerns, 1 answer held |
-| Section 3: Event loop | Same event three times: one run, 2 duplicates absorbed | 5 of 5 demo runs |
-| Section 3: Event loop | Pending approval survived a worker restart | 5 of 5 demo runs |
-| Section 4: Hill-climbing loop | Holdout items passed, v1 against the promoted v8, then v9 | 2 of 15 against 14 of 15, twice |
-| Section 4: Hill-climbing loop | The finale's spine answer after those promotions | Correct, at the unattended level, twice |
-| Section 4: Hill-climbing loop | Candidate experiments with 0 regressions | 9 of 10; the other had 1 dev regression |
+| Section 3: Event loop | Same event three times: one run, 2 duplicates absorbed | 7 of 7 demo runs |
+| Section 3: Event loop | Pending approval survived a worker restart | 7 of 7 demo runs |
+| Section 4: Hill-climbing loop | Holdout items passed, v1 against the 7 versions promoted with two candidates | 2 of 15 against 12 to 14 of 15 |
+| Section 4: Hill-climbing loop | Candidate experiments with 0 regressions | 14 of 15; the other had 1 dev regression |
+
+### Worked examples
 
 > Your output will differ: run times, ids, and the agent's wording change on every run.
 
-![The spine question's SQL with three numbered trap notes, the agent's answer of 72,394,572.08 dollars against gold 64,015,091.21, and a mismatch on both databases](docs/images/agent-confident-wrong-answer-sql.png)
+Section 1, the simple question, as the Agent page showed it on 22 October 2026 (the lines without
+ids of `section-1-agent-loop/demo/expected/agent-simple-question-terminal.txt`):
 
-*Section 1: each wrong fragment of the SQL carries its trap note, and the answer does not match gold.*
+```text
+question: How many orders have been placed in total?
+status: posted
+tool calls: list_tables, describe_table, run_query
+final SQL: SELECT COUNT(*) AS total_orders FROM orders;
+answer: There have been 405738 orders placed in total.
+```
 
-![The holdout ledger comparing v1 and the candidate v9: v1 passes 2 of 15, v9 passes 14 of 15, 12 fixed and 0 regressions](docs/images/improve-candidate-experiment-ledger.png)
+Section 2, malicious SQL with the naive guard planted (`verify-malicious-sql-naive-guard-terminal.txt`):
 
-*Section 4: in the captured run of 23 October, the candidate v9 fixes 12 holdout items and breaks none.*
+```text
+statement: DELETE FROM orders
+  role grants: stopped it: SQLSTATE 42501: permission denied for table orders
+  stopped by: role grants
+orders before 405738, after 405738: unchanged True
+```
 
-![The channel post of the spine question's answer, 64,015,091.21 dollars, labelled posted at the unattended level](docs/images/improve-cleared-unattended-channel.png)
+### What it costs you
 
-*The finale on 23 October: the spine question answered correctly under the promoted version v9, posted at the unattended level, without approval.*
+Measured on gpt-6-luna: about 0.001 dollars per analyst run, 0.0594 to 0.0914 dollars per 70-run
+experiment, and 0.0053 dollars for `make preflight`. Each assignment check stops at its own spend
+cap, 1.00 dollar (`assignments.check_cap_usd` in `pack.yaml`). Set a 3-dollar limit on your OpenAI
+project, with an alert at 1.50 dollars: the [costs page](docs/costs.md) shows how running every
+check five times typically comes to about 1.15 dollars.
 
-In plain words:
-
-- Under the starting knowledge, the class model fails every trap and passes 6 of 7 easy items.
-  Better tools and graders alone do not change that: the gold check is what exposes it.
-- Turning the schema scout and the reviewer off made no measurable difference to the gold result
-  on four questions. With both on, a run used 8,648 tokens on average; with both off, 3,337.
-- The hill-climbing loop works, but its candidate varies. Three analyzer runs from the same 21
-  failed dev items gave 11, 3, and 6 holdout passes of 15, against 2 for v1. With two candidates
-  chosen on the dev split, measured twice so far, the kept candidate passed 14 of 15 both times.
-
-What it costs: about 0.001 dollars per analyst run, and 0.0594 to 0.0914 dollars per 70-run
-experiment, which took 182 to 459 seconds at concurrency 8. By the end of the calibration night of
-23 October 2026, OpenAI had billed the build 1.78 dollars. What each command calls is on the
-[costs page](docs/costs.md).
-
-### Known limitations
-
-- Revenue was cleared for the unattended level in 2 of 6 live promotions, the two latest. In the
-  other four the finale posted at the assisted level, and in three of them its answer was wrong.
-- One analyzer run does not guarantee a strong candidate; the two-candidate method has two
-  measurements, and the class depends on a rehearsal-time check of the candidate.
-- One holdout trap item, business-day orders in November 2025, still fails under v8.
-- The baseline experiment took 266 to 285 seconds in every demo run, over its 3-minute target, and
-  two candidate experiments took 6.8 and 7.6 minutes.
-- Every demo and planted half was measured a few times at most, so each count is a small sample.
-- gpt-6-luna has no dated snapshot. The drift canary in `make preflight` checks that it still
-  behaves as measured.
-
-All results, with run ids and captures: [evidence](docs/evidence.md).
+**Known limitations.** Revenue was cleared for the unattended level in 7 of 11 live promotions
+(v8, v9, v11, v13, v15, v17, and v19). The two-candidate method has seven measurements so far, and
+every count is a small sample. gpt-6-luna has no dated snapshot, so `make preflight` runs a drift canary first.
 
 ## Quick start
 
-On Windows, run every command in Ubuntu on WSL2.
+**Prerequisites.** An OpenAI key whose project can use gpt-6-luna: in a cohort, from the operations
+team; on your own, from an OpenAI project you create with the budget above. A LangSmith account on
+the free Developer plan, with no card. Docker Engine with the Compose plugin, git, make, and uv
+0.13.1, which installs Python 3.12. Knowledge of Python, Postgres SQL, Docker Compose, and LangChain
+agents. Measured on the build machine: the six class services use about 625 mebibytes (MiB) of
+memory; Docker held 4.2 gigabytes (GB) of volumes and 6.6 GB of images, and uv's cache 1.2 GB.
+
+| Your machine | Tested for the course | Setup page |
+|---|---|---|
+| Windows 10 (version 2004 or later) or 11 | Yes: Ubuntu on WSL2, Docker Engine inside Ubuntu | [setup/windows.md](setup/windows.md) |
+| Linux with `apt` | The same commands, run in Ubuntu on WSL2 | [setup/linux.md](setup/linux.md) |
+| macOS | No: the steps follow the official pages | [setup/macos.md](setup/macos.md) |
 
 ```bash
 git clone https://github.com/ANI-IN/loop-engineering.git ~/datapilot
 cd ~/datapilot
-make setup
-```
-
-`make setup` creates `.env`. Put your OpenAI key from the operations team and your LangSmith key in
-it (`OPENAI_API_KEY` and `LANGSMITH_API_KEY`), then:
-
-```bash
-make up
+make setup                            # creates .env: add OPENAI_API_KEY and LANGSMITH_API_KEY
+make up                               # builds the image and starts the services; 63 seconds once the image is built
+make ps                               # six services Up; api and postgres (healthy)
 make seed
-make preflight PURPOSE=development
+make check-data                       # ends: check-data: both warehouses match expected.yaml
+make preflight PURPOSE=development    # ends with a line that starts: Live session started at
 make demo NAME=agent-simple-question
 ```
 
-Open the console at http://localhost:8501 to watch the run. `make preflight` asks five canary
-questions with your key, each one agent run (about 40 model calls, under a cent). For a first install, follow [setup/](setup/README.md).
+On Windows, run these in the Ubuntu terminal. Open the console at http://localhost:8501 to watch the
+run. `make preflight` asks five canary questions, one agent run each. [setup/](setup/README.md)
+explains every step and its failures.
+
+### LangSmith
+
+Demo and check runs trace in full to the project `datapilot-live`; experiment runs go to
+`datapilot-experiments` as a sample of about 1 in 5 (`tracing.experiment_sample_rate`), and a row
+with none reads "Not traced". EU accounts set `LANGSMITH_ENDPOINT`. The free plan allows 5,000 traces
+a month; past that every upload is refused, runs go on, and the trace link never fills
+([costs](docs/costs.md#langsmith-traces)).
+
+### Adapt DataPilot to your own data
+
+One setting, `DATAPILOT_PACK` in `.env`, names the domain pack every process reads, a folder under
+`platform/packs/`. Copy `platform/packs/_template/`, run `make check-pack PACK=<name>`, set the
+setting, then `make up` and `make preflight PURPOSE=development`. [Use it in your
+repository](use-in-your-repo/README.md) walks through it, including what stays Harbor & Pine.
+
+### When something fails
+
+The most common lines; every other one, with its cause, is on [troubleshooting](docs/troubleshooting.md).
+
+| You see | Fix |
+|---|---|
+| `No live session is open: run make preflight PURPOSE=class\|rehearsal\|thursday-review\|development first` | `make preflight PURPOSE=development` |
+| `Your OpenAI key was not accepted. Check it with the operations team.` | Paste the key into `.env` again; then check its project |
+| `Bind for 127.0.0.1:5432 failed: port is already allocated` | Set `POSTGRES_PORT` in `.env`, then `make up` |
+| A trace link that never fills | The LangSmith monthly limit, above |
+| `The OpenAI account behind your key has no credits left, ...` | Add credits to the key's project, then run again |
 
 ## Where next
 
-- [Section 1: Agent loop](section-1-agent-loop/README.md): the first loop and its demos.
-- [Setup](setup/README.md): a machine with nothing installed to a first live demo.
-- [Use it in your repository](use-in-your-repo/README.md): the four loops on your own Postgres.
+Start with [Section 1: Agent loop](section-1-agent-loop/README.md). Look things up in
+[architecture](docs/architecture.md), [reference](docs/reference.md), and the [frequently asked
+questions](docs/faq.md). Never share your `.env` or a key.
 
-### Getting help
+### Repository layout
 
-- [Troubleshooting](docs/troubleshooting.md): exact messages and their fixes.
-- [Frequently asked questions](docs/faq.md): keys, setup, demos, and assignments.
-- A key problem goes to the operations team. Never share your `.env` or a key.
+| Folder | What it holds |
+|---|---|
+| `setup/` | Setup for Windows, Linux, and macOS, and the pre-class checklist |
+| `section-1-agent-loop/` to `section-4-hill-climbing-loop/` | Pages, demo, assignment, readings; `solution/` is published at the Thursday review |
+| `final-project/`, `use-in-your-repo/` | The capstone, and DataPilot on your own Postgres |
+| `docs/`, `guide/` | Architecture, reference, costs, troubleshooting, glossary; the Live Demo Guide |
+| `platform/` | Code, console, packs, migrations, tests: [platform/README.md](platform/README.md) |
 
 ### Licence
 
-The MIT License in [LICENSE](LICENSE) covers the code and the course text and images. The
-console's fonts keep their own licence, the SIL Open Font License, version 1.1: Atkinson
-Hyperlegible Next and Mono in `platform/console/static/fonts/`, with their licence files.
+The MIT License in [LICENSE](LICENSE) covers the code, text, and images. The console's fonts, Atkinson
+Hyperlegible Next and Mono in `platform/console/static/fonts/`, keep the SIL Open Font License 1.1.
 
 ## Sources
 

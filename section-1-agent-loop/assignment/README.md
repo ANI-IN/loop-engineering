@@ -59,8 +59,12 @@ Estimated effort: about 1.5 hours.
 **Cost of one full check:** at most 12 analyst runs: 2 runs of each of the 4 live questions, and a
 third run only for a question whose first two runs disagree. The check prints its own estimate
 before the first model call and the actual tokens and cost at the end. Measured on gpt-6-luna
-in the build's verification on 23 October 2026, one full check of a working solution typically
-costs about 0.4 cents; the measured checks are in the costs table linked below. At the caps,
+in the course's clean verification runs, one full check of a working solution typically cost
+about 0.4 cents; the measured checks are in the costs table linked below. On the check that
+ships, with requirement 6 running the lookup while the other roles' database addresses point at a
+closed port, on 25 October 2026 from 22:35 Coordinated Universal Time (UTC), the starter failed, 0
+of 11, as it must, and the reference and both alternatives each passed two checks in a row, 6 of
+6, at 0.39 to 0.47 cents a check ([evidence](../../docs/evidence/general.md#captures)). At the caps,
 with every run using its whole token budget at the output price, one check can cost at most 36
 cents, below the check's own spend cap of 1.00 dollar, at which any check stops cleanly
 ([costs](../../docs/costs.md#assignments)).

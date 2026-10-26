@@ -7,6 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from budget_doubles import with_test_budget
 from langchain_core.messages import AIMessage
 from langchain_core.outputs import ChatGeneration, LLMResult
 from typer.testing import CliRunner
@@ -21,6 +22,7 @@ SESSION_START = "2026-10-23T22:00:00+00:00"
 
 @pytest.fixture
 def ledger(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    with_test_budget(monkeypatch)  # the mechanism's fixed allocation, not the owner's current one
     path = tmp_path / "ledger.sqlite"
     monkeypatch.setenv("DATAPILOT_SPEND_LEDGER", str(path))
     for name in ("DATAPILOT_BUILD_BUDGET", "DATAPILOT_USE_RESERVE", "DATAPILOT_SESSION_SINCE"):

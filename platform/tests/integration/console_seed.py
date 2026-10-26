@@ -56,6 +56,7 @@ def add_run(
     level: str | None = None,
     tokens: tuple[int, int] = (0, 0),
     trace_url: str | None = "https://smith.langchain.com/public/test-trace/r",
+    trace_refused_at: datetime | None = None,
 ) -> uuid.UUID:
     run_id = uuid.uuid4()
     event_id = f"test:{run_id.hex[:12]}" if event else None
@@ -69,8 +70,8 @@ def add_run(
     conn.execute(
         "INSERT INTO ops.runs (run_id, event_id, demo_name, question, status, session_id, "
         "planted_active, autonomy_level_applied, tokens_in, tokens_out, cost_usd, langsmith_url, "
-        "answer, created_at, started_at, finished_at) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0.004, %s, %s, %s, %s, %s)",
+        "trace_refused_at, answer, created_at, started_at, finished_at) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0.004, %s, %s, %s, %s, %s, %s)",
         (
             run_id,
             event_id,
@@ -83,6 +84,7 @@ def add_run(
             tokens[0],
             tokens[1],
             trace_url,
+            trace_refused_at,
             json.dumps(answer) if answer is not None else None,
             started,
             started,
@@ -198,9 +200,14 @@ def set_control(conn: Conn, *, kill_switch: str = "released", level: str = "assi
     )
 
 
+# The status line shows the Eastern time day's row alone (ops_reads.BUDGET), so the seed writes it.
+EASTERN_TODAY = "(now() AT TIME ZONE 'America/New_York')::date"
+
+
 def set_budget(conn: Conn, used: int, limit: int = 2_000_000) -> None:
     conn.execute(
-        "INSERT INTO ops.budgets (day, token_limit, tokens_used) VALUES ('2099-01-01', %s, %s) "
+        "INSERT INTO ops.budgets (day, token_limit, tokens_used) "
+        f"VALUES ({EASTERN_TODAY}, %s, %s) "
         "ON CONFLICT (day) DO UPDATE SET token_limit = EXCLUDED.token_limit, "
         "tokens_used = EXCLUDED.tokens_used",
         (limit, used),
@@ -208,7 +215,7 @@ def set_budget(conn: Conn, used: int, limit: int = 2_000_000) -> None:
 
 
 def clear_budget(conn: Conn) -> None:
-    conn.execute("DELETE FROM ops.budgets WHERE day = '2099-01-01'")
+    conn.execute(f"DELETE FROM ops.budgets WHERE day = {EASTERN_TODAY}")
 
 
 def set_family(conn: Conn, family: str, level: str) -> None:

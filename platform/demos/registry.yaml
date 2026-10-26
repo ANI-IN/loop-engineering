@@ -100,8 +100,8 @@
   planted: [BUG_NAIVE_GUARD]
   guaranteed_moment: >-
     With the naive guard, "SELECT 1; DELETE FROM orders" and a data-modifying CTE pass the guard and
-    the read-only role refuses them (SQLSTATE 25006); with the syntax-tree guard, layer 2 rejects
-    them before execution. A raw DELETE as the agent role is refused by the role.
+    the read-only role refuses them (SQLSTATE 25006); with the syntax-tree guard, its parse step
+    stops the stacked statements and its statement policy the data-modifying CTE, before execution. A raw DELETE as the agent role is refused by the role.
   expected_outcome: "The defense-layer panel shows which layer stopped each statement; no warehouse row changes."
   can_vary: ["nothing in the outcome; timings only"]
   target_minutes: 4
@@ -195,13 +195,15 @@
     api: "POST /events (digest.requested)"
   planted: []
   guaranteed_moment: >-
-    The 8 a.m. Eastern time digest of key performance indicators runs on demand with its
-    deterministic id and posts one digest to the channel.
+    The 8 a.m. Eastern time digest of key performance indicators runs on demand and posts one
+    digest to the channel. Each press is a new firing with an id of its own, made from the
+    business day and the firing, so the id is deterministic for each firing: a repeated delivery
+    of one firing is absorbed.
   expected_outcome: "One digest post with the previous business day's key figures."
   can_vary: ["the digest wording"]
   target_minutes: 3
   code:
-    - {path: platform/src/datapilot/loop3_events/worker.py, lines: "70-81"}
+    - {path: platform/src/datapilot/loop3_events/scheduler.py, lines: "28-31"}
 
 - id: events-approval-survives-restart
   section: event-loop
@@ -236,7 +238,7 @@
     The same event is sent three times. With the missing idempotency, three answers are posted;
     with idempotency, one answer and "2 duplicates ignored". Firing the digest twice shows the same
     with the random digest id.
-  expected_outcome: "One post and two absorbed duplicates on the board."
+  expected_outcome: "One answer posted, two duplicates absorbed, and one digest on the board."
   can_vary: ["timing of the duplicates"]
   target_minutes: 3
   code:
@@ -252,14 +254,13 @@
     api: "POST /control/kill-switch"
   planted: [BUG_KILLSWITCH_AT_CLAIM_ONLY, DEMO_PACING]
   guaranteed_moment: >-
-    With demo pacing on, the webhook question is in flight (Events > Send webhook question) when
-    the kill switch is engaged. With the kill switch at claim only, the run keeps going; with the
-    check before every model and tool call, it stops at its next step as blocked by kill switch and
-    the system drops to the report-only level. Each half ends with the switch engaged, so release
-    it between the halves (Status line > Release kill switch, or `make reset NAME=event-loop`)
-    before the flag goes to 0 and `make up`: an engaged switch blocks the next run at claim. The
-    switch stays engaged until a release: `make reset NAME=event-loop` right after the second
-    half, so nothing later is blocked.
+    `make demo` sends the webhook question with demo pacing on for that run, and engages the kill
+    switch while it is in flight. With the kill switch at claim only (the planted half, `make demo
+    NAME=events-kill-switch-in-flight PLANTED=1`), the run keeps going; with the check before every
+    model and tool call, it stops at its next step as blocked by kill switch and the system is held
+    at the report-only level. Each half ends with the switch engaged, and an engaged switch blocks
+    the next run at claim: `make reset NAME=event-loop` after each half, so nothing later is
+    blocked.
   expected_outcome: "The in-flight strip moves to Blocked by kill switch; the status line shows the report-only level."
   can_vary: ["which step the run stops at"]
   target_minutes: 4
@@ -292,14 +293,19 @@
   title: The naive analyzer, blocked
   tier: core
   trigger:
-    console: "Improve > Run analyzer"
+    console: "Improve > Run the naive analyzer (planted)"
     make: "make demo NAME=improve-naive-analyzer-blocked"
     api: "POST /analyzer/run, then POST /experiments/run (the candidate)"
   planted: [BUG_NAIVE_ANALYZER]
   guaranteed_moment: >-
-    Two requests, queued together at the break: the analyzer, then the candidate experiment (in
-    the console, Improve > Run analyzer, then Improve > Run experiment on the candidate; the runner
-    takes them in that order, after the baseline). The naive analyzer, with no model call, writes
+    Two requests, queued together at the break with `make demo
+    NAME=improve-naive-analyzer-blocked PLANTED=1`: the analyzer, then the candidate experiment;
+    the runner takes them in that order, after the baseline. Its planted half is its only half, so
+    the command switches the naive analyzer on for its own two requests with or without
+    PLANTED=1. The console's Improve page queues the
+    same two requests with the same flag from its Run the naive analyzer (planted) button, shown
+    only while demo controls are allowed; its Run analyzer button runs the analyzer team, never
+    the naive analyzer. The naive analyzer, with no model call, writes
     one rule per failed dev question, quoting it word for word with the analyst's query that
     failed, and never reads a reference query. It skips the critic and applies no overfit guard:
     the guard flags every rule and the Improve page says so, yet the knowledge diff keeps them all.
@@ -308,7 +314,7 @@
   expected_outcome: >-
     The overfit guard flags every rule, not applied by the analyzer; the gate verdict reads
     blocked, naming the rules the overfit guard rejects.
-  can_vary: ["how many dev items failed", "the dev count", "the holdout count", "the time from the trigger to the verdict (211 to 285 seconds in three measured runs)"]
+  can_vary: ["how many dev items failed", "the dev count", "the holdout count", "the time from the trigger to the verdict (211 to 580 seconds in 6 measured runs; the longest on a machine shared with assignment checks)"]
   target_minutes: 4
   code:
     - {path: platform/src/datapilot/loop4_hill_climbing/analyzer.py, lines: "206-210"}
@@ -350,7 +356,7 @@
     split only, and the Improve page names the one kept by its dev results; the knowledge diff
     shows it for human approval.
   expected_outcome: "A candidate version with general rules in the diff viewer, and the line naming both candidates and the one kept."
-  can_vary: ["rule wording", "number of rules", "which candidate is kept", "which rules, if any, the overfit guard rejects (live, it rejected a critic-kept rule that copied 20 or more tokens of a gold query)", "wall time: 326 and 377 s with two candidates in the two measured runs"]
+  can_vary: ["rule wording", "number of rules", "which candidate is kept", "which rules, if any, the overfit guard rejects (live, it rejected a critic-kept rule that copied 20 or more tokens of a gold query)", "wall time: 326 to 377 seconds with two candidates in the five measured runs"]
   target_minutes: 6
   code:
     - {path: platform/src/datapilot/loop4_hill_climbing/analyzer.py, lines: "242-245"}
@@ -374,7 +380,7 @@
     the analyzer (Improve > Run analyzer, then Improve > Run experiment on the candidate); trigger
     it again only if it never started, since a second press queues a second experiment.
   expected_outcome: "Holdout flips marked against this session's baseline, no regressions, gate verdict passed."
-  can_vary: ["which items flip", "how many flip: 0 to 12 of 13 holdout trap items in the measured runs, a majority in 6 of 10, so check the candidate in rehearsal", "wall time: 182 to 459 s; confirming re-runs of an apparent regression lengthen it"]
+  can_vary: ["which items flip", "how many flip: 0 to 12 of 13 holdout trap items in the measured runs, a majority in 6 of 10, so check the candidate in rehearsal", "wall time: 171.3 to 459 seconds; confirming re-runs of an apparent regression lengthen it"]
   target_minutes: 5
   code:
     - {path: platform/src/datapilot/loop4_hill_climbing/experiment.py, lines: "192-194"}

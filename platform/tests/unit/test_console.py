@@ -215,6 +215,39 @@ def test_each_action_is_one_documented_api_call() -> None:
     assert calls[5][2]["plus_rule"] == "knowledge-v2-overbroad"
 
 
+def test_the_naive_analyzer_button_queues_both_requests_with_the_demos_own_flag() -> None:
+    """Improve > Run the naive analyzer (planted) sends what `make demo
+    NAME=improve-naive-analyzer-blocked` sends: the analyzer, then the candidate experiment, each
+    with the demo's flag in the planted header and the demo's name beside it."""
+    seen: list[tuple[str, dict[str, str], Any]] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content) if request.content else None
+        seen.append((request.url.path, dict(request.headers), body))
+        kind = "analyzer" if request.url.path == "/analyzer/run" else "experiment"
+        return httpx.Response(200, json={**REPLIES["/experiments/run"], "kind": kind})
+
+    http = httpx.Client(base_url="http://api.test", transport=httpx.MockTransport(handle))
+    client = ApiClient("http://api.test", http=http)
+    sent = client.run_naive_analyzer()
+    assert [path for path, _, _ in seen] == ["/analyzer/run", "/experiments/run"]
+    assert seen[1][2]["target"] == "candidate"
+    for _, headers, _ in seen:
+        assert headers["datapilot-planted"] == "BUG_NAIVE_ANALYZER"
+        assert headers["datapilot-demo"] == "improve-naive-analyzer-blocked"
+    assert [request.kind for request in sent] == ["analyzer", "experiment"]
+    seen.clear()
+    client.run_analyzer()  # the analyzer team's button: no planted header
+    assert [path for path, _, _ in seen] == ["/analyzer/run"]
+    assert "datapilot-planted" not in seen[0][1]
+
+
+def test_the_naive_analyzer_button_shows_only_while_demo_controls_are_allowed() -> None:
+    source = (CONSOLE / "screens" / "improve.py").read_text(encoding="utf-8")
+    shown = "get_settings().datapilot_allow_demo_controls and optional[1].button(\n"
+    assert shown + '        "Run the naive analyzer (planted)"' in source
+
+
 def test_agent_ask_labels_a_typed_question_with_the_demo_that_asks_it_or_none() -> None:
     # Review round 3 (R3B-05): Agent > Ask labelled every typed question the simple-question
     # demo. A question a Section 1 demo asks carries that demo's name; any other carries none.

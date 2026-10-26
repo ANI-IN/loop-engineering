@@ -3,9 +3,9 @@
   "excalidraw": "0.18.1",
   "renders": {
     "four-loops": {
-      "source": "6c6d88659ddea79592b94bd5c2cd4b76465150e6a1456f8ce015952aa5e0644c",
-      "svg": "2cfd60166eecab60fe2554d85a3d58ac6795fd0ff3c94dee587914fcb0960f93",
-      "png": "aadd7f4bf6247d35fc73031272cc115b369516c9c3b1a1ecdb2a1a9f5fed442c"
+      "source": "a5ce76a024c9a45664fb319e3f06d5a952d0a25ece04eb23c2baab764b64ed3b",
+      "svg": "6b94e498c01ca60b558ae9953565efbe2314ba371ed035f5da46c87b47af9248",
+      "png": "e28663b4f1dad769c65a0ddc67089e79c127ac3d6410ae4c99a0795454962999"
     },
     "four-loops-step-1": {
       "source": "86bc31a107ca39136cb24adaa672e57be5b4e7d165666a564fc0b91816096a22",
@@ -23,9 +23,9 @@
       "png": "afd2ccf981f8d86319a4f78d5db0f40978c5e6be610e135b90acde906fde2b9c"
     },
     "four-loops-step-4": {
-      "source": "6c6d88659ddea79592b94bd5c2cd4b76465150e6a1456f8ce015952aa5e0644c",
-      "svg": "2cfd60166eecab60fe2554d85a3d58ac6795fd0ff3c94dee587914fcb0960f93",
-      "png": "aadd7f4bf6247d35fc73031272cc115b369516c9c3b1a1ecdb2a1a9f5fed442c"
+      "source": "a5ce76a024c9a45664fb319e3f06d5a952d0a25ece04eb23c2baab764b64ed3b",
+      "svg": "6b94e498c01ca60b558ae9953565efbe2314ba371ed035f5da46c87b47af9248",
+      "png": "e28663b4f1dad769c65a0ddc67089e79c127ac3d6410ae4c99a0795454962999"
     },
     "run-lifecycle": {
       "source": "b6e3f684f6164acdf17be2a409e337a3cec17cdd260521e926033f76fa8341c3",
@@ -33,9 +33,9 @@
       "png": "7f7b99f7488cfba6c052cad0da503e8bfe373036e3fe7be8f50c1384213a29dd"
     },
     "system-architecture": {
-      "source": "57052642bdec379fcb45db372ff341cf471d68d2800203ad405da0173968439d",
-      "svg": "8d1af21e65ae30030c3d314760005180ddfcebbcf68c162e3e7424e3afec36a5",
-      "png": "ada14f6644e2a75d381a68e29699a576c82ee71f57aa553279c776476918eeee"
+      "source": "002352c4b3efe948a5eb05ea33869876e1073abefccae4b3fadfc6cedcf25f94",
+      "svg": "c9c165894d2269f25e2986202964ae6fff890acca8576ea36cf1e758d3128711",
+      "png": "183ec08456e1555658fd8d9495daa6b4669b409abf2184a434bc43027a7faa69"
     },
     "warehouse-data-model": {
       "source": "de823e910d5829463b849a011881bc1d98cf176e7280d9ee03990219fe77fa02",

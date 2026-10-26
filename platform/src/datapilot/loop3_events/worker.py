@@ -62,7 +62,7 @@ from datapilot.loop3_events import (
 )
 from datapilot.observability import spend
 from datapilot.observability.traces import live_links
-from datapilot.planted import planted
+from datapilot.planted import REQUESTED_KEY, active, for_this_run, planted, service_tag
 from datapilot.settings import get_settings
 
 log = structlog.get_logger("worker")
@@ -92,6 +92,11 @@ DEFER_SQL = (
     "UPDATE ops.jobs SET status = 'queued', run_after = now() + interval '30 seconds', "
     "lease_owner = NULL, lease_until = NULL, updated_at = now() "
     "WHERE job_id = %s AND lease_owner = %s AND attempts = %s"
+)
+# A worker restarted for one demo's service-start flag claims only the jobs that carry the demo's
+# tag (planted.service_tag), so the flag never reaches another run: those wait, queued.
+TAGGED_CLAIM_SQL = CLAIM_SQL.replace(
+    "queue = ANY(%(queues)s)", "queue = ANY(%(queues)s) AND demo_tag = %(tag)s"
 )
 # The queries a person approved earlier in this run: a retry with the same text is not held again.
 APPROVED_SQL = (
@@ -180,9 +185,11 @@ class Worker:
             "owner": self.settings.worker_id,
             "lease": self.settings.lease_seconds,
             "queues": list(self.settings.queues),
+            "tag": service_tag(),
         }
+        claim = CLAIM_SQL if params["tag"] is None else TAGGED_CLAIM_SQL
         conn = psycopg.connect(db.url_for(db.Role.APP), row_factory=dict_row)
-        row = conn.execute(CLAIM_SQL, params).fetchone()
+        row = conn.execute(claim, params).fetchone()
         if row is None:
             conn.rollback()
             conn.close()
@@ -274,7 +281,16 @@ class Worker:
         self._finish(job, held, "done", str(error))
 
     async def _process(self, job: Job, held: psycopg.Connection[Any] | None) -> None:
+        """One job, with the planted flags a demo sent for this run alone switched on for it (and
+        for nothing after it), and every flag on for it recorded on the run."""
         run = self._load(job.event_id)
+        with for_this_run(run["payload"].get(REQUESTED_KEY) or []):
+            record_planted(str(run["run_id"]))
+            await self._process_run(job, held, run)
+
+    async def _process_run(
+        self, job: Job, held: psycopg.Connection[Any] | None, run: dict[str, Any]
+    ) -> None:
         run_id, status = str(run["run_id"]), RunStatus(run["status"])
         route = router.route(run["type"], run["payload"])
         with db.connect(db.Role.APP) as conn:
@@ -614,6 +630,23 @@ def call_cost(model: str, usage: spend.Usage) -> float:
     return spend.cost_usd(model, usage) if model in pack_config()["prices"] else 0.0
 
 
+# The run's record keeps the flags the api had on when it took the event, and adds the worker's.
+RECORD_PLANTED_SQL = (
+    "UPDATE ops.runs SET planted_active = planted_active || "
+    "ARRAY(SELECT f FROM unnest(%s::text[]) AS f WHERE f <> ALL(planted_active)) "
+    "WHERE run_id = %s"
+)
+
+
+def record_planted(run_id: str) -> None:
+    """Add the flags on in this worker for the run (its environment's and the run's own) to the
+    run's planted_active, so a run made with a planted bug says so whichever process had it on."""
+    if on := active():
+        with db.connect(db.Role.APP) as conn:
+            conn.execute(RECORD_PLANTED_SQL, (on, run_id))
+            conn.commit()
+
+
 def _daily_budget_stop() -> StopReason | None:
     with db.connect(db.Role.APP) as conn:
         spent = budget.exhausted(conn)
@@ -631,6 +664,11 @@ async def _main() -> str:
     executor = Executor(db.url_for(db.Role.AGENT), config.schema, config.statement_timeout_ms)
     db.wait_until_ready(db.Role.APP)
     executor.probe_read_only()  # raises, so the process refuses to start, unless it is read-only
+    with db.connect(db.Role.APP) as conn:  # what a live check and the finale read
+        from datapilot.planted import report_service
+
+        report_service(conn, "worker")
+        conn.commit()
     settings = get_settings()
     async with approvals.checkpointer() as saver:
         base = LoopServices(

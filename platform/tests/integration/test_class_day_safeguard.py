@@ -28,7 +28,7 @@ sys.path.insert(0, str(PLATFORM / "console"))
 from datapilot_console import ops_reads, views  # noqa: E402
 
 pytest_plugins = ["loops_fixtures"]
-pytestmark = [pytest.mark.integration, pytest.mark.usefixtures("clean_ops")]
+pytestmark = [pytest.mark.integration, pytest.mark.security, pytest.mark.usefixtures("clean_ops")]
 
 KNOWLEDGE_TABLES = "ops.promotion_decisions, ops.experiments, ops.knowledge_versions"
 REHEARSED, CLASS_CANDIDATE = "v5", "v7"
@@ -273,6 +273,71 @@ def test_the_safeguard_commands(rehearsal) -> None:
     assert "make demo NAME=improve-cleared-unattended" in done.output
     status = CliRunner().invoke(cli, ["safeguard", "status"])
     assert "active knowledge version: v5 (the safeguard's)" in status.output
+
+
+# --- session 6 review, class day: a stale or another stack's verification passed the check ----
+def test_an_old_verification_is_refused_unless_it_is_named(rehearsal) -> None:
+    verify(finale_run(rehearsal.session_id))
+    execute("UPDATE ops.rehearsal_verifications SET verified_at = now() - interval '8 days'")
+    class_day()
+    status = CliRunner().invoke(cli, ["safeguard", "status"])
+    assert "verified 8 days 0 hours ago, in live session" in status.output
+    assert f"{rehearsal.session_id} (a rehearsal session, started" in status.output
+    assert "make safeguard-activate refuses it: it is older than 7 days" in status.output
+    refused = CliRunner().invoke(cli, ["safeguard", "activate", "--by", "instructor"])
+    assert refused.exit_code == 1, refused.output
+    assert "is not taken: it is older than 7 days" in refused.output
+    assert "make safeguard-verify NAME=<version>" in refused.output
+    with db.connect(db.Role.APP) as conn:
+        assert versions.active_name(conn) == CLASS_CANDIDATE, "nothing changed"
+    named = CliRunner().invoke(  # make safeguard-activate NAME=v5 BY=...
+        cli, ["safeguard", "activate", "--by", "instructor", "--version", REHEARSED]
+    )
+    assert named.exit_code == 0, named.output
+    assert "taken because it was named, although it is older than 7 days" in named.output
+    with db.connect(db.Role.APP) as conn:
+        assert versions.active_name(conn) == REHEARSED
+
+
+def test_a_verification_from_a_session_not_on_this_stack_is_refused(rehearsal) -> None:
+    verify(finale_run(rehearsal.session_id))
+    execute("UPDATE ops.rehearsal_verifications SET session_id = %s", uuid.uuid4())
+    class_day()
+    with (
+        db.connect(db.Role.APP) as conn,
+        pytest.raises(versions.SafeguardRefused, match="its live session is not on this stack"),
+    ):
+        versions.activate_verified(conn, activated_by="instructor")
+    with db.connect(db.Role.APP) as conn:
+        done = versions.activate_verified(conn, activated_by="instructor", name=REHEARSED)
+        conn.commit()
+    assert done.cautions == ("its live session is not on this stack",)
+
+
+def test_a_verification_from_a_class_session_on_this_stack_is_refused(rehearsal) -> None:
+    """Session 6 review, round 2 (tests): the not-a-rehearsal branch had no test."""
+    verify(finale_run(rehearsal.session_id))
+    class_session = class_day()
+    execute("UPDATE ops.rehearsal_verifications SET session_id = %s", class_session.session_id)
+    status = CliRunner().invoke(cli, ["safeguard", "status"])
+    assert "its live session is class, not a rehearsal" in status.output
+    with (
+        db.connect(db.Role.APP) as conn,
+        pytest.raises(versions.SafeguardRefused, match="its live session is class, not a"),
+    ):
+        versions.activate_verified(conn, activated_by="instructor")
+    with db.connect(db.Role.APP) as conn:
+        done = versions.activate_verified(conn, activated_by="instructor", name=REHEARSED)
+        conn.commit()
+    assert done.cautions == ("its live session is class, not a rehearsal",)
+
+
+def test_a_recent_rehearsal_verification_shows_its_age_and_is_taken(rehearsal) -> None:
+    verify(finale_run(rehearsal.session_id))
+    class_day()
+    status = CliRunner().invoke(cli, ["safeguard", "status"])
+    assert "verified 0 hours ago" in status.output
+    assert "ok make safeguard-activate takes it" in status.output
 
 
 def test_a_class_reset_after_the_safeguard_archives_its_decision_and_keeps_the_version(

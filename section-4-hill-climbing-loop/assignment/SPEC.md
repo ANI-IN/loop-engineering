@@ -68,21 +68,26 @@ Model-dependent, run live with the class measurement:
     runs, an item that fell short counting only if it passes 2 of 3 more runs.
 
 **How often a correct solution passes.** Requirement 10 depends on the rule set the model writes
-in that check. In the build's verification and the checks of 23 October, with one candidate per
-check, it passed in 6 of 10 checks of correct solutions. Three were blocked by one confirmed dev
-regression: a rule the model wrote made one dev item fail under the candidate. The third of them,
-measured with the current re-runs of both versions, passed that item in both re-runs under v1 and
-failed it in both under the candidate, so it was a real regression of that rule set, not noise in
-v1. The fourth candidate was no better than v1 on holdout. The check now writes two candidates and
-keeps the one with fewer dev regressions, then more dev passes, as the class does, which targets
-the first cause. Measured on 23 October 2026 with two candidates, the reference passed 2 of 2
-checks (13.58 and 23.95 cents, 15 and 22 minutes); two checks are a small sample, so a correct
-solution may still read FAIL on requirement 10 now and then: run the check again, and the FAIL line
-says when the cause is the model's rule set rather than your files. A starter, and a solution that
-leaves out a family item or lets `aov` reach the unattended level, still fail it every time.
+in that check. In the course's verification runs of 23 October 2026, when the check wrote one
+candidate, it passed in 6 of 10 checks of correct solutions. Three were blocked by one confirmed
+dev regression: a rule the model wrote made one dev item fail under the candidate. The third of
+them was measured with re-runs of both versions: the item passed both re-runs under v1 and failed
+both under the candidate, a real regression of that rule set. The fourth candidate was no better
+than v1 on holdout. The check now writes two candidates and keeps the one with fewer dev
+regressions, then more dev passes, as the class does, which targets the first cause.
 
-None of these changes exists in a class code path: the course build's boundary test keeps the
-family out of the pack and the extension points inert on the class branch, so the unchanged
+With two candidates, the reference passed 2 of 2 checks that evening. Those checks ran on the
+check code of that evening, before a later change to how each check counts its spend and judges.
+On 25 October 2026, before later changes that cannot alter these verdicts, the reference passed 2 of 2 checks, and each
+alternative 1 of 1; each alternative's second check is owed to rehearsal
+([evidence](../../docs/evidence/general.md#captures)). So a correct solution may still read FAIL
+on requirement 10 now and then: run the check again, and the FAIL line says when the cause is the
+model's rule set rather than your files. A starter, and a solution that leaves out a family item
+or lets `aov` reach the unattended level, still fail it every time.
+
+None of these changes exists in a class code path: the boundary test
+(`platform/tests/unit/test_assignment_boundaries.py`) keeps the
+family out of the pack and the extension points inert in the class system, so the unchanged
 starter fails this check. Once your work is in place, those tests fail in your copy by design; the
 README lists them under "Tests that pin the starter". Every other test of `make test` still passes.
 
@@ -117,8 +122,9 @@ Nothing is submitted, and there is no hidden grader. Bring these to the Thursday
 
 ## Limits
 
-- Every model call records its spend in the build-wide ledger under the activity "assignment";
-  `make spend` shows the total.
+- Every model call records its spend in your own spend ledger,
+  `~/.datapilot/spend-ledger.sqlite`, under an activity of its own for this check run, such as
+  `assignment-hill-climbing-loop-1a2b3c4d` (`platform/src/datapilot/assignments/cost.py`); `make spend` lists it.
 - Each run stays within `budgets.tokens_per_run` in `platform/packs/datapilot_us/pack.yaml`.
 - Holdout items run `evaluation.holdout_repeats` times and pass on
   `evaluation.holdout_pass_threshold` runs, at `evaluation.concurrency`, as in class.

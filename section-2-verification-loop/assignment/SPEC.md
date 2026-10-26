@@ -78,7 +78,7 @@ run:
    stops an answer at this stage), a `reason`, and a `feedback_for_agent`; it passes the same texts
    when `extra["approved"]` is true, and passes an answer with neither.
 
-Model-dependent, run live through the api and the workers at the assisted level, on the real
+Model-dependent, run live through the api service and the workers at the assisted level, on the real
 model; each case passes on 2 of 3 runs (two runs, and a third only when the first two disagree):
 
 8. Every question of the ambiguity suite ends as expected. The two stopped questions must also
@@ -92,8 +92,9 @@ model; each case passes on 2 of 3 runs (two runs, and a third only when the firs
 10. An approved export ("Export the California customers who may receive marketing, with their
    email addresses.") still posts its rows.
 
-Neither grader exists in a class code path: the course build's boundary test keeps the
-registration hooks empty on the class branch, so the unchanged starter fails this check.
+Neither grader exists in a class code path: the boundary test
+(`platform/tests/unit/test_assignment_boundaries.py`) keeps the
+registration hooks empty in the class system, so the unchanged starter fails this check.
 
 ## Live check
 
@@ -123,8 +124,9 @@ Nothing is submitted, and there is no hidden grader. Bring these to the Thursday
 
 ## Limits
 
-- Every model call records its spend in the build-wide ledger under the activity "assignment";
-  `make spend` shows the total.
+- Every model call records its spend in your own spend ledger,
+  `~/.datapilot/spend-ledger.sqlite`, under an activity of its own for this check run, such as
+  `assignment-verification-loop-1a2b3c4d` (`platform/src/datapilot/assignments/cost.py`); `make spend` lists it.
 - Each run stays within `budgets.tokens_per_run` in `platform/packs/datapilot_us/pack.yaml`.
 - The retry cap `limits.max_retries` and the row cap `limits.row_cap` in the same file still apply.
   A refused write ends a run at once as escalated, without a retry.

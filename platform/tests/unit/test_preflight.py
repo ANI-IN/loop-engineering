@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import shutil
+import subprocess
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 from loop4_doubles import ScriptedEvaluator, answered, item
@@ -14,8 +17,9 @@ from datapilot.cli import app
 from datapilot.contracts import QueryResult, Split
 from datapilot.contracts.live import LiveSession, SessionPurpose
 from datapilot.loop2_verification.executor import ExecutionError
+from datapilot.loop3_events import budget
 from datapilot.loop4_hill_climbing import preflight as checks
-from datapilot.settings import Settings
+from datapilot.settings import PLATFORM, Settings
 
 SETTINGS = Settings(openai_api_key=SecretStr("not-a-real-key"), openai_model="class-model")
 
@@ -40,7 +44,7 @@ def _canary(trap_passes: bool = False, easy_fails: bool = False):
     return run
 
 
-def _preflight(**overrides):
+def _preflight(purpose: SessionPurpose = SessionPurpose.DEVELOPMENT, **overrides):
     started: list[SessionPurpose] = []
 
     def start(purpose, started_by, timezone):
@@ -51,10 +55,11 @@ def _preflight(**overrides):
         "canary": _canary(),
         "start_session": start,
         "services": lambda: [checks.Check("postgres", True, "4 of 4 migrations")],
+        "budget": lambda: (checks.Check("token budget", True, "0 of 2,000,000 tokens used"), None),
         "key": lambda: checks.Check("openai key", True, "class-model"),
         "install": lambda: ["v1"],
     } | overrides
-    report = checks.preflight(SessionPurpose.DEVELOPMENT, SETTINGS, **parts)
+    report = checks.preflight(purpose, SETTINGS, **parts)
     return report, started
 
 
@@ -230,3 +235,132 @@ def test_a_pack_without_a_canary_never_borrows_another_packs_questions() -> None
     config = {"name": "my_pack", "preflight": {"data_check": {"table": "club.payments"}}}
     with pytest.raises(checks.PackHasNoPreflight, match="my_pack: preflight.canary"):
         checks.canary_ids(config)
+
+
+# --- the daily token budget (session 6 review, class day: preflight never checked it) ----------
+CLASS_PASS = 521_000  # a pass, both finales, a quarter more
+DAY = budget.DayBudget(date(2026, 10, 25), 1_700_000, 2_000_000)
+
+
+def test_preflight_prints_the_eastern_days_tokens_used_cap_and_left() -> None:
+    found, refusal = checks.budget_check(
+        SessionPurpose.DEVELOPMENT, DAY, CLASS_PASS, timedelta(hours=3)
+    )
+    assert refusal is None and found.line() == (
+        "ok token budget: 1,700,000 of 2,000,000 tokens used on the Eastern time day 2026-10-25, "
+        "300,000 left"
+    )
+
+
+def test_a_class_preflight_refuses_with_less_than_one_class_pass_left() -> None:
+    found, refusal = checks.budget_check(SessionPurpose.CLASS, DAY, CLASS_PASS, timedelta(hours=3))
+    assert not found.ok and "a class pass needs about 521,000" in found.detail
+    assert refusal == checks.BUDGET_SHORT.format(until="3 hours 0 minutes", left=300_000)
+    assert "midnight Eastern time" in refusal and "course owner's decision" in refusal
+    roomy = budget.DayBudget(DAY.day, 1_000_000, 2_000_000)
+    assert checks.budget_check(SessionPurpose.CLASS, roomy, CLASS_PASS, timedelta())[1] is None
+
+
+def test_the_budget_refusal_stops_preflight_before_the_key_and_the_canary() -> None:
+    asked: list[str] = []
+
+    def key() -> checks.Check:
+        asked.append("key")
+        return checks.Check("openai key", True, "m")
+
+    short = checks.budget_check(SessionPurpose.CLASS, DAY, CLASS_PASS, timedelta(hours=1))
+    report, started = _preflight(budget=lambda: short, key=key)
+    assert report.stopped == short[1] and asked == [] and started == []
+    assert report.checks[-1].name == "token budget"
+
+
+# --- the knowing start of a short class day (session 6 review, round 3, class day) ------------
+
+
+def test_the_refusal_names_the_session_left_open_and_the_knowing_start_with_todays_count() -> None:
+    _, refusal = checks.budget_check(SessionPurpose.CLASS, DAY, CLASS_PASS, timedelta(hours=3))
+    assert refusal is not None
+    assert "No class session started, so the open session, if any, stays open." in refusal
+    assert refusal.endswith(
+        "300,000 tokens left, knowingly: make preflight PURPOSE=class ACCEPT_TOKENS_LEFT=300000"
+    )
+
+
+def test_the_exact_count_left_starts_the_class_session_and_says_so() -> None:
+    accepted = checks.budget_check(
+        SessionPurpose.CLASS, DAY, CLASS_PASS, timedelta(hours=3), accepted_left=300_000
+    )
+    found, refusal = accepted
+    assert refusal is None and found.ok
+    assert found.line().endswith(
+        "300,000 left; a class pass needs about 521,000; "
+        "started knowingly with ACCEPT_TOKENS_LEFT=300000"
+    )
+    report, started = _preflight(SessionPurpose.CLASS, budget=lambda: accepted)
+    assert report.stopped is None and started == [SessionPurpose.CLASS]
+
+
+@pytest.mark.parametrize("named", [299_999, 300_001, 0, 521_000])
+def test_any_other_count_is_refused_as_before(named: int) -> None:
+    # a value left from an earlier day, or a guess, never starts a short class day
+    found, refusal = checks.budget_check(
+        SessionPurpose.CLASS, DAY, CLASS_PASS, timedelta(hours=3), accepted_left=named
+    )
+    assert not found.ok
+    assert refusal == checks.BUDGET_SHORT.format(until="3 hours 0 minutes", left=300_000)
+
+
+def test_a_named_count_changes_nothing_on_a_day_with_a_class_pass_left() -> None:
+    roomy = budget.DayBudget(DAY.day, 1_000_000, 2_000_000)
+    named = checks.budget_check(SessionPurpose.CLASS, roomy, CLASS_PASS, timedelta(), 1_000_000)
+    plain = checks.budget_check(SessionPurpose.CLASS, roomy, CLASS_PASS, timedelta())
+    assert named == plain and plain[1] is None
+
+
+def test_the_command_reads_the_count_from_its_option_or_make_variable() -> None:
+    import typer
+
+    preflight = typer.main.get_group(app).commands["preflight"]
+    option = next(p for p in preflight.params if p.name == "accept_tokens_left")
+    assert option.opts == ["--accept-tokens-left"]
+    assert option.envvar == checks.ACCEPT_VARIABLE == "ACCEPT_TOKENS_LEFT"
+
+
+@pytest.mark.skipif(shutil.which("make") is None, reason="GNU make is not installed here")
+def test_make_passes_the_command_line_variable_to_the_preflight_command() -> None:
+    # make exports a variable set on its command line to the recipe's environment, so
+    # `make preflight PURPOSE=class ACCEPT_TOKENS_LEFT=300000` reaches the option's envvar; UV is
+    # replaced by a command that prints the variable, and the rest of the recipe becomes a comment
+    command = ["make", "-s", "-C", str(PLATFORM.parent), "preflight", "PURPOSE=class"]
+    command += ["ACCEPT_TOKENS_LEFT=300000", "UV=printenv ACCEPT_TOKENS_LEFT #"]
+    done = subprocess.run(command, capture_output=True, text=True, timeout=60, check=False)
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip() == "300000"
+
+
+def test_the_class_pass_threshold_is_a_pack_setting_with_its_measurement() -> None:
+    from datapilot.config import pack_config
+
+    assert pack_config()["budgets"]["class_pass_tokens"] == CLASS_PASS
+    text = (PLATFORM / "packs" / "datapilot_us" / "pack.yaml").read_text(encoding="utf-8")
+    assert "394,313" in text and "25 October 2026" in text
+    assert "394,313 + 10,240 + 12,395 = 416,948" in text and "521,185" in text
+
+
+class _NoRow:
+    def execute(self, *_args: object) -> object:
+        return SimpleNamespace(fetchone=lambda: None)
+
+
+def test_a_day_with_no_budget_row_yet_has_used_nothing() -> None:
+    noon = datetime(2026, 10, 26, 16, 0, tzinfo=UTC)  # noon Eastern time
+    found = budget.today(_NoRow(), noon)  # type: ignore[arg-type]
+    assert (found.day, found.used, found.left) == (date(2026, 10, 26), 0, 2_000_000)
+    assert budget.until_next_day(noon) == timedelta(hours=12)
+    # 1 November 2026: the clock goes back an hour at 2:00, so the day has 25 hours
+    assert budget.until_next_day(datetime(2026, 11, 1, 4, 0, tzinfo=UTC)) == timedelta(hours=25)
+
+
+def test_the_console_check_reads_the_console_port_through_the_settings() -> None:
+    moved = Settings(_env_file=None, console_port=8599, api_port=8999)
+    assert checks.settings_console_url(moved) == "http://localhost:8599/"

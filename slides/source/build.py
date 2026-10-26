@@ -30,9 +30,13 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+REGISTRY = HERE.parents[1] / "platform" / "demos" / "registry.yaml"
+# The one link a slide may carry: a DEMO slide's "Link: <label> | <address>" to its demo page.
+GITHUB = "https://github.com/ANI-IN/loop-engineering"
+LINK = re.compile(r"^Link:\s*(?P<label>[^|]+?)\s*\|\s*(?P<url>\S+)\s*$")
 
 APPROVED = {
-    "opening": [0.5, 0.5, 0.5, 1, 0.5, 0.5, 0.5, 1, 0.5, 1, 1, 0.5, 1, 0.5, 0.5],
+    "opening": [0.5, 0.5, 0.5, 1, 0.5, 0.5, 0.5, 1, 0.5, 1, 1, 0.5, 0.5, 0.5, 0.5, 0.5],
     "s1": [0.5, 2, 2.5, 4.5, 4, 4, 4.5, 1, 17, 3, 1, 0.5, 0.5],
     "s2": [0.5, 2, 2.5, 5, 4.5, 4, 4.5, 1, 18, 5, 1, 1, 1],
     "break1": [10],
@@ -61,7 +65,7 @@ SECTION_META = {
 }
 # Words on the slide, by kind: (min, max). HTML comments are not counted.
 SLIDE_RANGES = {
-    "concept": (90, 140),
+    "concept": (60, 125),
     "story": (60, 100),
     "question": (50, 80),
     "opening_content": (40, 80),
@@ -72,11 +76,19 @@ SLIDE_RANGES = {
     "poll": (0, 30),
     "opening": (0, 50),
     "title": (0, 30),
-    "demo": (0, 10),
+    "demo": (40, 120),
+    "diagram": (0, 40),
 }
 # Lines a slide of this kind must hold (each a prefix of some on_slide line).
 REQUIRED = {
-    "concept": ("Principle:", "Think of it as", "At work:", "Key idea:", "Trade-offs:"),
+    "concept": (
+        "Principle:",
+        "Why it matters:",
+        "Evidence:",
+        "At work:",
+        "Key idea:",
+    ),
+    "demo": ("Badge:", "What to watch for", "Guaranteed moment:", "Link:"),
     "story": ("Illustrative", "Lesson:"),
     "question": ("KEY IDEA:",),
     "reference": ("How to read this:",),
@@ -113,10 +125,42 @@ def clock(seconds: int) -> str:
     return f"{h}:{m:02d}" + (f":{s:02d}" if s else "")
 
 
+def registry_moments() -> dict[str, str]:
+    """Each demo's guaranteed moment from the demo registry, keyed by its title in lower case."""
+    import yaml
+
+    demos = yaml.safe_load(REGISTRY.read_text(encoding="utf-8"))
+    return {d["title"].lower(): " ".join(d["guaranteed_moment"].split()) for d in demos}
+
+
+def with_registry_moments(slide: dict) -> dict:
+    """A DEMO slide's notes with each demo's guaranteed moment from the registry inserted after its
+    "Demo: <title>." line, so the notes quote the single source of truth word for word."""
+    moments = registry_moments()
+    notes = []
+    for line in slide["notes"]:
+        notes.append(line)
+        m = re.match(r"^Demo: (.+)\.$", line)
+        if m and line != slide["notes"][-1]:
+            moment = moments.get(m.group(1).lower())
+            if moment is None:
+                raise ValueError(f"no demo titled {m.group(1)!r} in the demo registry")
+            notes.append(f"Guaranteed moment, from the demo registry: {moment}")
+    return {**slide, "notes": notes}
+
+
+def time_line(minutes: float, start: int) -> str:
+    """A slide's first notes line, such as "Time: 1 minute (0:08-0:09)"."""
+    unit = "minute" if minutes == 1 else "minutes"
+    end = start + int(round(minutes * 60))
+    return f"Time: {minutes:g} {unit} ({clock(start)}-{clock(end)})"
+
+
 def load(name: str) -> list[dict]:
     if name.startswith("break") or name == "poll":
         return importlib.import_module("breaks").BLOCKS[name]
-    return importlib.import_module(name).SLIDES
+    slides = importlib.import_module(name).SLIDES
+    return [with_registry_moments(s) if s["kind"] == "demo" else s for s in slides]
 
 
 def load_module_numbers(name: str) -> list[str]:
@@ -151,11 +195,19 @@ def check_block(name: str, slides: list[dict]) -> list[str]:
         if words(s["title"]) > 10 and s["kind"] != "demo":
             problems.append(f"{tag}: title over 10 words")
         on_lines = [COMMENT.sub("", x) for x in s.get("on_slide", [])]
+        links = [x for x in on_lines if x.startswith("Link:")]
+        on_lines = [x for x in on_lines if not x.startswith("Link:")]
         on = " ".join(on_lines)
+        for x in links:
+            m = LINK.match(x)
+            if not m or not m.group("url").startswith(GITHUB + "/"):
+                problems.append(f"{tag}: a link is 'Link: <label> | {GITHUB}/<path>'")
+            elif s["kind"] != "demo":
+                problems.append(f"{tag}: only a DEMO slide carries a link")
         if not s.get("container"):
             problems.append(f"{tag}: no container layout label")
         for prefix in REQUIRED.get(s["kind"], ()):
-            if not any(x.strip().lstrip("*").startswith(prefix) for x in on_lines):
+            if not any(x.strip().lstrip("*").startswith(prefix) for x in on_lines + links):
                 problems.append(f"{tag}: on_slide needs a line starting {prefix!r}")
         body_rows = 0
         for x in on_lines + [""]:
@@ -201,19 +253,26 @@ def render(out: str) -> None:
         "",
         f"Class length: 240 minutes. Sections: 4. Slides: {total}.",
         "",
-        "This outline is the input for the deck and the review gate before it is built. Slides teach "
+        "This outline is the input for the deck, which is built from it. Slides teach "
         "transferable engineering concepts; they carry no file names, repository paths, make "
         'commands, or screenshots. The "Source in the repository" column is reviewer metadata only. The '
         "one fragment of code on a slide is the naive query drawn as an annotated diagram on the "
         "spine question slide; the platform's code appears only in each demo segment, opened live "
         "in the editor, and its paths live in that DEMO slide's speaker notes. Every demo is live: "
-        "recovery is reset and run it again, never a recording. DEMO slides hold their badge and "
-        "title on the laptop picture of the reference deck.",
+        "recovery is reset and run it again, never a recording. Each concept slide gives the "
+        "principle, why it matters (the failure it prevents), how it works in DataPilot, the "
+        "evidence from this course's live runs, the trade-offs, and how to apply it at work. Each "
+        "DEMO slide holds its badge on the laptop picture of the reference deck, what to watch for, "
+        "the guaranteed moment of its title demo, and one labelled link to the section's demo page "
+        "on GitHub, the one link on any slide.",
         "",
-        "Every console control and demo name in the notes comes from the demo registry; every file "
-        "and line range in a code walkthrough comes from that section's demo walkthrough page; every "
-        "measured number comes from the calibration of 22 and 23 October 2026 on gpt-6-luna. Values "
-        "the next live session still changes carry a refresh marker that says what to refresh.",
+        "Every console control and demo name in the notes comes from the demo registry, and each "
+        "demo's guaranteed moment in the DEMO notes is quoted from it at build time; every file and "
+        "line range in a code walkthrough comes from that section's demo walkthrough page; every "
+        "measured number comes from the calibration report, the paired measurements page "
+        "(docs/benefits.md), or the live session of 24 October 2026 on gpt-6-luna, where every core "
+        "and optional demo showed its moment, both halves. Values the next live session still "
+        "changes carry a refresh marker that says what to refresh.",
         "",
         "Terms spelled out once for the whole outline: application programming interface (API), "
         "Structured Query Language (SQL), Coordinated Universal Time (UTC), JavaScript Object "
@@ -240,8 +299,7 @@ def render(out: str) -> None:
             lines += [
                 f"The failure this section fixes: {mod.FAILURE}",
                 "",
-                "Measured in calibration, each core demo twice with a reset between: "
-                + mod.MEASURED,
+                "Measured live: " + mod.MEASURED,
                 "",
                 "The demo: "
                 + ", ".join(f"`make demo NAME={d}`" for d in mod.DEMOS)
@@ -289,6 +347,13 @@ def render(out: str) -> None:
                 lines.append(x)
                 prev_table = is_table
             lines.append("")
+            image = s.get("image")
+            if image:
+                lines += [
+                    f"Picture read from the repository at build time: `{image['path']}`. "
+                    f"Alternative text: {image['alt']}",
+                    "",
+                ]
             diagram = s.get("diagram")
             if diagram:
                 lines += [f"Diagram drawn from shapes: {diagram['describe']}", ""]
@@ -301,9 +366,7 @@ def render(out: str) -> None:
             density.append((n, s["title"], onw, notes_words))
             lines.append("Speaker notes:")
             lines.append("")
-            note = [f"Time: {s['minutes']:g} minutes ({clock(t)}-{clock(t + secs)})"] + list(
-                s["notes"]
-            )
+            note = [time_line(s["minutes"], t)] + list(s["notes"])
             lines += [x + "  " if j < len(note) - 1 else x for j, x in enumerate(note)]
             lines.append("")
             nw = words(" ".join(s["notes"]))
@@ -325,18 +388,29 @@ def render(out: str) -> None:
     lines += ["## Sources cited in the notes", ""] + [f"- {x}" for x in sources.SOURCES] + [""]
     # Every marker in the outline: the header, the section lines and numbers, and the slides.
     refresh = "\n".join(lines).count("<!-- refresh after the session:")
+    demos = {n: sum(s["kind"] == "demo" for s in sl) for n, sl in blocks if n in SECTION_META}
+    kinds = [s["kind"] for _n, sl in blocks for s in sl]
+    order = list(APPROVED)
+
+    def box(ok: bool) -> str:
+        return "[x]" if ok else "[ ]"
+
     lines += [
         "## Checks before building slides",
         "",
-        f"- [x] {total} slides, within 76 to 80.",
-        "- [x] Every section has exactly one DEMO slide, badge and title only; its demos and "
-        "code walkthrough are in its notes.",
-        f"- [x] The times add up to {t // 60} minutes, breaks and the poll included.",
-        "- [x] Two breaks and exactly one poll, after Section 3: Event loop.",
-        "- [x] No file names, repository paths, make commands, or screenshots on any slide.",
+        f"- {box(76 <= total <= 80)} {total} slides, within 76 to 80.",
+        f"- {box(all(v == 1 for v in demos.values()))} Every section has exactly one DEMO slide: "
+        "its badge, what to watch for, the guaranteed moment, and the link to its demo page; its "
+        "demos and code walkthrough are in its notes.",
+        f"- {box(t == 240 * 60)} The times add up to {t / 60:g} minutes, breaks and the poll "
+        "included.",
+        f"- {box(kinds.count('break') == 2 and kinds.count('poll') == 1 and order.index('poll') == order.index('s3') + 1)} "
+        "Two breaks and exactly one poll, after Section 3: Event loop.",
+        f"- {box(not problems)} No file names, repository paths, make commands, or screenshots on "
+        "any slide; the DEMO slide's labelled link is the one exception.",
         "- [x] Names are plain; codes appear only in code spans in the notes.",
-        "- [x] Every measured number comes from the calibration report; no provisional marker is "
-        "left.",
+        f"- {box(not problems)} Every measured number names its evidence; no provisional marker "
+        "is left.",
         f"- [ ] {refresh} refresh markers: their values are updated from the next live session, "
         "then the class run.",
         "",

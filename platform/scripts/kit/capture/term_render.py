@@ -8,7 +8,9 @@ at about 100 columns, 2x scale. Host home folders are redacted to `~` and `--use
         --command "make demo" [--lines -12] [--highlight 3,5-7] [--title "Terminal 2"]
 
 `--lines` picks line ranges of the input ("1-20,40"; "-12" is the last 12 lines); left-out lines
-show as one muted "... N lines" row. `--highlight` marks input lines with a band and a blue bar.
+show as one muted "... N lines" row. `--max-line-rows` draws at most that many rows of one long
+input line and says how many characters of it were left out, so one line of a megabyte cannot make
+an image thousands of rows tall. `--highlight` marks input lines with a band and a blue bar.
 """
 
 from __future__ import annotations
@@ -50,6 +52,26 @@ class Row:
     lineno: int | None = None
 
 
+def wrap_capped(line: str, width: int, cap: int | None) -> tuple[list[str], int]:
+    """The rows of one input line, at most `cap` of them, and how many characters were left out
+    (0 when the line fits). The same wrapping as capturelib.wrap_line."""
+    if cap is None:
+        return wrap_line(line, width), 0
+    parts: list[str] = []
+    rest = line
+    while len(rest) > width and len(parts) < cap:
+        cut = rest.rfind(" ", 0, width + 1)
+        if cut >= width // 2:
+            parts.append(rest[:cut])
+            rest = rest[cut + 1 :]
+        else:
+            parts.append(rest[:width])
+            rest = rest[width:]
+    if len(parts) < cap:
+        return [*parts, rest], 0
+    return parts, len(rest)
+
+
 def _ranges(ranges: str | list[tuple[int, int]] | None) -> list[tuple[int, int]]:
     if ranges is None:
         return []
@@ -64,6 +86,7 @@ def prepare_rows(
     ranges: str | list[tuple[int, int]] | None = None,
     highlight: Iterable[int] = (),
     users: Iterable[str] = (),
+    max_line_rows: int | None = None,
 ) -> list[Row]:
     """The rows to draw. Raises SecretFound on key-like text in the text or the command."""
     check_no_secrets(text, "the terminal text")
@@ -93,8 +116,11 @@ def prepare_rows(
             rows.append(Row("gap", words))
             continue
         lineno, line = item
-        for i, part in enumerate(wrap_line(line, width)):
+        parts, left_out = wrap_capped(line, width, max_line_rows)
+        for i, part in enumerate(parts):
             rows.append(Row("line" if i == 0 else "cont", part, lineno in marked, lineno))
+        if left_out:
+            rows.append(Row("gap", f"… {left_out:,} more characters of this line left out"))
     leaks = [h for r in rows for h in host_path_hits(r.text)]
     if leaks:
         raise ValueError("a host path survived redaction")
@@ -117,10 +143,17 @@ def render(
     highlight: Iterable[int] = (),
     title: str = "Terminal",
     users: Iterable[str] = (),
+    max_line_rows: int | None = None,
 ) -> Path:
     """Write the PNG; nothing is written when the text or command holds key-like text."""
     rows = prepare_rows(
-        text, command=command, width=width, ranges=ranges, highlight=highlight, users=users
+        text,
+        command=command,
+        width=width,
+        ranges=ranges,
+        highlight=highlight,
+        users=users,
+        max_line_rows=max_line_rows,
     )
     size = 15 * scale
     regular = _font("DejaVuSansMono.ttf", size)
@@ -179,6 +212,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--width", type=int, default=100)
     p.add_argument("--scale", type=int, default=2)
     p.add_argument("--title", default="Terminal")
+    p.add_argument("--max-line-rows", type=int, default=None, help="rows per long input line")
     p.add_argument("--user", action="append", default=[], help="a user name to redact")
     a = p.parse_args(argv)
     text = a.source.read_text(encoding="utf-8", errors="replace")
@@ -196,6 +230,7 @@ def main(argv: list[str] | None = None) -> int:
             highlight=_numbers(a.highlight),
             title=a.title,
             users=a.user,
+            max_line_rows=a.max_line_rows,
         )
     except ValueError as err:
         print(f"x {err}", file=sys.stderr)

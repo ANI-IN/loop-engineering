@@ -36,8 +36,10 @@ passes every check and is still wrong.
 ## How this section fixes it
 
 The verification loop wraps the agent loop in layers. A syntax-tree guard, a schema allowlist, a
-read-only role, and a statement timeout each assume the layer above them fails. Graders at three
-stages send their reasons back to the agent, and a retry cap ends the loop. A write the database
+read-only role, and a statement timeout each assume the layer above them fails. Graders run
+before execution, after execution, and on the final answer, and send their reasons back to the
+agent; a retry cap ends the loop. In the diagram, Stage 1 checks each query and Stage 2 checks
+the answer. A write the database
 refuses is never sent back: the run ends at once as escalated, with no retry. After every grader
 passes, an independent reviewer reads the result.
 
@@ -48,22 +50,54 @@ passes, an independent reviewer reads the result.
 The section ends with the spine question passing every grader and failing the gold check. Graders
 prove a query is safe and well formed, not that it means what the business means. The gold check
 is what [Section 4: Hill-climbing loop](../section-4-hill-climbing-loop/README.md) measures with.
-Results of the class runs go on the [evidence page](../docs/evidence/section-2-verification-loop.md).
+The full idea is in [concepts.md](concepts.md) (in class, minutes 0 to 24).
 
 ## How to work through this section
 
-| Part | What it gives you | In class |
-|---|---|---|
-| [concepts.md](concepts.md) | Defense layers, graders, caps, and the reviewer | Minutes 0-24 |
-| [demo/](demo/README.md) | Malicious SQL, the retry cap, and every grader passes, still wrong, live | Minutes 24-36 |
-| [demo/walkthrough.md](demo/walkthrough.md) | The guard, the executor, the cap, and the reviewer | Minutes 36-42 |
-| [assignment/](assignment/README.md) | Assignment 2: Verification loop, two new graders | After class |
-| [post-class-reading/](post-class-reading/README.md) | Readings on SQL safety and evaluation | After class |
-| [session-notes.md](session-notes.md) | What class showed, questions, what to try next | After class |
+### How it works in the code
 
-In class, every demo result on the console shows a live stamp: its run's start time in the
-viewer's local time and its LangSmith trace link. The `demo/expected/` folder is for you
-after class; it is never opened in class.
+- [`QueryChecker.check`](../platform/src/datapilot/loop2_verification/checker.py) runs the
+  graders before execution, then the read-only executor, then the execution grader.
+- [`StatementPolicyGrader`](../platform/src/datapilot/loop2_verification/graders/statement_policy.py)
+  is the syntax-tree guard; `NaiveGuard` in the same file is the planted first-word check.
+- [`Executor`](../platform/src/datapilot/loop2_verification/executor.py) runs every query in a
+  read-only transaction, under the agent role and a statement timeout.
+- [`VerificationLoop`](../platform/src/datapilot/loop2_verification/loop.py) sends grader reasons
+  back to the agent, and `attempt_allowed` in `limits.py` enforces `limits.max_retries`.
+- [`Reviewer`](../platform/src/datapilot/loop2_verification/reviewer.py) reads the question, the
+  query, and the result once every grader has passed.
+
+The [walkthrough](demo/walkthrough.md) explains these lines (minutes 36 to 42).
+
+### The demo
+
+Three core demos, live, in minutes 24 to 36: malicious SQL (`verify-malicious-sql`) shows which
+layer stopped each statement; the retry cap (`verify-retry-cap`) shows the cost counter stop at
+the cap; every grader passes, still wrong (`verify-graders-pass-still-wrong`) shows a green
+checklist beside a failed gold check. Every result carries a live stamp. Run them with the
+[demo page](demo/README.md); the measured runs are on the
+[evidence page](../docs/evidence/section-2-verification-loop.md).
+
+### The assignment
+
+[Assignment 2: Verification loop](assignment/README.md) adds two graders: one that asks back when
+a question uses a business term the knowledge does not define, and one that blocks an email
+address or phone number in an answer nobody approved. It is done when
+`make check-assignment NAME=verification-loop` reads PASS on every line. Effort: about 2 hours;
+the cost of a check is on the [costs page](../docs/costs.md#assignments).
+
+### Apply it in a real system
+
+- Make the database role the boundary: read-only, with a statement timeout. A parser is a second
+  layer, never the only one.
+- Cap retries in code, send each grader's reason back, and end a run at once on a refused write.
+- Judge meaning with hand-written gold results on more than one database; graders cannot.
+
+### Further reading
+
+The [reading list](post-class-reading/README.md) has three: why one database is not proof, least
+privilege and allow-lists, and database error codes as feedback. After class,
+[session-notes.md](session-notes.md) recaps what class showed.
 
 ## Where next
 

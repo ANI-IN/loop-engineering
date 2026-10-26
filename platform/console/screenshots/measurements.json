@@ -6,10 +6,10 @@
         144,
         254
       ],
-      "lanes_end": 583,
-      "off_board_end": 715,
+      "lanes_end": 581,
+      "off_board_end": 713,
       "page_scroll_y": 0,
-      "lanes_scrolling_inside": 1,
+      "lanes_scrolling_inside": 2,
       "fits": true
     },
     "kill switch armed": {
@@ -18,8 +18,8 @@
         144,
         305
       ],
-      "lanes_end": 582,
-      "off_board_end": 715,
+      "lanes_end": 508,
+      "off_board_end": 641,
       "page_scroll_y": 0,
       "lanes_scrolling_inside": 2,
       "fits": true
@@ -32,8 +32,8 @@
         144,
         254
       ],
-      "lanes_end": 463,
-      "off_board_end": 595,
+      "lanes_end": 457,
+      "off_board_end": 590,
       "page_scroll_y": 0,
       "lanes_scrolling_inside": 2,
       "fits": true
@@ -51,26 +51,14 @@
       "fits": true
     }
   },
-  "67 percent zoom (1910x1075)": {
-    "viewport_height": 1075,
-    "status_line": [
-      144,
-      254
-    ],
-    "lanes_end": 568,
-    "off_board_end": 701,
-    "page_scroll_y": 0,
-    "lanes_scrolling_inside": 0,
-    "fits": true
-  },
   "1280x720, kill switch engaged": {
     "viewport_height": 720,
     "status_line": [
       144,
       299
     ],
-    "lanes_end": 582,
-    "off_board_end": 715,
+    "lanes_end": 502,
+    "off_board_end": 635,
     "page_scroll_y": 0,
     "lanes_scrolling_inside": 2,
     "fits": true
@@ -86,9 +74,9 @@
     },
     "same_nodes": true,
     "min_opacity": 1,
-    "fragment_runs": 16,
-    "slowest_fragment_seconds": 0.021,
-    "median_fragment_seconds": 0.0151,
+    "fragment_runs": 15,
+    "slowest_fragment_seconds": 0.0323,
+    "median_fragment_seconds": 0.0216,
     "console_errors": []
   }
 }

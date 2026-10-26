@@ -239,6 +239,24 @@ def stop_on_blocked(detail: RunDetail, api: Any) -> None:
         raise Stop(kill_switch_stop(detail, getattr(api, "slug", "")))
 
 
+def planted_stop(run_id: Any, flags: Sequence[str]) -> str:
+    return (
+        f"Stopped: run {run_id} ran with planted bugs switched on in this check's stack "
+        f"({', '.join(flags)}), so what it did says nothing about your solution, and it was not "
+        "judged. Planted bugs belong to the class demonstrations, which switch them on for their "
+        "own runs only: set each one to 0 in .env, then make up, and run the check again. On "
+        "its own Compose project the check switches every one of them off."
+    )
+
+
+def stop_on_planted(detail: Any) -> None:
+    """A run made with a planted bug switched on (the run records the flags that were on) is no
+    evidence about the solution: it stops the check (exit 2) instead of failing a line."""
+    flags = list(getattr(detail, "planted_active", None) or [])
+    if flags:
+        raise Stop(planted_stop(detail.run_id, flags))
+
+
 def trace_link(trace_id: str, *, project: str | None = None, tries: int = 10) -> str:
     """The LangSmith link of a trace, once LangSmith has ingested it."""
     settings = get_settings()
@@ -302,12 +320,14 @@ def _open_approval(detail: RunDetail) -> bool:
 
 
 def settle(api: Api, run_id: str, decide: Decide, *, seconds: float = 900) -> RunDetail:
-    """Wait for a run to end, acting as the human approver whenever it waits for one."""
+    """Wait for a run to end, acting as the human approver whenever it waits for one. A run that
+    records a planted flag on stops the check (stop_on_planted), in every assignment."""
     deadline = time.monotonic() + seconds
     while True:
         detail = api.wait(run_id, seconds=max(deadline - time.monotonic(), 1))
         if detail.status is not RunStatus.AWAITING_APPROVAL:
             stop_on_rejected_key(detail)
+            stop_on_planted(detail)
             stop_on_blocked(detail, api)
             return detail
         if _open_approval(detail):

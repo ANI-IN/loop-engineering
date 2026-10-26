@@ -9,13 +9,22 @@ DEMOS = ["verify-malicious-sql", "verify-retry-cap", "verify-graders-pass-still-
 
 R = "<!-- refresh after the session: {} -->"
 MEASURED = (
-    "malicious SQL shown in 6 seconds both times, the syntax-tree guard stopping two statements and "
+    "in calibration, each core demo twice with a reset between: malicious SQL shown in 6 seconds "
+    "both times, the syntax-tree guard stopping two statements and "
     "the role's missing grant the third with SQLSTATE 42501, and with the naive guard 25006, 25006, "
     "then 42501; the retry cap shown in 79 and 69 seconds, escalated after 3 attempts; every grader "
     "passes, still wrong: not shown in either attempt, because the graders passed but no gold check "
     "arrived within 90 seconds (hardened the same night); retaken twice on 23 October, both shown, "
     "76,981,355.95 dollars against gold 64,015,091.21 with 4 trap labels each; the retry cap planted "
-    "half, twice, 9 attempts until the 60,000-token run budget stopped it, at 62,762 and 63,737 tokens."
+    "half, twice, 9 attempts until the 60,000-token run budget stopped it, at 62,762 and 63,737 tokens. "
+    "In the paired measurement of 23 October: malicious SQL, all 3 statements reached the database "
+    "with the naive guard and 2 were stopped by the guard with the syntax-tree guard; the retry cap, "
+    "11 attempts and 63,718 tokens without it, 3 attempts and 12,682 tokens with it; six trap "
+    "questions, 0 of 6 correct either way, the reviewer holding 1 of 6. In the live session of 24 "
+    "October every core and optional demo showed its moment, both halves; without the retry cap "
+    "the agent escalated by itself after 4 attempts, 19,960 tokens, against 3 attempts and 10,573 "
+    "tokens with it; on 20 trap questions twice each, 0 of 40 correct either way, the full layer "
+    "holding or escalating 20 wrong answers against 1, the reviewer approving the other 19."
 )
 
 NUMBERS = [
@@ -32,6 +41,11 @@ NUMBERS = [
     "Mean tokens and seconds per question with the reviewer off, 5,786 and 12.8, against 8,648 and 24.2 with the scout and reviewer on: docs/calibration-report.md, Agents on and off.",
     "Class code guesses at an undefined term in 5 of 8 runs; the reviewer turns most guesses into a held or escalated answer: docs/calibration-report.md, Agents on and off.",
     "Output cap per call, reasoning included: analyst 16,000 tokens, reviewer 8,000: `models` in pack.yaml.",
+    "Malicious SQL, one run of each half: with the naive guard all 3 statements reached the database (25006 twice, then 42501); with the syntax-tree guard 2 stopped by the guard, the third by the grants (42501); the orders table unchanged in both: docs/benefits.md, Section 2: Verification loop.",
+    "Retry cap, one run of each half: 11 attempts, 63,718 tokens, 0.0068 dollars without the cap; 3 attempts, 12,682 tokens, 0.0014 dollars with it: docs/benefits.md, Section 2: Verification loop.",
+    "Six trap questions under the starting knowledge: 0 of 6 correct with or without the verification layer; the reviewer raised 2 concerns, 1 held and 1 sent back: docs/benefits.md, Section 2: Verification loop.",
+    "Every core and optional demo of the section showed its moment, both halves: docs/calibration-report.md, Live session of 24 October 2026 (session 5).",
+    "On 24 October, the retry cap: 4 attempts and 19,960 tokens without it, the agent escalating by itself, against 3 attempts and 10,573 tokens with it; 20 trap questions twice each: 0 of 40 correct either way, 1 against 20 wrong answers held or escalated (17 held, 3 escalated), the reviewer approving the other 19: docs/benefits.md, Section 2: Verification loop.",
 ]
 
 S8 = "Source 8: Semantic Evaluation for Text-to-SQL with Distilled Test Suites (https://arxiv.org/abs/2010.02840)"
@@ -47,15 +61,15 @@ SLIDES = [
         kind="agenda",
         title="Agenda (Section 2 highlighted)",
         layout="concept",
-        container="icon row: four sections, the second highlighted",
+        container="step cards: four sections, the second highlighted",
         minutes=0.5,
         says="Section 2: Verification loop, after the agent loop",
         src="section-2-verification-loop/README.md",
         on_slide=[
-            "1) Agent loop",
-            "2) Verification loop (now)",
-            "3) Event loop",
-            "4) Hill-climbing loop",
+            "1. Agent loop",
+            "2. Verification loop (now): what checks answers and stops loops",
+            "3. Event loop",
+            "4. Hill-climbing loop",
         ],
         notes=[
             "Say: Section 1: Agent loop gave us an agent that answers with its SQL in a structured "
@@ -158,19 +172,21 @@ SLIDES = [
         src="measured for the course (sqlglot guard)",
         on_slide=[
             "Principle: accept only query shapes you can name; reject everything else.",
-            "Think of it as a badge reader at the door, not a list of banned items.",
-            "| How it works | Worked example |",
+            "Why it matters: a first-word check sees SELECT and lets a stacked DELETE through to "
+            "the database.",
+            "| How it works in DataPilot | Worked example |",
             "|---|---|",
-            '| Parse: exactly one statement | "SELECT 1; DELETE FROM orders" is two statements: rejected |',
-            "| Root must be SELECT or a set operation | A first-word check passes it; the tree guard does not |",
-            "| Walk every node: no write, INTO, lock, or opaque command | A DELETE inside a CTE: rejected |",
-            "| Functions and schemas on an allowed list | pg_sleep, dblink, set_config: denied |",
-            "| Run the original text | Regenerated COPY ... TO PROGRAM came out mangled |",
-            "Trade-offs: a false reject costs a retry; the tree cannot see SQL inside strings.",
+            '| Parse: exactly one statement | "SELECT 1; DELETE FROM orders": rejected |',
+            "| Walk the tree: no write, lock, or command | A DELETE inside a WITH clause: rejected |",
+            "| Denied functions; an allowed schema list | pg_sleep, dblink, set_config: denied |",
+            "| Run the original text, not a regenerated one | COPY ... TO PROGRAM came back mangled |",
+            "Evidence: naive guard, all three statements reached the database; tree guard, two "
+            "never ran.",
             "At work: parse what your agent emits; run exactly what you checked.",
             "Key idea: an unknown shape is a rejection, not a pass.",
         ],
         notes=[
+            "Trade-offs, said aloud: a false reject costs a retry; the tree cannot see inside strings.",
             "Plain explanation: A denylist names the bad things: no DELETE, no DROP. Attackers and "
             "parsers both find shapes you did not list. An allowlist names the one shape you accept, a "
             "single read-only query, and rejects everything else, including anything the parser could "
@@ -198,8 +214,17 @@ SLIDES = [
             "Transfer: the same rule applies to any agent that emits a language: shell commands, "
             "infrastructure plans, API calls built from text. Parse it, accept a named shape, reject "
             "the rest, and execute exactly what you checked.",
-            "Point at: the How it works column, top to bottom; every row is a reason to reject, and the "
-            "Worked example column shows the shape it catches.",
+            "Evidence from this course: in the paired measurement of 24 October, one run of each half "
+            "of the malicious SQL demo. With the naive guard, all 3 statements reached the database "
+            "and were refused there: 25006 twice, from the read-only transaction, then 42501, from "
+            "the role's grants. With the syntax-tree guard, 2 were stopped by the guard and the third "
+            "by the grants. The orders table was unchanged in both halves. The pair of 23 October "
+            "showed the same.",
+            "Point at: the why line, then the How it works column, top to bottom; every row is a "
+            "reason to reject, and the Worked example column shows the shape it catches; then the "
+            "evidence line.",
+            "Re-check after live runs: the layers that stopped each statement against the paired "
+            "measurements page.",
             'Ask: "Why execute the original text instead of the tree\'s regenerated SQL?" Expected: '
             "regeneration is lossy; the text you checked must be the text that runs.",
             'Likely question: "Will an allowlist reject legitimate queries?" Answer: Sometimes, and '
@@ -208,8 +233,6 @@ SLIDES = [
             'Likely question: "Why not use the database\'s own parser?" Answer: You can, through '
             "EXPLAIN, but it accepts every valid statement, writes included; you still need a policy on "
             "the shape.",
-            "Misconception: a good parser makes the guard complete. Correction: the tree cannot see SQL "
-            "inside string literals, so the guard is one layer, never the last one.",
             "Transition: so what actually stops the statement the parser cannot see?",
         ],
     ),
@@ -224,19 +247,21 @@ SLIDES = [
         src="measured for the course on PostgreSQL 16.2 during research (read-only role); compose.yaml (PostgreSQL 18.6)",
         on_slide=[
             "Principle: put the last defense where the agent's own session cannot change it.",
-            "Think of it as a staff-only sign versus a door with no key cut for you.",
+            "Why it matters: every parser has a blind spot, so something below the guard must "
+            "refuse the write.",
             "| Layer | Can the session undo it? |",
             "|---|---|",
             "| Prompt rule | Yes: the model can ignore it |",
             "| Read-only transaction default | Yes: one SET turns it off |",
             "| Temporary tables | Open until revoked from the public role |",
-            "| Missing write grant | No: insufficient privilege, SQLSTATE 42501 |",
-            "Worked example: inside a read-only transaction a write fails with 25006; after the session turns the default off, the same write still fails with 42501.",
-            "Trade-offs: grants are coarse and need one role per agent; the guard still gives early, readable reasons.",
-            "At work: scope the credential, not the instruction; probe the barrier at startup and refuse to run without it.",
+            "| Missing write grant | No: insufficient privilege, error 42501 |",
+            "Evidence: in a read-only transaction a write fails with error 25006; with that default "
+            "switched off, the missing grant still refuses it, 42501.",
+            "At work: scope the credential, not the instruction; probe the barrier at startup.",
             "Key idea: defaults are preferences; grants are walls.",
         ],
         notes=[
+            "Trade-offs, said aloud: grants are coarse and need one role per agent; the guard still gives early reasons.",
             "Plain explanation: every layer above the database is code you hope is right. The database "
             "role is the one layer the agent's own session cannot rewrite, as long as the barrier is a "
             "missing grant rather than a default setting. Defaults are preferences; grants are walls.",
@@ -259,7 +284,13 @@ SLIDES = [
             "Transfer: for any agent with credentials, scope the credential, not the instructions. "
             "Read-only API tokens, least-privilege cloud roles, per-agent database users. Then test the "
             "barrier at startup the way the probe does, and refuse to run if it is missing.",
-            "Point at: the two rows that answer yes; those are the layers an attacker can switch off.",
+            "Evidence from this course: the evidence line was measured for the course on PostgreSQL "
+            "16.2 during research. In the class stack the malicious SQL demo shows the same "
+            "barrier: with the naive guard, the read-only transaction refused two statements with "
+            "25006 and the role's missing grant refused the raw DELETE with 42501, and no warehouse "
+            "row changed.",
+            "Point at: the why line, then the two rows that answer yes; those are the layers an "
+            "attacker can switch off.",
             'Ask: "Which row would you test in continuous integration?" Expected: the grant row, with a probe that must '
             "fail.",
             'Likely question: "If the role is the real boundary, why keep the guard?" Answer: the '
@@ -284,22 +315,22 @@ SLIDES = [
         says="Key idea: every loop needs a stop the model cannot argue with, placed before the next model call",
         src="platform/packs/datapilot_us/pack.yaml (limits, cost_guard); Sources 11 and 12 (middleware)",
         on_slide=[
-            "Principle: every loop needs a stop the model cannot argue with.",
-            "Think of it as a circuit breaker: it never asks the appliance whether it is finished.",
+            "Principle: every loop needs a stop the model cannot argue with, checked before the "
+            "next model call.",
+            "Why it matters: a failing check sends the run back again and again; the bill climbs.",
             "| Stop | Value | Then |",
             "|---|---|---|",
             "| Attempts per run | 3 | Escalated, with every reason |",
-            "| Model calls per run | 12 | Run ends |",
-            "| Tool calls per run | 16 | Run ends |",
-            "| Statement timeout | 5 seconds | Cancelled, SQLSTATE 57014 |",
+            "| Model calls, tool calls per run | 12, 16 | Run ends |",
+            "| Statement timeout | 5 seconds | Cancelled, error 57014 |",
             "| Planned cost or rows | 500,000 or 5,000,000 | Rejected before it runs |",
-            "Worked example: an always-failing grader stops at attempt 3; without the cap, cost climbs.",
-            "Where it lives: before the next model call, never inside a tool.",
-            "Trade-offs: a cap can end a run one more try would fix; escalation shows it.",
+            "Evidence: without the cap, 4 attempts, 19,960 tokens, until the agent chose to stop; "
+            "with it, 3 attempts, 10,573 tokens.",
             "At work: put budgets and retries where every iteration passes.",
             "Key idea: a stop inside a tool is a suggestion; before the model call, a fact.",
         ],
         notes=[
+            "Trade-offs, said aloud: a cap can end a run one more try would fix; escalation shows it.",
             "Plain explanation: a verification loop sends failures back to the agent. That is a loop "
             "with a model in it, and the model will keep trying as long as you let it. The stop has to "
             "come from outside the model: a counter, a timeout, a cost estimate, checked by code.",
@@ -313,7 +344,6 @@ SLIDES = [
             "rows before they run. The cost grader is not a security layer: it plans only what the "
             "syntax tree calls one read-only SELECT and says not applicable to anything else, so a "
             "write that slips past a broken guard meets the read-only transaction first.",
-            "Analogy: a circuit breaker does not ask the appliance whether it is finished.",
             "Under the hood: where the stop lives matters. Tested with fake models, a check inside "
             "`wrap_tool_call` that returned `Command(goto=END)` did not end the run: control went back "
             "to the model, which simply tried again. What works is a hook before the model call that "
@@ -328,19 +358,21 @@ SLIDES = [
             "Transfer: in any agent framework, find the one point every iteration passes through before "
             "spending money, which is the model call, and put budgets, kill switches, and retry counts "
             "there. A check deep inside a tool is a suggestion to the model, not a stop.",
-            "Point at: the Where it lives line: before the next model call.",
+            "Evidence from this course: in the paired measurement of 24 October, without the retry "
+            "cap the always-failing grader ran 4 attempts, 19,960 tokens, and then the agent "
+            "escalated by itself; with the cap, 3 attempts, 10,573 tokens, ended escalated by the "
+            "cap. Nothing made the uncapped run stop: on 23 October the same half ran 11 attempts, "
+            "and in calibration 9, until the run budget stopped it. A stop the model may choose is "
+            "not a stop.",
+            "Point at: the principle's last words, then the evidence line.",
             'Ask: "What should the run return when it hits the cap?" Expected: escalated, with the '
             "reasons, not a best guess.",
             'Likely question: "Is 3 the right retry count?" Answer: it is a setting; the principle is '
             "that some cap exists and that hitting it is a visible outcome, not a silent failure.",
-            'Likely question: "Why a cost estimate when there is already a timeout?" Answer: the '
-            "timeout spends five seconds of database time to learn what EXPLAIN tells you at once, and "
-            "EXPLAIN gives the agent a reason it can fix.",
-            "Misconception: a good prompt tells the model when to give up. Correction: the model "
-            "decides it is nearly there on every attempt; only a counter ends the loop.",
-            "Re-check after live runs: the retry cap demo ended escalated after 3 attempts in 69 and "
-            "79 seconds in calibration, and without the cap went on for 9 attempts until the "
-            "60,000-token run budget stopped it; the output caps against the pack.",
+            "Re-check after live runs: 4 attempts and 19,960 tokens, 3 attempts and 10,573 tokens "
+            "against the paired measurements page; in calibration the capped run ended escalated "
+            "after 3 attempts in 69 and 79 seconds, and without the cap went on for 9 attempts until "
+            "the 60,000-token run budget stopped it; the output caps against the pack.",
             "Transition: the loop now stops. Last question: who checks the meaning?",
         ],
     ),
@@ -355,19 +387,21 @@ SLIDES = [
         src="platform/src/datapilot/contracts/agents.py; Source 8 (test-suite accuracy)",
         on_slide=[
             "Principle: a checker helps only where its errors differ from the maker's.",
-            "Think of it as proofreading your own essay again in a different font.",
+            "Why it matters: a reviewer on the same model, without the rules, approves the wrong "
+            "number the analyst wrote.",
             "| Check | Catches | Misses |",
             "|---|---|---|",
             "| Seven deterministic graders | Unsafe, malformed, costly | Business meaning |",
-            "| Reviewer on the same class model | Some meaning errors | What the analyst also misses |",
+            "| Reviewer on the same model | Some meaning errors | What the analyst also misses |",
             "| Result match, one database | Wrong results | About 6.5 percent false positives |",
             "| Result match, two databases | Coincidental matches | Rules nobody wrote down |",
-            "Worked example: the spine answer passes all seven graders, the reviewer objects in 6 of 7 runs, and gold fails on both databases.",
-            "Trade-offs: one more model call per answer; a different model or the business rules lowers the correlation.",
-            "At work: before adding an LLM judge, name what keeps its errors independent.",
+            "Evidence: 40 trap runs: 0 correct either way; the layer held or escalated 20, the "
+            "reviewer approved 19.",
+            "At work: before adding a model as judge, name what keeps its errors independent.",
             "Key idea: two agents with one blind spot agree on the same wrong answer.",
         ],
         notes=[
+            "Trade-offs, said aloud: one more model call per answer; a different model or the rules lowers the correlation.",
             "Plain explanation: maker and checker is an old control, and it works when the checker can "
             "fail differently from the maker. A reviewer agent built on the same model, reading the same "
             "schema, without the business rules, tends to miss what the analyst missed. So the reviewer "
@@ -394,8 +428,15 @@ SLIDES = [
             "Transfer: before adding an LLM judge, ask what keeps its errors independent: a "
             "different model, different inputs such as the gold data or the business rules, or a "
             "deterministic test. If none applies, spend the call elsewhere.",
-            "Point at: the Misses column, top to bottom, then the worked example: seven graders pass, "
-            "the reviewer objects but cannot supply the missing rules, gold fails.",
+            "Evidence from this course: in the paired measurement of 24 October, 20 trap questions "
+            "from the dev split under the starting knowledge, twice each, 40 runs per side: 0 of 40 "
+            "correct with or without the verification layer. Without it, 1 wrong answer was "
+            "escalated; with it, 20 were held for approval or escalated (17 held, 3 escalated), and "
+            "the reviewer approved the other 19, which went out. On the spine answer alone, "
+            "calibration saw a concern in 6 of 7 runs. Both say the same thing: a concern holds an "
+            "answer, it never supplies the fiscal year rule.",
+            "Point at: the why line, the Misses column, top to bottom, then the evidence line: the "
+            "reviewer holds some answers but cannot supply the missing rules.",
             'Ask: "Which input lowers the correlation of the reviewer\'s errors?" Expected: the '
             "business rules, a different model, or a second database.",
             'Likely question: "Should the reviewer use a stronger model?" Answer: a different model '
@@ -403,10 +444,9 @@ SLIDES = [
             "baseline: the reviewer roughly doubles the seconds per question.",
             'Likely question: "Why may the reviewer not override a grader?" Answer: a model can be '
             "talked out of a rule by a clever input; code cannot.",
-            "Misconception: two agents agreeing is evidence. Correction: two agents with the same "
-            "blind spot agree on the same wrong answer.",
-            "Re-check after live runs: the reviewer's verdicts, concern in 6 runs and approve in 1, "
-            "and the token and second figures against the calibration report.",
+            "Re-check after live runs: 20 of 40 held or escalated, 19 approved, and 0 of 40 correct "
+            "against the paired measurements page; the reviewer's verdicts, concern in 6 runs and approve in 1, and "
+            "the token and second figures against the calibration report.",
             "Transition: the four moves on one slide.",
         ],
     ),
@@ -422,10 +462,10 @@ SLIDES = [
         on_slide=[
             "| Move | Principle | Anti-pattern it prevents | Check question |",
             "|---|---|---|---|",
-            "| Allowlist the shape | An unknown shape is a rejection | A first-word check or keyword denylist | Does anything run that your parser could not classify? |",
-            "| Scope the credential | Grants hold; defaults do not | Read-only by setting or by prompt | What does a write with your agent's credential return? |",
+            "| Allowlist the shape | An unknown shape is a rejection | A first-word check or keyword denylist | Does anything unparsed run? |",
+            "| Scope the credential | Grants hold; defaults do not | Read-only by setting or by prompt | What does a write with your credential return? |",
             "| Cap the loop | The stop lives before the model call | A retry loop the model decides to end | What ends a run that never succeeds? |",
-            "| Decorrelate the checker | A checker must fail differently | An LLM judge on the same model and inputs | What does your checker see that the maker did not? |",
+            "| Decorrelate the checker | A checker must fail differently | A judge on the same model and inputs | What does your checker see that the maker missed? |",
         ],
         notes=[
             "Say: four moves. Allowlist the shape of what the agent may run, and execute exactly the "
@@ -446,55 +486,80 @@ SLIDES = [
         kind="demo",
         title="Section 2: Verification loop - Implementation Notes: Every grader passes, still wrong",
         layout="demo",
-        container="demo: badge and title only",
+        container="demo layout: laptop and badge, what to watch for, guaranteed moment, link",
         minutes=18,
-        says="Badge DEMO - 2 and title only; the demos and the code walkthrough are in the notes",
-        src="section-2-verification-loop/demo/walkthrough.md",
-        on_slide=["Badge: DEMO - 2", "Title only; no screenshot"],
+        says="Badge DEMO - 2, what to watch for, the guaranteed moment, and the demo page link; the "
+        "demos and the code walkthrough are in the notes",
+        src="section-2-verification-loop/demo/walkthrough.md; platform/demos/registry.yaml",
+        on_slide=[
+            "Badge: DEMO - 2",
+            "What to watch for:",
+            "- Malicious SQL (Structured Query Language): the layer that stopped each statement, "
+            "naive guard, then tree guard",
+            "- The retry cap: the attempt and cost counters, cap off, then on",
+            "- Every grader passes, still wrong: a green checklist beside a failed gold check",
+            "Guaranteed moment: under the starting knowledge, the spine question passes every "
+            "deterministic grader and the checklist turns green, while the gold check on both "
+            "databases fails.",
+            "Link: Demo page on GitHub | https://github.com/ANI-IN/loop-engineering/tree/main/"
+            "section-2-verification-loop/demo#every-grader-passes-still-wrong",
+        ],
         notes=[
             "Run sheet: three core demos, about 12 minutes, then the code walkthrough, about 6 minutes. "
             "Share the console's Verify page full screen: the pre-flight checklist on the left, the "
-            "defense-layer panel on the right. Calibration ran each core demo twice with a reset "
-            "between; the measured results are under each demo. A planted bug is switched by setting "
-            "its flag to 1 in `.env` and running `make up`, and back to 0 the same way.",
+            "defense-layer panel on the right. Every core demo's moment has been shown live, in "
+            "calibration retakes and again on 24 October, both halves and the optional cost guard "
+            "included; rehearse each twice in a row with a reset between before class (instructor "
+            "guide, the day before, step 4). The measured results are under each demo. "
+            "A planted half is `make demo NAME=<demo> PLANTED=1`, its bug on for its own run only; "
+            "`.env` stays as it is. The slide's link opens the section's demo page on GitHub.",
             "Demo: malicious SQL.",
-            "Starting state: Verify page open, the naive guard (`BUG_NAIVE_GUARD`) switched on. Reset "
-            "first: `make reset NAME=verification-loop`. The reset clears the runs, so its chip shows on "
-            "the status line once the first run with the flag starts.",
-            "Do: Verify > Send malicious SQL, or `make demo NAME=verify-malicious-sql`. Then switch the "
-            "naive guard off and send it again.",
+            "Starting state: Verify page open. Reset first: `make reset NAME=verification-loop`. The "
+            "reset clears the runs, so the naive guard's chip shows on the status line once the first "
+            "run with the flag starts.",
+            "Do: `make demo NAME=verify-malicious-sql PLANTED=1`, the naive guard (`BUG_NAIVE_GUARD`) "
+            "on for that run; then Verify > Send malicious SQL, or `make demo NAME=verify-malicious-sql`, "
+            "with it off.",
             "Narrate: concept 1, allowlist the shape. The naive guard reads the first word, sees SELECT, "
             'and lets "SELECT 1; DELETE FROM orders" and a data-modifying CTE through. Concept 2, '
             "permissions are the boundary: the read-only transaction refuses both with SQLSTATE 25006, "
             "and the third statement, a raw DELETE as the agent role, meets the missing grant, 42501. "
             "A refused write ends the run escalated at once; it is never fed back as a retry. With the "
-            "syntax-tree guard on, layer two rejects the first two before they reach the database.",
+            "syntax-tree guard on, its parse step stops the stacked statements and its statement policy "
+            "the DELETE inside the WITH clause, before either reaches the database.",
             "Point at, in order: the statement text; the defense-layer panel with the layer that stopped "
             "each statement and the layers it never reached; and last the live stamp: "
             "the run's start time in your local time and its trace link.",
             "Expected live result: with the naive guard, 25006, 25006, then 42501; with the syntax-tree "
             "guard, the guard, the guard, then 42501; no warehouse row changes in either run. Measured: "
-            "exactly that, in about 6 seconds, twice each.",
+            "exactly that, in 2 seconds each half on 24 October, and the same in calibration and "
+            "on 23 October.",
             "May vary: timings only. If they do, say: the outcome is deterministic; only the clock moves.",
             "If it stalls: reset and run it again, `make reset NAME=verification-loop`, then the same "
             "trigger.",
             "Demo: the retry cap.",
-            "Starting state: the missing retry cap (`BUG_NO_RETRY_CAP`) switched on. Reset first: "
-            "`make reset NAME=verification-loop`.",
-            "Do: Verify > Inject failing grader, or `make demo NAME=verify-retry-cap`. Watch the cost "
-            "counter for a few attempts, then switch the bug off and inject again.",
+            "Starting state: the Verify page. Reset first: `make reset NAME=verification-loop`.",
+            "Do: `make demo NAME=verify-retry-cap PLANTED=1`, the missing retry cap "
+            "(`BUG_NO_RETRY_CAP`) on for that run. Watch the attempt and cost counters, then Verify > "
+            "Inject failing grader, or `make demo NAME=verify-retry-cap`, with it off.",
             "Narrate: concept 3, stops that are not the model's choice. The injected grader always "
-            "fails, so the agent retries forever when nothing counts. With the cap, the run stops after "
+            "fails, so with nothing counting the agent keeps retrying until something stops it. With the cap, the run stops after "
             "3 attempts and ends escalated with every reason.",
-            "Point at, in order: the attempt counter; the cost counter climbing with the bug on; the "
+            "Point at, in order: the attempt counter and the cost counter with the bug on; the "
             "counter flat at 3 with the bug off; the escalated status with the reasons; and last the live "
             "stamp: the run's start time in your local time and its trace link.",
             "Expected live result: the cost counter stops at the cap and the run shows escalated. "
-            "Measured with the cap: escalated after 3 attempts, in 79 and 69 seconds. Without the cap "
-            "a run goes on until the run guard's 60,000-token budget stops it: measured twice, 9 "
-            "attempts, 62,762 and 63,737 tokens, 0.0067 and 0.0069 dollars, in 104 and 111 seconds.",
+            "Measured on 24 October, on the code that ships: with the cap, escalated after 3 "
+            "attempts, 10,573 tokens, in 20 seconds; without it, 4 attempts, 19,960 tokens, in 33 "
+            "seconds, and then the agent escalated by itself. Earlier runs without the cap went on "
+            "longer: 11 attempts and 63,718 tokens on 23 October; 9 attempts, 62,762 and 63,737 "
+            "tokens, until the run guard's 60,000-token budget stopped them, in calibration.",
             "May vary: the cost per attempt and the SQL of each retry. If they do, say: the model writes "
-            "a different query each time; the counter does not care.",
+            "a different query each time; the counter does not care. Without the cap the agent may "
+            "stop and escalate by itself, as it did on 24 October after 4 attempts. If it does, say: "
+            "the model chose to stop this time; nothing made it stop, and on 23 October the same "
+            "half ran 11 attempts. Point at 4 attempts against the cap's 3: the cap is the only "
+            "stop you can count on.",
             "If it stalls: reset and run it again, `make reset NAME=verification-loop`, then the same "
             "trigger.",
             "Demo: every grader passes, still wrong.",
@@ -516,10 +581,12 @@ SLIDES = [
             "trigger. In calibration both attempts passed every grader but got no gold check within 90 "
             "seconds; the gold checks were hardened the same night, and a failing promotion step no "
             "longer stops them. Both retakes were shown: 76,981,355.95 dollars against gold "
-            "64,015,091.21, with 4 trap labels each, then held by two reviewer concerns.",
+            "64,015,091.21, with 4 trap labels each, then held by two reviewer concerns. Shown "
+            "again live on 24 October.",
             "Optional, cut first: the cost guard, `make demo NAME=verify-cost-guard` (Verify > Send "
             "cartesian query): with the missing cost guard a cartesian join runs to the statement "
-            "timeout; with the cost grader, EXPLAIN rejects it at once with a reason.",
+            "timeout; with the cost grader, EXPLAIN rejects it at once with a reason. Shown live on "
+            "24 October, both halves.",
             "Code walkthrough: about 6 minutes, in the editor, in the order of the section's demo "
             "walkthrough page.",
             "Open `platform/src/datapilot/loop2_verification/checker.py`, lines 85-101: the order of the "
@@ -530,10 +597,12 @@ SLIDES = [
             "database refuses a write, 25006 or 42501, `checked.refused` marks it so the loop ends the "
             "run escalated with no retry.",
             "Open `platform/src/datapilot/loop2_verification/graders/statement_policy.py`, lines 84-95: "
-            "implements concept 1, allowlist the shape, layer two of the malicious SQL demo. Say: the "
-            "root check stops anything that is not a read; the walk over every node stops a DELETE "
+            "implements concept 1, allowlist the shape, the statement policy of the malicious SQL "
+            "demo. Say: the parse step before it has already stopped the stacked statements; here the "
+            "root check stops anything that is not a read, and the walk over every node stops a DELETE "
             "hidden in a common table expression under a SELECT root, which a prefix check passes; with "
-            "`BUG_NAIVE_GUARD` on, a `startswith` check replaces this grader. The clock rule sits just "
+            "`BUG_NAIVE_GUARD` on, a `startswith` check replaces both the parse and the statement "
+            "policy graders. The clock rule sits just "
             "below these lines: agent SQL may not read the database clock.",
             "Open `platform/src/datapilot/loop2_verification/loop.py`, lines 364-369: implements concept "
             "3, stops that are not the model's choice, the retry cap demo. Say: before another attempt, "
@@ -591,19 +660,19 @@ SLIDES = [
         says="Seven attack patterns a syntax-tree guard must handle, and the defense for each",
         src="measured for the course (sqlglot guard)",
         on_slide=[
-            "How to read this: each row is a shape that passes a first-word or root-only check; the last column is the defense that stops it.",
-            "Shapes that hide a write:",
+            "How to read this: left, shapes that hide a write; right, shapes the parser misreads "
+            "or cannot see; the last column stops each one.",
             "| Pattern | Example | Defense |",
             "|---|---|---|",
             "| Stacked statements | SELECT 1; DELETE FROM orders | Exactly one statement |",
-            "| Write inside a CTE | WITH d AS (DELETE ...) SELECT ... | Walk every node |",
+            "| Write inside a WITH clause | WITH d AS (DELETE ...) SELECT ... | Walk every node |",
             "| Hidden write or lock | SELECT ... INTO, FOR UPDATE | Reject INTO and lock nodes |",
             "| Unparsed statement | DO, CALL, VACUUM | Reject opaque commands |",
-            "Shapes the parser misreads or cannot see:",
+            "",
             "| Pattern | Example | Defense |",
             "|---|---|---|",
             "| Misparse | TABLE orders | Root allowlist |",
-            "| SQL in a string | dblink, query_to_xml | Function denylist, then grants |",
+            "| A query in a string | dblink, query_to_xml | Function denylist, then grants |",
             "| Lossy regeneration | COPY ... TO PROGRAM | Run the original text |",
         ],
         notes=[
@@ -645,7 +714,7 @@ SLIDES = [
         src="Source 10 (PostgreSQL error codes)",
         on_slide=[
             "How to read this: a fixable error becomes a reason the agent can act on, counted against the cap of 3; a refused write ends the run.",
-            "| SQLSTATE | Meaning | Feedback to the agent | Then |",
+            "| Error code | Meaning | Feedback to the agent | Then |",
             "|---|---|---|---|",
             "| 42601 | Syntax error | Send one valid SELECT statement | Retry, counted |",
             "| 42P01, 42703 | Unknown table or column | Look up the real names with the schema tools | Retry, counted |",
@@ -691,15 +760,18 @@ SLIDES = [
         kind="reference",
         title="Reference: skip if short on time - why one database lies",
         layout="diagram",
-        container="two-column cards: the two-database example | the false-positive table, with a how-to-read bar",
+        container="table with a how-to-read line: the two-database example, then the false-positive table",
         minutes=1,
         says="A wrong query can match on one database by coincidence; distinguishing rows expose it",
         src="Source 8 (test-suite accuracy)",
         on_slide=[
-            "How to read this: a result match is only as strong as the rows it runs on; the table gives the measured size of the gap.",
-            "Gold: net revenue without cancelled orders. Wrong: net revenue with them.",
-            "Database A has no cancelled orders: both queries match.",
-            "Database B has some: only gold matches.",
+            "How to read this: left, gold leaves cancelled orders out and the wrong query keeps "
+            "them; right, the measured size of the gap.",
+            "| Database | Gold | Wrong query |",
+            "|---|---|---|",
+            "| A: no cancelled orders | Matches | Matches too |",
+            "| B: some cancelled orders | Matches | Fails |",
+            "",
             "| Measure | Value |",
             "|---|---|",
             "| False positives, one database | 6.5 percent mean |",

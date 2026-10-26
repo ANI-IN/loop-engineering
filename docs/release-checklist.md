@@ -30,7 +30,7 @@ starts at No; tick a row only after you have seen it pass.
 | The baseline experiment is accepted only from the open session | The console refuses an earlier baseline | No |
 | No demo opens a `demo/expected/` folder | The run sheet and the rehearsal log | No |
 | Recovery is reset and run it again in every runbook and note | Read the instructor guide and the DEMO notes | No |
-| DEMO slides hold only the badge and the title | The course owner reads every DEMO slide of the built deck | No |
+| DEMO slides hold the badge, what to watch for, the moment, and the GitHub link | The course owner reads every DEMO slide of the built deck | No |
 | No font falls back on the presenting machine | On that machine, Replace Fonts lists only Fira Sans; the DEMO badge is a shape | No |
 | One timed dry run of the Thursday review fits 120 minutes | [The review session](review-session.md) | No |
 

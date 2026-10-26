@@ -13,6 +13,8 @@ from datapilot_console import components, frame, improve_view, ops_reads, views,
 from datapilot_console.api_client import OVERBROAD_RULE
 from datapilot_console.frame import Live
 
+from datapilot.settings import get_settings
+
 frame.check_api()
 
 
@@ -41,6 +43,12 @@ def body(live: Live) -> None:
     optional = st.columns([2, 1])
     if optional[0].button("Add the over-broad rule to the active version", key="improve-overbroad"):
         frame.act(lambda: frame.api().run_experiment("active", plus_rule=OVERBROAD_RULE))
+    # The naive analyzer demo's planted half, for its own two requests only, shown only where the
+    # api takes planted flags: what `make demo NAME=improve-naive-analyzer-blocked` queues.
+    if get_settings().datapilot_allow_demo_controls and optional[1].button(
+        "Run the naive analyzer (planted)", key="improve-naive-analyzer"
+    ):
+        frame.act(lambda: frame.api().run_naive_analyzer())
     # The finale's step after the promotion: the unattended level for the families it cleared.
     autonomy = live.view(
         "improve-autonomy", lambda: views.autonomy_control(ops_reads.finale_state(live.conn))

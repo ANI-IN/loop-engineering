@@ -101,7 +101,9 @@ a bug, not a mistake for the analyst to fix.
                 )
 ```
 
-This is malicious SQL, layer 2. The root check stops a statement that is not a read. The walk over
+This is malicious SQL, the statement policy, the guard's step after parse. The parse step has
+already stopped the stacked statements ("2 statements"). The root check stops a statement that is
+not a read. The walk over
 every node stops a `DELETE` hidden in a common table expression under a `SELECT` root, which a
 prefix check passes. With the naive guard (`BUG_NAIVE_GUARD`) on, a `startswith` check replaces
 both the parse and the statement policy graders, and only the read-only transaction and the role's

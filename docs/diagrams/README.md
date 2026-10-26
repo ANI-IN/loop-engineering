@@ -67,9 +67,11 @@ path (from the root `README.md`, `docs/diagrams/<name>.svg`; from a section page
 - **What it teaches**: the processes, the agents inside them, and the data they share.
 - **Slide topic**: the system, in the opening, and the architecture page.
 - **Files**: `system-architecture`.
-- **Source in the code**: `compose.yaml`, `platform/src/datapilot/db.py`, the routes in
-  `platform/src/datapilot/loop3_events/api/`, `loop3_events/scheduler.py`,
-  `loop3_events/worker.py`, `loop3_events/improvement.py`, and the tables in
+- **Source in the code**: `compose.yaml` (the services and the one-shot migrate),
+  `platform/src/datapilot/db.py`, the 19 routes in `platform/src/datapilot/loop3_events/api/`,
+  `loop3_events/scheduler.py`, `loop3_events/worker.py`, `loop3_events/trace_refusals.py`,
+  `loop3_events/improvement.py` (one runner per database), `loop4_hill_climbing/runner.py` (two
+  candidates, promotions with clearance re-runs, gold checks of live runs), and the tables in
   `platform/ops/sql/ops/`.
 
 ### The four loops as one system
@@ -92,7 +94,7 @@ path (from the root `README.md`, `docs/diagrams/<name>.svg`; from a section page
 - **Source in the code**: `platform/src/datapilot/loop1_agent/analyst.py` and `scout.py`;
   `loop2_verification/loop.py` and `reviewer.py`; `loop3_events/router.py`, `worker.py`,
   `autonomy.py`, `killswitch.py`, and `reaper.py`; `loop4_hill_climbing/analyzer.py`,
-  `overfit_guard.py`, and `gate.py`; the 25 dev and 15 holdout items in
+  `candidates.py`, `overfit_guard.py`, `gate.py`, and `runner.py`; the 25 dev and 15 holdout items in
   `platform/packs/datapilot_us/benchmark/`.
 
 ### The run lifecycle

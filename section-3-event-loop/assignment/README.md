@@ -62,16 +62,27 @@ normal day.
 the schedule, the deterministic key, the baseline, a normal day, an anomalous day, a second
 delivery, a late order, the autonomy level, and the kill switch, all against the real Postgres and
 the running workers with no model call; then the alert's drill-down question, asked twice through
-the event loop, runs once, live on the real model, and posts an answer that names the right
-category. When the run holds for approval, the check approves it, as an instructor would, and
+the event loop, runs once, live on the real model, and posts an answer that says the right category rose most:
+the category in its own row with the greatest `rise_cents` when it returns that column, otherwise
+the one its text says rose most, and its text names that category. When the run holds for approval, the check approves it, as an instructor would, and
 judges the answer it then posts.
 
 Estimated effort: about 2 to 2.5 hours.
 
 **Cost of one full check:** one analyst run, the drill-down question. The check prints its own
 estimate before the model call and the actual tokens and cost at the end. Measured on
-gpt-6-luna in the build's verification on 23 October 2026, one full check of a working solution
-typically costs about 0.3 cents; the measured checks are in the costs table linked below. At the
+gpt-6-luna in the course's clean verification runs, one full check of a working solution
+typically cost about 0.2 cents; the measured checks are in the costs table linked below.
+On the code and the drill-down question that ship (the rise in cents in a column named
+`rise_cents`, and requirement 10 judging the category the posted answer says rose most, from its
+own row or its text), on 25 October 2026 from 22:47 Coordinated Universal Time (UTC), the starter
+failed, 0 of 10, as it must, and the solutions passed 5 of their 6 checks, at 0.19 to 0.33 cents a
+check: the reference and alternative two passed both of theirs, and alternative one failed its
+first and passed its second ([evidence](../../docs/evidence/general.md#captures)). In the failed check the agent's answer named
+the wrong category, and the check was right to fail it. So a correct solution can read FAIL when
+the agent answers wrongly: read the FAIL line, and if your files are right, run the check again.
+Earlier that day, with an earlier question, the reference's run ended escalated in 2 of its 4
+checks. At the
 caps, with the run using its whole token budget at
 the output price, one check can cost at most 3 cents, below the check's own spend cap of 1.00
 dollar, at which any check stops cleanly ([costs](../../docs/costs.md#assignments)).
@@ -93,8 +104,11 @@ dollar, at which any check stops cleanly ([costs](../../docs/costs.md#assignment
    reads PASS once the job runs (step 6).
 5. Write `publish`: one alert per day, found by its key and updated in place with a revision
    number; the label the autonomy level gives the revenue family; nothing posted while the kill
-   switch is engaged; and the drill-down question in the alert. Check: requirements 6 to 9 read
-   PASS once the job runs.
+   switch is engaged; and the drill-down question in the alert. Write that question so the class
+   system can answer it as it stands: name the measure (sales on the order lines, each category
+   under its top-level parent) and ask for the top category's rise alone, in cents,
+   in a column not named for revenue, never a change in percent
+   ([SPEC.md](SPEC.md), requirement 10). Check: requirements 6 to 9 read PASS once the job runs.
 6. Write `anomaly_event_id`, `request_anomaly_check`, and `run_job`, add the router table entry at
    `event-loop-3` and the nightly schedule at `event-loop-1`. Check: every line reads PASS, and the
    live drill-down shows its trace link and live stamp.
@@ -112,7 +126,7 @@ This rubric is for assessing your own work. Nobody grades it.
 | One alert per day | A second delivery posts nothing new | 10 | Check line 7 |
 | Late orders | A re-run updates the alert in place | 15 | Check line 8 |
 | Autonomy and kill switch | The label follows the level; the job checks the switch before posting | 10 | Check line 9 |
-| Live drill-down | Asked twice, it runs once and posts an answer naming the gold category | 10 | Check line 10 |
+| Live drill-down | Asked twice, it runs once; the posted text names the gold category first | 10 | Check line 10 |
 | Total | | 100 | |
 
 Every requirement and its pass rule is in [SPEC.md](SPEC.md).

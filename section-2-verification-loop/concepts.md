@@ -4,14 +4,12 @@ Reading time: about 9 minutes.
 
 ## The problem
 
-**Illustrative scenario.** Marcus owns the analytics platform at Harbor & Pine Outfitters. One
-product name in the catalogue reads like an instruction to delete old orders. The analyst sees it
-in a sample row and writes the Structured Query Language (SQL) `SELECT 1; DELETE FROM orders`. The guard checks that the text starts
-with "select" and passes it. Only the read-only role refuses the write.
-
-The same week, a check fails on every attempt and the agent retries until the bill climbs. Then
-the fiscal year 2025 revenue answer passes every check, turns the checklist green, and is still
-wrong.
+**Illustrative scenario.** Take the three failures from the
+[section page](README.md#the-problem) one at a time. Marcus owns the analytics platform at Harbor &
+Pine Outfitters. The product name that reads like an instruction leads the analyst to write the
+Structured Query Language (SQL) `SELECT 1; DELETE FROM orders`. The guard checks that the text
+starts with "select" and passes it. Only the read-only role refuses the write. The retrying check
+and the green checklist on the wrong fiscal year revenue answer are the other two.
 
 > **Terms on this page**
 >
@@ -97,11 +95,11 @@ with its reasons, and the green checklist sits beside a gold check that can stil
 ## How DataPilot does it
 
 The guard lives in `platform/src/datapilot/loop2_verification/graders/statement_policy.py`. These
-lines check the root, walk every node of the parsed tree against the forbidden nodes and the
-denied functions, and keep every table inside the allowed schema:
+lines check the root, walk every node of the parsed tree against the forbidden nodes, the
+database clock, and the denied functions, and keep every table inside the allowed schema:
 
 ```python
-# platform/src/datapilot/loop2_verification/graders/statement_policy.py (lines 80-107)
+# platform/src/datapilot/loop2_verification/graders/statement_policy.py (lines 80-109)
     def check(self, context: GraderContext) -> GraderResult:
         tree = parse_single(context.sql or "")
         if tree is None:
@@ -118,6 +116,8 @@ denied functions, and keep every table inside the allowed schema:
                     f"{kind} inside the query",
                     f"The query contains {kind}; only reads are allowed, including inside CTEs.",
                 )
+            if _reads_clock(node):
+                return blocked(self.name, "reads the database clock", clock_feedback())
             if isinstance(node, exp.Func) and _denied(function_name(node)):
                 fn = function_name(node)
                 return blocked(self.name, f"function {fn} is denied", f"Do not call {fn}.")
@@ -144,7 +144,7 @@ The reviewer's output contract is `ReviewVerdict` in
 | Measure, schema scout on | Reviewer on | Reviewer off |
 |---|---|---|
 | Tokens per question | 8,648 | 5,786 |
-| Latency per question | 24.2 s | 12.8 s |
+| Latency per question | 24.2 seconds | 12.8 seconds |
 | Reviewer approves the wrong spine answer | 1 of 7 runs (concern in 6) | Not applicable |
 
 Tokens and latency are the mean of 4 benchmark questions under v1, one run each; the extra cost

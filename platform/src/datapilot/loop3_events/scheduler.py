@@ -20,7 +20,7 @@ from datapilot.contracts.api import EventSubmitted
 from datapilot.loop3_events import extension
 from datapilot.loop3_events.api.events import submit_event
 from datapilot.loop3_events.budget import EASTERN
-from datapilot.planted import planted
+from datapilot.planted import planted, report_service
 
 log = structlog.get_logger("scheduler")
 
@@ -59,6 +59,9 @@ def build(scheduler: BlockingScheduler | None = None) -> BlockingScheduler:
 
 def main() -> None:
     db.wait_until_ready(db.Role.APP)
+    with db.connect(db.Role.APP) as conn:  # what a live check and the finale read
+        report_service(conn, "scheduler")
+        conn.commit()
     scheduler = build()
     log.info("scheduler ready", jobs=[job.id for job in scheduler.get_jobs()])
     scheduler.start()

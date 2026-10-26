@@ -33,6 +33,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     verify = commands.add_parser("verify", help="the build's verification passes, with captures")
     verify.add_argument("--only", nargs="*", choices=sorted(SECTIONS_BY_SLUG))
+    verify.add_argument("--variant", action="append", choices=["starter", *VARIANTS])
+    verify.add_argument("--once", action="store_true", help="each solution a single time")
     reset = commands.add_parser("reset", help="reset the check's own stack, never the class stack")
     reset.add_argument("slug", choices=sorted(SECTIONS_BY_SLUG))
     args = parser.parse_args(argv)
@@ -66,7 +68,7 @@ def _run(args: argparse.Namespace) -> int:
         return 0
     from datapilot.assignments.solutions import verify as verify_all
 
-    return verify_all(args.only)
+    return verify_all(args.only, args.variant, args.once)
 
 
 if __name__ == "__main__":

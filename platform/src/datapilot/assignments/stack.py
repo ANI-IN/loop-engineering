@@ -20,12 +20,14 @@ touched.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
 import subprocess
 import tempfile
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -36,7 +38,7 @@ import httpx
 import psycopg
 import yaml
 
-from datapilot import db
+from datapilot import db, planted
 from datapilot.assignments.report import Stop
 from datapilot.config import active_pack, pack_config
 from datapilot.contracts.live import LiveSession, SessionPurpose
@@ -193,13 +195,23 @@ def app_services(tree: Path) -> list[str]:
 
 def _override(tree: Path, project: str, activity: str) -> Path:
     """A Compose override for the check: the spend activity, and its own image tag for every
-    service built from the class image, so the check never retags the class stack's image."""
+    service built from the class image, so the check never retags the class stack's image.
+
+    Every planted bug and demo aid is switched off in it. The copy's .env is a link to the
+    checkout's, which a class demonstration switches flags in (sed on .env, then make up): a
+    stack started while one was on judged a solution with the bug in it, such as the missing
+    idempotency starting a second run for a duplicate drill-down ask. Compose gives a service's
+    environment precedence over its env_file, so the flags in .env never reach the check's stack.
+    """
     lines = ["services:"]
     for service in app_services(tree):
         lines.append(f"  {service}:")
         lines.append(f"    image: {project}-app:local")
         lines.append("    environment:")
         lines.append(f'      DATAPILOT_SPEND_ACTIVITY: "{activity}"')
+        # nor can a request switch one on: the api takes no planted header without demo controls
+        lines.append('      DATAPILOT_ALLOW_DEMO_CONTROLS: "0"')
+        lines.extend(f'      {flag}: "0"' for flag in planted.flags())
     folder = Path(tempfile.mkdtemp(prefix="datapilot-check-"))
     path = folder / "compose.check.yaml"
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -386,6 +398,89 @@ def reset_check_stack(slug: str, activity: str) -> list[str]:
     ]
 
 
+CHECK = "The live check"
+
+
+def refuse_planted(what: str = CHECK, env_file: Path | None = None) -> None:
+    """Before anything starts: Stop while .env or this process's environment switches a planted
+    flag on. The check's own stack switches every flag off, but a check that silently differs from
+    what .env says hides the planted half a class demonstration left on; and the runs a check makes
+    in this process (Assignment 4's benchmark) read this environment."""
+    on = planted.switched_on(env_file=env_file or planted.ENV_FILE, environ=os.environ)
+    if reason := planted.refusal(on, what):
+        raise Stop(reason)
+
+
+# The services that report their flags as they start (planted.report_service).
+REPORTING = ("api", "worker", "scheduler", "hill-climbing-runner")
+StartTimes = Callable[[], "dict[str, datetime] | None"]
+
+
+def container_starts(project: str) -> dict[str, datetime] | None:
+    """When each reporting service's newest container of the Compose project started (UTC), or
+    None when Docker cannot say (no Docker, or no container of that project)."""
+    if shutil.which("docker") is None:
+        return None
+    label = f"label=com.docker.compose.project={project}"
+    ids = subprocess.run(
+        ["docker", "ps", "-q", "--filter", label], capture_output=True, text=True, check=False
+    ).stdout.split()
+    if not ids:
+        return None
+    found = subprocess.run(["docker", "inspect", *ids], capture_output=True, text=True, check=False)
+    starts: dict[str, datetime] = {}
+    for container in json.loads(found.stdout or "[]"):
+        service = (container["Config"].get("Labels") or {}).get("com.docker.compose.service")
+        stamp = re.sub(r"(\.\d{6})\d+", r"\1", container["State"]["StartedAt"])
+        started = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+        if service in REPORTING and (service not in starts or started > starts[service]):
+            starts[service] = started
+    return starts
+
+
+def refuse_planted_services(
+    say,
+    starts: StartTimes = lambda: None,
+    *,
+    wait_seconds: float = 60.0,
+    sleep: Callable[[float], None] = time.sleep,
+) -> None:
+    """Once the stack is up: Stop while any of its services reports a planted flag on at its start
+    (ops.service_planted), such as the class stack's with DATAPILOT_ASSIGNMENT_STACK=running. Only a
+    report written since the service's container started counts: an older row is the one before a
+    restart (a demo's restart with a flag reports after the database and the probe), so the check
+    waits for each new report, up to `wait_seconds`, and stops if one never comes. The line it
+    prints is the check's record that no flag was on."""
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        with db.connect(db.Role.APP) as conn:
+            reports = planted.service_reports(conn)
+        started = starts()
+        stale = sorted(
+            service
+            for service, at in (started or {}).items()
+            if service not in reports or reports[service][1] < at
+        )
+        if not stale or time.monotonic() >= deadline:
+            break
+        sleep(1.0)
+    if stale:
+        raise Stop(
+            f"The live check does not start: {', '.join(stale)} has not reported its planted flags "
+            f"since it started (after {wait_seconds:.0f} seconds). Wait until the service is "
+            "ready (docker compose ps), then run the check again."
+        )
+    services = {service: flags for service, (flags, _at) in reports.items() if flags}
+    if reason := planted.refusal(planted.switched_on(services=services), CHECK):
+        raise Stop(reason)
+    say("Planted flags: none on, in .env, in this process, or in the stack's services")
+    if started is None:
+        say(
+            "Planted flags: the services' start times could not be read from Docker, so each "
+            "service's latest report was taken as it stands"
+        )
+
+
 def bring_up(tree: Path, activity: str, say) -> Stack:
     configure(activity)
     settings = get_settings()
@@ -399,6 +494,10 @@ def bring_up(tree: Path, activity: str, say) -> Stack:
         db.wait_until_ready(db.Role.OWNER, timeout_s=30)
     except psycopg.OperationalError as error:
         raise Stop(f"Postgres is not reachable as the owner role: {error}") from None
+    compose_project = os.environ.get("COMPOSE_PROJECT_NAME") or CLASS_PROJECT
+    if not running_stack():
+        compose_project = project
+    refuse_planted_services(say, lambda: container_starts(compose_project))
     ensure_seeded(say)
     version = ensure_knowledge()
     session_id = ensure_session()

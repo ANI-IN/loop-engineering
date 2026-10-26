@@ -15,7 +15,7 @@ the [calibration report](calibration-report.md).
 
 | Account | What bills it | Who pays |
 |---|---|---|
-| OpenAI, with the key from the operations team | Every model call: the analyst, the schema scout, the reviewer, the analyzer team | Charged to the key's project; the operations team sets its spending limit |
+| OpenAI, with the key from the operations team or your own | Every model call: the analyst, the schema scout, the reviewer, the analyzer team | Charged to the key's project; whoever owns the project sets its spending limit |
 | LangSmith, your own account | Nothing on the free Developer plan without a card | Free; add no card |
 | Docker, uv, git, make, Postgres | Nothing | Free |
 
@@ -43,7 +43,7 @@ never asks for the 12-hour lifetime.
 The "at most" figure prices every model run of a command at its token cap,
 `budgets.tokens_per_run` (60,000 tokens), at the output price: about 3 cents per run. The run
 guard checks the cap before each model call, so one call that carries a large result can go far
-past it: the planted unbounded rows half reached 186,689 tokens. The "at most" figures still hold,
+past it: the planted unbounded rows half reached 187,030 tokens (25 October 2026). The "at most" figures still hold,
 because they price every token at the output price. Real runs use far less, mostly cheaper input
 tokens.
 
@@ -56,8 +56,11 @@ tokens.
 | `make live-smoke` | Five real calls across the system | It prints its own estimate first |
 
 Measured on gpt-6-luna: one analyst run costs about 0.001 dollars; one 70-run experiment cost
-0.0594 to 0.0914 dollars where recorded; `make preflight` cost 0.0053 dollars. What the whole class
-sequence costs is measured in the rehearsal.
+0.0594 to 0.0914 dollars where recorded; `make preflight` cost 0.0053 dollars. In the class story
+pass of 25 October 2026, every core demo of Sections 1 to 3 once, in class order, the worker's runs
+cost 0.0102 dollars for the fixed halves and 0.0262 dollars for the planted halves, from each run's
+own record; the two finales of Section 4: Hill-climbing loop cost 0.0007 and 0.0005 dollars. Its
+experiments and analyzer team runs were not costed on their own in that pass.
 
 Every run is also inside the daily cap, `budgets.tokens_per_day` (2,000,000 tokens). The worker
 checks it before it claims each job, and a run past it ends as blocked by the budget.
@@ -72,8 +75,8 @@ each case twice, and a third time only when the two disagree. Assignment 4: Hill
 the benchmark, so it is the costly one.
 
 **Each check has its own spend cap**, 1.00 dollar (`assignments.check_cap_usd` in `pack.yaml`). The
-check counts its own model calls in the spend ledger, so the cap holds on your machine, where the
-build budget is off. It starts no new run once its spend, plus the most the runs already under way
+check counts its own model calls in the spend ledger, so the cap holds on your machine with no
+other budget set. It starts no new run once its spend, plus the most the runs already under way
 can still add, would pass the cap. That headroom is 24 cents: up to 8 runs at once, each at its
 whole token budget at the output price. So a check that meets the cap stops after about 76 cents
 to 1 dollar, never more. Each check records its calls under an activity of its own (such as
@@ -88,32 +91,58 @@ other's calls. A check stopped at the cap:
   judged and a NOT RUN line for every one it did not, and how to run it again;
 - exits with the "stopped" code, 2.
 
-Typical is what one full check of a solution cost in the build's verification on 23 October 2026,
-on gpt-6-luna. This table is the one source of these figures: each assignment page and each check's
-"Typical" line quote it. The ranges are what was measured, not bounds: your checks can cost more or
-less. The latest checks ran from 21:28 Coordinated Universal Time (UTC) that day, on the check code
-as it stood then; a change later that night (23:55 UTC) reworked how each check counts its spend and
-judges, with no model call, so these figures predate the checks that ship and each is owed a live
-re-run.
+Typical is what one full check of a solution cost in the course's clean verification runs, on
+gpt-6-luna, each figure its check's own "Spend:" line. This table is the one source of these
+figures: each assignment page quotes it. The ranges are what was measured, not bounds: your checks
+can cost more or less.
 
-| Assignment | What the check runs live | Typical, one full check |
-|---|---|---|
-| Assignment 1: Agent loop | Questions with informal or misspelled names | Typically about 0.4 cents (0.34 to 0.49, eight checks; the latest 0.49) |
-| Assignment 2: Verification loop | The ambiguity suite, the leak cases, an approved export | About 2 cents (1.86 and 135 model calls, the check of 21:28 UTC; note 1) |
-| Assignment 3: Event loop | The alert job, a late order, the kill switch, the drill-down | Typically about 0.3 cents (0.23 to 0.40, eight checks; the latest 0.37) |
-| Assignment 4, first check of a live session | The baseline and the candidate experiment, the analyzer team, two candidates | About 38 cents, an estimate (note 2) |
-| Assignment 4, each later check | The candidate experiment, the analyzer team, two candidates | About 14 to 24 cents (13.58 and 23.95, two checks) |
+A check counts as clean when no planted bug was on in its stack. Some checks of 24 and 25 October
+2026 started their stacks while demonstration captures had planted bugs switched on in `.env`;
+they are suspect and left out here, and the check now switches every planted bug off on its own
+Compose project ([evidence](evidence/general.md#captures)). No audit covers the two Assignment 4
+checks of 23 October that the table includes, so they are not confirmed clean (note 2).
 
-Note 1: one check of the Assignment 2 check as of 21:28 UTC, whose case 8 was reworded; before that
-change, seven checks cost 1.84 to 2.28 cents (149 to 172 model calls each).
+| Assignment | What the check runs live | Typical, one full check | Clean checks measured |
+|---|---|---|---|
+| Assignment 1: Agent loop | Questions with informal or misspelled names | About 0.4 cents | 0.39 to 0.47 cents, six checks of 25 October 2026 (note 3) |
+| Assignment 2: Verification loop | The ambiguity suite, the leak cases, an approved export | About 2 cents | 1.49 to 1.92 cents, six checks of 25 October 2026 |
+| Assignment 3: Event loop | The alert job, a late order, the kill switch, the drill-down | About 0.2 cents | 0.19 to 0.33 cents, six checks of 25 October 2026 (note 1) |
+| Assignment 4, first check of a live session | The baseline and the candidate experiment, the analyzer team, two candidates | Not measured clean (note 2) | None |
+| Assignment 4, each later check | The candidate experiment, the analyzer team, two candidates | About 13 to 24 cents (12.62 to 23.95, seven checks, two unaudited; note 2) | Five audited clean, 12.62 to 19.22 cents, 24 and 25 October 2026 (note 2) |
 
-Note 2: a first check with two candidates is not yet measured. With one candidate it cost 30.66
-cents (one check), and the second candidate's 56 dev runs add about 7 cents, at about 0.12 cents a
-run. The Assignment 4 checks before 21:28 UTC all wrote one candidate, as the check did then: each
+Note 1: the drill-down question and requirement 10's judging changed on 25 October 2026. The six
+checks above ran from 22:47 Coordinated Universal Time (UTC) that day, after the fix of 22:33 UTC, with
+the question and the pass rule that ship; a later change to how requirement 10 reads the answer's text
+cannot alter five of their six verdicts ([evidence](evidence/general.md#captures)): 0.21 and 0.19 cents for the reference, 0.33 and 0.32 for alternative
+one, and 0.20 and 0.22 for alternative two. Alternative one's 0.33-cent check failed on a wrong
+answer from the agent; it was clean, so its cost counts. On the first earlier question, eight
+clean checks cost 0.21 to 0.54 cents, and two of the reference's four ended escalated at the token
+budget; on the second, from 18:29 UTC, six checks cost 0.09 to 0.41 cents; on the earlier pass
+rule, from 20:33 UTC, six checks cost 0.19 to 0.31 cents.
+
+Note 2: the one first check with two candidates, 23.59 cents on 24 October 2026, is suspect: the
+naive analyzer's planted bug was on in `.env` when its stack started. A first check costs a later
+check plus the baseline experiment, 82 runs. Seven later checks with two candidates are left once
+the suspect ones are set aside. Five are audited clean: 19.22 cents on 24 October 2026 and 14.53, 12.91, 12.62, and
+17.09 cents on 25 October. They range from 12.62 to 19.22 cents, and their mean is 15.27 cents
+(76.37 divided by 5). Two, 13.58 and 23.95 cents on 23 October 2026, are unaudited: the audit of
+planted flags that found the suspect checks covers 24 and 25 October only, so
+their being clean is not confirmed. The range in
+the table, 12.62 to 23.95 cents, and the mean in the learner key limit below, 16.27 cents (113.90
+divided by 7), include those two. The checks of 25 October ran before the change to the check's stack at
+19:35 UTC, and that change and the later ones cannot alter their verdicts ([evidence](evidence/general.md#captures)). The
+Assignment 4 checks before 21:28
+UTC on 23 October all wrote one candidate, as the check did then: each
 later check cost 8.70 to 20.56 cents (nine checks). A later check whose items changed since the
 session's baseline measured them (a question, gold Structured Query Language (SQL) query, split, or
 tolerance) runs a new baseline, so it costs as a first check does; the check prints that reason,
 and the first-check estimate, before its first model call.
+
+Note 3: the six checks above ran from 22:35 UTC on 25 October 2026, on the code that ships, whose
+requirement 6 is a behaviour check: the lookup must still return stored values with the other
+roles' database addresses pointed at a closed port. They cost 0.47 and 0.39 cents for the
+reference, 0.42 and 0.40 for alternative one, and 0.42 and 0.43 for alternative two. Six earlier
+checks that day, from 13:21 UTC, before requirement 6 changed, cost 0.34 to 0.44 cents.
 
 Without the cap is every run using its whole token budget, 60,000 tokens, at the output price. The
 ceiling is what the check prints: the smaller of that and the spend cap.
@@ -129,22 +158,43 @@ ceiling is what the check prints: the smaller of that and the spend cap.
 ### The learner key limit
 
 Recommended: a spending limit of 3 dollars on each learner's key, in a dedicated OpenAI project,
-with an alert at 1.50 dollars. From the typical costs above, a learner who runs every check five
-times while working, with Assignment 4 over two live sessions, spends about 1.47 dollars:
-Assignment 1 about 2 cents, Assignment 2 about 10 cents, Assignment 3 about 1.5 cents, and
-Assignment 4 about 1.33 dollars (two first checks at about 38 cents and three later ones at about
-19 cents). The alert comes just past that, so it marks spending beyond the typical; the limit
-leaves more than as much again for class demos and extra checks. A runaway check stops at its own
-1.00-dollar cap, so the limit is the backstop across checks, never the first stop.
+with an alert at 1.50 dollars. From the checks above, a learner who runs every check five
+times while working, with Assignment 4 over two live sessions, spends about 1.15 dollars:
+Assignment 1 about 2 cents, Assignment 2 about 9 cents, and Assignment 3 about 1 cent (five checks
+each at the mean of its clean checks above), and Assignment 4 about 1.03 dollars:
+five checks at 16.27 cents, the mean of the seven later checks, two of them not confirmed clean
+(note 2), plus two baseline experiments of 82 runs for the
+two first checks, each at 10.71 cents, the costliest measured 70-run experiment (9.14 cents) priced
+per run. At the mean of the five audited clean checks, 15.27 cents, Assignment 4 comes to about
+0.98 dollars (5 times 15.27 plus 2 times 10.71 is 97.77 cents), and the whole to about 1.10
+dollars. The alert comes past that, so it marks spending beyond the typical; the rest of the limit
+is for class demos and extra checks, whose cost is in Commands above. A runaway
+check stops at its own 1.00-dollar cap, so the limit is the backstop across checks, never the
+first stop.
+
+Working on your own, outside a cohort? Create your own OpenAI project, enable gpt-6-luna on it,
+and set the same limit and alert in that project's budget settings before you put its key in
+`.env`.
 
 ## LangSmith traces
 
 LangSmith costs nothing on the free Developer plan, but the plan has a hard limit: 5,000 traces a
 month while no card is on file. Past it, LangSmith refuses every upload until the month ends; the
-limit resets at the start of each calendar month in Coordinated Universal Time (UTC), so the next
-reset is 1 November 2026 at 00:00 UTC
+limit resets on the first day of each month at 00:00 UTC
 ([usage and billing](https://docs.langchain.com/langsmith/usage-and-billing)). A trace is one root
 run with all its child runs.
+
+**When the limit is reached.** The console still shows a trace link for each run, but the page it
+opens never fills. The worker records each refusal on the run's row
+(`platform/src/datapilot/loop3_events/trace_refusals.py`), and the API returns it as
+`trace_refused_at` on the run:
+
+```bash
+curl -s http://localhost:8000/runs/<run id>
+```
+
+A run whose `trace_refused_at` is set was refused for the monthly limit. The run was still scored
+and recorded; only its trace is missing.
 
 **What is traced.** Every demo run and every assignment check run is traced in full. A benchmark
 run inside an experiment (the hill-climbing runner's experiments and re-runs, calibration, and the
@@ -181,18 +231,18 @@ measures each on its 28 dev items once: 56 more benchmark runs in every check.
 Section 4's demos trace 2 analyzer team runs and 1 agent run in full (the naive analyzer makes no
 model call), and run 3 experiments and 2 candidate measurements on the benchmark.
 
-| | Benchmark traces | All traces | Share of 5,000 |
-|---|---|---|---|
-| Sampled at 0.2, one pass of everything | 342 | 572 | About 11 percent |
-| Not sampled, one pass of everything | 1,710 | 1,940 | About 39 percent |
-| Sampled at 0.2, the working pattern of "The learner key limit" above | 617 on checks, 189 on demos | About 1,630 | About 33 percent |
-| Not sampled, the same working pattern | 3,087 on checks, 945 on demos | About 4,860 | About 97 percent |
+| | Benchmark traces | All traces, of the 5,000 a month |
+|---|---|---|
+| Sampled at 0.2, one pass of everything | 342 | 572 |
+| Not sampled, one pass of everything | 1,710 | 1,940 |
+| Sampled at 0.2, the working pattern of "The learner key limit" above | 617 on checks, 189 on demos | About 1,630 |
+| Not sampled, the same working pattern | 3,087 on checks, 945 on demos | About 4,860 |
 
 The working pattern is every check of Assignments 1 to 3 five times, and Assignment 4 over two
 live sessions: two first checks of 255 benchmark runs each (220 runs and 35 re-runs) and three
 later ones of 173 each (82 runs, 56 dev runs for the two candidates, and 35 re-runs). Sampled, one
 learner's whole course fits the free plan three times over; unsampled, the same work uses nearly
-all of it, and the build's own experiments used it up on 23 October 2026.
+all of it, and the course's own experiments used it up on 23 October 2026.
 
 **Why 0.2.** A class experiment of 70 runs still sends about 14 runs to the trace list filtered by
 knowledge version, enough to open several in class; a holdout row (6 runs across the baseline and
@@ -207,19 +257,20 @@ refuses every request with the Hypertext Transfer Protocol (HTTP) status 429.
 
 ## The caps
 
-| Cap | Setting in `pack.yaml` | What happens when a run reaches it |
-|---|---|---|
-| 50 rows to the model per query | `limits.row_cap` | The tool returns the first rows, the total count, and a truncation notice |
-| 2,000 characters to the model per value | `VALUE_CHARACTER_CAP` in `loop1_agent/tools.py` | The tool and the reviewer's preview cut the value; the notice counts the cuts |
-| 3 attempts | `limits.max_retries` | The run ends escalated, with every reason |
-| 12 model calls per run | `limits.model_call_limit` | The model call limit ends the run |
-| 16 tool calls per run | `limits.tool_call_limit` | Further tool calls are refused, and the agent must answer |
-| 60,000 tokens per run | `budgets.tokens_per_run` | Checked before each call, so one large call can go far past it |
-| 2,000,000 tokens per day | `budgets.tokens_per_day` | The worker claims no more jobs that day |
-| A planner cost of 500,000 | `cost_guard.max_plan_cost` | The cost grader rejects the query before it runs |
-| 1.00 dollar per assignment check | `assignments.check_cap_usd` | The check starts no new run and stops cleanly |
+Every cap's setting in `pack.yaml` is on the [reference page](reference.md#caps-and-limits). What
+happens when a run reaches the caps that bound spend:
 
-The caps hold whatever the model writes: each one is code, not a line in the prompt.
+| Cap | What happens when a run reaches it |
+|---|---|
+| 50 rows to the model per query | The tool returns the first rows, the total count, and a truncation notice |
+| 2,000 characters to the model per value (`VALUE_CHARACTER_CAP` in `loop1_agent/tools.py`) | The tool and the reviewer's preview cut the value; the notice counts the cuts |
+| 3 attempts | The run ends escalated, with every reason |
+| 12 model calls per run | The model call limit ends the run |
+| 16 tool calls per run | Further tool calls are refused, and the agent must answer |
+| 60,000 tokens per run | Checked before each call, so one large call can go far past it |
+| 2,000,000 tokens per day | The worker claims no more jobs that day |
+| A planner cost of 500,000 | The cost grader rejects the query before it runs |
+| 1.00 dollar per assignment check | The check starts no new run and stops cleanly |
 
 ## Check what you spent
 
@@ -227,8 +278,8 @@ The caps hold whatever the model writes: each one is code, not a line in the pro
   cost. The console shows the tokens and cost of each run.
 - **The ledger on your machine.** Every model call is recorded with its tokens and cost in
   `~/.datapilot/spend-ledger.sqlite`. `make spend` prints the total by activity.
-- **The OpenAI usage page** of the key's project shows what OpenAI billed. Ask the operations team
-  if you cannot see it.
+- **The OpenAI usage page** of the key's project shows what OpenAI billed. With a key from the
+  operations team, ask them if you cannot see it.
 
 ## How the ledger matches OpenAI's usage page
 
@@ -240,7 +291,7 @@ is what is left: input minus cache reads minus cache writes. A call that fails a
 (a timeout, a cut-off stream, a refusal) is recorded too, with the usage it reports, or else an
 estimate counted from the request, marked `estimated` in the ledger.
 
-The build's unattended night of 22 October 2026 is the check. Before cache writes were priced,
+The course's own runs of the night of 22 October 2026 are the check. Before cache writes were priced,
 the ledger recorded 12,265 calls and 1.6833 dollars; OpenAI's usage page showed 12,269 requests
 and 1.78 dollars. The ledger's token totals match the 12,265 model calls in that night's traces
 exactly, and the traces add the cache writes the ledger did not store:

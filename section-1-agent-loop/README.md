@@ -46,24 +46,55 @@ and joins and keeps no state.
 *Notice the schema scout's boundary: it can read the catalog but has no run_query, and every answer arrives as one structured envelope.*
 
 The section ends with the fiscal year 2025 question still answered wrong. Better tools do not
-supply the missing rules, which is the case for
-[Section 2: Verification loop](../section-2-verification-loop/README.md). Results of the class
-runs go on the [evidence page](../docs/evidence/section-1-agent-loop.md).
+supply the missing rules. That is why
+[Section 2: Verification loop](../section-2-verification-loop/README.md) adds checks, and why only
+the rules learned in Section 4: Hill-climbing loop fix the number. The full idea is in
+[concepts.md](concepts.md) (in class, minutes 0 to 23).
 
 ## How to work through this section
 
-| Part | What it gives you | In class |
-|---|---|---|
-| [concepts.md](concepts.md) | The loop, its tools, and why tool design decides answers | Minutes 0-23 |
-| [demo/](demo/README.md) | The simple question, the confident wrong answer, and unbounded rows, live | Minutes 23-35 |
-| [demo/walkthrough.md](demo/walkthrough.md) | The analyst, the tools, and the row cap | Minutes 35-40 |
-| [assignment/](assignment/README.md) | Assignment 1: Agent loop, a value-lookup tool | After class |
-| [post-class-reading/](post-class-reading/README.md) | Readings on SQL agents and evidence | After class |
-| [session-notes.md](session-notes.md) | What class showed, questions, what to try next | After class |
+### How it works in the code
 
-In class, every demo result on the console shows a live stamp: its run's start time in the
-viewer's local time and its LangSmith trace link. The `demo/expected/` folder is for you
-after class; it is never opened in class.
+- [`build_analyst`](../platform/src/datapilot/loop1_agent/analyst.py) builds the agent with the
+  knowledge prompt, the model and tool call limits, and the answer envelope as its result.
+- [`analyst_tools`](../platform/src/datapilot/loop1_agent/tools.py) defines `list_tables`,
+  `describe_table`, and `run_query`; `format_result` cuts rows at `limits.row_cap` in `pack.yaml`.
+- [`scout_tool`](../platform/src/datapilot/loop1_agent/scout.py) runs the schema scout with the
+  two catalog tools only.
+- [`GuardMiddleware`](../platform/src/datapilot/loop1_agent/guard.py) checks the run's token
+  budget before every model call and every tool call.
+
+The [walkthrough](demo/walkthrough.md) explains these lines (minutes 35 to 40).
+
+### The demo
+
+Three core demos, live, in minutes 23 to 35: the simple question
+(`agent-simple-question`) shows the tool timeline; the confident wrong answer
+(`agent-confident-wrong-answer`) shows the mismatch against gold; unbounded rows
+(`agent-unbounded-rows`) shows the token counter with the row cap off and on. Every result
+carries a live stamp: its start time and its LangSmith trace link. Run them with the
+[demo page](demo/README.md); `demo/expected/` is for comparison after class only. The measured
+runs are on the [evidence page](../docs/evidence/section-1-agent-loop.md).
+
+### The assignment
+
+[Assignment 1: Agent loop](assignment/README.md) adds a value-lookup tool that maps informal or
+misspelled names to stored values, and asks when two are equally close. It is done when
+`make check-assignment NAME=agent-loop` reads PASS on every line. Effort: about 1.5 hours; the
+cost of a check is on the [costs page](../docs/costs.md#assignments).
+
+### Apply it in a real system
+
+- Bound every tool result in code: a row cap, the total count, and a truncation notice.
+- Return the query with every answer, in a structured result a person or a check can re-run.
+- Put the stops for model calls, tool calls, and tokens outside the prompt, where the model
+  cannot talk past them.
+
+### Further reading
+
+The [reading list](post-class-reading/README.md) has three: business knowledge as evidence, how
+far enterprise schemas are from benchmarks, and how to design what a tool returns. After class,
+[session-notes.md](session-notes.md) recaps what class showed.
 
 ## Where next
 

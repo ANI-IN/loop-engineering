@@ -30,10 +30,18 @@ function fmtTime(iso, tz, seconds = true) {
     return new Intl.DateTimeFormat('en-GB', opts).format(new Date(iso));
   }
 }
-// The live stamp, on one line: "Started 11:59:09. Open trace".
+// The live stamp, on one line: "Started 11:59:09. Open trace". When LangSmith refused the run's
+// trace (its monthly limit), the server sends the words that say so in place of the link, muted,
+// then the run's label, the proof of the run; this stamp may wrap inside a strip.
 function stampLine(stamp, tz, linkText) {
   const line = el('div', 'stamp', `Started ${fmtTime(stamp.started_at_utc, tz)}`);
-  if (stamp.trace_url) {
+  if (stamp.trace_note) {
+    line.classList.add('refused');
+    line.append(document.createTextNode('. '), el('span', 'trace-note', stamp.trace_note));
+    if (stamp.run_label) {
+      line.append(document.createTextNode('. '), el('span', 'run-label', stamp.run_label));
+    }
+  } else if (stamp.trace_url) {
     line.append(document.createTextNode('. '), link(stamp.trace_url, linkText || 'Open trace'));
   }
   return line;

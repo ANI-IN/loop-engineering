@@ -3,9 +3,9 @@
 The analyst answers a plain question correctly, then answers the spine question, "What was our net
 revenue in fiscal year 2025?", with a confident number that is wrong. Nothing in the agent loop
 checks it yet. You run each demo from the demo terminal and watch it on the console's Agent page.
-Every screenshot and number in this chapter comes from the live runs of 22 October 2026
-(business date 31 January 2026), and every time range from the calibration demo pass of 22 and 23
-October 2026.
+Every screenshot in this chapter comes from the live runs of 25 October 2026, from 14:43
+Coordinated Universal Time (business date 31 January 2026), and every time range from the
+calibration demo pass of 22 and 23 October 2026 and the live sessions of 23, 24, and 25 October.
 
 > Your output will differ: run times, ids, and the agent's wording change on every run.
 
@@ -20,25 +20,27 @@ http://localhost:8501.
 make demo NAME=agent-simple-question
 ```
 
-**You should see:** the run's summary in the terminal, then the run on the Agent page. The terminal
-excerpt of the captured run:
+**You should see:** one terminal line with the queued run's id, then the run on the Agent page. The
+captured run's detail, as the Agent page shows it:
 
 ```text
 question: How many orders have been placed in total?
-run id: 3246b3e9-5797-4365-8376-59d05054d28b
+run id: 87a06dba-2a3b-4d02-b122-50c41f3d92bc
 status: posted
 tool calls: list_tables, describe_table, run_query
 final SQL: SELECT COUNT(*) AS total_orders FROM orders;
-answer: There have been 405738 orders placed in total.
-tokens: 3083 in, 58 out; cost $0.0003
+answer: A total of 405738 orders have been placed.
+tokens: 5151; cost $0.0005
 model: gpt-6-luna; knowledge version: v1
 ```
 
-![The Agent page after the simple question: the Ask button, Posted, a tool timeline with list_tables, describe_table, and run_query, the live stamp with its trace link, the one-line query, "No trap found in this query", and the answer 405738 orders](../../section-1-agent-loop/demo/expected/agent-simple-question-answer.png)
+![The Agent page after the simple question: Posted, the tool calls list_tables, describe_table, and run_query, 1.4 seconds in total, the live stamp, the one-line count query, No trap found in this query, the answer 405738 orders, and 5,151 tokens](../../section-1-agent-loop/demo/expected/agent-simple-question-answer.png)
 
-*The analyst lists the tables, describes one, runs one query, and answers; describe_table takes most of the 0.8 seconds of tool time.*
+*25 October 2026: the analyst lists the tables, describes one, and runs one query; the live stamp, the query, and the answer are all in the frame.*
 
-**Look at:** the tool timeline, then the line "Started ... Open trace in LangSmith" above the query.
+**Look at:** the tool timeline, then the live stamp "Started ..." above the query. With traces
+flowing it ends in "Open trace"; in this capture LangSmith had refused traces at its monthly
+limit, so it reads "Trace not received".
 
 **What it means:** with no trap in the question, the agent loop alone is enough: three tool calls,
 one query, a correct count. The live stamp shows this result comes from a run started just now.
@@ -47,13 +49,13 @@ one query, a correct count. The live stamp shows this result comes from a run st
 > The page says **Posted**, the answer is a count, and the live stamp shows this run's start time.
 
 > [!IFDIFFERENT]
-> `No live session is open: run make preflight first.` → run `make preflight PURPOSE=class` once (Part 0).
+> `No live session is open: run make preflight PURPOSE=class|rehearsal|thursday-review|development first` → run `make preflight PURPOSE=class` once (Part 0).
 > The run stays in one place → `make reset NAME=agent-loop`, then the same `make demo` again.
 > More or fewer tool calls → expected; the number of tool calls can vary.
 
 > [!INSTRUCTOR]
-> Point at the timeline first, then the query, then the tokens and cost line (5,126 tokens and
-> 0.0003 dollars in the captured run). Say: "This is the loop you already know. The next question
+> Point at the timeline first, then the query, then the tokens and cost line (5,151 tokens and
+> 0.0005 dollars in the captured run). Say: "This is the loop you already know. The next question
 > looks just as simple."
 
 ### Step 2: Ask the spine question
@@ -69,14 +71,16 @@ make demo NAME=agent-confident-wrong-answer
 **You should see:** the run with its status line and its tool timeline. In the captured run the
 analyst also called the schema scout.
 
-![The Agent page after the spine question: Holding for approval with the line that it waits for a person's approval, a tool timeline of five calls including scout_schema twice, the live stamp, and the annotated query with trap notes](../../section-1-agent-loop/demo/expected/agent-confident-wrong-answer-run.png)
+![The Agent page after the spine question: the status line at the report-only level, Holding for approval, the line that the run waits for a person's approval, and the tool calls list_tables, scout_schema, two describe_table calls, and run_query, 20.3 seconds in total](../../section-1-agent-loop/demo/expected/agent-confident-wrong-answer-run.png)
 
-*The spine question under the starting knowledge v1: the run holds for approval, and the analyst still answers with a number.*
+*25 October 2026: under the starting knowledge v1 the run holds for a person's approval; the schema scout takes 11.1 of the 20.3 seconds of tool time.*
 
 **Look at:** the status, **Holding for approval**, and the `scout_schema` bar in the timeline.
 
 **What it means:** the reviewer raised a concern, so the run waits for a person. The analyst
-answered anyway, with a number, and nothing in this loop tells you whether it is right.
+answered anyway. In the captured run its answer was one number, 72,394,572.08 dollars, which it
+said was for calendar year 2025 in Coordinated Universal Time (UTC), because the warehouse defines
+no fiscal calendar. Nothing in this loop tells you whether it is right.
 
 > [!CHECKPOINT]
 > The run has a status and a timeline; the answer text appears below the query once it finishes.
@@ -97,16 +101,18 @@ answered anyway, with a number, and nothing in this loop tells you whether it is
 
 **You should see:** the query, with numbered marks on its wrong fragments and one note per trap.
 
-![The spine question's query with numbered marks on WHERE, order_ts, and both fiscal-year bounds, three trap notes for the fiscal year, Eastern time, and internal accounts, the agent's answer, and the answer against gold](../../section-1-agent-loop/demo/expected/agent-confident-wrong-answer-sql.png)
+![The annotated query: marks 1 on both calendar-year bounds, 2 on both order_ts comparisons, and 3 on WHERE, the Fiscal year, Eastern time, and Internal accounts notes, the answer for calendar year 2025, and the mismatch against gold](../../section-1-agent-loop/demo/expected/agent-confident-wrong-answer-sql.png)
 
-*Each wrong fragment of the query carries the number of its trap note.*
+*25 October 2026: mark 1 after both calendar-year bounds, mark 2 on both order_ts comparisons, and mark 3 on WHERE, each with its note.*
 
 1. Trap: Fiscal year. The query reads calendar year 2025; fiscal year 2025 ends on 31 January 2025.
-2. Trap: Eastern time. `order_ts` is stored in Coordinated Universal Time (UTC) and is compared
-   without converting it to New York time.
+2. Trap: Eastern time. `order_ts` is stored in UTC and is compared without converting it to New
+   York time.
 3. Trap: Internal accounts. The query keeps the staff and test accounts on the company email domain.
 
 **Look at:** the answer line under the notes: the analyst itself says it read the calendar year.
+The captured query keeps `status = 4`, which leaves out cancelled orders, so that filter has no
+mark.
 
 **What it means:** the query is valid, safe, and plausible. Each mistake is a business rule the
 schema does not show.
@@ -130,14 +136,13 @@ schema does not show.
 
 **You should see:** the agent's answer, the gold answer, and the result on both databases.
 
-![The answer against gold: agent answer 72394572.08, gold answer 64015091.21, and Mismatch on warehouse and warehouse_alt, with 27,245 tokens and 0.0025 dollars](../../section-1-agent-loop/demo/expected/agent-confident-wrong-answer-gold.png)
+![The end of the Agent page: the annotated query and its three notes, the answer for calendar year 2025, the agent's answer 72394572.08 against the gold answer 64015091.21, the mismatch on both databases, and 32,421 tokens and 0.0024 dollars](../../section-1-agent-loop/demo/expected/agent-confident-wrong-answer-gold.png)
 
-*The gold check fails on both warehouse and warehouse_alt.*
+*25 October 2026: the gold check fails on warehouse and warehouse_alt; row 1 differs from gold on both.*
 
 **Look at:** the **Mismatch** line.
 
-**What it means:** the answer, 72,394,572.08 dollars, is not the gold 64,015,091.21 dollars. The
-agent loop gave no sign that it was wrong.
+**What it means:** the answer, 72,394,572.08 dollars, is not the gold 64,015,091.21 dollars. The agent loop gave no sign that it was wrong.
 
 > [!CHECKPOINT]
 > The page shows **Mismatch** for both databases.
@@ -152,25 +157,31 @@ agent loop gave no sign that it was wrong.
 
 ### Step 5: Run the large query, with and without the row cap
 
-**Where:** The demo terminal, `.env` in an editor, and the Agent page.
+**Where:** The demo terminal and the Agent page.
 
-**Type:** set `BUG_UNBOUNDED_ROWS=1` in `.env`, then run the planted half; set it back to `0` and
-run the fixed half. Each change to `.env` needs `make up`.
+**Type:** the planted half first, then the fixed half. `PLANTED=1` turns the unbounded rows bug on
+for that demo's own runs only; `.env` keeps every planted flag at `0`.
 
 ```bash
-make up
+make demo NAME=agent-unbounded-rows PLANTED=1
 make demo NAME=agent-unbounded-rows
 ```
 
 **You should see:** with the unbounded rows bug on, the token counter jumps. With it off, the
-query returns at most the row cap, the total count, and a truncation notice. The fixed half used
-17,298 and 19,661 tokens in its two calibration runs; the planted half used 183,639 to 186,689
-tokens in three runs, about ten times as many. In the latest run the fixed half was held for
-approval after two reviewer concerns.
+query returns at most the row cap, the total count, and a truncation notice. Over every recorded
+run, the fixed half used 17,298 to 30,216 tokens and the planted half 182,654 to 187,030 tokens,
+about ten times as many. In the captured fixed run the reviewer held the run with two concerns.
 
-<!-- capture: unbounded rows with the unbounded rows bug on: the Agent page with the token counter, and its terminal summary -->
+![The Agent page after the large query with the unbounded rows bug on: Escalated, the request to run SELECT * FROM order_items LIMIT 10000, four tool calls, and 184,983 tokens in 7.5 seconds](../../section-1-agent-loop/demo/expected/agent-unbounded-rows-planted-tokens.png)
 
-<!-- capture: unbounded rows with the fix: the Agent page with the truncation notice and the total count -->
+*25 October 2026, the planted half: every row of the 10,000-row query reaches the model, 184,983 tokens for one run, and the run ends escalated.*
+
+![The Agent page after the large query with the row cap: the tool calls, a ten-row query on orders, No trap found in this query, the ten most recent orders with their totals, and 28,468 tokens](../../section-1-agent-loop/demo/expected/agent-unbounded-rows-fixed-tokens.png)
+
+*25 October 2026, the fixed half: the same steps stay small, 28,468 tokens.*
+
+The truncation notice and the total count are in the run_query result, which the run's trace
+holds once LangSmith receives it; in this frame the trace link reads Trace not received.
 
 **Look at:** the tokens line of each run, side by side.
 
@@ -179,15 +190,15 @@ use. The row cap (`limits.row_cap` in `platform/packs/datapilot_us/pack.yaml`) k
 inside its budget.
 
 > [!CHECKPOINT]
-> The fixed half shows the truncation notice and the total count.
+> The fixed half's tokens line is far below the planted half's; its run_query result holds the truncation notice and the total count, in the trace once LangSmith receives it.
 
 > [!IFDIFFERENT]
-> The token counter does not move with the bug on → the services still hold the old `.env`; run `make up`.
-> The run is held by a reviewer concern → expected in one of the two calibration runs; read its tokens anyway.
+> The token counter does not move with the bug on → the run was sent without `PLANTED=1`; run `make demo NAME=agent-unbounded-rows PLANTED=1`.
+> The run is held by a reviewer concern → expected; it happened in the captured run too. Read its tokens anyway.
 
 > [!INSTRUCTOR]
-> Set the flag back to `0` and run `make up` before the next section. Point at the tokens, not the
-> answer: this demo is about what reaches the model.
+> Nothing to switch back: the planted bug was on for that one demo's runs only. Point at the
+> tokens, not the answer: this demo is about what reaches the model.
 
 ## Result summary
 
@@ -197,19 +208,19 @@ inside its budget.
 | The simple question | Posted, correct count |
 | The spine question's status | Holding for approval, reviewer concern |
 | Traps marked on the spine query | Fiscal year, Eastern time, internal accounts |
-| Tokens, secondary | 5,126 for the simple question; 27,245 for the spine question (the captured runs) |
+| Tokens, secondary | 5,151 for the simple question; 32,421 for the spine question (the captured runs) |
 
 ## Time and cost
 
 Times are wall time from the trigger to the checked result, from the calibration demo pass of 22
-and 23 October 2026 and the live sessions of 23 October, afternoon and evening
+and 23 October 2026 and the live sessions of 23, 24, and 25 October
 (`docs/calibration-report.md`), each demo run alone with a reset between.
 
 | Demo | Time | Cost of the captured run | Cap |
 |---|---|---|---|
-| The simple question | 14 to 39 s | 0.0003 dollars | 60,000 tokens per run |
-| The confident wrong answer | 37 to 76 s | 0.0025 dollars | 60,000 tokens per run |
-| Unbounded rows | Planted half 18 to 19 s; fixed half 26 and 48 s | Fixed half: 17,298 to 27,040 tokens | 60,000 tokens per run |
+| The simple question | 14 to 39 seconds | 0.0005 dollars | 60,000 tokens per run |
+| The confident wrong answer | 35 to 76 seconds | 0.0024 dollars | 60,000 tokens per run |
+| Unbounded rows | Planted half 12 to 19 seconds; fixed half 26 to 48 seconds | Fixed half 0.0022 dollars; planted half 0.0230 dollars | 60,000 tokens per run |
 
 ## What to say in class
 

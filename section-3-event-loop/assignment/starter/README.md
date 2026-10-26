@@ -4,8 +4,8 @@ The starter is the complete working class system for Section 3: Event loop, with
 This assignment's code goes in `platform/src/datapilot/loop3_events/extension.py`. The router reads
 its table `JOB_QUEUES` and the scheduler calls its `schedule()` on every start; both are empty, so
 class runs are unchanged. The worker calls `run_job` only for a job the table names. Each place to
-fill is marked `# EXTENSION POINT, TODO K (event-loop-K)`, and each function raises
-`NotImplementedError` with a one-line hint.
+fill is marked `# EXTENSION POINT, TODO K (event-loop-K)`. `schedule()` returns without adding
+a job; every other function raises `NotImplementedError` with a one-line hint.
 
 | Extension point | What you fill | Who calls it | Step |
 |---|---|---|---|

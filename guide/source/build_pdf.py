@@ -2,8 +2,8 @@
 
 Usage (from the course repository root):
 
-    uv run python tools/guide/build_pdf.py --config guide/guide.json [--images [DIR]]
-                                           [--copy-to DIR] [--html FILE] [--no-pdf]
+    uv run python guide/source/build_pdf.py --config guide/guide.json [--images [DIR]]
+                                            [--copy-to DIR] [--html FILE] [--no-pdf]
 
 The config names the guide folder (`root`, default: the config's folder), the titles printed on
 the cover and in the running headers, the output file, an optional palette (CSS variables), and

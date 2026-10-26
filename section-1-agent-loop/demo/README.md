@@ -2,10 +2,9 @@
 
 ## The problem
 
-**Illustrative scenario.** A finance manager at Harbor & Pine Outfitters asks DataPilot for the net
-revenue of the last fiscal year. The analyst finds a column that looks like revenue, sums it over the
-calendar year, and answers in one confident sentence. Later someone asks for a long list, and the
-analyst pulls every row into its context before it answers.
+**Illustrative scenario.** The finance manager's question from the
+[section page](../README.md#the-problem) comes back with a confident wrong number. Later someone
+asks for a long list, and the analyst pulls every row into its context before it answers.
 
 These demos put both failures in front of a live run. The spine question runs under knowledge
 version v1, which states only the money rule, so the traps in the seeded data decide the answer.
@@ -29,12 +28,12 @@ Each demo is one real run of the analyst against the warehouse, with real model 
 LangSmith. The analyst writes SQL, runs it through `run_query`, and
 returns an answer envelope that the console shows with its SQL, tokens, cost, and trace link.
 
-Times and cost, measured live on 22 and 23 October 2026: each demo twice with a reset between in
-calibration, then once in each live session of 23 October, afternoon and evening, on the code as it
-stood that day (later changes, made with no model call, are owed a live re-run): the simple question 14
-to 39 s, the confident wrong answer 37 to 76 s. An analyst run costs about 0.001 dollars. The runs are on the
-[evidence page](../../docs/evidence/section-1-agent-loop.md), and `run.sh` states the most a run
-can cost at the caps in `platform/packs/datapilot_us/pack.yaml`.
+Times and cost, measured live on 22 and 23 October 2026: the simple question 14 to 39 seconds, the
+confident wrong answer 37 to 76 seconds, and about 0.001 dollars per analyst run. On the code
+of 24 October 2026, measured live once that day: the simple question 16 seconds, the confident
+wrong answer 50 seconds, and the unbounded rows demo 33 seconds fixed and 12 seconds planted. The
+runs are on the [evidence page](../../docs/evidence/section-1-agent-loop.md#results), and `run.sh`
+states the most a run can cost at the caps in `platform/packs/datapilot_us/pack.yaml`.
 
 ```mermaid
 flowchart LR
@@ -50,13 +49,19 @@ flowchart LR
 ## Run it
 
 Finish the [setup pages](../../setup/README.md) first, including the
-[pre-class checks](../../setup/pre-class.md). Then start the services and confirm the data in a
-terminal at the repository root:
+[pre-class checks](../../setup/pre-class.md). Then start the services, confirm the data, and open
+a live session in a terminal at the repository root:
 
 ```bash
 make up
 make check-data
+make preflight PURPOSE=development
 ```
+
+Every run belongs to a live session, which `make preflight` opens; with none open, a demo fails
+with "No live session is open". Preflight first asks five questions that show the model still
+behaves as the course measured it, one agent run each. In class the instructor runs
+`make preflight PURPOSE=class` instead.
 
 Open the console at http://localhost:8501 on the Agent page. Run every core demo of this section
 from the same terminal, one at a time, with:
@@ -68,9 +73,9 @@ bash section-1-agent-loop/demo/run.sh
 Add `--optional` to run Texas last quarter after the core demos, or name one demo to run it alone.
 Each `make demo` prints the run ids it started; the run itself shows up in the console.
 
-The unbounded rows demo runs twice: once with the planted bug on and once with it off. Set
-`BUG_UNBOUNDED_ROWS=1` in `.env`, run `make up` so the services read it, and run the demo; then set
-it back to `0`, run `make up`, and run the demo again.
+The unbounded rows demo runs twice: once with the planted bug on and once with it off.
+`make demo NAME=agent-unbounded-rows PLANTED=1` switches `BUG_UNBOUNDED_ROWS` on for that run
+alone; then `make demo NAME=agent-unbounded-rows` runs the fixed half. `.env` never changes.
 
 <!-- generated:demo-table -->
 | Demo | Tier | Run it | Target minutes |
@@ -151,8 +156,9 @@ and what may differ from run to run.
 
 A correct count on the simple question shows the loop itself works: tool choice, SQL, and the
 answer envelope. A mismatch on the spine question is the expected result under knowledge version
-v1. It shows that better tools do not supply business rules, which is the case for
-[Section 2: Verification loop](../../section-2-verification-loop/README.md).
+v1. It shows that better tools do not supply business rules. That is why
+[Section 2: Verification loop](../../section-2-verification-loop/README.md) adds checks, and why
+only the rules learned in Section 4: Hill-climbing loop fix the number.
 
 If the spine question comes back correct, the model solved the traps unaided on this run. Report it
 as it is; the gold check, not the answer's wording, is the verdict. One run shows what one model
@@ -169,6 +175,6 @@ truncation notice.
 | `run.sh` says the services do not answer | The services are not running | `make up`, then `make ps` until every service is healthy |
 | The run stays in Queued | The worker is not running or is restarting | `make ps`; `make logs NAME=worker` for the reason |
 | The run ends escalated with a token limit | The run reached `budgets.tokens_per_run` | Reset and run it again; the cap is the designed stop |
-| The token counter does not move with the bug on | The services still hold the old `.env` | Run `make up` after each change to `.env` |
+| The token counter does not move with the bug on | The run was sent without `PLANTED=1` | `make demo NAME=agent-unbounded-rows PLANTED=1` |
 | The run with the bug off ends in Holding for approval | A reviewer concern, as twice in calibration | Nothing: point at its token counter, the moment |
 | Anything else | A stale run or an engaged kill switch | `make reset NAME=agent-loop`, then the same trigger again |

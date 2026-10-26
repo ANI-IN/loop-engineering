@@ -9,7 +9,9 @@
 > - **Domain pack**: The folder that holds one warehouse's settings, rules, benchmark, and knowledge.
 
 This page lists everything you look up but do not read in order: every make target, every setting
-and variable, the caps and limits, and the folders. Each table names the file its values come
+and variable, the stacks and their ports, the caps and limits, and the folders. The services, the
+application programming interface (API) routes, and the ops tables are on the
+[architecture page](architecture.md). Each table names the file its values come
 from. Every course term is in the [glossary](glossary.md).
 
 ## Make targets
@@ -17,7 +19,9 @@ from. Every course term is in the [glossary](glossary.md).
 Every target is a thin wrapper over `uv run ...` or `docker compose ...` (`Makefile`), so the same
 commands work without make. On Windows, run make inside Ubuntu on WSL2. `make help` lists every
 target with its one-line description. The "Model calls" column says whether the target calls
-OpenAI with your key.
+OpenAI with your key. A target's variables, such as `NAME=` and `PLANTED=`, count only on the make
+command line: a variable your shell exports is ignored, including the `NAME` that WSL sets to the
+computer's name in every shell.
 
 ### Run DataPilot
 
@@ -34,16 +38,21 @@ OpenAI with your key.
 | `make check-pack PACK=<name>` | Checks a pack's files, queries, and preflight data check | None |
 | `make preflight PURPOSE=<purpose>` | Checks the setup and canary, then starts a live session | Five canary questions |
 | `make demos` | Lists every demo with its tier and name | None |
-| `make demo NAME=<slug>` | Triggers one live demo through the api, as the console button does | Yes, for demos that run the agent |
+| `make demo NAME=<slug>` | Triggers one live demo through the API, as the console button does | Yes, for demos that run the agent |
+| `make demo NAME=<slug> PLANTED=1` | The demo's planted half: its planted bugs on for its own runs only | Yes, as above |
 | `make reset NAME=<section slug>` | Clears a section's live run state and releases the kill switch | None |
 | `make reset-discarding-baseline NAME=hill-climbing-loop` | The full reset: it also discards the session's baseline experiment | None |
 | `make open-code NAME=<section slug>` | Prints the files and line ranges a section shows in class | None |
-| `make autonomy LEVEL=<level> BY="<your name>"` | Sets the autonomy level through the api; the finale needs `unattended` | None |
+| `make autonomy LEVEL=<level> BY="<your name>"` | Sets the autonomy level through the API; the finale needs `unattended` | None |
 | `make hill-climbing-runner` | The runner on the host, for development only; `make up` runs it, and a second one refuses | Yes, for each request |
 | `make live-smoke` | Five real calls across the system, each with tokens, cost, and trace link | Yes |
 | `make spend` | The model spend recorded on this machine, by activity | None |
 
-`PURPOSE` is one of `class`, `rehearsal`, `thursday-review`, or `development`. The section slugs
+`PURPOSE` is one of `class`, `rehearsal`, `thursday-review`, or `development`. With
+`PURPOSE=class`, preflight refuses while less than one class pass (`budgets.class_pass_tokens` in
+`pack.yaml`) is left of the day's token budget; `ACCEPT_TOKENS_LEFT=<count>`, the exact count
+left that the refusal prints, starts the class session anyway, knowingly
+([instructor guide](instructor-guide.md#if-something-breaks)). The section slugs
 are `agent-loop`, `verification-loop`, `event-loop`, and `hill-climbing-loop`. The demo slugs are
 in each section's demo page and in `platform/demos/registry.yaml`.
 
@@ -62,10 +71,15 @@ Two more commands of the `datapilot` command line, with no model calls:
 | Target | What it does | Model calls |
 |---|---|---|
 | `make check-assignment NAME=<slug>` | The live check of one assignment: a cost estimate first, the actual cost last | Yes, with your key |
-| `make apply-solution NAME=<slug> VARIANT=<variant>` | A scratch copy of the starter with one solution applied | None |
+| `make apply-solution NAME=<slug> VARIANT=<variant>` | Scratch copy of the starter with one solution; `FORCE=1` replaces a copy | None |
 
 `VARIANT` is `reference`, `alternative-one`, or `alternative-two`. `make check-assignment
-NAME=<slug> TREE=<copy>` checks the copy that `make apply-solution` printed.
+NAME=<slug> TREE=<copy>` checks the copy that `make apply-solution` printed. Until the Thursday
+review, a public copy has no `solution/` folders, so `make apply-solution` and
+`make verify-assignments` stop and say the solutions are withheld.
+
+`make check-assignment` also reads `PURPOSE=<purpose>`: with it, the check starts a live session
+of that purpose on its own stack unless one of the same purpose opened there today.
 
 ### Checks and documentation
 
@@ -82,15 +96,18 @@ NAME=<slug> TREE=<copy>` checks the copy that `make apply-solution` printed.
 | `make lint-prose` | Banned words and emoji in the course pages | None |
 | `make check-style` | The course style check; `CHECK_STYLE_OPTS=--strict` makes warnings fail | None |
 | `make check-style-strict` | The style check where warnings fail too | None |
+| `make check-images` | Published images: size, blank areas, clipped edges, alt text | None |
 | `make check-names` | The naming rule on the course pages and the slide outline (note 1) | None |
 | `make check-short-forms` | The naming rule on this branch's commit messages (note 1) | None |
-| `make guards` | Git configuration allow-list and no tracked `.env`; the author rule too (note 1) | None |
+| `make guards` | No `core.worktree` and no tracked `.env`; more checks in the build (note 1) | None |
 | `make registries` | Validates the demo and planted-item registries | None |
 | `make docs` | Regenerates every generated page from its registry | None |
 | `make docs-check` | Fails if a generated page is out of date | None |
 | `make outline` | Rebuilds `slides/outline.md` from `slides/source/` and checks every slide rule | None |
 | `make style-tile` | The console style tile on port 8531, with specimen data | None |
 | `make check` | Everything the continuous integration runs without a database | None |
+| `make ci-local REPO=<release clone>` | The continuous integration workflow's own steps in a clean clone, no secrets | None |
+| `make diagrams ARGS=--check` | Reports stale diagram renders; `ARGS=--build` rewrites them from `definitions.py` | None |
 | `make verify` | Every check, each result printed; fails if any one fails | None |
 | `make calibrate STEP=<step>` | One live calibration step, for the instructor before a cohort | Yes |
 | `make verify-assignments` | Each starter once and each solution twice, with captures | Yes |
@@ -99,7 +116,8 @@ NAME=<slug> TREE=<copy>` checks the copy that `make apply-solution` printed.
 
 Note 1: the commit-message and author checks run in the course's build only: `make check-names`
 reads commit messages there, `make check-short-forms` runs there, and `make guards` also checks
-that every commit has the one author and no co-author lines. Your own copy skips them.
+that every commit has the one author and no co-author lines and that the git configuration holds
+only allowed keys. Your own copy skips them.
 
 ## Settings and variables
 
@@ -109,7 +127,7 @@ Settings come from `.env` at the repository root, which `make setup` copies from
 
 | Variable | Default in `.env.example` | What it sets |
 |---|---|---|
-| `OPENAI_API_KEY` | empty | Your key from the operations team |
+| `OPENAI_API_KEY` | empty | Your key, from the operations team or your own OpenAI project |
 | `LANGSMITH_API_KEY` | empty | Your key from your own LangSmith account |
 | `OPENAI_MODEL` | `gpt-6-luna` | The analyst, the schema scout, and the reviewer |
 | `OPENAI_ANALYZER_MODEL` | `gpt-6-luna` | The analyzer team; empty means `OPENAI_MODEL` |
@@ -118,21 +136,39 @@ Settings come from `.env` at the repository root, which `make setup` copies from
 | `LANGSMITH_PROJECT` | `datapilot-live` | The project live runs trace to |
 | `LANGSMITH_EXPERIMENTS_PROJECT` | `datapilot-experiments` | The project benchmark runs trace to |
 | `DATAPILOT_PACK` | `datapilot_us` | The domain pack every process reads, a folder under `platform/packs/` |
-| `DATABASE_URL_OWNER` | the Compose owner role | Migrations, seeding, ops tables; never the agent |
-| `DATABASE_URL_AGENT` | the Compose read-only role on `datapilot` | The agent's read-only role on the warehouse schema |
-| `DATABASE_URL_AGENT_ALT` | the same role on `warehouse_alt` | The second database the evaluator compares on |
-| `DATABASE_URL_APP` | the Compose application role | The api, the worker, the scheduler, and the console |
+| `DATABASE_URL_OWNER` | unset: the Compose owner role on `localhost` and `POSTGRES_PORT` | Migrations, seeding, ops tables; never the agent |
+| `DATABASE_URL_AGENT` | unset: the Compose read-only role on `datapilot`, on `POSTGRES_PORT` | The agent's read-only role on the warehouse schema |
+| `DATABASE_URL_AGENT_ALT` | unset: the same role on `warehouse_alt`, on `POSTGRES_PORT` | The second database the evaluator compares on |
+| `DATABASE_URL_APP` | unset: the Compose application role on `POSTGRES_PORT` | The api service, the worker, the scheduler, and the console |
 | `SERVICES_DATABASE_URL_AGENT`, `SERVICES_DATABASE_URL_AGENT_ALT` | unset: the Compose Postgres | The agent's two databases as the services in Docker reach them |
-| `POSTGRES_PORT`, `API_PORT`, `CONSOLE_PORT` | `5432`, `8000`, `8501` | Host ports for Compose |
+| `POSTGRES_PORT`, `API_PORT`, `CONSOLE_PORT` | `5432`, `8000`, `8501` | Host ports for Compose; the host commands follow them (below) |
 | `DATAPILOT_SPEND_ACTIVITY` | `development` | The ledger activity model calls are recorded under (see below) |
 | `DATAPILOT_BUILD_BUDGET` | `0` | Build only: `1` enforces the course build's budget lines (see below) |
 | `DATAPILOT_SESSION_SINCE` | empty | Build only: a session's start time; its limits apply (see below) |
 | `DATAPILOT_BUSINESS_DATE` | `2026-01-31` | The day DataPilot treats as today |
 | `DATAPILOT_DISPLAY_TIMEZONE` | empty | Empty shows each viewer's own time zone |
-| `DATAPILOT_API_URL` | `http://localhost:8000` | Where the command line and the console reach the api |
-| `DATAPILOT_ALLOW_DEMO_CONTROLS` | `1` | Lets the worker-restart control work, for demos |
+| `DATAPILOT_API_URL` | unset: `http://localhost:` and `API_PORT` | Where the command line and the console reach the API |
+| `DATAPILOT_ALLOW_DEMO_CONTROLS` | `1` | For demos: the worker restart, a demo's planted flags, a planted button (below) |
 | `DEMO_PACING`, `DEMO_PACING_SECONDS` | `0`, `2.0` | Pauses between lifecycle stages; never changes results |
 | `BUG_*` | `0` each | The planted bugs, all off; [planted items](planted-items.md) lists each one |
+
+The host commands follow the ports: while the `DATABASE_URL_*` addresses and `DATAPILOT_API_URL`
+are unset, as `.env.example` leaves them, each is the Compose one on `localhost` at
+`POSTGRES_PORT` or `API_PORT`, so moving a port in `.env` moves every command; run `make up` after
+it. `DATAPILOT_ALLOW_DEMO_CONTROLS` allows the console's worker-restart control, a demo's planted
+flags for its own runs, and the console's Improve > Run the naive analyzer (planted) button.
+
+These are read from your shell's environment, not from `.env.example`:
+
+| Variable | Default | What it sets |
+|---|---|---|
+| `COMPOSE_PROJECT_NAME` | `datapilot-assignments` for a live check | The Compose project of a check's own stack; `datapilot` is refused |
+| `POSTGRES_PORT`, `API_PORT`, `CONSOLE_PORT` | `55433`, `8100`, `8502` for a live check | A check's own ports; the class ports are refused |
+| `DATAPILOT_ASSIGNMENT_STACK` | unset | `running`: a live check uses the services already running |
+| `DATAPILOT_ASSIGNMENT_WORK` | `~/.datapilot/assignment-work` | Where `make apply-solution` writes its copies |
+| `DATAPILOT_SPEND_LEDGER` | `~/.datapilot/spend-ledger.sqlite` | The ledger file; the services use the mounted folder |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Where a live check asks whether your key works |
+| `FORCE` | unset | `1`: `make apply-solution` replaces an existing copy |
 
 A run started by `make demo` or a live check carries the spend activity of the command that
 started it. With `DATAPILOT_BUILD_BUDGET` off, your own OpenAI project limit is the only limit
@@ -141,7 +177,7 @@ holds with the switch on or off.
 
 While `DATAPILOT_SESSION_SINCE` names a session's start, the session limits in `pack.yaml`
 (`build_budget.session`) are checked before every model call, in addition to the lines, counting
-only the spend since that time; the owner sets them for each session, so read them in `pack.yaml`.
+only the spend since that time; you set them for each session, in `pack.yaml`.
 A line not listed there gets nothing in the session. The variable is read from the environment first, then from `.env`, and `make spend` shows
 the session as "this session since" its start.
 
@@ -150,6 +186,12 @@ The Compose services reach the owner and application roles on the `postgres` con
 when they are unset; the `DATABASE_URL_` values above are for commands you run on your machine.
 After a change to `DATAPILOT_PACK`, run `make up`, then `make preflight`: each pack keeps its own
 knowledge versions, and preflight reads its data check and canary from the selected pack.
+
+### Stacks and ports
+
+Each stack is its own Compose project with its own ports, so the tests and the checks never touch
+the class data. The [architecture page](architecture.md#other-stacks) lists every stack, its
+ports, and what starts it.
 
 ## Caps and limits
 
@@ -197,7 +239,7 @@ never a regression.
 | `use-in-your-repo/` | Pointing DataPilot at your own Postgres, or building a new domain pack |
 | `docs/` | Start here, this reference, costs, the glossary, the instructor guide |
 | `guide/` | The Live Demo Guide: every live demo step by step |
-| `slides/` | The class deck and its outline |
+| `slides/` | The class deck's outline and its sources; the deck is handed out separately |
 | `platform/src/datapilot/` | The package: one folder per loop, plus `contracts/` and `observability/` |
 | `platform/packs/datapilot_us/` | The Harbor & Pine domain pack: settings, data generator, benchmark, knowledge |
 | `platform/packs/_template/` | A domain pack to copy for your own warehouse |
@@ -207,3 +249,4 @@ never a regression.
 | `platform/ops/` | Ops migrations, warehouse Structured Query Language (SQL) files, Docker files |
 | `platform/tests/` | The unit and integration tests |
 | `platform/scripts/` | The style, prose, naming, and repository checks |
+| `platform/tools/` | The diagram definitions and their export, and the page generators |

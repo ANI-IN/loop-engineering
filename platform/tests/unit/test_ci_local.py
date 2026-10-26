@@ -206,3 +206,126 @@ def test_the_real_workflow_runs_every_job_as_github_does_and_names_no_secret() -
     assert [j.fetch_depth for j in found] == [0, 1, 1]
     assert found[2].compose_projects == ["datapilot-tests"] and found[0].compose_projects == []
     assert "secrets." not in real.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "docker compose -p datapilot-tests up -d",
+        "docker compose --project-name datapilot-tests up -d",
+        "docker compose --project-name=datapilot-tests up -d",
+        "docker compose -f compose.yaml --project-name 'datapilot-tests' down",
+    ],
+)
+def test_every_form_of_the_project_option_is_found(tmp_path: Path, command: str) -> None:
+    workflow = tmp_path / "ci.yml"
+    workflow.write_text(WORKFLOW.replace("STEP", command), encoding="utf-8")
+    assert ci_local.jobs(workflow, ["test"])[0].compose_projects == ["datapilot-tests"]
+
+
+@pytest.mark.parametrize(
+    ("command", "env", "named"),
+    [
+        ("docker compose -pdatapilot down -v", {}, "datapilot"),
+        ("COMPOSE_PROJECT_NAME=datapilot docker compose down -v", {}, "datapilot"),
+        ("docker-compose -p datapilot down -v", {}, "datapilot"),
+        ('docker compose -p "$P" down -v', {}, "$P"),
+        ("docker compose -p=${PROJECT} down -v", {}, "${PROJECT}"),
+        ("docker compose down --volumes", {"COMPOSE_PROJECT_NAME": "datapilot"}, "datapilot"),
+        ("docker compose down --volumes", {}, ci_local.NO_PROJECT),
+        ("COMPOSE_PROJECT_NAME= docker compose down -v", {}, ci_local.NO_PROJECT),
+        ("docker  compose down -v", {}, ci_local.NO_PROJECT),
+        ("docker --context default compose down -v", {}, ci_local.NO_PROJECT),
+    ],
+    ids=[
+        "-pNAME",
+        "on the line",
+        "docker-compose",
+        "a quoted variable",
+        "-p=variable",
+        "a workflow env",
+        "none named",
+        "empty",
+        "two spaces",
+        "a global option",
+    ],
+)
+def test_every_way_of_naming_a_project_is_read_and_refused(
+    command: str, env: dict[str, str], named: str
+) -> None:
+    """The security review of 26 October, round 2: these forms went unseen, and with compose.yaml's
+    own name, datapilot, a command naming no project takes down the class database."""
+    job = ci_local.Job("test", [ci_local.Step("test", "down", command, env)])
+    assert named in job.compose_projects
+    assert ci_local.refused_projects(job.compose_projects) == job.compose_projects
+
+
+@pytest.mark.parametrize(
+    "run",
+    [
+        "docker compose --project-name datapilot-tests down -v; docker compose down -v",
+        "COMPOSE_PROJECT_NAME=datapilot-tests docker compose ps; docker compose down -v",
+        "docker compose -p datapilot-tests ps && docker  compose down -v",
+        "export COMPOSE_PROJECT_NAME=datapilot-tests\n"
+        "docker compose -p datapilot-tests up -d\n"
+        "unset COMPOSE_PROJECT_NAME; docker compose down -v",
+    ],
+    ids=[
+        "after a command naming the tests' project",
+        "after a command setting it on its own line",
+        "after a command naming it, then two spaces",
+        "after it is exported and unset",
+    ],
+)
+def test_each_compose_command_of_a_step_is_judged_on_its_own(run: str) -> None:
+    """The security review of 26 October, round 3: the projects found built up across a step's
+    commands, so once one command named the tests' project, a later bare `docker compose down -v`
+    (compose.yaml's own name, the class project) passed."""
+    job = ci_local.Job("test", [ci_local.Step("test", "down", run, {})])
+    assert ci_local.NO_PROJECT in ci_local.refused_projects(job.compose_projects)
+
+
+def test_a_step_whose_every_compose_command_names_the_tests_project_is_allowed() -> None:
+    run = (
+        "docker compose -p datapilot-tests up -d --wait postgres\n"
+        "COMPOSE_PROJECT_NAME=datapilot-tests docker compose ps\n"
+        "docker compose \\\n  -p datapilot-tests down -v"
+    )
+    job = ci_local.Job("test", [ci_local.Step("test", "up", run, {})])
+    assert job.compose_projects == ["datapilot-tests"]
+    assert ci_local.refused_projects(job.compose_projects) == []
+    from_env = ci_local.Step(
+        "test", "down", "docker compose down -v", {"COMPOSE_PROJECT_NAME": "x"}
+    )
+    assert ci_local.Job("test", [from_env]).compose_projects == ["x"]
+
+
+def test_the_workflow_env_reaches_the_project_check(tmp_path: Path) -> None:
+    workflow = tmp_path / "ci.yml"
+    text = WORKFLOW.replace("STEP", "docker compose -p datapilot-tests down --volumes")
+    text = text.replace("  TOP: from-the-workflow\n", "  COMPOSE_PROJECT_NAME: datapilot\n", 1)
+    workflow.write_text(text, encoding="utf-8")
+    assert "datapilot" in ci_local.jobs(workflow, ["test"])[0].compose_projects
+
+
+@pytest.mark.parametrize("project", ["datapilot", "datapilot-assignments"])
+def test_a_job_naming_another_compose_project_is_never_run_nor_taken_down(
+    tmp_path: Path, monkeypatch, capsys, project: str
+) -> None:
+    """The class project, datapilot, holds the class database: a workflow line naming it must
+    never make ci_local take it down with its volumes."""
+    downs: list[list[str]] = []
+    monkeypatch.setattr(ci_local.subprocess, "run", lambda args, **_k: downs.append(args))
+    step = ci_local.Step("test", "up", f"docker compose -p {project} up -d", {})
+    job = ci_local.Job("test", [step])
+    assert ci_local.run_job(tmp_path, job, tmp_path / "work", {}) == [
+        f"test: Compose project {project}"
+    ]
+    assert downs == []  # nothing cloned, nothing taken down
+    assert "never takes down" in capsys.readouterr().out
+    with (
+        pytest.raises(ci_local.ProjectRefused, match=project),
+        ci_local.empty_compose_projects([project], tmp_path),
+    ):
+        pass
+    assert downs == []

@@ -4,11 +4,11 @@ Reading time: about 8 minutes.
 
 ## The problem
 
-**Illustrative scenario.** Priya runs finance reporting at Harbor & Pine Outfitters. She asks
-DataPilot for last fiscal year's net revenue. The analyst calls `list_tables`, then
+**Illustrative scenario.** Take the finance manager's question from the
+[section page](README.md#the-problem), one tool call at a time. The analyst calls `list_tables`, then
 `describe_table` on `warehouse.orders`, and sees `total_cents`. It sums that column from January
 to December and answers in one confident sentence. The total includes tax, shipping, cancelled
-orders, and the staff test accounts. Priya pastes it into the board deck.
+orders, and the staff test accounts. The number goes into the board deck.
 
 Nothing in the run was broken. Every tool call worked, and the Structured Query Language (SQL)
 query ran. The answer was wrong
@@ -31,9 +31,6 @@ The agent loop can only be as right as its tools let it see, so you design what 
 cap what it returns, and make the answer a structure you can check.
 
 ## How it works
-
-You already know how a tool-calling loop runs. This section is about the design decisions inside
-it, and why a stronger model does not fix the wrong revenue number.
 
 The tempting question is: will a stronger model fix it? No. The fiscal year starts in February,
 net revenue is not `total_cents`, cancelled orders are `status = 5`, and internal accounts sit on
@@ -126,8 +123,8 @@ and the output contract, and nothing about the business.
 
 | Setting, reviewer on | Tokens per question | Latency per question |
 |---|---|---|
-| Analyst with the schema scout | 8,648 | 24.2 s |
-| Analyst without the schema scout | 3,853 | 12.8 s |
+| Analyst with the schema scout | 8,648 | 24.2 seconds |
+| Analyst without the schema scout | 3,853 | 12.8 seconds |
 
 Each figure is the mean of 4 benchmark questions under v1, one run each, so it is a small sample.
 The gold result was the same in both settings: the 2 easy questions passed, the 2 trap questions

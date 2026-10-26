@@ -8,9 +8,13 @@ passing on 2 of 3 runs: two runs, and a third only when they disagree (requireme
 
 from __future__ import annotations
 
-import inspect
-import re
+import os
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
+
+import psycopg
+from psycopg.conninfo import conninfo_to_dict
 
 from datapilot import db
 from datapilot.assignments.cost import Planned
@@ -30,6 +34,7 @@ from datapilot.contracts.api import RunDetail
 from datapilot.loop1_agent import extension
 from datapilot.loop1_agent.catalog import load_snapshot
 from datapilot.loop1_agent.tools import Warehouse
+from datapilot.settings import get_settings
 
 SLUG = "agent-loop"
 NEEDED = 2  # of 3 runs; two_of_three makes the third only when the first two disagree
@@ -75,12 +80,46 @@ QUESTIONS = (
 )
 TIE_QUESTION = "What is the list price, in dollars, of the Alpine Trek 45 litre backpack?"
 TIE_WORDING = "Alpine Trek 45 litre backpack"
-OTHER_ROLES = re.compile(r"Role\.(OWNER|APP)|database_url_(owner|app)|DATABASE_URL_(OWNER|APP)")
+# Requirement 6: while the lookup runs, every role but the agent's points at a closed port,
+# and so does the port the settings build the Compose addresses from.
+OTHER_ROLE_VARIABLES = (
+    "DATABASE_URL_OWNER",
+    "DATABASE_URL_APP",
+    "DATABASE_URL_AGENT_ALT",
+    "DATABASE_URL_SUPERUSER",
+)
+CLOSED = "postgresql://not-the-agent-role@127.0.0.1:1/closed?connect_timeout=2"
+CLOSED_PORT = "1"
+# The agent role's address for requirement 6, marked so that a lookup that keeps what it read
+# for each address reads again.
+MARKED = "application_name=datapilot-check-requirement-6"
 
 
-def _warehouse() -> Warehouse:
+def _warehouse(marker: str = "") -> Warehouse:
     url = db.url_for(db.Role.AGENT)
+    if marker:
+        url += ("&" if "?" in url else "?") + marker
     return Warehouse(load_snapshot(url, pack_config()["databases"]["allowed_schema"]), url)
+
+
+@contextmanager
+def only_the_agent_role() -> Iterator[None]:
+    """For the block, the owner, application, and other agent roles point at a closed port, in
+    the environment and in the settings both, so a lookup that connects as any of them fails,
+    however its code names the role. warehouse.url, the agent role, still connects."""
+    saved = {name: os.environ.get(name) for name in (*OTHER_ROLE_VARIABLES, "POSTGRES_PORT")}
+    os.environ.update({name: CLOSED for name in OTHER_ROLE_VARIABLES})
+    os.environ["POSTGRES_PORT"] = CLOSED_PORT
+    get_settings.cache_clear()
+    try:
+        yield
+    finally:
+        for name, value in saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+        get_settings.cache_clear()
 
 
 def _expect_best(kind: extension.Kind, wording: str, value: str):
@@ -117,11 +156,52 @@ def _bounded() -> str | None:
     return None
 
 
+@contextmanager
+def roles_read_as(seen: set[str]) -> Iterator[None]:
+    """For the block, the role of every connection that sends the server anything: each query
+    and fetch goes through Connection.wait, so a connection opened earlier counts as well."""
+    sync_wait, async_wait = psycopg.Connection.wait, psycopg.AsyncConnection.wait
+
+    def noted(conn, *args, **kwargs):
+        seen.add(str(conn.info.user))
+        return sync_wait(conn, *args, **kwargs)
+
+    async def noted_async(conn, *args, **kwargs):
+        seen.add(str(conn.info.user))
+        return await async_wait(conn, *args, **kwargs)
+
+    psycopg.Connection.wait, psycopg.AsyncConnection.wait = noted, noted_async
+    try:
+        yield
+    finally:
+        psycopg.Connection.wait, psycopg.AsyncConnection.wait = sync_wait, async_wait
+
+
 def _read_only_role() -> str | None:
-    extension.lookup_values(_warehouse(), "product", "backpack")  # a lookup to judge, first
-    source = inspect.getsource(extension)
-    if hit := OTHER_ROLES.search(source):
-        return f"the lookup must read through warehouse.url, the agent role; found {hit.group(0)}"
+    """The role the lookup actually reads as: run with every other role's address closed, it
+    must still find the stored values, and every connection it sends anything on, opened now or
+    earlier, must be the agent role's."""
+    warehouse = _warehouse(MARKED)
+    seen: set[str] = set()
+    with only_the_agent_role(), roles_read_as(seen):
+        try:
+            found = extension.lookup_values(warehouse, "product", "backpack")
+        except psycopg.Error as error:
+            return (
+                "the lookup must read through warehouse.url, the agent role: with every other "
+                f"role's address closed it could not connect ({type(error).__name__})"
+            )
+    agent = conninfo_to_dict(warehouse.url).get("user") if seen else None
+    if others := sorted(role for role in seen if role != agent):
+        return (
+            "the lookup must read through warehouse.url, the agent role: it read as "
+            f"{', '.join(others)}, on a connection it opened or kept"
+        )
+    if not found.candidates:
+        return (
+            "the lookup must read through warehouse.url, the agent role: with every other role's "
+            'address closed it found no stored value for "backpack"'
+        )
     return None
 
 

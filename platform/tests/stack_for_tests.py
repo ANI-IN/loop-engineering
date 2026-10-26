@@ -14,10 +14,12 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 
+from datapilot import tests_database_guard
+
 PROJECT = "datapilot-tests"
-PORT_VARIABLE = "DATAPILOT_TEST_POSTGRES_PORT"
-DEFAULT_PORT = "55432"
-LIVE_PORT = "5432"
+PORT_VARIABLE = tests_database_guard.TESTS_PORT_VARIABLE
+DEFAULT_PORT = tests_database_guard.TESTS_PORT
+LIVE_PORT = tests_database_guard.CLASS_PORT
 
 _ROLES = {
     "DATABASE_URL_OWNER": ("datapilot_owner", "datapilot"),
@@ -28,9 +30,16 @@ _ROLES = {
 
 
 def port() -> str:
+    """The tests' port, refused when it is the class stack's: the Compose default 5432, or the
+    POSTGRES_PORT the shell, .env, or another checkout's .env moves the class stack to."""
     found = os.environ.get(PORT_VARIABLE, DEFAULT_PORT)
-    if found == LIVE_PORT:
-        raise RuntimeError(f"{PORT_VARIABLE} must not be the live stack's port {LIVE_PORT}")
+    taken = tests_database_guard.class_port()
+    if found in {LIVE_PORT, taken} | tests_database_guard.class_ports():
+        raise RuntimeError(
+            f"{PORT_VARIABLE} must not be the live stack's port {found} (the class stack's "
+            f"POSTGRES_PORT is {taken} here; every class port: "
+            f"{', '.join(sorted(tests_database_guard.class_ports()))})"
+        )
     return found
 
 

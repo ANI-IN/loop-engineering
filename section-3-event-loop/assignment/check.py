@@ -26,10 +26,10 @@ from apscheduler.triggers.cron import CronTrigger
 from datapilot import db
 from datapilot.assignments.cost import Planned
 from datapilot.assignments.gold import rows
-from datapilot.assignments.live import live_run, settle, stop_on_blocked
+from datapilot.assignments.live import live_run, settle, stop_on_blocked, stop_on_planted
 from datapilot.assignments.report import Result, Stop
 from datapilot.assignments.stack import running_stack
-from datapilot.contracts import RunStatus
+from datapilot.contracts import RunEventKind, RunStatus
 from datapilot.contracts.api import RunDetail
 from datapilot.loop3_events import extension, router, scheduler
 from datapilot.loop3_events.budget import EASTERN
@@ -85,6 +85,225 @@ def gold_net(days: list[date]) -> dict[date, int]:
 def gold_category(day: date) -> str:
     sql = CATEGORY_SQL.format(days=_days_sql([day, *_baseline_days(day)]), day=day.isoformat())
     return str(rows(sql)[0][0])
+
+
+@dataclass(frozen=True)
+class CategoryNames:
+    """The warehouse's category names: the top-level ones an answer may name, and every
+    subcategory, so that a subcategory whose name holds a top-level one ("Hiking Boots", under
+    Footwear) is never read as naming that top-level category."""
+
+    top_level: tuple[str, ...]
+    subcategories: tuple[str, ...] = ()
+
+
+def category_names() -> CategoryNames:
+    found = rows("SELECT name, parent_id IS NULL AS top FROM warehouse.categories")
+    return CategoryNames(
+        tuple(str(name) for name, top in found if top),
+        tuple(str(name) for name, top in found if not top),
+    )
+
+
+def _spans(text: str, names: CategoryNames, gold: str) -> list[tuple[int, int, str]]:
+    """(start, end, name) of each top-level category the text names. Longer names match first, so
+    a subcategory hides the top-level name inside it; gold always counts as a top-level name,
+    even when the warehouse lists none."""
+    top = {name.lower(): name for name in (*names.top_level, gold)}
+    every = sorted({*top, *(name.lower() for name in names.subcategories)}, key=len, reverse=True)
+    pattern = re.compile(r"\b(" + "|".join(re.escape(name) for name in every) + r")\b", re.I)
+    found = [(m.start(), m.end(), top.get(m.group(1).lower())) for m in pattern.finditer(text)]
+    return [(start, end, name) for start, end, name in found if name is not None]
+
+
+def _mentions(text: str, names: CategoryNames, gold: str) -> list[tuple[int, str]]:
+    """(position, name) of each top-level category the text names (see _spans)."""
+    return [(start, name) for start, _end, name in _spans(text, names, gold)]
+
+
+def categories_named(text: str, names: CategoryNames, gold: str) -> list[str]:
+    """The top-level categories an answer text names, in the order it first names each."""
+    return list(dict.fromkeys(name for _at, name in _mentions(text, names, gold)))
+
+
+# --- the category the answer text says rose most (requirement 10) ------------------------------
+# Every word is matched whole: never inside a longer word, nor as one part of a hyphenated word,
+# so "top" is never found in "top-level".
+def _whole(pattern: str) -> str:
+    return rf"(?<![\w-])(?:{pattern})(?![\w-])"
+
+
+RISE_WORDS = (
+    r"rose|rise[ns]?|rising|grew|grow(?:s|n|th|ing)?|increase[sd]?|increasing"
+    r"|gain(?:s|ed|ing)?|jump(?:s|ed|ing)?"
+)
+RISE_NOUNS = r"rises?|increases?|gains?|growth|jumps?|risers?|gainers?"
+GREATEST = r"most|largest|biggest|highest|greatest|strongest|steepest|sharpest|top(?![\w-])"
+# The phrases that say one category rose most: "rose (by) (the) most", "the largest (sales) rise",
+# "the top category", "led (the rise)". Each belongs to the category it is said of.
+SAID_MOST = re.compile(
+    "|".join(
+        [
+            _whole(rf"(?:{RISE_WORDS})(?:\s+by)?(?:\s+the)?\s+(?:most|furthest|farthest)"),
+            _whole(rf"(?:{GREATEST})(?:\s+[\w-]+){{0,2}}?\s+(?:{RISE_NOUNS})"),
+            _whole(r"top(?![\w-])(?:\s+[\w-]+)?\s+(?:categor(?:y|ies)|performers?)"),
+            _whole(r"led|leads|leading"),
+        ]
+    ),
+    re.I,
+)
+RISING = re.compile(_whole(RISE_WORDS), re.I)
+FALLING = re.compile(
+    _whole(r"fell|fall\w*|drop\w*|declin\w*|decreas\w*|lower|lowest|least|trail\w*|lagg?\w*"),
+    re.I,
+)
+NEGATION = re.compile(_whole(r"not|never|neither|nor|\w+n't"), re.I)
+SENTENCE_END = re.compile(r"(?:[.!?](?!\d)|[;\n])+")
+# One capturing group, so that re.split keeps each break: a clause that ends in a colon
+# ("The top category: Water Sports") is said of the clause after it.
+CLAUSE_BREAK = re.compile(
+    r"(,(?!\d)|:|"
+    + _whole(
+        r"while|whereas|but|although|though|than|unlike|versus|yet|behind"
+        r"|ahead\s+of|compared\s+(?:with|to)|followed\s+by"
+    )
+    + ")",
+    re.I,
+)
+COORDINATED = re.compile(
+    r"\s*(?:and|or|&|plus|as\s+well\s+as|along\s+with|together\s+with)?\s*", re.I
+)
+
+
+@dataclass(frozen=True)
+class Reading:
+    """What an answer text says rose most: one category, or none. An ambiguous text, one that says
+    several categories rose most or says it of several at once, names none: the check refuses to
+    guess, and lists the categories it could mean."""
+
+    category: str | None
+    ambiguous: bool = False
+    could_mean: tuple[str, ...] = ()
+    # True when a phrase plainly says this one category rose most ("Camping rose the most"),
+    # rather than the category being the only one said to rise, or the first one named.
+    said_most: bool = False
+
+
+def _subject(clause: str, start: int, end: int, names: CategoryNames, gold: str) -> list[str]:
+    """The categories a phrase at clause[start:end] is said of, in its own clause: the category
+    named nearest before it, with every category joined to that one by "and" or "or" ("Water
+    Sports and Camping rose most" is said of both); failing one before it, the first named after
+    it ("the largest rise was in Water Sports") with those joined to it."""
+    spans = _spans(clause, names, gold)
+    before = [span for span in spans if span[1] <= start]
+    after = [span for span in spans if span[0] >= end]
+    if before:
+        group = [before[-1]]
+        for span in reversed(before[:-1]):
+            if not COORDINATED.fullmatch(clause[span[1] : group[-1][0]]):
+                break
+            group.append(span)
+        group.reverse()
+    elif after:
+        group = [after[0]]
+        for span in after[1:]:
+            if not COORDINATED.fullmatch(clause[group[-1][1] : span[0]]):
+                break
+            group.append(span)
+    else:
+        return []
+    return list(dict.fromkeys(name for _start, _end, name in group))
+
+
+def read_rise(text: str, names: CategoryNames, gold: str) -> Reading:
+    """The category the text says rose most (SPEC.md, requirement 10). Each phrase that says a
+    category rose most ("rose the most", "the largest rise", "the top category", "led") belongs to
+    the category it is grammatically said of, in its own clause: the subject named before it, else
+    the category named after it; a clause ending in a colon carries it to the next clause; and a
+    phrase whose clause names no category belongs to its sentence's only category, never counting
+    one the sentence says fell or did not rise. A negated phrase ("did not rise the most") rules
+    its category out. When no phrase says what rose most, the one category a clause says rose (and
+    nothing fell) counts; failing that, the first category the text names that it did not rule
+    out. A text that says it of several categories is ambiguous, and names none."""
+    claims: list[str] = []
+    unclear: list[str] = []
+    ruled_out: list[str] = []
+    rose: list[str] = []
+    for sentence in SENTENCE_END.split(text):
+        parts = CLAUSE_BREAK.split(sentence)
+        clauses, breaks = parts[0::2], parts[1::2]
+        plain = [c for c in clauses if not FALLING.search(c) and not NEGATION.search(c)]
+        alone = list(dict.fromkeys(n for c in plain for n in categories_named(c, names, gold)))
+        for i, clause in enumerate(clauses):
+            said = list(SAID_MOST.finditer(clause))
+            for phrase in said:
+                subject = _subject(clause, phrase.start(), phrase.end(), names, gold)
+                if not subject and i < len(breaks) and breaks[i] == ":":
+                    subject = _subject(clauses[i + 1], 0, 0, names, gold)
+                if not subject:
+                    subject = alone
+                if not subject:
+                    continue
+                if NEGATION.search(clause[: phrase.end()]):
+                    ruled_out += subject
+                elif len(subject) > 1:
+                    unclear += subject
+                else:
+                    claims += subject
+            rise = RISING.search(clause)
+            if rise and not said and clause in plain:
+                rose += _subject(clause, rise.start(), rise.end(), names, gold)
+    if claims or unclear:
+        found = list(dict.fromkeys([*claims, *unclear]))
+        if unclear or len(found) > 1:
+            return Reading(None, ambiguous=True, could_mean=tuple(found))
+        return Reading(found[0], said_most=True)
+    rose = [name for name in dict.fromkeys(rose) if name not in ruled_out]
+    if len(rose) > 1:
+        return Reading(None, ambiguous=True, could_mean=tuple(rose))
+    if rose:
+        return Reading(rose[0])
+    named = [name for name in categories_named(text, names, gold) if name not in ruled_out]
+    if ruled_out and len(named) > 1:
+        return Reading(None, ambiguous=True, could_mean=tuple(named))
+    return Reading(named[0] if named else None)
+
+
+def rose_most(text: str, names: CategoryNames, gold: str) -> str | None:
+    """The one category the text says rose most, or None when it names none or is ambiguous."""
+    return read_rise(text, names, gold).category
+
+
+def _number(value: Any) -> float | None:
+    """A figure as the post carries it: a number, or a numeric string (a decimal in JSON)."""
+    if isinstance(value, bool):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+RISE_COLUMN = "rise_cents"  # the column the drill-down question asks for (requirement 10)
+
+
+def row_category(answer: dict[str, Any], names: CategoryNames, gold: str) -> str | None:
+    """The category of the answer's own top row: the row with the greatest rise_cents, and the
+    top-level category name it holds; None when the answer returns no rise_cents column."""
+    columns = [str(c).lower() for c in answer.get("columns") or []]
+    found = []
+    for row in answer.get("rows_preview") or []:
+        cells = {str(k).lower(): v for k, v in row.items()} if isinstance(row, dict) else None
+        if cells is None and RISE_COLUMN in columns and len(row) == len(columns):
+            cells = dict(zip(columns, row, strict=True))
+        if cells and _number(cells.get(RISE_COLUMN)) is not None:
+            found.append(cells)
+    if not found:
+        return None
+    top = {name.lower(): name for name in (*names.top_level, gold)}
+    best = max(found, key=lambda cells: _number(cells[RISE_COLUMN]) or 0.0)
+    held = [top[v.lower()] for v in best.values() if isinstance(v, str) and v.lower() in top]
+    return held[0] if held else None
 
 
 # --- the check's own orders: real rows in the real warehouse, removed at the end -----------------
@@ -393,13 +612,40 @@ class ApproveHeld:
         return "approve"
 
 
-def posted_text(detail: RunDetail) -> str | None:
-    """What the run posted to the channel: its answer text and rows, or None when it never
-    posted."""
+def posted_answer(detail: RunDetail) -> dict[str, Any] | None:
+    """The answer the run posted to the channel, or None when it never posted."""
     if detail.status is not RunStatus.POSTED or not detail.posts:
         return None
-    answer = detail.posts[-1].body.get("answer") or {}
-    return f"{answer.get('answer_text', '')} {answer.get('rows_preview', '')}"
+    return dict(detail.posts[-1].body.get("answer") or {})
+
+
+def posted_text(detail: RunDetail) -> str | None:
+    """The answer text the run posted to the channel, or None when it never posted."""
+    answer = posted_answer(detail)
+    return None if answer is None else str(answer.get("answer_text") or "")
+
+
+def ended_because(detail: RunDetail) -> str:
+    """Why a run that never posted ended, from its own events: the reasons of its last status
+    change, then the graders that blocked an answer and the reviewer's concerns, each with its
+    count. An escalated run that retried until its token budget ran out names what made it retry."""
+    reasons: list[str] = []
+    blocked: dict[str, int] = {}
+    concerns = 0
+    for event in detail.events:
+        payload = event.payload
+        if event.kind is RunEventKind.STATUS_CHANGED and payload.get("to") == detail.status.value:
+            reasons = [str(r) for r in payload.get("reasons") or []]
+        elif event.kind is RunEventKind.GRADER_RESULT and payload.get("severity") == "block":
+            grader = str(payload.get("grader", "a grader"))
+            blocked[grader] = blocked.get(grader, 0) + 1
+        elif event.kind is RunEventKind.REVIEWER_VERDICT and payload.get("outcome") == "concern":
+            concerns += 1
+    parts = ["; ".join(reasons)] if reasons else []
+    parts += [f"{grader} blocked {n} time{'s' * (n > 1)}" for grader, n in sorted(blocked.items())]
+    if concerns:
+        parts.append(f"the reviewer raised {concerns} concern{'s' * (concerns > 1)}")
+    return ", ".join(parts)
 
 
 @dataclass
@@ -410,10 +656,53 @@ class DrillDown:
     held: list[str]
     posted: str | None
     fresh: bool = True  # the first ask started a new run, never an earlier check's
+    names: CategoryNames = CategoryNames(())
+    row: str | None = None  # the category of the answer's own top row (row_category)
+
+    @property
+    def named(self) -> list[str]:
+        """The top-level categories the posted answer text names, in order."""
+        return [] if self.posted is None else categories_named(self.posted, self.names, self.gold)
+
+    @property
+    def judged(self) -> str | None:
+        """The category the answer says rose most: its own top row's when it returns rise_cents,
+        else the one its text says rose most."""
+        if self.posted is None:
+            return None
+        return self.row or self.reading.category
+
+    @property
+    def reading(self) -> Reading:
+        """What the posted answer text says rose most (read_rise)."""
+        return read_rise(self.posted or "", self.names, self.gold)
+
+    @property
+    def ambiguous(self) -> bool:
+        """The answer returns no rise_cents row, and its text does not say which one category
+        rose most, so the check names none rather than guess."""
+        return self.posted is not None and self.row is None and self.reading.ambiguous
+
+    @property
+    def contradicted(self) -> str | None:
+        """The category the text plainly says rose most when the answer's own row decides and
+        holds another one ("Outdoor rose the most" over a top Footwear row); None otherwise. An
+        ambiguous text is still judged by its row."""
+        if self.posted is None or self.row is None:
+            return None
+        reading = self.reading
+        if reading.said_most and reading.category and reading.category.lower() != self.row.lower():
+            return reading.category
+        return None
 
     @property
     def right(self) -> bool:
-        return self.posted is not None and self.gold.lower() in self.posted.lower()
+        """The answer says gold rose most, its text names gold, and its text never says another
+        category rose most."""
+        gold = self.gold.lower()
+        judged = self.judged
+        named = gold in map(str.lower, self.named)
+        return judged is not None and judged.lower() == gold and named and not self.contradicted
 
     @property
     def passed(self) -> bool:
@@ -426,8 +715,26 @@ class DrillDown:
             hold = "no approval was needed"
         if self.posted is None:
             said = f"never posted (status {self.detail.status.value})"
+            if because := ended_because(self.detail):
+                said = f"never posted (status {self.detail.status.value}: {because})"
         else:
-            said = "the posted answer " + ("named it" if self.right else "did not name it")
+            judged, where = self.judged, "its row" if self.row else "its text"
+            if self.right:
+                said = f"the posted answer says it rose most ({where})"
+            elif self.ambiguous:
+                said = (
+                    "the posted answer's text does not say which one category rose most (it "
+                    f"could mean {' or '.join(self.reading.could_mean)}), so the check names none"
+                )
+            elif judged is not None and judged.lower() != self.gold.lower():
+                said = f"the posted answer says {judged} rose most ({where}), not the gold category"
+            elif self.contradicted:
+                said = (
+                    f"the posted answer's row says {self.row} rose most, but its text says "
+                    f"{self.contradicted} rose most"
+                )
+            else:
+                said = "the posted answer did not name it"
         asks = "the second ask was absorbed" if self.once else "the second ask started another run"
         if not self.fresh:
             asks = "the first ask was absorbed into an earlier run, so this is not a new run"
@@ -443,28 +750,66 @@ class DrillDown:
             )
         if not self.once:
             return "give the drill-down a deterministic event id per alert"
+        if self.posted is None and self.detail.status is RunStatus.ESCALATED:
+            return (
+                "the drill-down run must post an answer: it escalated, so make the question one "
+                "the class system can answer within budgets.tokens_per_run: name the measure the "
+                "knowledge does not define (sales on the order lines, each category under its "
+                "top-level parent) and ask for the rise, in cents in a column named rise_cents, "
+                "never a change in percent or in revenue, which the final-answer grader blocks "
+                "(SPEC.md, requirement 10)"
+            )
         if self.posted is None:
             return (
                 "the drill-down run must post an answer: open its run in the console to see "
                 "why it ended without one"
             )
+        if self.contradicted and (self.row or "").lower() == self.gold.lower():
+            return (
+                "the posted answer's text must say the category of its own top row rose most, "
+                "the row with the greatest rise_cents, and never another one: ask for the top "
+                "category's row alone in the drill-down question"
+            )
+        if self.ambiguous:
+            return (
+                "the posted answer must name one top-level category as the one whose sales rose "
+                "most, plainly, and return its row with its rise in cents in a column named "
+                "rise_cents: ask for the top category's row alone in the drill-down question"
+            )
         return (
-            "the posted answer must name the top-level category whose sales changed most: "
-            "ask exactly that in the drill-down question"
+            "the posted answer must say which top-level category's sales rose most, in its text "
+            "and in its row's rise_cents: ask exactly that in the drill-down question"
         )
 
 
-def drill_down(api, drill: dict[str, Any], gold: str) -> DrillDown:
+def drill_down(
+    api, drill: dict[str, Any], gold: str, names: CategoryNames | None = None
+) -> DrillDown:
     """Ask the drill-down question twice with its event id, approve any hold, wait for the run to
     end, and judge what it posted. The first ask must start a new run (the check cleared the event
-    id first), so an earlier check's run is never judged again."""
+    id first), so an earlier check's run is never judged again. A run made with a planted bug
+    switched on in the stack (the missing idempotency starts a second run for the second ask)
+    stops the check before the second ask, instead of failing the solution."""
     payload = {"question": drill["question"], "metric_family": "revenue"}
     first = api.submit("question.asked", payload, drill["event_id"])
+    stop_on_planted(api.run(str(first.run_id)))
     second = api.submit("question.asked", payload, drill["event_id"])
     approver = ApproveHeld()
     detail = settle(api, str(first.run_id), approver)
+    stop_on_planted(detail)
     once = second.duplicate and second.run_id == first.run_id
-    return DrillDown(detail, gold, once, approver.held, posted_text(detail), not first.duplicate)
+    names = category_names() if names is None else names
+    answer = posted_answer(detail)
+    return DrillDown(
+        detail,
+        gold,
+        once,
+        approver.held,
+        posted_text(detail),
+        not first.duplicate,
+        names,
+        None if answer is None else row_category(answer, names, gold),
+    )
 
 
 def _cleanup(ctx, level: str) -> None:
@@ -533,7 +878,7 @@ def run(ctx) -> None:
     ctx.live_gate(
         [Planned("analyst run (the drill-down question, once)", 1, ctx.agent_model)],
         live=[(10, text)],
-        typical="about 0.3 cents",
+        typical="about 0.2 cents",
     )
     drill = scenario.alert["body"]["drill_down"]
     clear_drill_down(str(drill["event_id"]))

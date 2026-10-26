@@ -1,6 +1,9 @@
-"""Prose lint for course documents: banned words and phrases, and emoji.
+"""Prose lint for course documents: banned words, filler phrases, and emoji.
 
 Usage: python platform/scripts/lint_prose.py [PATH ...]   (default: the course documents)
+The course documents are the Markdown pages of the public folders and the slide sources,
+slides/source/*.py, whose strings are the slide text. Each problem names the file, the line, and
+the phrase found.
 A line ending with `<!-- lint-prose: allow -->` is skipped (for quoting the banned list itself).
 Exact titles of cited sources are allowed even when they contain a banned word: list them under
 [prose].allowed_titles in platform/config/course.toml.
@@ -26,6 +29,10 @@ DEFAULT_TARGETS = [
     "use-in-your-repo",
     "guide",
 ] + sorted(p.name for p in REPO.glob("section-*") if p.is_dir())
+# The slide text lives in Python strings in these files; the lint reads them line by line too.
+SLIDE_SOURCES = sorted(
+    p.relative_to(REPO).as_posix() for p in (REPO / "slides" / "source").glob("*.py")
+)
 
 BANNED_WORDS = [
     r"seamless(?:ly)?",
@@ -35,7 +42,7 @@ BANNED_WORDS = [
     r"unlock\w*",
     r"unleash\w*",
     r"supercharg\w*",
-    r"game-changer",
+    r"game[- ]changers?",
     r"cutting-edge",
     r"state-of-the-art",
     r"revolutioni[sz]\w*",
@@ -63,14 +70,33 @@ TIME_WORDS = [
     r"this evening",
     r"this morning",
 ]
+# Filler: phrases that fill a sentence without saying anything about the course or its code.
 BANNED_PHRASES = [
     r"paradigm shift",
     r"in today['’]s",
     r"it['’]s important to note",
+    r"it is important to note",
     r"dive deep",
-    r"deep dive",
+    r"deep[- ]dives?",
+    r"div(?:e|es|ed|ing) into",
     r"harness the power",
     r"a testament to",
+    r"in conclusion",
+    r"needless to say",
+    r"at the end of the day",
+]
+# Technical uses of a banned word, each with its reason. Only the matched text is removed from the
+# line before the banned list is applied, so the rest of the line is still checked.
+ALLOWED_USES: list[tuple[str, str]] = [
+    (
+        r"\bunlock(?:s|ed|ing)?\b(?=\W{0,3}(?:the |a |its |each )?(?:advisory )?"
+        r"(?:lock|lease|row|mutex|file)s?\b)",
+        "releasing a lock, a lease, or a row is what unlock means in databases and code",
+    ),
+    (
+        r"\b(?:\w+_unlock\w*|unlock_\w+)\b",
+        "an identifier in code, such as the Postgres function pg_advisory_unlock",
+    ),
 ]
 
 
@@ -84,6 +110,7 @@ def _allowed_titles() -> list[str]:
 ALLOWED_TITLES = _allowed_titles()
 ALLOW_MARKER = "<!-- lint-prose: allow -->"
 
+_ALLOWED = [re.compile(pattern, re.IGNORECASE) for pattern, _reason in ALLOWED_USES]
 _BANNED = re.compile(
     r"\b(?:" + "|".join(BANNED_WORDS + TIME_WORDS + BANNED_PHRASES) + r")\b", re.IGNORECASE
 )
@@ -125,6 +152,8 @@ def lint_text(text: str) -> list[tuple[int, str]]:
         checked = line
         for title in ALLOWED_TITLES:
             checked = checked.replace(title, "")
+        for allowed in _ALLOWED:
+            checked = allowed.sub("", checked)
         for match in _BANNED.finditer(checked):
             problems.append((number, f"banned word or phrase: '{match.group(0)}'"))
         if _has_emoji(checked):
@@ -133,7 +162,7 @@ def lint_text(text: str) -> list[tuple[int, str]]:
 
 
 def main(argv: list[str]) -> int:
-    files = _documents(argv or DEFAULT_TARGETS)
+    files = _documents(argv or DEFAULT_TARGETS + SLIDE_SOURCES)
     count = 0
     for path in files:
         for number, message in lint_text(path.read_text(encoding="utf-8")):

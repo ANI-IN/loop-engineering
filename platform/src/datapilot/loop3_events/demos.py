@@ -60,6 +60,26 @@ def _event(
     return str(_ok(client.post("/events", json=body.model_dump(mode="json")))["run_id"])
 
 
+def own_events(demo: Demo) -> list[tuple[str, dict[str, Any]]]:
+    """Each event (type, and payload without demo_name) the demo's own trigger posts to POST
+    /events, as trigger() below sends it. The api takes a demo's planted flags on POST /events
+    for these alone: a client naming the demo on another question or event gets none."""
+    asked = ("question.asked", {"question": question_for(demo.id)})
+    digest = ("digest.requested", {"day": str(business_yesterday())})
+    return {
+        "POST /events (question.asked)": [asked],
+        "POST /events (export.requested)": [("export.requested", {"question": EXPORT_QUESTION})],
+        "POST /events (digest.requested)": [digest],
+        "POST /events (same event_id three times)": [asked, digest],
+        "POST /control/kill-switch": [asked],
+    }.get(demo.trigger.api or "", [])
+
+
+def is_own_event(demo: Demo, type: str, payload: dict[str, Any]) -> bool:
+    rest = {key: value for key, value in payload.items() if key != "demo_name"}
+    return payload.get("demo_name") == demo.id and (type, rest) in own_events(demo)
+
+
 def _wait_until_running(client: Client, run_id: str, seconds: float) -> None:
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
@@ -93,8 +113,11 @@ def trigger(client: Client, demo: Demo, *, wait_running_seconds: float = 60.0) -
             for _ in range(3)
         ]
         done.run_ids.append(runs[0])
-        digest_id = digest_event_id(business_day(), uuid.uuid4().hex[:8])
+        # The id is made for each firing, as the scheduler makes it: the same id twice, so the
+        # second is absorbed, unless the random digest id is planted for this demo's trigger.
+        occasion = uuid.uuid4().hex[:8]
         for _ in range(2):
+            digest_id = digest_event_id(business_day(), occasion)
             _event(client, demo, "digest.requested", {"day": str(business_yesterday())}, digest_id)
     elif api == "POST /control/kill-switch":
         run_id = _event(client, demo, "question.asked", {"question": question})

@@ -59,7 +59,29 @@ SHELLS = {
     "bash": ["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c"],
 }
 TEST_LOCK = Path("/tmp/datapilot-tests-database.lock")  # the Makefile's TEST_LOCK
-COMPOSE_PROJECT = re.compile(r"docker compose\b[^\n]*?\s-p\s+([\w.-]+)")
+# Every way a step can name the Compose project its commands act on: the option in any spelling
+# (-p NAME, -pNAME, -p=NAME, --project-name NAME or =NAME, quoted or a variable), of docker compose
+# or docker-compose, and COMPOSE_PROJECT_NAME set on the line or in a workflow, job, or step env:.
+# A compose command is docker, then anything on the same command (extra spaces, global options
+# such as --context), then compose; docker-compose matches too.
+COMPOSE_COMMAND = re.compile(r"\bdocker\b[^\n;&|]*?\bcompose\b")
+# What separates one shell command from the next in a step's run text.
+COMMAND_BREAK = re.compile(r"[\n;&|]")
+PROJECT_OPTION = re.compile(r"\s(?:-p|--project-name)(?:=|\s*)(['\"]?)([^\s'\"]+)\1")
+INLINE_PROJECT = re.compile(r"\bCOMPOSE_PROJECT_NAME=(['\"]?)([^\s'\"]*)\1")
+# A compose command naming no project acts on compose.yaml's own name: the class project.
+NO_PROJECT = "none named (compose.yaml's own name, datapilot)"
+# The one Compose project a job may take down with its volumes: the tests' own (the Makefile's
+# TEST_STACK). The class project, datapilot, holds the class database and is never touched.
+TESTS_PROJECT = "datapilot-tests"
+
+
+class ProjectRefused(RuntimeError):
+    """A workflow names a Compose project ci_local would take down that is not the tests' own."""
+
+
+def refused_projects(projects: list[str]) -> list[str]:
+    return [project for project in projects if project != TESTS_PROJECT]
 
 
 @dataclass
@@ -91,7 +113,31 @@ class Job:
 
     @property
     def compose_projects(self) -> list[str]:
-        return sorted({p for s in self.steps if s.run for p in COMPOSE_PROJECT.findall(s.run)})
+        return sorted({project for step in self.steps for project in step_projects(step)})
+
+
+def step_projects(step: Step) -> list[str]:
+    """The Compose projects a step names; a variable, an empty name, or a compose command that
+    names none is returned as it stands, so refused_projects refuses it.
+
+    Each compose command is judged on its own: its project is its own option, else a
+    COMPOSE_PROJECT_NAME= set on that same command, else the step's env:, else none named, which
+    is compose.yaml's own name. A project another command named never covers it."""
+    run = (step.run or "").replace("\\\n", " ")  # a continued line is one command
+    found = [name for _quote, name in INLINE_PROJECT.findall(run)]
+    from_env = step.env.get("COMPOSE_PROJECT_NAME")
+    if from_env is not None:
+        found.append(from_env)
+    for command in COMMAND_BREAK.split(run):
+        compose = COMPOSE_COMMAND.search(command)
+        if compose is None:
+            continue
+        named = [name for _quote, name in PROJECT_OPTION.findall(command[compose.end() :])]
+        inline = INLINE_PROJECT.findall(command[: compose.start()])
+        if not named and not inline and from_env is None:
+            found.append(NO_PROJECT)
+        found += named
+    return [name or NO_PROJECT for name in found]
 
 
 def _text(value: object) -> str:
@@ -185,6 +231,11 @@ def empty_compose_projects(projects: list[str], work: Path):
     if not projects:
         yield
         return
+    if refused := refused_projects(projects):
+        raise ProjectRefused(
+            f"not taken down: Compose project {', '.join(refused)} is not the tests' own "
+            f"({TESTS_PROJECT}); ci_local empties only that one"
+        )
     with TEST_LOCK.open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         down = [
@@ -206,6 +257,12 @@ def run_job(repo: Path, job: Job, root: Path, parent: dict[str, str]) -> list[st
     if job.unsupported:
         print(f"  FAIL  {job.name}: not run as GitHub runs it: {', '.join(job.unsupported)}")
         return [f"{job.name}: {', '.join(job.unsupported)}"]
+    if refused := refused_projects(job.compose_projects):
+        print(
+            f"  FAIL  {job.name}: names Compose project {', '.join(refused)}, which ci_local "
+            f"never takes down (only {TESTS_PROJECT}, the tests' own)"
+        )
+        return [f"{job.name}: Compose project {', '.join(refused)}"]
     work, home = root / job.name / "checkout", root / job.name / "home"
     home.mkdir(parents=True)
     clone(repo, work, job.fetch_depth)

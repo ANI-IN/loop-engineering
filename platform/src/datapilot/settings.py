@@ -6,12 +6,19 @@ from datetime import date
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO = Path(__file__).resolve().parents[3]
 PLATFORM = REPO / "platform"
 DEFAULT_PACK = "datapilot_us"  # the Harbor & Pine pack the class uses
+# The Compose roles (platform/ops/docker/postgres-init): field -> (role and password, database).
+COMPOSE_ROLES = {
+    "database_url_owner": ("datapilot_owner", "datapilot"),
+    "database_url_app": ("datapilot_app", "datapilot"),
+    "database_url_agent": ("datapilot_agent_ro", "datapilot"),
+    "database_url_agent_alt": ("datapilot_agent_ro", "warehouse_alt"),
+}
 
 
 class Settings(BaseSettings):
@@ -28,21 +35,24 @@ class Settings(BaseSettings):
     langsmith_project: str = "datapilot-live"
     langsmith_experiments_project: str = "datapilot-experiments"
 
-    database_url_owner: str = (
-        "postgresql://datapilot_owner:datapilot_owner@localhost:5432/datapilot"
-    )
-    database_url_app: str = "postgresql://datapilot_app:datapilot_app@localhost:5432/datapilot"
-    database_url_agent: str = (
-        "postgresql://datapilot_agent_ro:datapilot_agent_ro@localhost:5432/datapilot"
-    )
-    database_url_agent_alt: str = (
-        "postgresql://datapilot_agent_ro:datapilot_agent_ro@localhost:5432/warehouse_alt"
-    )
+    # The host ports Compose publishes (compose.yaml reads the same three names from .env). A host
+    # address not set on its own below follows them, so moving a port in .env moves every command.
+    postgres_port: int = Field(default=5432, gt=0, lt=65536)
+    api_port: int = Field(default=8000, gt=0, lt=65536)
+    console_port: int = Field(default=8501, gt=0, lt=65536)
+
+    database_url_owner: str = ""
+    database_url_app: str = ""
+    database_url_agent: str = ""
+    database_url_agent_alt: str = ""
+    # The superuser make seed uses for the agent role's limits; unset, the Compose superuser on
+    # the owner address's server (the seeder's own fallback).
+    database_url_superuser: str = ""
 
     # The domain pack every process reads: a folder name under platform/packs/, never a path.
     datapilot_pack: str = Field(default=DEFAULT_PACK, pattern=r"^[A-Za-z0-9_][A-Za-z0-9_-]*$")
 
-    datapilot_api_url: str = "http://localhost:8000"
+    datapilot_api_url: str = ""
     datapilot_allow_demo_controls: bool = False
     demo_pacing: bool = False
     demo_pacing_seconds: float = Field(default=2.0, ge=0)
@@ -52,6 +62,17 @@ class Settings(BaseSettings):
     datapilot_business_date: date = date(2026, 1, 31)
     # Empty: the console shows times in each viewer's own time zone, formatted in the browser.
     datapilot_display_timezone: str = ""
+
+    @model_validator(mode="after")
+    def _host_addresses_follow_the_ports(self) -> Settings:
+        """Each database address and the api address left empty is the Compose one on its port."""
+        for field_name, (role, database) in COMPOSE_ROLES.items():
+            if not getattr(self, field_name):
+                url = f"postgresql://{role}:{role}@localhost:{self.postgres_port}/{database}"
+                setattr(self, field_name, url)
+        if not self.datapilot_api_url:
+            self.datapilot_api_url = f"http://localhost:{self.api_port}"
+        return self
 
     @property
     def agent_model(self) -> str:

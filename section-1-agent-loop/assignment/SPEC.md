@@ -32,13 +32,16 @@ Deterministic, checked against the real warehouse with no model call; each must 
    candidates and marks the lookup ambiguous.
 5. It returns between one and `MAX_CANDIDATES` candidates (at most 10), each an exact stored value,
    never a whole column.
-6. It reads the warehouse only through `warehouse.url`, the read-only agent role: the module names
-   neither the owner role nor the application role. Until `lookup_values` returns a lookup, there
-   is nothing to judge, and this requirement fails too.
+6. It reads the warehouse only through `warehouse.url`, the read-only agent role: the check runs a
+   lookup with the owner, application, other agent, and superuser addresses, and the
+   `POSTGRES_PORT` the settings build addresses from, pointed at a closed port, however the code
+   names them. The lookup must still return stored values, and every connection it reads on,
+   opened then or kept from earlier, must be the agent role's. Until
+   `lookup_values` returns a lookup, there is nothing to judge, and this requirement fails too.
 7. `lookup_tools` returns a tool named `find_exact_values`, with the arguments `kind` and
    `wording`, that appends each lookup to the run's log, and `WORKING_METHOD` names the tool.
 
-Model-dependent, run live through the api and the workers on the real model; each passes on 2 of 3
+Model-dependent, run live through the api service and the workers on the real model; each passes on 2 of 3
 runs (two runs, and a third only when the first two disagree):
 
 8. "What is the list price, in dollars, of the Cascde Lyne trail runner?" answers with the gold
@@ -57,8 +60,9 @@ assignment is posted on its own merit, so when the stack holds a run for human a
 rejects the hold, as it rejects every hold, and still judges the answer the run returned. The
 checks of Assignments 2 and 3, which are about posting, judge what is posted instead.
 
-The capability exists in no class code path: the course build's boundary test keeps every
-extension point inert on the class branch, so the unchanged starter fails this check.
+The capability exists in no class code path: the boundary test
+(`platform/tests/unit/test_assignment_boundaries.py`) keeps every
+extension point inert in the class system, so the unchanged starter fails this check.
 
 ## Live check
 
@@ -85,7 +89,8 @@ Nothing is submitted, and there is no hidden grader. Bring these to the Thursday
 
 ## Limits
 
-- Every model call records its spend in the build-wide ledger under the activity "assignment";
-  `make spend` shows the total.
+- Every model call records its spend in your own spend ledger,
+  `~/.datapilot/spend-ledger.sqlite`, under an activity of its own for this check run, such as
+  `assignment-agent-loop-1a2b3c4d` (`platform/src/datapilot/assignments/cost.py`); `make spend` lists it.
 - Each run stays within `budgets.tokens_per_run` in `platform/packs/datapilot_us/pack.yaml`.
 - The row cap `limits.row_cap` and the retry cap `limits.max_retries` in the same file still apply.

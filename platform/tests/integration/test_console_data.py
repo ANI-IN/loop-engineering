@@ -22,6 +22,7 @@ sys.path.insert(0, str(PLATFORM / "console"))
 
 from datapilot_console import events_view, improve_view, ops_reads, run_view, views  # noqa: E402
 from datapilot_console.frame import Live  # noqa: E402
+from datapilot_console.ops_reads import EASTERN_ZONE  # noqa: E402
 
 pytestmark = pytest.mark.integration
 
@@ -80,6 +81,31 @@ def test_the_status_line_reads_control_clearance_tokens_and_planted_items(conn: 
     assert state["family_levels"]["revenue"] == "unattended"
     assert state["tokens_used"] == 412_000
     assert "BUG_NAIVE_GUARD" in state["planted_active"]
+
+
+def test_the_token_gauge_shows_the_eastern_day_and_never_the_previous_one(conn: Any) -> None:
+    """Session 6 review, class day: before the day's first worker run there is no row for it,
+    and the gauge read the newest row, the rehearsal day's, as "Cap reached"."""
+    from datapilot.loop3_events.budget import EASTERN, eastern_day
+
+    assert EASTERN.key == EASTERN_ZONE  # the console's day is the worker's day
+    session = seed.open_session(conn)
+    today = eastern_day()
+    conn.execute("DELETE FROM ops.budgets WHERE day >= %s", (today - timedelta(days=1),))
+    conn.execute(
+        "INSERT INTO ops.budgets (day, token_limit, tokens_used) VALUES (%s, 2000000, 2001743)",
+        (today - timedelta(days=1),),
+    )
+    state = ops_reads.status(conn, session)
+    assert (state["tokens_used"], state["token_limit"]) == (0, None)
+    before = ops_reads.watermark(conn, session)
+    conn.execute(
+        "INSERT INTO ops.budgets (day, token_limit, tokens_used) VALUES (%s, 2000000, 5000)",
+        (today,),
+    )
+    state = ops_reads.status(conn, session)
+    assert (state["tokens_used"], state["token_limit"]) == (5000, 2_000_000)
+    assert ops_reads.watermark(conn, session) != before
 
 
 def test_the_watermark_changes_only_when_something_shown_changes(conn: Any) -> None:
@@ -162,3 +188,26 @@ def test_the_board_shows_the_gold_check_the_runner_wrote(conn: Any) -> None:
     assert checked["gold"] == "fail"
     assert checked["gold_text"] == "Gold check failed: 72,394,572.08, gold 64,015,091.21"
     assert strips[str(runs["done-1"])]["gold"] == ""
+
+
+def test_a_refused_trace_shows_the_words_and_the_run_label_on_the_board_and_the_run(
+    conn: Any,
+) -> None:
+    # Finding F022: the worker records LangSmith's refusal of a trace (its monthly limit) in
+    # ops.runs.trace_refused_at; the strip and the run page's stamp then show the words in place
+    # of a trace link that leads nowhere, and the run's label stays visible.
+    session = seed.open_session(conn)
+    refused = seed.add_run(
+        conn, session, "posted", question="A refused trace", trace_refused_at=seed.now()
+    )
+    traced = seed.add_run(conn, session, "posted", question="A received trace")
+    strips = {s["run_id"]: s for s in events_view.board(_live(conn), open_ledger=None)["strips"]}
+    shown = strips[str(refused)]["stamp"]
+    assert shown["trace_url"] is None
+    assert shown["trace_note"] == "Trace not received (LangSmith monthly limit)"
+    assert shown["run_label"] == f"Run {str(refused)[:8]}"
+    assert str(strips[str(traced)]["stamp"]["trace_url"]).startswith("https://")
+    assert "trace_note" not in strips[str(traced)]["stamp"]
+    detail = run_view.build(_live(conn), str(refused), "events-")["sql"]["stamp"]
+    assert detail["trace_url"] is None and detail["trace_note"] == views.TRACE_REFUSED
+    assert detail["run_id"] == str(refused)

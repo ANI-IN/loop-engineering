@@ -138,7 +138,9 @@ The gate has four conditions and records all of them: more holdout passes than t
 version, zero confirmed regressions on either split, a person's approval, and every rule the
 candidate adds passing the overfit guard (`overfit_flags`, from `new_rule_flags` in
 `overfit_guard.py`). Both experiments must come from the same live session, so the comparison is
-always against this session's baseline. The over-broad rule is blocked by `clean`. The naive
+always against this session's baseline. The runner records that baseline when the gate runs
+(`store.record_gate_baseline` in `runner.py`), and a promotion after a later approval decides on
+the same experiment. The over-broad rule is blocked by `clean`. The naive
 analyzer's version is blocked by `overfit_flags` whatever its holdout count, because the guard
 rejects every rule that quotes a question.
 

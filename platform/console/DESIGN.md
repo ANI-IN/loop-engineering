@@ -143,7 +143,7 @@ lane at 1280x720 is 220 px wide including its own borders and padding (26 px), s
 
 One low, square strip per run: a state edge on the left, the status word in bold, the question
 (two lines at most), the current step or reason (one line), and the live stamp with its trace link
-on one line. The same object appears on the run board, as the rows of the holdout ledger, and as
+on one line (a refused trace shows words in place of the link, section 5, rule 3). The same object appears on the run board, as the rows of the holdout ledger, and as
 the frame of the status line, so learners track one shape across all four loops.
 
 ```text
@@ -178,7 +178,13 @@ These follow `datapilot.contracts.live` and apply to every page.
    America/New_York" when the display zone is set). No other label repeats it.
 3. **Live stamp on every demo result**, on one line: "Started 11:59:09. Open trace". It is a field
    inside the flight strip, the ledger, and the annotated SQL header ("Open trace in LangSmith"),
-   never a badge.
+   never a badge. When LangSmith refused a run's trace because the free plan's monthly trace limit
+   is used up (the worker records it in `ops.runs.trace_refused_at`), the link would lead nowhere,
+   so the stamp shows no link: "Started 11:59:09. Trace not received (LangSmith monthly limit).
+   Run 1a2b3c4d", with the refusal words in graphite at the stamp's size (the muted style of the
+   ledger's "Not traced") and the run's label, the proof of the run, in ink. This stamp is the
+   one that may wrap inside a strip (three lines at 14 px in a 220 px lane); the run's label never
+   breaks. The server sends the words (`trace_note`, `run_label`) in the stamp's data.
 4. **Session indicator.** The status line shows "Session started 13:58" from the open session's
    `started_at_utc`. With no open session it says, in fault-red bold, "No live session. Run make
    preflight to start one." Sessions start only through `make preflight`; the console never starts

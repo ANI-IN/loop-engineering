@@ -10,6 +10,10 @@ screenshots, so it runs only when asked, under the tests' database lock:
     make test-console
 
 Screenshots go to platform/console/screenshots/; measurements to screenshots/measurements.json.
+Each is the whole viewport at device scale factor 2 (1280 by 720 CSS pixels give 2560 by 1440), in
+Coordinated Universal Time, nudged by the capture kit's framing so no edge cuts a line of text
+(docs/STYLE.md). The fit checks' own screenshots (1280 by 600 among them) are measurements, not
+published images: they go to .runs/console-fit/, outside the published image folders.
 """
 
 from __future__ import annotations
@@ -32,7 +36,10 @@ import httpx
 import pytest
 
 from datapilot import db
-from datapilot.settings import PLATFORM
+from datapilot.settings import PLATFORM, REPO
+
+sys.path.insert(0, str(PLATFORM / "scripts" / "kit" / "capture"))
+import framing  # noqa: E402  (the capture kit: whole-viewport frames with clean edges)
 
 pytestmark = [
     pytest.mark.integration,
@@ -46,6 +53,7 @@ pytestmark = [
 
 CONSOLE = PLATFORM / "console"
 SHOTS = CONSOLE / "screenshots"
+FIT_SHOTS = REPO / ".runs" / "console-fit"
 # Streamlit's own frontend probes these under each page path and gets 404; not the console's.
 STREAMLIT_PROBES = ("/_stcore/health", "/_stcore/host-config")
 MEASURES: dict[str, Any] = {}
@@ -173,9 +181,11 @@ def browser() -> Iterator[Any]:
         chromium.close()
 
 
-def _page(browser: Any, width: int = 1280, height: int = 720, scale: float = 1.0) -> Any:
+def _page(browser: Any, width: int = 1280, height: int = 720, scale: float = 2.0) -> Any:
     context = browser.new_context(
-        viewport={"width": width, "height": height}, device_scale_factor=scale
+        viewport={"width": width, "height": height},
+        device_scale_factor=scale,
+        timezone_id=framing.TIMEZONE,
     )
     OPEN_CONTEXTS.append(context)
     page = context.new_page()
@@ -208,8 +218,16 @@ def _open(page: Any, console: str, path: str, ready: str) -> None:
 
 
 def _shot(page: Any, name: str) -> None:
+    """A published screenshot: the page from its top, nudged so no edge cuts a line of text."""
     SHOTS.mkdir(exist_ok=True)
-    page.screenshot(path=SHOTS / f"{name}.png")
+    data, _edges, _nudge = framing.settle(page, 0, nudges=framing.PAGE_TOP_NUDGES)
+    (SHOTS / f"{name}.png").write_bytes(data)
+
+
+def _fit_shot(page: Any, name: str) -> None:
+    """A fit check's screenshot, as the page is (never scrolled): a measurement, not published."""
+    FIT_SHOTS.mkdir(parents=True, exist_ok=True)
+    page.screenshot(path=FIT_SHOTS / f"{name}.png")
 
 
 def _text(page: Any) -> str:
@@ -305,11 +323,11 @@ def test_events_fit(console: str, conn: Any, browser: Any, height: int) -> None:
     page = _page(browser, height=height)
     _open(page, console, "events", ".strip")
     off = _fit(page)
-    _shot(page, f"events-fit-1280x{height}")
+    _fit_shot(page, f"events-fit-1280x{height}")
     page.locator("button.kill").click()
     time.sleep(0.5)
     armed = _fit(page)
-    _shot(page, f"events-fit-1280x{height}-kill-armed")
+    _fit_shot(page, f"events-fit-1280x{height}-kill-armed")
     page.keyboard.press("Escape")
     MEASURES[f"1280x{height}"] = {"kill switch disarmed": off, "kill switch armed": armed}
     assert off["fits"] and armed["fits"], MEASURES
@@ -317,7 +335,9 @@ def test_events_fit(console: str, conn: Any, browser: Any, height: int) -> None:
 
 
 def test_events_fit_at_67_percent_zoom(console: str, browser: Any) -> None:
-    page = _page(browser, width=1910, height=1075, scale=0.67)
+    # A 1280 by 720 screen at 67 percent zoom shows 1910 by 1075 CSS pixels; at twice that
+    # screen's pixels the image is 2560 by 1440, as every published screenshot.
+    page = _page(browser, width=1910, height=1075, scale=2 * 1280 / 1910)
     _open(page, console, "events", ".strip")
     found = _fit(page)
     _shot(page, "events-67-percent")
@@ -329,9 +349,9 @@ def test_kill_switch_engaged_and_api_down(console: str, conn: Any, browser: Any)
     seed.set_control(conn, kill_switch="engaged", level="report_only")
     page = _page(browser)
     _open(page, console, "events", ".strip")
+    MEASURES["1280x720, kill switch engaged"] = _fit(page)  # before the frame is nudged
     _shot(page, "events-kill-engaged")
     assert "Kill switch engaged." in _text(page)
-    MEASURES["1280x720, kill switch engaged"] = _fit(page)
     seed.set_control(conn, level="assisted")
     StubApi.down = True
     try:
@@ -342,7 +362,38 @@ def test_kill_switch_engaged_and_api_down(console: str, conn: Any, browser: Any)
         StubApi.down = False
 
 
-def test_buttons_call_the_api(console: str, browser: Any) -> None:
+def test_the_capture_runner_frame_rules_on_the_real_console(
+    console: str, conn: Any, browser: Any
+) -> None:
+    """The live capture runner's refusals, in a real browser (live, 24 October: every Section 1
+    image showed Streamlit's "Page not found" dialog, opened at /agent; Channel frames missed the
+    post)."""
+    import live_manifest as manifest
+
+    session = seed.open_session(conn, started_at=seed.now() - seed.timedelta(minutes=5))
+    seed.events_scene(conn, session)
+    page = _page(browser)
+    _open(page, console, "agent", ".sl")
+    assert any(found.startswith("a dialog") for found in framing.blockers(page))
+    _open(page, console, manifest.page_path("agent"), ".sl")
+    assert framing.blockers(page) == []
+    _open(page, console, manifest.page_path("events"), ".strip")
+    framing.framed_screenshot(page)  # the page's top: the Channel is below the frame
+    assert framing.out_of_frame(page, [manifest.STATUS_LINE]) == []
+    assert framing.out_of_frame(page, [manifest.CHANNEL]) == [manifest.CHANNEL]
+    _data, edges = framing.framed_screenshot(page, top=manifest.CHANNEL)
+    assert edges.clean
+    assert framing.out_of_frame(page, [manifest.CHANNEL]) == []
+    assert framing.out_of_frame(page, ["#no-such-element"]) == ["#no-such-element"]
+
+
+def test_buttons_call_the_api(console: str, conn: Any, browser: Any) -> None:
+    # Its own scene. The scene clears revenue for the unattended level, so the button sends the
+    # finale, which since review round 2 waits for the system's unattended level, as
+    # `make demo NAME=improve-cleared-unattended` does: set it, so the button is enabled.
+    session = seed.open_session(conn, started_at=seed.now() - seed.timedelta(minutes=5))
+    seed.events_scene(conn, session)
+    seed.set_control(conn, level="unattended")
     StubApi.calls.clear()
     page = _page(browser)
     _open(page, console, "events", ".strip")

@@ -15,8 +15,14 @@ the PostgreSQL error codes the database returned for a refused Structured Query 
 ## Results
 
 From the calibration of 22 and 23 October 2026 and the live session of 23 October, afternoon
-(session 4), and the capture session of 23 October, evening (the rows marked "Evening"), all in the [calibration report](../calibration-report.md). The rows marked "Captures, 23
-October" come from the console captures in the section's demo/expected/ folder.
+(session 4), the capture session of 23 October, evening (the rows marked "Evening"), the live
+session of 24 October 2026 (session 5, the rows marked "24 October"), and the live session of 25
+October 2026 (session 6, the rows marked "25 October": the class story pass in rehearsal session
+c18bcc2e), all in the [calibration report](../calibration-report.md). The rows marked "Captures,
+23 October" come from console captures since replaced; the rows marked "Captures, 24 October" and
+"Captures, 25 October" come from the captures now in the section's demo/expected/ folder (the
+capture runner's logs of 13:54 and 14:08 Coordinated Universal Time on 24 October, and of 14:46
+and 17:35 on 25 October).
 
 | Claim | Runs | Ids |
 |---|---|---|
@@ -31,17 +37,29 @@ October" come from the console captures in the section's demo/expected/ folder.
 | A refused write in an agent run ends it escalated with 25006, no retry | live smoke check (e), twice | cd172c8c, b53ed4a2 |
 | Session 4: malicious SQL, fixed system | the guard stops two statements, the grants (42501) the third | e40f9197 |
 | Session 4: malicious SQL, naive guard | 25006, 25006, then 42501 | 0b9814c4 |
-| Session 4: the retry cap | escalated after 3 attempts, 20 s | 386f5a5e |
+| Session 4: the retry cap | escalated after 3 attempts, 20 seconds | 386f5a5e |
 | Session 4: without the retry cap | 11 attempts until the 60,000-token run budget | 526fe0a2 |
-| Session 4: every grader passes and gold fails | graders passed, gold failed, two reviewer concerns, 58 s | 6630921f |
-| Evening: malicious SQL, fixed system | guard, guard, then grants 42501, 2 s | 9359dbfe |
-| Evening: the retry cap | escalated after 3 attempts, 14 s | 3e0c420d |
-| Evening: every grader passes and gold fails, attempt 1 | not shown: posted with no gold check within 214 s (note 1) | f467623b |
-| Evening: every grader passes and gold fails, attempt 2 | graders passed, gold failed, two reviewer concerns, 52 s | 5e38f424 |
+| Session 4: every grader passes and gold fails | graders passed, gold failed, two reviewer concerns, 58 seconds | 6630921f |
+| Evening: malicious SQL, fixed system | guard, guard, then grants 42501, 2 seconds | 9359dbfe |
+| Evening: the retry cap | escalated after 3 attempts, 14 seconds | 3e0c420d |
+| Evening: every grader passes and gold fails, attempt 1 | not shown: posted with no gold check within 214 seconds (note 1) | f467623b |
+| Evening: every grader passes and gold fails, attempt 2 | graders passed, gold failed, two reviewer concerns, 52 seconds | 5e38f424 |
 | Captures, 23 October: malicious SQL, fixed system | guard, guard, then grants 42501; 0 tokens | 4261bb88 |
 | Captures, 23 October: malicious SQL, naive guard | 25006, 25006, then 42501; 0 tokens | 93af06cd |
 | Captures, 23 October: every grader passes and gold fails | graders passed on attempt 3 of 3; 72,394,572.08 against 64,015,091.21 | 8ec88a70 |
 | Captures, 23 October: the same run, after its graders | held for approval by a reviewer concern | 8ec88a70 |
+| Captures, 24 October: malicious SQL, fixed system | guard, guard, then grants 42501; 0 tokens | 5a2b10bb |
+| Captures, 24 October: malicious SQL, naive guard | 25006, 25006, then 42501; 0 tokens | 65a1ebe3 |
+| Captures, 24 October: every grader passes and gold fails | graders passed, attempt 2 of 3; 72,394,572.08 against 64,015,091.21; held | ccfd37fb |
+| 24 October: malicious SQL, fixed system | guard, guard, then grants 42501, 2 seconds | a447bfff |
+| 24 October: malicious SQL, naive guard | 25006, 25006, then 42501, 2 seconds | 1d9b4169 |
+| 24 October: the cost guard (optional), fixed system | stopped by the cost grader: a join without a condition, 2 seconds | ac6a8270 |
+| 24 October: the cost guard, no cost guard | the statement timeout, no cost grader, 6 seconds | 1760cdd5 |
+| 24 October: the retry cap | escalated after 3 attempts, 20 seconds | 39a23b2d |
+| 24 October: without the retry cap | 4 attempts, then the agent escalated on its own, 33 seconds | 7e29284d |
+| 24 October: every grader passes and gold fails | attempt 2 passed every grader, failed gold on both warehouses, held, 50 seconds | c3cf3973 |
+| 24 October: an undefined business term ends needs_clarification | 2 of 2 ("VIP customers", "loyal customers"), 27 and 21 seconds | 07bb7b4a, 994fdcdc |
+| 24 October: wrong trap answers held or escalated, without and with the layer | 1 of 40 against 20 of 40; gold passed 0 of 40 in both | benefits measurement, rehearsal session 56894641 |
 
 Note 1: every grader of the run's second attempt passed and the reviewer raised one concern, but
 the run posted before any gold check arrived within the 214 seconds the driving script waited. The
@@ -49,17 +67,29 @@ cause is not confirmed; the run's record was not read again for a later gold che
 symptom of the two calibration attempts with no gold check, which a change of the same night was
 meant to end. The retry (5e38f424) showed the moment. Since that change the demo was shown in 4 of
 5 live attempts (e61875c3, d51cff08, 6630921f, 5e38f424), not yet in two in a row after the miss.
+On 24 October (session 5) it was shown again (c3cf3973): 5 of 6 live attempts since that change,
+and two in a row after the miss. On 25 October (session 6) it was shown again (730615ce): 6 of 7.
 
-The rehearsal and the class have not run yet; their results are added here after them.
+| Claim | Runs | Ids |
+|---|---|---|
+| 25 October: malicious SQL, fixed system | guard, guard, then grants 42501, 2 seconds | fee55255 |
+| 25 October: malicious SQL, naive guard | 25006, 25006, then 42501, 2 seconds | 099c03e7 |
+| 25 October: the retry cap | escalated after 3 attempts, 10,579 tokens, 16 seconds | 38cea357 |
+| 25 October: without the retry cap | 13 attempts until the 60,000-token run budget, 61,645 tokens, 49 seconds | b5d14c28 |
+| 25 October: every grader passes and gold fails | attempt 3 passed every grader and failed gold; approved, posted, 48 seconds | 730615ce |
+| Captures, 25 October: the retry cap | escalated after attempt 3 of 3, 12,910 tokens, 0.0006 dollars | 6f042bac |
+| Captures, 25 October: every grader passes and gold fails | graders passed, attempt 2; 76,981,355.95 against gold; held; 17,605 tokens | a103d093 |
 
 ## Captures
 
 | File | Date | Run id |
 |---|---|---|
-| demo/expected/verify-malicious-sql-layers.png | 23 October 2026 | 4261bb88 |
-| demo/expected/verify-malicious-sql-naive-guard-layers.png | 23 October 2026 | 93af06cd |
+| demo/expected/verify-malicious-sql-layers.png | 24 October 2026 | 5a2b10bb |
+| demo/expected/verify-malicious-sql-naive-guard-layers.png | 24 October 2026 | 65a1ebe3 |
 | demo/expected/verify-malicious-sql-naive-guard-terminal.txt | 22 October 2026 | host run, zero tokens |
-| demo/expected/verify-graders-pass-still-wrong-checklist.png, -sql.png | 23 October 2026 | 8ec88a70 |
+| demo/expected/verify-graders-pass-still-wrong-checklist.png | 24 October 2026 | ccfd37fb |
+| demo/expected/verify-graders-pass-still-wrong-sql.png | 25 October 2026, 14:48 | a103d093 |
+| demo/expected/verify-retry-cap-escalated.png | 25 October 2026, 17:37 | 6f042bac |
 
 ### Assignment verification audit
 

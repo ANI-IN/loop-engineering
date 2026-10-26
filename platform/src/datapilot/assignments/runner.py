@@ -1,7 +1,8 @@
 """Running one assignment's live check against a tree (the repository, or a copy with a solution
 applied): load its check.py, bring up the stack, and report.
 
-Order inside every check: the stack, the deterministic requirements (no model calls), then the
+Order inside every check: no planted flag on (.env, this process, the stack's services), the
+stack, the deterministic requirements (no model calls), then the
 live gate (the cost estimate with the check's spend cap, then the OpenAI key), then the live steps,
 then the actual spend. A check that reaches its spend cap stops cleanly: the kill switch stops its
 runs under way, the stack is put back as a normal end leaves it, every requirement is printed as
@@ -36,7 +37,7 @@ from datapilot.assignments.cost import (
 from datapilot.assignments.keys import require_openai_key
 from datapilot.assignments.live import Api
 from datapilot.assignments.report import STOPPED, Report, Stop
-from datapilot.assignments.stack import Stack, bring_up, reset_command
+from datapilot.assignments.stack import Stack, bring_up, refuse_planted, reset_command
 from datapilot.settings import MissingSetting, get_settings
 
 PACKAGE_TREE = Path(datapilot.__file__).resolve().parents[3]
@@ -204,6 +205,7 @@ def run_check(slug: str, tree: Path) -> int:
     context: Context | None = None
     code = STOPPED
     try:
+        refuse_planted()  # before the stack: a check never runs while .env has a planted bug on
         stack = bring_up(tree, name, report.say)
         context = Context(target, tree, report, stack, Api(stack.api_url, slug=slug), name)
         load_check(target.check_file).run(context)

@@ -108,19 +108,47 @@ def session_model(row: Row | None) -> LiveSession | None:
     )
 
 
+# Shown in place of the trace link when LangSmith refused the run's trace for its free plan's
+# monthly trace limit (ops.runs.trace_refused_at): the link would lead nowhere.
+TRACE_REFUSED = "Trace not received (LangSmith monthly limit)"
+
+
 def stamp(
-    item_id: Any, session_id: Any, started_at: datetime, trace_url: str | None
+    item_id: Any,
+    session_id: Any,
+    started_at: datetime,
+    trace_url: str | None,
+    trace_refused_at: datetime | None = None,
 ) -> dict[str, str | None]:
     """The live stamp a component shows ("Started 11:59:09. Open trace"), formatted in the
-    browser."""
-    return LiveStamp(
-        run_id=item_id, session_id=session_id, started_at=started_at, trace_url=trace_url
+    browser. A refused trace has no link: the stamp carries the words that say so, in the muted
+    style, and the run's label, the proof of the run ("Started 11:59:09. Trace not received
+    (LangSmith monthly limit). Run 1a2b3c4d")."""
+    refused = trace_refused_at is not None
+    shown = LiveStamp(
+        run_id=item_id,
+        session_id=session_id,
+        started_at=started_at,
+        trace_url=None if refused else trace_url,
     ).to_browser()
+    if refused:
+        shown["trace_note"] = TRACE_REFUSED
+        shown["run_label"] = run_label(item_id)
+    return shown
+
+
+def run_label(run_id: Any) -> str:
+    """How the console names a run on screen: "Run 1a2b3c4d", the first 8 characters of its id."""
+    return f"Run {str(run_id)[:8]}"
 
 
 def run_stamp(run: Row, session_id: Any) -> dict[str, str | None]:
     return stamp(
-        run["run_id"], session_id, run.get("started_at") or run["created_at"], run["langsmith_url"]
+        run["run_id"],
+        session_id,
+        run.get("started_at") or run["created_at"],
+        run["langsmith_url"],
+        run.get("trace_refused_at"),
     )
 
 
@@ -238,7 +266,7 @@ def strip_view(run: Row, session_id: Any, duplicates: int = 0) -> dict[str, Any]
     return {
         "kind": "run",
         "run_id": str(run["run_id"]),
-        "label": f"Run {str(run['run_id'])[:8]}",
+        "label": run_label(run["run_id"]),
         "question": run.get("question") or "",
         "lane": lane,
         "word": word,

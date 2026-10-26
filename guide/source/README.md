@@ -13,28 +13,22 @@ then one part per file, printed on `A4` paper by Playwright Chromium. No model c
 
 ## Build this guide
 
-This guide's configuration file is `guide/guide.json`: its titles, output name, palette, and
-parts.
+This guide's configuration file is `guide/guide.json`: its titles, output name, and parts.
 
 ```bash
-uv run python guide/source/build_pdf.py --config guide/guide.json --images
+uv run python guide/source/build_pdf.py --config guide/guide.json
 ```
 
-`--images` first copies the images the Markdown uses from the capture folder (the configuration file's
-`images`, filled by `platform/scripts/kit/capture/`) into `guide/images/`, scaled to 2000 px wide, and drops
-the unused ones. Missing images print as orange placeholder boxes and are listed.
+The images stay where they live, in each section's `demo/expected/` folder, and nothing is copied;
+a missing image prints as an orange placeholder box and is listed. The `--images` option is for a
+guide whose Markdown points at an `images/` folder beside it: it copies those images from a
+capture folder (the configuration file's `images`) into that folder, scaled to 2000 px wide. This
+guide does not use it.
 
-## Conventions kept from the course this was cut from
+## Conventions
 
-- **Step template:** `### Step N: short action`, then the field lines `**Where:**`, `**Type:**`,
-  `**You should see:**`, `**Look at:**`, `**What it means:**`, in that order.
-- **Boxes:** `> [!CHECKPOINT]`, `> [!IFDIFFERENT]`, `> [!INSTRUCTOR]`, `> [!WARNING]`,
-  `> [!NOTE]`; a line with "→" starts on a new line ("cause → fix").
-- **Commands and output:** a `bash` block is a dark command box with a copy label; a `text`
-  block is an output box of at most 12 lines.
-- **Figures:** an image line, a blank line, an italic caption, then an optional numbered list
-  whose numbers match the callouts drawn on the image. Kept on one page.
-- **Palette:** override any variable from the configuration file's `palette`, for example
-  `{"accent": "<your app's accent>"}`, so the guide matches the app on screen.
+The Markdown the builder turns into steps, boxes, commands and figures is described in
+[CONVENTIONS.md](CONVENTIONS.md). Any colour of `style.css` can be overridden from the
+configuration file's `palette`, for example `{"accent": "<your app's accent>"}`.
 
 Scan the finished PDF before you share it: `platform/scripts/kit/scan/scan_pdf.py`.

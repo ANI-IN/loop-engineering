@@ -2,9 +2,8 @@
 
 ## The problem
 
-**Illustrative scenario.** An analyst at Harbor & Pine Outfitters pastes a fix for every failed
-benchmark question into the agent's prompt. The score on those questions jumps, and the change
-ships. Next month's questions are still wrong, and a question that used to be right now breaks.
+**Illustrative scenario.** The pasted fixes from the [section page](../README.md#the-problem): the
+score on the failed questions jumps, the change ships, and next month's questions are still wrong.
 
 These demos run that loop live and put a gate in its way. A baseline experiment measures knowledge
 version v1 on the benchmark. A naive analyzer writes rules that quote the questions, and the gate
@@ -33,13 +32,21 @@ inside the free plan's monthly traces: a row of the holdout ledger links to its 
 its runs was traced and reads "Not traced" otherwise, and every row is scored all the same. The
 analyzer team makes real model calls too, and the knowledge diff shows exactly what it proposes.
 
-Times and cost, measured live on 22 and 23 October 2026: the baseline experiment 266 to 285 s;
-the analyzer team 326 and 377 s with two candidates; the candidate experiment 186 and 211 s in the
-two latest runs, and 182 to 459 s over every 70-run experiment; the naive analyzer 211 to 285 s,
-from the trigger to the verdict; the promotion after approval, with its clearance re-runs, about
-50 s, measured once. A 70-run experiment
-cost 0.0594 to 0.0914 dollars. The runs are on the
-[evidence page](../../docs/evidence/section-4-hill-climbing-loop.md), and `run.sh` states the most
+Times and cost, measured live from 22 to 25 October 2026, over every recorded run:
+
+- the baseline experiment, 236 to 386 seconds from the trigger;
+- the analyzer team, 326 to 377 seconds with two candidates, in five runs;
+- the candidate experiment, 176 to 337 seconds from the trigger, and 171.3 to 459 seconds of
+  experiment wall time;
+- the naive analyzer, 211 to 580 seconds from the trigger to the verdict, in 6 runs;
+- after approval, the version active in about 5 seconds, then the clearance re-runs; the finale
+  posted 74, 115, and 162 seconds after its first send in three chains;
+- one 70-run experiment, 0.0594 to 0.0914 dollars.
+
+In class order on 25 October 2026, in seconds: the baseline 252, the analyzer team 362, the
+candidate experiment 237, the finale 162 from its first send, the finale on the class-day
+safeguard 21, and the naive analyzer 221. The runs are on the
+[evidence page](../../docs/evidence/section-4-hill-climbing-loop.md#results), and `run.sh` states the most
 an experiment can cost at the caps in `platform/packs/datapilot_us/pack.yaml`.
 
 ```mermaid
@@ -58,13 +65,19 @@ flowchart LR
 ## Run it
 
 Finish the [setup pages](../../setup/README.md) first, including the
-[pre-class checks](../../setup/pre-class.md). Then start the services and confirm the data in a
-terminal at the repository root:
+[pre-class checks](../../setup/pre-class.md). Then start the services, confirm the data, and open
+a live session in a terminal at the repository root:
 
 ```bash
 make up
 make check-data
+make preflight PURPOSE=development
 ```
+
+Every run belongs to a live session, which `make preflight` opens; with none open, a demo fails
+with "No live session is open". Preflight first asks five questions that show the model still
+behaves as the course measured it, one agent run each. In class the instructor runs
+`make preflight PURPOSE=class` instead.
 
 Open the console at http://localhost:8501 on the Improve page. Run every core demo of this section
 from the same terminal, one at a time, with:
@@ -79,10 +92,11 @@ on the Improve page.
 
 The order matters here. The baseline experiment is the comparison for every later gate verdict,
 so it runs first and stays across a `make reset NAME=hill-climbing-loop`. The naive analyzer runs
-with `BUG_NAIVE_ANALYZER=1` in `.env` (then `make up`); its `make demo` queues the analyzer and then
-the candidate experiment, which the runner takes in that order. The analyzer team runs with the
-flag back at `0`. Approve the candidate in the knowledge diff before the candidate experiment's
-verdict can pass. Wait until the Improve page says the version is the active version, and set the
+with `make demo NAME=improve-naive-analyzer-blocked PLANTED=1`, which queues the analyzer and then
+the candidate experiment with `BUG_NAIVE_ANALYZER` on for those two requests alone; the runner
+takes them in that order. The analyzer team then runs on the fixed system, with no change to
+`.env`. Approve the candidate in the knowledge diff when the gate reads ready for
+approval; an approval given earlier waits for the gate. Wait until the Improve page says the version is the active version, and set the
 unattended level at once: `make autonomy LEVEL=unattended BY="<your name>"`, or Improve > Set the
 unattended level (every reset sets the report-only level, and at that level the finale's trigger
 refuses and says why). Then wait for the clearance re-runs to finish: the status line names the
@@ -105,7 +119,7 @@ started by `make up`; `make ps` shows it.
 | The candidate experiment | core | `make demo NAME=improve-candidate-experiment` | 5 |
 | Cleared for the unattended level | core | `make demo NAME=improve-cleared-unattended` | 3 |
 
-Each demo also runs from the console (Improve > Run experiment on the active version; Improve > Run analyzer; Improve > Add the over-broad rule to the active version; Improve > Run analyzer; Improve > Run experiment on the candidate; Events > Send webhook question).
+Each demo also runs from the console (Improve > Run experiment on the active version; Improve > Run the naive analyzer (planted); Improve > Add the over-broad rule to the active version; Improve > Run analyzer; Improve > Run experiment on the candidate; Events > Send webhook question).
 Recovery for every demo in Section 4: Hill-climbing loop: `make reset NAME=hill-climbing-loop`, then the same
 trigger again. The target minutes are the class plan's, from `platform/demos/registry.yaml`, not
 measured times.
@@ -149,11 +163,11 @@ and what may differ from run to run.
 ### The naive analyzer, blocked
 
 - **Tier**: core
-- **Start it**: Improve > Run analyzer in the console, or `make demo NAME=improve-naive-analyzer-blocked`
+- **Start it**: Improve > Run the naive analyzer (planted) in the console, or `make demo NAME=improve-naive-analyzer-blocked`
 - **Guaranteed by**: the naive analyzer (`BUG_NAIVE_ANALYZER`)
-- **What appears**: Two requests, queued together at the break: the analyzer, then the candidate experiment (in the console, Improve > Run analyzer, then Improve > Run experiment on the candidate; the runner takes them in that order, after the baseline). The naive analyzer, with no model call, writes one rule per failed dev question, quoting it word for word with the analyst's query that failed, and never reads a reference query. It skips the critic and applies no overfit guard: the guard flags every rule and the Improve page says so, yet the knowledge diff keeps them all. Then the candidate experiment runs, and the gate blocks the version because the overfit guard rejects its rules, whatever its holdout count.
+- **What appears**: Two requests, queued together at the break with `make demo NAME=improve-naive-analyzer-blocked PLANTED=1`: the analyzer, then the candidate experiment; the runner takes them in that order, after the baseline. Its planted half is its only half, so the command switches the naive analyzer on for its own two requests with or without PLANTED=1. The console's Improve page queues the same two requests with the same flag from its Run the naive analyzer (planted) button, shown only while demo controls are allowed; its Run analyzer button runs the analyzer team, never the naive analyzer. The naive analyzer, with no model call, writes one rule per failed dev question, quoting it word for word with the analyst's query that failed, and never reads a reference query. It skips the critic and applies no overfit guard: the guard flags every rule and the Improve page says so, yet the knowledge diff keeps them all. Then the candidate experiment runs, and the gate blocks the version because the overfit guard rejects its rules, whatever its holdout count.
 - **Expected live outcome**: The overfit guard flags every rule, not applied by the analyzer; the gate verdict reads blocked, naming the rules the overfit guard rejects.
-- **What can vary**: how many dev items failed; the dev count; the holdout count; the time from the trigger to the verdict (211 to 285 seconds in three measured runs)
+- **What can vary**: how many dev items failed; the dev count; the holdout count; the time from the trigger to the verdict (211 to 580 seconds in 6 measured runs; the longest on a machine shared with assignment checks)
 - **Recovery**: `make reset NAME=hill-climbing-loop`, then the same trigger again
 
 ### The over-broad rule, blocked
@@ -172,7 +186,7 @@ and what may differ from run to run.
 - **Start it**: Improve > Run analyzer in the console, or `make demo NAME=improve-analyzer-team-approve`
 - **What appears**: The failure analyst diagnoses the failed dev items, the rule writer proposes general rules, the critic keeps, narrows, or drops each one, a rule whose SQL guidance does not run over the schema is dropped, and the overfit guard rejects any rule that quotes a benchmark question or copies gold SQL and passes the rest. The team writes two candidates this way, each runs on the dev split only, and the Improve page names the one kept by its dev results; the knowledge diff shows it for human approval.
 - **Expected live outcome**: A candidate version with general rules in the diff viewer, and the line naming both candidates and the one kept.
-- **What can vary**: rule wording; number of rules; which candidate is kept; which rules, if any, the overfit guard rejects (live, it rejected a critic-kept rule that copied 20 or more tokens of a gold query); wall time: 326 and 377 s with two candidates in the two measured runs
+- **What can vary**: rule wording; number of rules; which candidate is kept; which rules, if any, the overfit guard rejects (live, it rejected a critic-kept rule that copied 20 or more tokens of a gold query); wall time: 326 to 377 seconds with two candidates in the five measured runs
 - **Recovery**: `make reset NAME=hill-climbing-loop`, then the same trigger again
 
 ### The candidate experiment
@@ -181,7 +195,7 @@ and what may differ from run to run.
 - **Start it**: Improve > Run experiment on the candidate in the console, or `make demo NAME=improve-candidate-experiment`
 - **What appears**: The candidate version flips holdout trap items with zero regressions on either split. The live holdout ledger in the console, scored locally against this session's baseline, marks the flips; then the LangSmith trace list of datapilot-experiments, filtered by knowledge version, shows the candidate's traced runs, a sample of about 1 run in 5. The gate passes once approved; the runner then makes the version active and runs the clearance re-runs (50 seconds after the approval, measured once). In class it is queued at once after the analyzer (Improve > Run analyzer, then Improve > Run experiment on the candidate); trigger it again only if it never started, since a second press queues a second experiment.
 - **Expected live outcome**: Holdout flips marked against this session's baseline, no regressions, gate verdict passed.
-- **What can vary**: which items flip; how many flip: 0 to 12 of 13 holdout trap items in the measured runs, a majority in 6 of 10, so check the candidate in rehearsal; wall time: 182 to 459 s; confirming re-runs of an apparent regression lengthen it
+- **What can vary**: which items flip; how many flip: 0 to 12 of 13 holdout trap items in the measured runs, a majority in 6 of 10, so check the candidate in rehearsal; wall time: 171.3 to 459 seconds; confirming re-runs of an apparent regression lengthen it
 - **Recovery**: `make reset NAME=hill-climbing-loop`, then the same trigger again
 
 ### Cleared for the unattended level
@@ -197,7 +211,8 @@ and what may differ from run to run.
 ## What the result means
 
 The gate decides on the holdout split, which the analyzer team never reads. A candidate is
-promoted only with more holdout passes than the active version, zero regressions on either split,
+promoted only with more holdout passes than the active version's baseline experiment of this live
+session, which the gate records when it runs, zero regressions on either split,
 every new rule passing the overfit guard, and a person's approval. Each apparent regression is re-run before it counts
 (`evaluation.holdout_regression_reruns` and `evaluation.dev_regression_reruns` in `pack.yaml`). An
 apparent dev regression is re-run under both versions, 2 more runs each, and counts only when the
@@ -226,7 +241,7 @@ the version promoted and verified in rehearsal: the class-day safeguard in the
 |---|---|---|
 | `run.sh` says the services do not answer | The services are not running | `make up`, then `make ps` until every service is healthy |
 | The gate refuses to compare the experiments | The baseline came from another live session | Run the baseline experiment again in this session |
-| The naive analyzer's rules look general, or no rule quotes a question | `BUG_NAIVE_ANALYZER` is not on in the services | Set it to `1` in `.env`, then `make up` |
+| The naive analyzer's rules look general, or no rule quotes a question | It was queued with Improve > Run analyzer, which runs the analyzer team | `make demo NAME=improve-naive-analyzer-blocked PLANTED=1`, or Improve > Run the naive analyzer (planted) |
 | The candidate verdict stays at ready for approval | Nobody approved the candidate | Approve it in the knowledge diff on the Improve page |
 | The finale says "not sent", or Send webhook question is off | A pending promotion, an engaged kill switch, or a lower level | Do the step the message names, then the same trigger |
 | The Improve page never moves | The `hill-climbing-runner` service stopped | `make logs NAME=hill-climbing-runner`, then `make up` |

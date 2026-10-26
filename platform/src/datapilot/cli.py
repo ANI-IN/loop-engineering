@@ -108,14 +108,26 @@ def scheduler() -> None:
 
 
 @app.command()
-def demo(name: str) -> None:
-    """Trigger a live demo through the api, as the console does: make demo NAME=<demo>."""
+def demo(
+    name: str,
+    planted_bugs: bool = typer.Option(
+        False,
+        "--planted",  # the option alone: an exported PLANTED never switches a half on
+        help="The planted half: the demo's planted bugs on for its own runs only (PLANTED=1)",
+    ),
+) -> None:
+    """Trigger a live demo through the api, as the console does: make demo NAME=<demo>, and
+    make demo NAME=<demo> PLANTED=1 for its planted half (.env is never changed)."""
     from datapilot.loop3_events import commands
 
+    _known(name, [d.id for d in registries.demos().demos], "demo")
     try:
-        done = commands.demo(name)
+        done = commands.demo(name, planted_bugs=planted_bugs, say=typer.echo)
     except commands.FinaleRefused as error:
         typer.echo(f"x {name} not sent: {error}")
+        raise typer.Exit(1) from error
+    except commands.DemoRefused as error:
+        typer.echo(f"x {name}: {error}")
         raise typer.Exit(1) from error
     typer.echo(f"{name}: runs {done.run_ids or '-'}; requests {done.request_ids or '-'}")
 
@@ -151,9 +163,23 @@ def reset_discarding_baseline(name: str) -> None:
     _reset(name, discard_baseline=True)
 
 
+def _known(name: str, valid: list[str], kind: str) -> None:
+    """A misspelled name: one line naming the valid ones, never a traceback."""
+    if name not in valid:
+        typer.echo(f"x no {kind} named {name!r}; the {kind}s are {', '.join(valid)}")
+        raise typer.Exit(1)
+
+
+def _sections() -> list[str]:
+    from datapilot.names import SECTIONS
+
+    return [section.slug for section in SECTIONS]
+
+
 def _reset(name: str, *, discard_baseline: bool) -> None:
     from datapilot.loop3_events import commands
 
+    _known(name, _sections(), "section")
     try:
         report = commands.reset(name, discard_baseline=discard_baseline)
     except commands.ResetRefused as error:
@@ -238,7 +264,11 @@ def safeguard_verify(
 @safeguard_app.command("activate")
 def safeguard_activate(
     by: str = typer.Option(..., help="Who activates it (the instructor)"),
-    version: str | None = typer.Option(None, help="A verified version; the newest by default"),
+    version: str | None = typer.Option(
+        None,
+        help="A verified version, taken whatever its age (make ... NAME=<version>); unnamed, the "
+        "newest, only when it is recent and from this stack's rehearsal",
+    ),
 ) -> None:
     """In class, when the live candidate's finale answer is wrong: make the version verified in
     rehearsal the active one, recorded as a safeguard activation, then run the finale live again."""
@@ -246,11 +276,14 @@ def safeguard_activate(
 
     with db.connect(db.Role.APP) as conn:
         try:
-            done = versions.activate_verified(conn, activated_by=by, name=version)
+            done = versions.activate_verified(conn, activated_by=by, name=version or None)
         except versions.SafeguardRefused as refused:
             typer.echo(f"x {refused}")
             raise typer.Exit(1) from refused
         conn.commit()
+    typer.echo(f"{done.version}: {done.verification.provenance()}")
+    for caution in done.cautions:
+        typer.echo(f"  taken because it was named, although {caution}")
     typer.echo(f"{done.sentence} (promotion decision {done.decision_id})")
     typer.echo(
         "now run the finale live on it: make demo NAME=improve-cleared-unattended, or Events > "
@@ -260,7 +293,8 @@ def safeguard_activate(
 
 @safeguard_app.command("status")
 def safeguard_status() -> None:
-    """The newest version verified in rehearsal, and whether it is active."""
+    """The newest version verified in rehearsal, its age and session, whether make
+    safeguard-activate would take it, and whether it is active."""
     from datapilot.loop4_hill_climbing import versions
 
     with db.connect(db.Role.APP) as conn:
@@ -270,6 +304,13 @@ def safeguard_status() -> None:
         typer.echo("no knowledge version is verified in rehearsal yet")
         return
     typer.echo(f"verified in rehearsal: {found.describe()}")
+    typer.echo(f"  {found.provenance()}")
+    problems = found.problems(versions.age_limit_days())
+    if problems:
+        typer.echo(f"x  make safeguard-activate refuses it: {'; and '.join(problems)}")
+        typer.echo(f"   to {versions.VERIFY_AGAIN}")
+    else:
+        typer.echo("ok make safeguard-activate takes it")
     typer.echo(
         f"active knowledge version: {active}"
         + (" (the safeguard's)" if active == found.version else "")
@@ -281,6 +322,7 @@ def open_code(name: str) -> None:
     """Open the code a section shows in class: make open-code NAME=<section>."""
     from datapilot.loop3_events import commands
 
+    _known(name, _sections(), "section")
     for ref in commands.open_code(name) or ["(no code ranges in the demo registry yet)"]:
         typer.echo(ref)
 

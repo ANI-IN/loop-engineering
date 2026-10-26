@@ -99,6 +99,7 @@ NAMED = {
     ],
     ("Assignment 3", 3): [("extension.py", "publish")],
     ("Assignment 3", 4): [("extension.py", "JOB_QUEUES")],
+    ("Assignment 3", 5): [("extension.py", "drill_down_question")],
     ("Assignment 4", 1): [("repeat_customers.yaml", "repeat-rate-fy2025")],
     ("Assignment 4", 3): [("extension.py", "CRITIC_GUIDANCE")],
     ("Assignment 4", 4): [

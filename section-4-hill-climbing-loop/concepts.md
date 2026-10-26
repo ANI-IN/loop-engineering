@@ -4,10 +4,8 @@ Reading time: about 10 minutes.
 
 ## The problem
 
-**Illustrative scenario.** An analyst at Harbor & Pine Outfitters pastes a fix for every failed
-benchmark question into the agent's prompt. The score on those questions jumps, and the change
-ships. Next month's questions are still wrong, and a question about orders that used to be right
-now breaks. Nobody can say which pasted line caused it.
+**Illustrative scenario.** Take the pasted fixes from the [section page](README.md#the-problem).
+The question that breaks is about orders, and nobody can say which pasted line caused it.
 
 > **Terms on this page**
 >
@@ -136,9 +134,8 @@ question that used to pass breaks unnoticed. After: the critic drops a rule that
 the gate blocks a version with one regression, and a version that flips holdout items with zero
 regressions waits for human approval.
 
-Each piece exists in some system. Their combination here is one we have not seen documented: a
-held-out split, zero regressions on both splits, human approval of a versioned knowledge artefact,
-a deterministic overfit guard, and autonomy per metric family.
+The loop combines five pieces: a held-out split, zero regressions on both splits, human approval
+of a versioned knowledge artefact, a deterministic overfit guard, and autonomy per metric family.
 
 ## How DataPilot does it
 
@@ -192,9 +189,9 @@ guidance; `overfit_guard.py` checks every proposed rule; `candidates.py` keeps o
 | Check | Result |
 |---|---|
 | Holdout passes, active version v1 | 2 of 15, in every baseline experiment |
-| Holdout passes, promoted candidate | 14 of 15 for v8 and v9 (two candidates); 3 to 12 earlier (one) |
+| Holdout passes, promoted candidate | 12 to 14 of 15 in 7 promotions with two candidates; 3 to 12 earlier (one) |
 | Regressions on both splits | 0 for every promoted version |
-| Naive analyzer verdict | Blocked, in 3 of 3 runs |
+| Naive analyzer verdict | Blocked, in 6 of 6 runs; the holdout never improved |
 
 The runs are on the [evidence page for this section](../docs/evidence/section-4-hill-climbing-loop.md).
 
