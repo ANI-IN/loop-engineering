@@ -35,7 +35,8 @@ x-app: &app
 
 services:
   postgres:
-    image: postgres:18.6-bookworm
+    # by tag and digest; refreshed deliberately before each cohort (the instructor guide)
+    image: postgres:18.6-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
     environment:
       POSTGRES_PASSWORD: postgres  # the local superuser; only the init script uses it
     # Every published port listens on this machine only (127.0.0.1): the superuser password is

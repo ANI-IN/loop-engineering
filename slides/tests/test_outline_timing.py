@@ -1,10 +1,13 @@
-"""Zero-token checks on the deck's timings: every slide's minutes add up to the 240-minute class,
-and each block starts and ends where the run of show in docs/instructor-guide.md says it does.
+"""Zero-token checks on the timings in slides/source: every slide's minutes add up to the
+240-minute class, and each block starts and ends where the run of show in
+docs/instructor-guide.md says it does.
 
-The outline is built under one of two rule sets (slides/source/build.py). Under the first
-outline's rules the minutes are fixed per position (APPROVED); under the design system each block
-has a total (BLOCK_PLAN, the rebuild's block plan of 26 October 2026) and its slides add up to it.
-The speaker notes' "Time:" or "Timing:" lines and slides/outline.md are generated from the minutes.
+slides/source is superseded (DECISIONS.md, 28 October 2026): slides/outline.md is now a transcript
+of the owner's final deck, so the check that its "Timing:" lines came from these minutes went with
+that decision; the outline check compares the outline with the deck instead. The sources are
+built under one of two rule sets (slides/source/build.py). Under the first outline's rules the
+minutes are fixed per position (APPROVED); under the design system each block has a total
+(BLOCK_PLAN, the rebuild's block plan of 26 October 2026) and its slides add up to it.
 
 uv run pytest -q slides/tests
 """
@@ -19,13 +22,9 @@ from pathlib import Path
 SLIDES_DIR = Path(__file__).resolve().parents[1]
 REPO = SLIDES_DIR.parent
 GUIDE = REPO / "docs" / "instructor-guide.md"
-OUTLINE = SLIDES_DIR / "outline.md"
 CLASS_MINUTES = 240
 # A block heading of the run of show, such as "### Section 1: Agent loop (0:10-0:55)".
 BLOCK_HEADING = re.compile(r"^### (?P<name>.+?) \((?P<start>\d:\d\d)-(?P<end>\d:\d\d)\)$", re.M)
-TIME_LINE = re.compile(
-    r"^Tim(?:e|ing): (?P<minutes>[\d.]+) minutes? \((?P<start>[\d:]+)-(?P<end>[\d:]+)\)"
-)
 # The rebuild's block plan as the lead fixed it (name, start, end, slides at most): the design
 # system's BLOCK_PLAN must say the same, and the guide's run of show follows it once the outline is
 # built under the design system.
@@ -157,23 +156,6 @@ def test_blocks_match_the_run_of_show_in_the_instructor_guide():
     ]
     assert guide == _blocks()
     assert guide[0][1] == 0 and guide[-1][2] == CLASS_MINUTES * 60
-
-
-def test_outline_time_lines_are_contiguous_and_add_up():
-    lines = [
-        m
-        for line in OUTLINE.read_text(encoding="utf-8").splitlines()
-        if (m := TIME_LINE.match(line))
-    ]
-    count = sum(len(outline_builder.load(n)) for n in outline_builder.block_order())
-    assert len(lines) == count
-    position = 0
-    for m in lines:
-        start, end = _clock(m["start"]), _clock(m["end"])
-        assert start == position, f"a gap or overlap before {m.group(0)!r}"
-        assert end - start == round(float(m["minutes"]) * 60)
-        position = end
-    assert position == CLASS_MINUTES * 60
 
 
 def test_the_sources_slides_list_exactly_the_sources_the_deck_cites():

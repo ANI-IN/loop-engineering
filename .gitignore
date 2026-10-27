@@ -38,6 +38,8 @@ Thumbs.db
 
 # Generated slide builds and renders.
 slides/build/
+# Backups of the owner's master deck: never tracked, never released (DECISIONS.md, 28 October 2026).
+slides/backup/
 
 # Assignment solutions: published at the start of the Thursday review; never commit your own copy.
 section-*/assignment/solution/

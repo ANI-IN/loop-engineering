@@ -25,18 +25,11 @@ run_check() {
   rm -f "$log"
 }
 
-# The outline must build with no problems and match the committed slides/outline.md.
+# The outline must match the owner's final deck (DECISIONS.md, 28 October 2026): generated again
+# from a temporary copy of the deck and compared byte for byte; where the deck is absent, checked
+# whole against the fingerprint it records.
 outline_check() {
-  local built report
-  built="$(mktemp)"
-  report="$("$UV" run python slides/source/build.py "$built")" || { rm -f "$built"; echo "$report"; return 1; }
-  echo "$report" | tail -n 3
-  if ! echo "$report" | grep -qx "problems: 0"; then rm -f "$built"; return 1; fi
-  if ! diff -q "$built" slides/outline.md >/dev/null; then
-    echo "slides/outline.md is out of date: run make outline and commit it"
-    rm -f "$built"; return 1
-  fi
-  rm -f "$built"
+  "$UV" run python platform/scripts/check_outline.py
 }
 
 # Commit messages are read by the guards script, which resolves the git directory itself (an

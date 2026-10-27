@@ -1,7 +1,9 @@
 # One image for the api, worker, scheduler, and console. Dependencies come from uv.lock only.
-FROM python:3.12-slim-bookworm
+# Base images by tag and digest; refresh the digests deliberately before each cohort, rebuild,
+# and run CI (the instructor guide's pre-cohort checklist).
+FROM python:3.12-slim-bookworm@sha256:6dd8b6dab6b3adc7812bab69eca5dbdc1a5cc690ad28306d234ffb4ef8ac9753
 
-COPY --from=ghcr.io/astral-sh/uv:0.13.1 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.1@sha256:4a1f3666816dafadd20ceb71eac9a7d56d7ef30279f7d64048519ab901ada336 /uv /usr/local/bin/uv
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \

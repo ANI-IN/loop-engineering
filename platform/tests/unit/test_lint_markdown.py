@@ -99,8 +99,8 @@ def test_the_files_are_the_shipped_markdown_files() -> None:
 
 def test_files_are_grouped_by_their_allowed_rules() -> None:
     found = lint_markdown.groups(["README.md", "slides/outline.md", "guide/chapters/1-x.md"])
-    assert found[()] == ["README.md"]
-    assert found[("md024", "md032", "md034")] == ["slides/outline.md"]
+    # The outline's entry went on 28 October 2026 (DECISIONS.md).
+    assert found[()] == ["README.md", "slides/outline.md"]
     assert found[("md001",)] == ["guide/chapters/1-x.md"]
     assert lint_markdown.command(["a.md"], ["md001"])[-4:] == [
         "--disable-rules",

@@ -93,7 +93,7 @@ pages = ["setup", "section-*", "final-project", "use-in-your-repo", "guide", "do
 # rule (short forms and shorthand) reads each one instead, in platform/tests/unit/test_release_list.py.
 other_markdown = [
     "SECURITY.md",  # the security policy, shown by GitHub
-    "slides/outline.md",  # generated from slides/source/; also read by `make check-names`
+    "slides/outline.md",  # generated from the final deck; also read by `make check-names`
     "slides/design-system.md",  # the deck's design system and the schema of slides/source/
     "platform/README.md",  # the map of the platform folder
     "platform/console/DESIGN.md",  # the console's design notes

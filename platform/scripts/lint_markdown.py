@@ -33,15 +33,9 @@ import check_links  # noqa: E402
 CONFIG_NAME = ".pymarkdown.yaml"
 
 # A shipped file (a glob) and the rules it may break, each with its reason.
+# The outline's entry went on 28 October 2026: it is now a transcript of the owner's final deck in
+# fenced blocks (DECISIONS.md), and none of its three rules fires on it any more.
 PER_FILE_ALLOW: dict[str, dict[str, str]] = {
-    "slides/outline.md": {
-        "md024": "the outline names each part of the agenda, and the class has two parts "
-        "named Break",
-        "md032": "a slide's lines follow the deck builder's line grammar "
-        "(slides/design-system.md): a bullet comes straight after its Lead: or Body line",
-        "md034": "a demo slide's 'Link: <label> | <address>' line and the sources list hold plain "
-        "addresses the deck builder reads",
-    },
     "guide/chapters/*.md": {
         "md001": "a chapter's steps are '### Step N:' headings straight under its title, as the "
         "style check (SC28) and the guide's PDF builder read them",

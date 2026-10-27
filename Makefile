@@ -74,8 +74,8 @@ demos: ## List every demo with its readable name
 registries: ## Validate the demo and planted-item registries
 	$(UV) run datapilot check-registries
 
-outline: ## Rebuild slides/outline.md from slides/source/ and check every slide rule
-	$(UV) run python slides/source/build.py slides/outline.md
+outline: ## Write slides/outline.md from the owner's final deck (read only); slides/source is superseded
+	$(UV) run python platform/scripts/outline_from_deck.py
 
 docs: ## Regenerate every generated page from its registry
 	$(UV) run python platform/tools/generators/render.py

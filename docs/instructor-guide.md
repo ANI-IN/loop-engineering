@@ -97,6 +97,11 @@ repeated demos). Its line `token budget` shows the day's count with
 any purpose, so read it at the end of the rehearsal, and hold the rehearsal on the day before the
 class, never on its morning.
 
+**Before each cohort, refresh the image digests deliberately.** The python, uv and postgres base
+images are pinned by tag and digest (`platform/ops/docker/Dockerfile` and `compose.yaml`): look up
+each tag's current digest, update both files, rebuild the images (`make up`), and run continuous
+integration on the change before the cohort starts. Then:
+
 1. **Re-run calibration for a new cohort.** gpt-6-luna has no dated snapshot, so its behaviour can
    drift between cohorts. Run each step with `make calibrate STEP=<step>`: `canary`, `traps`,
    `experiment-starting`, `analyzer`, `experiment-candidate`, `stability-starting`,
