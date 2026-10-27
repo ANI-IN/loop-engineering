@@ -5,7 +5,7 @@ Each diagram here has an `.excalidraw` source, a `.svg` with the font embedded f
 explained once, in [the shared diagrams page](../../docs/diagrams/README.md#colours-and-shapes).
 This section also uses [the run lifecycle](../../docs/diagrams/README.md#the-run-lifecycle).
 
-### The event loop
+## The event loop
 
 ![The event pipeline: a webhook, the scheduler, or the console sends an event to POST /events, which inserts once per event_id; a fixed router, with no agent, picks the queue in the jobs table; the worker claims a job with a lease and a heartbeat, the reaper requeues an expired lease, and the daily budget is checked at claim; the autonomy policy posts at once or holds the run, which waits as a parked job with its checkpoint until a person approves; the kill switch is checked at claim and before every model call and every tool call](./event-loop.svg)
 

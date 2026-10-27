@@ -1,0 +1,30 @@
+# The Markdown lint's configuration (pymarkdownlnt, pinned in pyproject.toml), read by its standard
+# name from the repository root. Every standard rule stays on with its default settings, except
+# the settings and the rules below, each with its reason. platform/scripts/lint_markdown.py runs it
+# on every Markdown file the release ships; a rule that one file breaks by design is allowed there
+# alone, in that script's PER_FILE_ALLOW, never here.
+plugins:
+  # Line length: the course sets none. People wrap prose at 100, while tables, image alt text,
+  # generated pages, and the slide outline keep a paragraph, a row, or a bullet on one line.
+  md013:
+    enabled: false
+  # Emphasis as a heading: the style check requires the bold "Terms on this page" title of each
+  # page's glossary box (docs/STYLE.md), and the slide outline labels each slide in bold.
+  md036:
+    enabled: false
+  # A blank line inside a blockquote: the guide's callouts (> [!CHECKPOINT], > [!IFDIFFERENT],
+  # > [!INSTRUCTOR]) are separate blockquotes one after another, split by a blank line.
+  md028:
+    enabled: false
+  # Inline HTML: allowed only for the source anchors (<a id="source-n">) and the folded answers of
+  # the concept quizzes (<details><summary>); the first three are the rule's own defaults.
+  md033:
+    allowed_elements: "!--,![CDATA[,!DOCTYPE,a,details,summary"
+  # A repeated heading: allowed under different parents (each run of the calibration report has its
+  # own Spend and Assignment checks headings), never twice under the same one.
+  md024:
+    siblings_only: true
+  # Ordered list numbers: an assignment specification numbers its requirements once across the
+  # page, so a list after a paragraph goes on from the number before it (requirement 8, 9, ...).
+  md029:
+    allow_extended_start_values: true

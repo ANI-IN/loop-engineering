@@ -220,39 +220,39 @@ It does not help when:
 
 1. Why can a higher score on the development split still mean a worse version?
 
-<details><summary>Answer</summary>
+   <details><summary>Answer</summary>
 
-The rules were written from the development items, so they fit them. A rule can also break questions that
-passed before. Only the holdout split and the regression check show whether it generalises.
+   The rules were written from the development items, so they fit them. A rule can also break questions that
+   passed before. Only the holdout split and the regression check show whether it generalises.
 
-</details>
+   </details>
 
 2. Why does each holdout item run 3 times, and the same way for both versions?
 
-<details><summary>Answer</summary>
+   <details><summary>Answer</summary>
 
-Model runs vary. Passing on 2 of 3 keeps noise from looking like a flip or a regression, and the
-same scheme for both versions keeps the comparison fair.
+   Model runs vary. Passing on 2 of 3 keeps noise from looking like a flip or a regression, and the
+   same scheme for both versions keeps the comparison fair.
 
-</details>
+   </details>
 
 3. What does the critic do that the rule writer cannot?
 
-<details><summary>Answer</summary>
+   <details><summary>Answer</summary>
 
-It judges each rule it did not write, and may keep, narrow, or drop it, never add one. That keeps
-any agent from grading its own proposal.
+   It judges each rule it did not write, and may keep, narrow, or drop it, never add one. That keeps
+   any agent from grading its own proposal.
 
-</details>
+   </details>
 
 4. Why is the overfit guard deterministic code and not another agent?
 
-<details><summary>Answer</summary>
+   <details><summary>Answer</summary>
 
-Whether a rule quotes a benchmark question is a text check with one right answer. Code gives the
-same answer every time and costs nothing.
+   Whether a rule quotes a benchmark question is a text check with one right answer. Code gives the
+   same answer every time and costs nothing.
 
-</details>
+   </details>
 
 ## Further reading
 

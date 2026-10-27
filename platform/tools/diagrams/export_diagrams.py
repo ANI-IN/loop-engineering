@@ -19,7 +19,7 @@ Usage (from the repository root), with no option it renders what is stale, pages
     uv run python platform/tools/diagrams/export_diagrams.py
     --all      render every source, pages and deck
     --build    write the sources from definitions.py first (a build overwrites hand edits)
-    --check    report stale renders only, with no browser
+    --check    report sources that do not parse and stale renders, with no browser
 Once per machine: uv run playwright install chromium
 """
 
@@ -113,19 +113,56 @@ def problems(root: Path = REPO) -> list[str]:
     return out
 
 
+def scene_problem(source: Path) -> str | None:
+    """Why a source is not an Excalidraw scene (JSON holding a list of elements, the first of them
+    the panel: a rectangle whose width and height set the export's size), or None."""
+    try:
+        scene = json.loads(source.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        return f"does not parse as JSON ({error})"
+    elements = scene.get("elements") if isinstance(scene, dict) else None
+    if not isinstance(elements, list) or not elements:
+        return "holds no list of elements"
+    panel = elements[0]
+    if not isinstance(panel, dict) or panel.get("type") != "rectangle":
+        return "its first element is not the panel rectangle"
+    if not all(isinstance(panel.get(k), int | float) for k in ("width", "height")):
+        return "its panel has no width and height"
+    return None
+
+
+def parse_problems(root: Path = REPO) -> list[str]:
+    """Every source that is not an Excalidraw scene (scene_problem)."""
+    out: list[str] = []
+    for source in sources(root):
+        problem = scene_problem(source)
+        if problem is not None:
+            out.append(f"{source.relative_to(root).as_posix()}: {problem}")
+    return out
+
+
 def panel_size(source: Path) -> tuple[float, float]:
     panel = json.loads(source.read_text(encoding="utf-8"))["elements"][0]
     return panel["width"], panel["height"]
 
 
+def _readable_panel_size(source: Path) -> tuple[float, float] | None:
+    """The panel size, or None for a source whose panel cannot be read (parse_problems names it)."""
+    try:
+        return panel_size(source)
+    except (ValueError, KeyError, IndexError, TypeError):
+        return None
+
+
 def deck_sources(root: Path = REPO) -> list[Path]:
     """The deck's diagrams: every source on a slide panel (1920 by 791), a concept panel (1920 by
     712), or a pattern panel (1920 by 540), without the step frames (no slide builds a diagram up
-    today, and each export is about a megabyte)."""
+    today, and each export is about a megabyte). A source whose panel cannot be read is left out
+    here; parse_problems reports it."""
     return [
         s
         for s in sources(root)
-        if panel_size(s) in DECK_PANELS and not re.search(r"-step-\d+$", s.stem)
+        if _readable_panel_size(s) in DECK_PANELS and not re.search(r"-step-\d+$", s.stem)
     ]
 
 
@@ -397,10 +434,12 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--all", action="store_true", help="render every source, not only stale")
     parser.add_argument("--build", action="store_true", help="write sources from definitions.py")
     parser.add_argument("--only", nargs="*", help="with --build: these diagram names only")
-    parser.add_argument("--check", action="store_true", help="report stale renders; no browser")
+    parser.add_argument(
+        "--check", action="store_true", help="report bad sources and stale renders; no browser"
+    )
     args = parser.parse_args(argv)
     if args.check:
-        found = problems() + deck_problems()
+        found = parse_problems() + problems() + deck_problems()
         for line in found:
             print(line)
         print(

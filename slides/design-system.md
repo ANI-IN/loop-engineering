@@ -244,8 +244,8 @@ Optional fields:
 | `Definition:`, `Use when:`, `Avoid when:`, `Elsewhere:` | a pattern slide's lines |
 | `Lead:` | a problem statement's lead line; its items are bullets, each optionally ending `\| <loop>` (a loop's name, or "Section 2") |
 | `Before: <label> \| <value>`, `After: <label> \| <value>`, `Level: <value>` (shown as "Posted at:" over the level at the value size; a few words, so it stays on one line), `Loop: Section N \| <what it contributed>` | the payoff's cards and its complete scoreboard; its requirement checks are bullets |
-| `- ` | a bullet: a check box item, a recap card, a watch card, an option card, an evidence line under an Insight callout |
-| `1. ` | a numbered line: a callout, an agenda row, a closing item |
+| `-` and a space | a bullet: a check box item, a recap card, a watch card, an option card, an evidence line under an Insight callout |
+| `1.` and a space | a numbered line: a callout, an agenda row, a closing item |
 | `\|` | a table row (the separator row is left out) |
 | `"` | a quote card (the question of a problem story) |
 | `Link: <label> \| <address>` | the DEMO slide's demo page link, the one link a slide may carry |
@@ -520,8 +520,8 @@ Everything in the line grammar above holds, with these additions:
 | `Question:`, `Note:` | the poll's question, and a note under the LangSmith link, drawn on the copied slide |
 | `Quote: text \| n` | a quote card, attributed to source n |
 | `Panel: header` | a costs panel's header; the bullets after it are its points |
-| `1. ` to `5. ` | a failure step, a question slide's reason, an agenda row |
-| `- ` | a technique's line of explanation, a watch card, a costs panel's point |
+| `1.` to `5.`, each with a space | a failure step, a question slide's reason, an agenda row |
+| `-` and a space | a technique's line of explanation, a watch card, a costs panel's point |
 
 A cloned type (`intro`, `profile`, `logistics`, `qa`, `break`, `poll`) holds its visible text as
 lines in the order the deck builder fills the copied slide's text boxes, so the outline shows what

@@ -8,4 +8,5 @@ OPTIONAL_DEMOS=({% for demo in optional %}{{ demo.id }}{{ " " if not loop.last }
 PLANTED_DEMOS=({% for demo in demos if demo.id in planted_demos %}{{ demo.id }}{{ " " if not loop.last }}{% endfor %})
 # The class plan's target minutes, not measured times.
 CORE_TARGET_MINUTES={{ core | sum(attribute="target_minutes") | round | int }}
+# shellcheck disable=SC2034  # read by people (the header's How long), printed only with the core minutes
 OPTIONAL_TARGET_MINUTES={{ optional | sum(attribute="target_minutes") | round | int }}

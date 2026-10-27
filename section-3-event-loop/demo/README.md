@@ -64,7 +64,7 @@ with "No live session is open". Preflight first asks five questions that show th
 behaves as the course measured it, one agent run each. In class the instructor runs
 `make preflight PURPOSE=class` instead.
 
-Open the console at http://localhost:8501 on the Events page. Run every core demo of this section
+Open the console at <http://localhost:8501> on the Events page. Run every core demo of this section
 from the same terminal, one at a time, with:
 
 ```bash
@@ -97,10 +97,9 @@ console, wait for the worker to come back, then approve the held export.
 | Duplicate events | core | `make demo NAME=events-duplicate-events` | 3 |
 | The kill switch in flight | core | `make demo NAME=events-kill-switch-in-flight` | 4 |
 
-Each demo also runs from the console (Events > Send webhook question; Events > Run digest now; Events > Request California export; Events > Send the same event three times; Status line > Kill switch (arm, then stop)).
-Recovery for every demo in Section 3: Event loop: `make reset NAME=event-loop`, then the same
-trigger again. The target minutes are the class plan's, from `platform/demos/registry.yaml`, not
-measured times.
+Each demo also runs from the console (Events > Send webhook question; Events > Run digest now; Events > Request California export; Events > Send the same event three times; Status line > Kill switch (arm, then stop)). Recovery for every demo in Section 3: Event loop:
+`make reset NAME=event-loop`, then the same trigger again. The target minutes are the class
+plan's, from `platform/demos/registry.yaml`, not measured times.
 <!-- /generated:demo-table -->
 
 ### Files and links
@@ -126,6 +125,7 @@ and what may differ from run to run. The approval dialog states the Structured Q
 (SQL) the export would run.
 
 <!-- generated:demo-runbook -->
+
 ### The webhook question
 
 - **Tier**: core
@@ -173,6 +173,7 @@ and what may differ from run to run. The approval dialog states the Structured Q
 - **Expected live outcome**: The in-flight strip moves to Blocked by kill switch; the status line shows the report-only level.
 - **What can vary**: which step the run stops at
 - **Recovery**: `make reset NAME=event-loop`, then the same trigger again
+
 <!-- /generated:demo-runbook -->
 
 ## What the result means

@@ -11,6 +11,11 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
+# uid 1000 matches the usual host user, so the shared spend ledger stays writable on both sides.
+# Made before the dependencies, so a code change never repeats it and no two RUN steps follow
+# each other (hadolint DL3059).
+RUN useradd --create-home --uid 1000 datapilot
+
 # Dependencies first, so code changes do not reinstall them.
 COPY pyproject.toml uv.lock README.md LICENSE ./
 RUN uv sync --frozen --no-dev --no-install-project
@@ -18,6 +23,5 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY platform ./platform
 RUN uv sync --frozen --no-dev
 
-# uid 1000 matches the usual host user, so the shared spend ledger stays writable on both sides.
-RUN useradd --create-home --uid 1000 datapilot
-USER datapilot
+# The datapilot user, by its numeric id, so the host can resolve it (hadolint DL3066).
+USER 1000

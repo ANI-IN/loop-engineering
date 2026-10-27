@@ -1,0 +1,56 @@
+# The secret scan of continuous integration: gitleaks, pinned by tag and digest, over the files of
+# the checkout (its `dir` mode reads a shallow checkout as well as a full one):
+#
+#   docker run --rm -v "$PWD:/repo" \
+#     ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+#     dir /repo --config /repo/platform/config/gitleaks.toml --no-banner --redact --exit-code 1
+#
+# Every rule of gitleaks' own default set applies. The allow entries below name only what is never
+# a secret, each with its reason: folders that are not the course's files, binary files, and the
+# course's known fake values, each matched as its exact text. Add a fake value only with its reason
+# and only as its exact text; never allow a whole file of course text. The course's own scanner
+# (platform/scripts/check_repo_files.py secrets) reads the same tree with the key patterns of
+# platform/scripts/kit/scan/scan_secrets.py.
+
+title = "Loop Engineering secret scan"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Not the course's files: git's own folder, the environment uv sync creates, and tool caches"
+paths = [
+  '''(^|/)\.git/''',
+  '''(^|/)\.venv/''',
+  '''(^|/)(__pycache__|\.pytest_cache|\.ruff_cache|\.import_linter_cache|node_modules)/''',
+]
+
+[[allowlists]]
+description = "Binary files (pictures, fonts, documents): no key is written in them as text"
+paths = ['''\.(png|jpe?g|gif|woff2?|ttf|otf|pdf|pptx|ico)$''']
+
+[[allowlists]]
+description = "The setup pages' example lines for .env: words in the place of the two keys, never a key"
+regexTarget = "match"
+regexes = [
+  '''OPENAI_API_KEY=your-key-from-the-operations-team''',
+  '''LANGSMITH_API_KEY=your-langsmith-key''',
+]
+
+[[allowlists]]
+description = "Unit tests: fake keys passed to a client that never reaches a model or tracing host"
+regexTarget = "match"
+regexes = [
+  '''api_key="sk-test-not-used"''',
+  '''api_key="test-key"''',
+  '''SecretStr\("test-key"\)''',
+  '''SecretStr\("not-a-real-key"\)''',
+]
+
+[[allowlists]]
+description = "The local database roles' passwords, equal to their role names, for the Compose database, published on 127.0.0.1 only (compose.yaml)"
+regexTarget = "match"
+regexes = [
+  '''postgresql://(datapilot_owner|datapilot_agent_ro|datapilot_app|postgres):(datapilot_owner|datapilot_agent_ro|datapilot_app|postgres)@''',
+  '''POSTGRES_PASSWORD: postgres''',
+]

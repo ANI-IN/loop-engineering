@@ -156,7 +156,7 @@ still fail. Everything from now until the next preflight belongs to this class s
 
 ### Step 5: Put the console on screen
 
-**Where:** The browser, at http://localhost:8501.
+**Where:** The browser, at <http://localhost:8501>.
 
 **Type:** open the Events page, then press F11 for full screen.
 
@@ -175,7 +175,7 @@ course's business date. Times on the console are in your local time.
 > The status line, all five lanes, and the off-the-board row fit on the screen without scrolling.
 
 > [!IFDIFFERENT]
-> The console is blank → `make ps`; if the console service is up, try http://127.0.0.1:8501.
+> The console is blank → `make ps`; if the console service is up, try <http://127.0.0.1:8501>.
 > "No live session." → Step 4.
 
 > [!INSTRUCTOR]

@@ -80,7 +80,7 @@ with "No live session is open". Preflight first asks five questions that show th
 behaves as the course measured it, one agent run each. In class the instructor runs
 `make preflight PURPOSE=class` instead.
 
-Open the console at http://localhost:8501 on the Improve page. Run every core demo of this section
+Open the console at <http://localhost:8501> on the Improve page. Run every core demo of this section
 from the same terminal, one at a time, with:
 
 ```bash
@@ -120,10 +120,9 @@ started by `make up`; `make ps` shows it.
 | The candidate experiment | core | `make demo NAME=improve-candidate-experiment` | 5 |
 | Cleared for the unattended level | core | `make demo NAME=improve-cleared-unattended` | 3 |
 
-Each demo also runs from the console (Improve > Run experiment on the active version; Improve > Run the naive analyzer (planted); Improve > Add the over-broad rule to the active version; Improve > Run analyzer; Improve > Run experiment on the candidate; Events > Send webhook question).
-Recovery for every demo in Section 4: Hill-climbing loop: `make reset NAME=hill-climbing-loop`, then the same
-trigger again. The target minutes are the class plan's, from `platform/demos/registry.yaml`, not
-measured times.
+Each demo also runs from the console (Improve > Run experiment on the active version; Improve > Run the naive analyzer (planted); Improve > Add the over-broad rule to the active version; Improve > Run analyzer; Improve > Run experiment on the candidate; Events > Send webhook question). Recovery for every demo in Section 4: Hill-climbing loop:
+`make reset NAME=hill-climbing-loop`, then the same trigger again. The target minutes are the class
+plan's, from `platform/demos/registry.yaml`, not measured times.
 <!-- /generated:demo-table -->
 
 ### Files and links
@@ -151,6 +150,7 @@ Each demo's entry below comes from the demo registry: how to start it, what guar
 and what may differ from run to run.
 
 <!-- generated:demo-runbook -->
+
 ### The baseline experiment
 
 - **Tier**: core
@@ -207,6 +207,7 @@ and what may differ from run to run.
 - **Expected live outcome**: A correct answer, posted at the unattended level if its family cleared on the confirmed standard, and at the assisted level if it did not.
 - **What can vary**: wording; latency; the level: assisted or unattended; the answer is correct either way
 - **Recovery**: `make reset NAME=hill-climbing-loop`, then the same trigger again
+
 <!-- /generated:demo-runbook -->
 
 ## What the result means

@@ -266,6 +266,7 @@ products in demo run-through 2). The fiscal year 2025 revenue question by webhoo
 dollars, gold passed, run 32c5abc0) but posted at the assisted level.
 
 Recommendations:
+
 - N (the minimum holdout items per family before the unattended level, built by Assignment 4: Hill-climbing loop):
   3. Every class family has at least 3 holdout items except average order value (1), so the rule
   as designed keeps average order value at the assisted level, which these runs suggest is right:
@@ -337,6 +338,7 @@ registry: 3 to 5 minutes per demo.
 | improve-cleared-unattended | not shown: assisted level, answer wrong (e81760d3) | not shown: assisted level, answer wrong (e5598854) | |
 
 Demos whose guaranteed moment did not appear, and why:
+
 - agent-confident-wrong-answer (attempt 2) and verify-graders-pass-still-wrong (both): the gold
   check event did not arrive within 90 seconds. Hardened the same night (one run's gold check can never
   block the others, and a failing promotion step no longer stops the gold checks); the retake failed

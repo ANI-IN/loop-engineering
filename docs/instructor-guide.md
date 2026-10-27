@@ -179,7 +179,7 @@ The [preflight checklist](preflight-checklist.md) holds these steps as one tick 
    line that starts "Less than one class pass is left of this Eastern time day's token budget", no
    class session started: see "If something breaks" below. Everything until the next preflight belongs to the
    class session, including the baseline experiment at the poll.
-5. Open the console at http://localhost:8501 on the Agent page, press F11 for full screen, and
+5. Open the console at <http://localhost:8501> on the Agent page, press F11 for full screen, and
    share that window. Keep the terminals and the editor in separate windows.
 6. Confirm the status line: the class session's start time, the report-only level, the kill switch
    released, "Business date: 31 January 2026", and "Planted None: the fixed system": no run has

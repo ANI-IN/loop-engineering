@@ -1,0 +1,28 @@
+name: links
+
+# Weekly, never on push: every external address in the published Markdown (the course pages, the
+# slide outline, the sources page) is fetched once by platform/scripts/check_external_links.py (httpx, pinned
+# in uv.lock), with a timeout, retries, and an accept list for sites that block automated clients.
+# The result goes to the job summary only; no issue is opened. A dead address (404, 410, a host
+# name that does not resolve) fails the run; a slow or flaky site is listed and never fails it.
+# Run it locally with: uv run python platform/scripts/check_external_links.py
+
+on:
+  schedule:
+    - cron: "23 6 * * 1"  # Mondays at 06:23 Coordinated Universal Time (UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.1"
+      - run: uv sync --frozen --no-dev
+      - run: uv run --no-dev python platform/scripts/check_external_links.py

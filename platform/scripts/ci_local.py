@@ -34,6 +34,7 @@ import argparse
 import fcntl
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -263,6 +264,17 @@ def run_job(repo: Path, job: Job, root: Path, parent: dict[str, str]) -> list[st
             f"never takes down (only {TESTS_PROJECT}, the tests' own)"
         )
         return [f"{job.name}: Compose project {', '.join(refused)}"]
+    try:
+        return _run_job_steps(repo, job, root, parent, failed)
+    finally:
+        # Each job runs on a fresh runner on GitHub; here its clone and its environment are removed
+        # as soon as it ends, so the jobs never fill a small temporary folder together.
+        shutil.rmtree(root / job.name, ignore_errors=True)
+
+
+def _run_job_steps(
+    repo: Path, job: Job, root: Path, parent: dict[str, str], failed: list[str]
+) -> list[str]:
     work, home = root / job.name / "checkout", root / job.name / "home"
     home.mkdir(parents=True)
     clone(repo, work, job.fetch_depth)

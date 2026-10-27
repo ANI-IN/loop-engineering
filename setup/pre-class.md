@@ -38,7 +38,7 @@ names the command to run and what it must print. If an item fails, the
 1. **Start the services** with `make up`, then confirm with `make ps`.
 2. **Run preflight for the class**: `make preflight PURPOSE=class`. Its canary asks five questions,
    each one agent run with your key, and the class session starts when every check passes.
-3. **Open the console** at http://localhost:8501 and press F11 for full screen. The run board is
+3. **Open the console** at <http://localhost:8501> and press F11 for full screen. The run board is
    laid out for a page of 1280 by 720 pixels (`platform/console/DESIGN.md`), and browser toolbars
    take space it needs. Press F11 again to leave full screen.
 4. **Keep a terminal open** in the repository folder, beside the browser. Each demo has a make

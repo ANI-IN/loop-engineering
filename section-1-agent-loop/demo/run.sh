@@ -34,6 +34,7 @@ OPTIONAL_DEMOS=(agent-texas-last-quarter)
 PLANTED_DEMOS=(agent-unbounded-rows)
 # The class plan's target minutes, not measured times.
 CORE_TARGET_MINUTES=12
+# shellcheck disable=SC2034  # read by people (the header's How long), printed only with the core minutes
 OPTIONAL_TARGET_MINUTES=4
 # /generated:demo-list
 

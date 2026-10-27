@@ -6,7 +6,7 @@ explained once, in [the shared diagrams page](../../docs/diagrams/README.md#colo
 This section also uses [the warehouse data model](../../docs/diagrams/README.md#the-warehouse-data-model)
 and [the four loops as one system](../../docs/diagrams/README.md#the-four-loops-as-one-system).
 
-### The agent loop
+## The agent loop
 
 ![The analyst agent between its prompt, which carries the business date and the active knowledge version, and its tools list_tables, describe_table, run_query, and scout_schema; run_query goes through the checker and returns at most 50 rows; scout_schema starts a schema scout agent inside a dashed tool boundary with only list_tables and describe_table; the run ends in an answer envelope; a stop box lists the limits of every run: 12 model calls, 16 tool calls, 60,000 tokens](./agent-loop.svg)
 

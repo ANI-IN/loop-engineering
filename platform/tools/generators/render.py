@@ -64,6 +64,19 @@ def _whole(template: str, **context: object) -> Callable[[str], str]:
     return lambda _current: ENV.get_template(template).render(**context)
 
 
+_LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
+
+
+def _gaps(body: str) -> tuple[str, str]:
+    """The line breaks around a Markdown block's body: a heading or a list next to a marker gets a
+    blank line between them, as Markdown wants (the Markdown lint, .pymarkdown.yaml)."""
+    lines = body.split("\n")
+    first, last = lines[0], lines[-1]
+    before = "\n\n" if first.startswith("#") or _LIST_ITEM.match(first) else "\n"
+    after = "\n\n" if last.startswith("#") or _LIST_ITEM.match(last) else "\n"
+    return before, after
+
+
 def _block(
     name: str, template: str, *, shell: bool = False, **context: object
 ) -> Callable[[str], str]:
@@ -77,7 +90,8 @@ def _block(
         if begin not in current:
             raise SystemExit(f"x missing marker {begin}")
         body = ENV.get_template(template).render(**context).strip("\n")
-        return pattern.sub(lambda _m: f"{begin}\n{body}\n{end}", current, count=1)
+        before, after = ("\n", "\n") if shell else _gaps(body)
+        return pattern.sub(lambda _m: f"{begin}{before}{body}{after}{end}", current, count=1)
 
     return render
 

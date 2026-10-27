@@ -84,6 +84,58 @@ def test_the_check_notices_a_changed_source(exporter: ModuleType, tmp_path: Path
     ]
 
 
+def test_the_check_notices_a_missing_render_or_record(exporter: ModuleType, tmp_path: Path) -> None:
+    folder = tmp_path / "docs" / "diagrams"
+    folder.mkdir(parents=True)
+    (folder / "drawn.excalidraw").write_text('{"elements": []}\n', encoding="utf-8")
+    (folder / "drawn.svg").write_text("<svg/>\n", encoding="utf-8")
+    entry = {"source": exporter.sha256(folder / "drawn.excalidraw")}
+    entry |= {"svg": exporter.sha256(folder / "drawn.svg"), "png": "0" * 64}
+    manifest = {"excalidraw": exporter.EXCALIDRAW_VERSION, "renders": {"drawn": entry}}
+    manifest["renders"]["deleted"] = entry
+    exporter.write_manifest(folder, manifest)
+    (folder / "new.excalidraw").write_text('{"elements": []}\n', encoding="utf-8")
+    assert exporter.problems(tmp_path) == [
+        "docs/diagrams/drawn.excalidraw: no .png",
+        "docs/diagrams/new.excalidraw: never rendered",
+        "docs/diagrams/renders.json: deleted has no source",
+    ]
+
+
+def test_every_source_parses_as_a_scene_with_its_panel_first(exporter: ModuleType) -> None:
+    assert exporter.parse_problems() == []
+
+
+def test_the_parse_check_names_each_source_that_is_not_a_scene(
+    exporter: ModuleType, tmp_path: Path
+) -> None:
+    folder = tmp_path / "docs" / "diagrams"
+    folder.mkdir(parents=True)
+    panel = '{"elements": [{"type": "rectangle", "width": 1920, "height": 540}]}\n'
+    for name, text in {
+        "broken": '{"elements": [\n',
+        "empty": '{"elements": []}\n',
+        "list": "[]\n",
+        "no-panel": '{"elements": [{"type": "text"}]}\n',
+        "no-size": '{"elements": [{"type": "rectangle"}]}\n',
+        "good": panel,
+    }.items():
+        (folder / f"{name}.excalidraw").write_text(text, encoding="utf-8")
+    found = exporter.parse_problems(tmp_path)
+    assert [line.split(":")[0] for line in found] == [
+        "docs/diagrams/broken.excalidraw",
+        "docs/diagrams/empty.excalidraw",
+        "docs/diagrams/list.excalidraw",
+        "docs/diagrams/no-panel.excalidraw",
+        "docs/diagrams/no-size.excalidraw",
+    ]
+    assert "does not parse as JSON" in found[0]
+    assert found[1].endswith("holds no list of elements")
+    assert found[3].endswith("its first element is not the panel rectangle")
+    assert found[4].endswith("its panel has no width and height")
+    assert exporter.deck_sources(tmp_path) == [folder / "good.excalidraw"]
+
+
 def test_the_export_page_pins_one_exact_excalidraw_version(exporter: ModuleType) -> None:
     assert re.fullmatch(r"\d+\.\d+\.\d+", exporter.EXCALIDRAW_VERSION)
     assert exporter.page_version() == exporter.EXCALIDRAW_VERSION

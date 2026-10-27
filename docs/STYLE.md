@@ -109,7 +109,7 @@ id (its first eight characters) beside a measured result or under a capture, as 
 image to the run behind it. Keep these short ids when you edit such a page; the full record of
 each run is on the evidence pages.
 
-Sections, assignments, and any other named kind are written "<Kind> N: <name>". The first mention
+Sections, assignments, and any other named kind are written `<Kind> N: <name>`. The first mention
 on a page is the full form; later mentions use the short form "Section 2". Plurals such as
 "Sections 1 to 4" are not mentions. The exact names are in `platform/config/course.toml`.
 

@@ -36,6 +36,7 @@ OPTIONAL_DEMOS=(events-digest-now)
 PLANTED_DEMOS=(events-approval-survives-restart events-duplicate-events events-kill-switch-in-flight)
 # The class plan's target minutes, not measured times.
 CORE_TARGET_MINUTES=15
+# shellcheck disable=SC2034  # read by people (the header's How long), printed only with the core minutes
 OPTIONAL_TARGET_MINUTES=3
 # /generated:demo-list
 

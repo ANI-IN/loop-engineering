@@ -4,7 +4,6 @@
 | {{ demo.title }} | {{ demo.tier.value }} | `{{ demo.trigger.make }}` | {{ demo.target_minutes | round | int }} |
 {% endfor %}
 
-Each demo also runs from the console ({{ demos | map(attribute="trigger.console") | join("; ") }}).
-Recovery for every demo in {{ section.title }}: `make reset NAME={{ section.slug }}`, then the same
-trigger again. The target minutes are the class plan's, from `platform/demos/registry.yaml`, not
-measured times.
+Each demo also runs from the console ({{ demos | map(attribute="trigger.console") | join("; ") }}). Recovery for every demo in {{ section.title }}:
+`make reset NAME={{ section.slug }}`, then the same trigger again. The target minutes are the class
+plan's, from `platform/demos/registry.yaml`, not measured times.

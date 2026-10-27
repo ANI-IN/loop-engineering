@@ -70,7 +70,7 @@ card there is nothing to bill. Do not add a card.
 
 **Do this.**
 
-1. Open https://smith.langchain.com and sign up. Stay on the free Developer plan.
+1. Open <https://smith.langchain.com> and sign up. Stay on the free Developer plan.
 2. Open the Settings page and select the application programming interface (API) Keys section
    ([Create an account and API key](https://docs.langchain.com/langsmith/create-account-api-key)).
 3. Create a Personal Access Token with an expiry after the course.
@@ -392,7 +392,7 @@ Your key is never printed.
 warehouse with your key, shown live on the console and traced in LangSmith. It is the first demo
 of Section 1: Agent loop, the simple question.
 
-**Do this.** Open http://localhost:8501 in your Windows browser. In WSL's default networking mode,
+**Do this.** Open <http://localhost:8501> in your Windows browser. In WSL's default networking mode,
 a server in Ubuntu is reachable from Windows at `localhost`
 ([WSL networking](https://learn.microsoft.com/en-us/windows/wsl/networking)). Then, in the
 Ubuntu terminal:
@@ -417,7 +417,7 @@ and a live stamp: the start time in your local time and a trace link.
 | Problem | Fix |
 |---|---|
 | `No live session is open: run make preflight PURPOSE=class\|rehearsal\|thursday-review\|development first` | Step 11 |
-| The console does not open in the Windows browser | Check `make ps`; try http://127.0.0.1:8501 |
+| The console does not open in the Windows browser | Check `make ps`; try <http://127.0.0.1:8501> |
 | The run stays in one lane | `make reset NAME=agent-loop`, then the same `make demo` again |
 
 ## Common errors

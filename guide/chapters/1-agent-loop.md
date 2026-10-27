@@ -13,7 +13,7 @@ calibration's run-through of the demos on 22 and 23 October 2026 and the live se
 ### Step 1: Ask the simple question
 
 **Where:** The demo terminal, in the repository folder, and the console's Agent page at
-http://localhost:8501.
+<http://localhost:8501>.
 
 **Type:** this, or press **Ask** on the Agent page.
 

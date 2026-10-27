@@ -71,7 +71,7 @@ with "No live session is open". Preflight first asks five questions that show th
 behaves as the course measured it, one agent run each. In class the instructor runs
 `make preflight PURPOSE=class` instead.
 
-Open the console at http://localhost:8501 on the Verify page. Run every core demo of this section
+Open the console at <http://localhost:8501> on the Verify page. Run every core demo of this section
 from the same terminal, one at a time, with:
 
 ```bash
@@ -94,10 +94,9 @@ alone; then `make demo NAME=<demo>` runs the fixed half. `.env` never changes.
 | The retry cap | core | `make demo NAME=verify-retry-cap` | 4 |
 | Every grader passes, still wrong | core | `make demo NAME=verify-graders-pass-still-wrong` | 4 |
 
-Each demo also runs from the console (Verify > Send malicious SQL; Verify > Send cartesian query; Verify > Inject failing grader; Verify > Ask the spine question).
-Recovery for every demo in Section 2: Verification loop: `make reset NAME=verification-loop`, then the same
-trigger again. The target minutes are the class plan's, from `platform/demos/registry.yaml`, not
-measured times.
+Each demo also runs from the console (Verify > Send malicious SQL; Verify > Send cartesian query; Verify > Inject failing grader; Verify > Ask the spine question). Recovery for every demo in Section 2: Verification loop:
+`make reset NAME=verification-loop`, then the same trigger again. The target minutes are the class
+plan's, from `platform/demos/registry.yaml`, not measured times.
 <!-- /generated:demo-table -->
 
 ### Files and links
@@ -122,6 +121,7 @@ Each demo's entry below comes from the demo registry: how to start it, what guar
 and what may differ from run to run.
 
 <!-- generated:demo-runbook -->
+
 ### Malicious SQL
 
 - **Tier**: core
@@ -161,6 +161,7 @@ and what may differ from run to run.
 - **Expected live outcome**: An all-green checklist beside a failed gold check.
 - **What can vary**: the reviewer's verdict; the wrong value
 - **Recovery**: `make reset NAME=verification-loop`, then the same trigger again
+
 <!-- /generated:demo-runbook -->
 
 ## What the result means

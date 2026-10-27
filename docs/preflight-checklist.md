@@ -54,7 +54,7 @@ lists them. Run the commands in Ubuntu on WSL2, from the repository root.
 
 ## The console
 
-- [ ] http://localhost:8501 on the Agent page, in F11 full screen, shared alone.
+- [ ] <http://localhost:8501> on the Agent page, in F11 full screen, shared alone.
 - [ ] The status line shows the class session's start time, the report-only level, the kill switch
       released, "Business date: 31 January 2026", and "Planted None: the fixed system".
 

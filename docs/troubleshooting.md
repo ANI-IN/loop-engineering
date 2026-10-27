@@ -127,7 +127,7 @@ seconds in all. A restarted runner keeps serving, so a reset after a restart ref
 
 ## The console
 
-The console runs at http://localhost:8501 (`CONSOLE_PORT`, `compose.yaml`).
+The console runs at <http://localhost:8501> (`CONSOLE_PORT`, `compose.yaml`).
 
 | You see | Cause | Fix |
 |---|---|---|

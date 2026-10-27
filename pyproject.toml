@@ -37,12 +37,15 @@ datapilot = "datapilot.cli:app"
 
 [dependency-groups]
 dev = [
+    "actionlint-py==1.7.12.25",
     "import-linter==2.15",
     "playwright==1.63.0",
+    "pymarkdownlnt==0.9.41",
     "pytest==9.1.1",
     "pytest-xdist==3.8.0",
     "python-pptx==1.0.2",
     "ruff==0.16.10",
+    "shellcheck-py==0.11.0.1",
 ]
 
 [build-system]

@@ -140,6 +140,6 @@ in a code span: the naive guard (`BUG_NAIVE_GUARD`). The list, with what each on
 - **Trace sample**: The share of experiment runs that send a trace, about 1 in 5
   (`tracing.experiment_sample_rate`); a row with none reads "Not traced".
 - **Trap**: A business rule the schema does not reveal, so a plausible query gets it wrong.
-- **Uniform Resource Locator (URL)**: A web address, such as the console's http://localhost:8501.
+- **Uniform Resource Locator (URL)**: A web address, such as the console's <http://localhost:8501>.
 - **Verification loop**: Graders check each query and answer, and send failures back to the agent.
 - **WSL2**: Windows Subsystem for Linux, which runs a real Ubuntu next to Windows.

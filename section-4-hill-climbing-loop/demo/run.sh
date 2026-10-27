@@ -42,6 +42,7 @@ OPTIONAL_DEMOS=(improve-overbroad-rule-blocked)
 PLANTED_DEMOS=(improve-naive-analyzer-blocked)
 # The class plan's target minutes, not measured times.
 CORE_TARGET_MINUTES=21
+# shellcheck disable=SC2034  # read by people (the header's How long), printed only with the core minutes
 OPTIONAL_TARGET_MINUTES=4
 # /generated:demo-list
 

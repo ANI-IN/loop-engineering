@@ -1,7 +1,9 @@
 name: ci
 
-# Zero-token suites only. Live tests (OpenAI, LangSmith) never run in CI: no API keys are stored as
-# secrets; run them locally with the live make targets.
+# Zero-token checks only. Live tests (OpenAI, LangSmith) never run in CI: no API keys are stored as
+# secrets; run them locally with the live make targets. Every check is a plain run: step (tools
+# pinned in uv.lock, Docker images pinned by tag and digest), so platform/scripts/ci_local.py
+# replays this workflow exactly. External links are checked weekly in links.yml, never here.
 
 on:
   push:
@@ -12,15 +14,18 @@ permissions:
   contents: read
 
 jobs:
+  # Python and course text: lint, format, import rules, prose, style, naming, guards, generated
+  # pages, and the secret scan over every commit.
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.3.1
         with:
-          fetch-depth: 0  # the naming-rule check reads every commit message
-      - uses: astral-sh/setup-uv@v6
+          fetch-depth: 0  # the naming-rule check and the history secret scan read every commit
+      - uses: astral-sh/setup-uv@v6.7.0
         with:
           version: "0.13.1"
+          enable-cache: true
       - run: uv sync --frozen
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -44,25 +49,111 @@ jobs:
       - name: naming rule on commit messages (the course's build only)
         shell: bash
         run: uv run python platform/scripts/check_repo_guards.py --commit-messages
-      - run: uv run python platform/tools/generators/render.py --check
+      - name: generated pages up to date
+        run: uv run python platform/tools/generators/render.py --check
+      - name: secrets in every file and every commit (the course's key patterns)
+        run: uv run python platform/scripts/check_repo_files.py --history secrets
+
+  # Every Markdown page: the Markdown linter, relative links and anchors, the slide outline, the
+  # images, and the diagram exports against their sources.
+  pages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.3.1
+      - uses: astral-sh/setup-uv@v6.7.0
+        with:
+          version: "0.13.1"
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Markdown linter (pymarkdownlnt, .pymarkdown.yaml)
+        run: uv run python platform/scripts/lint_markdown.py
+      - name: every relative link and anchor resolves
+        run: uv run python platform/scripts/check_links.py
+      - name: the slide outline is up to date with its sources
+        run: uv run python platform/scripts/check_outline.py
+      - name: diagram sources parse; their SVG and PNG exports are the recorded renders
+        run: uv run python platform/tools/diagrams/export_diagrams.py --check
+      - name: images (size, clipping, blank areas, alt text)
+        run: uv run python platform/scripts/check_images.py
+
+  # Every other published file: data files and schemas, make targets named on pages, course
+  # structure, shell scripts, the workflows, the Dockerfile, Compose, and gitleaks.
+  files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.3.1
+      # Before uv sync, so the scan reads the checkout and nothing installed into it.
+      - name: secret scan (gitleaks 8.30.1)
+        run: >-
+          docker run --rm -v "$PWD:/repo"
+          ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          dir /repo --config /repo/platform/config/gitleaks.toml --no-banner --redact --exit-code 1
+      - uses: astral-sh/setup-uv@v6.7.0
+        with:
+          version: "0.13.1"
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: YAML, TOML and JSON parse; the pack, registries and benchmark match their schemas; course structure
+        run: uv run python platform/scripts/check_repo_files.py data schemas structure
+      - name: every make target named on a page exists (make -n)
+        run: uv run python platform/scripts/check_repo_files.py make-targets
+      - name: ShellCheck on every shell script
+        run: uv run python platform/scripts/check_shell_docker.py shellcheck
+      - name: bash -n on every shell script
+        run: uv run python platform/scripts/check_shell_docker.py bash-n
+      - name: actionlint on every workflow
+        run: uv run actionlint
+      - name: hadolint on every Dockerfile
+        run: uv run python platform/scripts/check_shell_docker.py hadolint
+      - name: docker compose config for every profile
+        run: uv run python platform/scripts/check_shell_docker.py compose
+
+  # The release rules on the tree CI checks out: no internal files, no solutions, no LangSmith
+  # organisation links, no key-like text or host paths, no placeholder but the allowed ones.
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.3.1
+      - uses: astral-sh/setup-uv@v6.7.0
+        with:
+          version: "0.13.1"
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run python platform/scripts/check_repo_files.py release
+
+  # The images build, with no secret and no .env.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.3.1
+      - uses: astral-sh/setup-uv@v6.7.0
+        with:
+          version: "0.13.1"
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run python platform/scripts/check_shell_docker.py build
 
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v4.3.1
+      - uses: astral-sh/setup-uv@v6.7.0
         with:
           version: "0.13.1"
+          enable-cache: true
       - run: uv sync --frozen
       - run: uv run pytest -q -m "not integration and not live"
 
+  # Every migration applied in order to a fresh PostgreSQL 18.6 and both warehouses seeded
+  # (platform/scripts/prepare_tests_database.py), then the integration tests.
   integration:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v4.3.1
+      - uses: astral-sh/setup-uv@v6.7.0
         with:
           version: "0.13.1"
+          enable-cache: true
       - run: uv sync --frozen
       # The tests' own database (Compose project datapilot-tests, port 55432), as make test-integration
       - run: POSTGRES_PORT=55432 docker compose -p datapilot-tests up --detach --wait postgres

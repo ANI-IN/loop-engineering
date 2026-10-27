@@ -201,10 +201,14 @@ def test_a_step_keeps_nothing_of_the_parent_but_path_lang_and_uvs_folders() -> N
 def test_the_real_workflow_runs_every_job_as_github_does_and_names_no_secret() -> None:
     real = REPO / ".github" / "workflows" / "ci.yml"
     found = ci_local.jobs(real)
-    assert [j.name for j in found] == ["lint", "test", "integration"]
+    # 27 October 2026: every published file checked (pages, files, release, docker added)
+    names = ["lint", "pages", "files", "release", "docker", "test", "integration"]
+    assert [j.name for j in found] == names
     assert not any(j.unsupported or any(s.unsupported for s in j.steps) for j in found)
-    assert [j.fetch_depth for j in found] == [0, 1, 1]
-    assert found[2].compose_projects == ["datapilot-tests"] and found[0].compose_projects == []
+    assert [j.fetch_depth for j in found] == [0, 1, 1, 1, 1, 1, 1]
+    by_name = {j.name: j for j in found}
+    assert by_name["integration"].compose_projects == ["datapilot-tests"]
+    assert all(j.compose_projects == [] for j in found if j.name != "integration")
     assert "secrets." not in real.read_text(encoding="utf-8")
 
 

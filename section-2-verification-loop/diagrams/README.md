@@ -4,7 +4,7 @@ Each diagram here has an `.excalidraw` source, a `.svg` with the font embedded f
 `.png` at 2x for slides. The colours, the shapes, the step frames, and how the renders are made are
 explained once, in [the shared diagrams page](../../docs/diagrams/README.md#colours-and-shapes).
 
-### The verification layers
+## The verification layers
 
 ![Two stages of checks. Every query: graders 1 to 5, parse, SELECT only, schema, cost estimate, and personal data, then the read-only executor and grader 6, execution; a block sends the reason back to the analyst, personal data goes to human approval, and a write the database refuses ends the run. The answer: graders 1 to 6 again, then grader 7, final answer, then the reviewer agent, which can hold the answer for a person; a failure retries and is escalated after 3 attempts. A stop box: before every model call and every tool call, the kill switch and the budgets](./verification-layers.svg)
 

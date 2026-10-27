@@ -186,40 +186,40 @@ It does not help when:
 
 1. Why is a queue built on `SKIP LOCKED` at least once, and what does that force on handlers?
 
-<details><summary>Answer</summary>
+   <details><summary>Answer</summary>
 
-A worker can claim a job, do the work, and die before marking it done; the reaper requeues it.
-Handlers must make the effect happen once, here with a deterministic event id and
-`ON CONFLICT (event_id) DO NOTHING`.
+   A worker can claim a job, do the work, and die before marking it done; the reaper requeues it.
+   Handlers must make the effect happen once, here with a deterministic event id and
+   `ON CONFLICT (event_id) DO NOTHING`.
 
-</details>
+   </details>
 
 2. Why does the digest use `digest:YYYY-MM-DD` instead of a random id?
 
-<details><summary>Answer</summary>
+   <details><summary>Answer</summary>
 
-Two firings on the same day get the same id, so the second is a duplicate. A random id makes each
-firing new, and the channel gets two digests.
+   Two firings on the same day get the same id, so the second is a duplicate. A random id makes each
+   firing new, and the channel gets two digests.
 
-</details>
+   </details>
 
 3. Why is checking the kill switch at claim time not enough?
 
-<details><summary>Answer</summary>
+   <details><summary>Answer</summary>
 
-A run claimed before the switch was engaged never checks again. Checking before every model call
-and every tool call stops it at its next step.
+   A run claimed before the switch was engaged never checks again. Checking before every model call
+   and every tool call stops it at its next step.
 
-</details>
+   </details>
 
 4. Why is the router not an agent?
 
-<details><summary>Answer</summary>
+   <details><summary>Answer</summary>
 
-Routing from event type to handler and policy is a lookup with one right answer. A table is
-deterministic, free, and testable; an agent adds cost and variance for no judgement.
+   Routing from event type to handler and policy is a lookup with one right answer. A table is
+   deterministic, free, and testable; an agent adds cost and variance for no judgement.
 
-</details>
+   </details>
 
 ## Further reading
 

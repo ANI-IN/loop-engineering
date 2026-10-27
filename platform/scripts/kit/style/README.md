@@ -26,7 +26,7 @@ uv run python platform/scripts/lint_prose.py
    full name every time it stands alone: "Section 2: Verification loop", "the report-only level".
    File and folder names use readable slugs instead, such as `section-2-verification-loop/`.
 3. **Full name on first use.** The first mention of a named kind on a page uses its full
-   "<Kind> N: <name>" form ("Assignment 1: Instructions"); later mentions may shorten it.
+   `<Kind> N: <name>` form ("Assignment 1: Instructions"); later mentions may shorten it.
 4. **Quoted line numbers are checked.** When a page quotes a tool's output or a source file
    "at line N", a check reads the file and confirms the line still says it. A line number that
    is not checked goes stale with the next edit: remove it or check it.

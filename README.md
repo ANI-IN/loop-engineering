@@ -186,7 +186,7 @@ make preflight PURPOSE=development    # ends with a line that starts: Live sessi
 make demo NAME=agent-simple-question
 ```
 
-On Windows, run these in the Ubuntu terminal. Open the console at http://localhost:8501 to watch the
+On Windows, run these in the Ubuntu terminal. Open the console at <http://localhost:8501> to watch the
 run. `make preflight` asks five canary questions, one agent run each. [setup/](setup/README.md)
 explains every step and its failures.
 

@@ -13,6 +13,7 @@ include = [
     "pyproject.toml",
     "uv.lock",
     ".python-version",
+    ".pymarkdown.yaml",  # the Markdown lint's configuration, read by CI
     ".env.example",
     ".gitignore",
     ".github/",

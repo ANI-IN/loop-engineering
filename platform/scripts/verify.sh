@@ -5,7 +5,7 @@
 set -uo pipefail
 
 UV="${UV:-uv}"
-cd "$(dirname "${BASH_SOURCE[0]}")/../.."
+cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 
 results=()
 failed=0
@@ -57,6 +57,13 @@ run_check "naming check, outline"        "$UV" run python platform/scripts/short
 run_check "naming check, commit messages" commit_messages_check
 run_check "docs check"                   "$UV" run python platform/tools/generators/render.py --check
 run_check "outline check"                outline_check
+run_check "Markdown linter"              "$UV" run python platform/scripts/lint_markdown.py
+run_check "relative links and anchors"   "$UV" run python platform/scripts/check_links.py
+run_check "data files and schemas"       "$UV" run python platform/scripts/check_repo_files.py data schemas structure
+run_check "make targets on pages"        "$UV" run python platform/scripts/check_repo_files.py make-targets
+run_check "shell scripts"                bash -c "$UV run python platform/scripts/check_shell_docker.py shellcheck && $UV run python platform/scripts/check_shell_docker.py bash-n"
+run_check "workflows (actionlint)"       "$UV" run actionlint
+run_check "diagram exports"              "$UV" run python platform/tools/diagrams/export_diagrams.py --check
 run_check "image check"                  "$UV" run python platform/scripts/check_images.py
 run_check "unit tests"                   "$UV" run pytest -q -m "not integration and not live"
 

@@ -4,7 +4,7 @@ Each diagram here has an `.excalidraw` source, a `.svg` with the font embedded f
 `.png` at 2x for slides. The colours, the shapes, the step frames, and how the renders are made are
 explained once, in [the shared diagrams page](../../docs/diagrams/README.md#colours-and-shapes).
 
-### The hill-climbing loop
+## The hill-climbing loop
 
 ![The hill-climbing cycle: the benchmark, 25 development and 15 holdout questions, feeds an experiment that measures execution match on two databases; the analyzer team of three agents reads only the failed development questions; the overfit guard rejects a rule that copies a question or a gold query; of two candidates the better one is kept; the promotion gate needs all four conditions, more holdout passes than the active version, zero confirmed regressions on both splits, human approval, and every new rule passing the overfit guard; the promoted version becomes the active knowledge version and the next baseline](./hill-climbing-loop.svg)
 

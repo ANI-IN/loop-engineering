@@ -37,6 +37,7 @@ OPTIONAL_DEMOS=(verify-cost-guard)
 PLANTED_DEMOS=(verify-malicious-sql verify-cost-guard verify-retry-cap)
 # The class plan's target minutes, not measured times.
 CORE_TARGET_MINUTES=12
+# shellcheck disable=SC2034  # read by people (the header's How long), printed only with the core minutes
 OPTIONAL_TARGET_MINUTES=3
 # /generated:demo-list
 
