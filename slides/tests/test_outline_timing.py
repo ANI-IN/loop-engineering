@@ -79,11 +79,12 @@ def test_the_outline_builds_under_one_rule_set():
 
 
 def test_every_slide_minutes_add_up_to_the_class_length():
-    minutes = [
-        s["minutes"] for name in outline_builder.block_order() for s in outline_builder.load(name)
-    ]
-    assert all(m > 0 for m in minutes), "every slide has time"
-    assert sum(minutes) == CLASS_MINUTES
+    """Every slide has time, except the sources slides: a bibliography, not presented, which the
+    owner's specification of 27 October 2026 gives zero minutes."""
+    slides = [s for name in outline_builder.block_order() for s in outline_builder.load(name)]
+    assert all(s["minutes"] > 0 for s in slides if s["kind"] != "sources"), "every slide has time"
+    assert all(s["minutes"] == 0 for s in slides if s["kind"] == "sources")
+    assert sum(s["minutes"] for s in slides) == CLASS_MINUTES
 
 
 def test_each_block_matches_its_plan():
@@ -94,7 +95,7 @@ def test_each_block_matches_its_plan():
         for name, approved in outline_builder.APPROVED.items():
             assert [s["minutes"] for s in outline_builder.load(name)] == approved, name
         return
-    for key, _name, minutes, most in outline_builder.BLOCK_PLAN:
+    for key, _name, minutes, most in outline_builder.PLANS[rules]:
         slides = outline_builder.load(key)
         assert sum(s["minutes"] for s in slides) == minutes, key
         assert len(slides) <= most, key
@@ -111,6 +112,38 @@ def test_the_design_system_plan_is_the_rebuild_plan():
         t += minutes * 60
     assert t == CLASS_MINUTES * 60
     assert outline_builder.MAX_SLIDES == 85
+
+
+# The second rebuild's block plan as the lead fixed it, 27 October 2026 (the closing's cap is its
+# 7 slides and at most 7 sources slides).
+REBUILD_PLAN_2 = [
+    ("Opening", "0:00", "0:05", 3),
+    ("The problem", "0:05", "0:17", 4),
+    ("Foundations", "0:17", "0:30", 5),
+    ("Designing text-to-SQL", "0:30", "0:40", 4),
+    ("Section 1: Agent loop", "0:40", "1:15", 13),
+    ("Section 2: Verification loop", "1:15", "1:50", 13),
+    ("Break", "1:50", "2:00", 1),
+    ("Section 3: Event loop", "2:00", "2:48", 13),
+    ("Poll", "2:48", "2:53", 1),
+    ("Break", "2:53", "3:03", 1),
+    ("Section 4: Hill-climbing loop", "3:03", "3:45", 13),
+    ("Closing", "3:45", "4:00", 14),
+]
+
+
+def test_the_second_design_system_plan_is_the_second_rebuild_plan():
+    plan = outline_builder.BLOCK_PLAN_2
+    assert [name for _k, name, _m, _c in plan] == [row[0] for row in REBUILD_PLAN_2]
+    assert [most for *_rest, most in plan] == [row[3] for row in REBUILD_PLAN_2]
+    t = 0
+    for (_key, name, minutes, _most), (_n, start, end, _c) in zip(
+        plan, REBUILD_PLAN_2, strict=True
+    ):
+        assert (_clock(start), _clock(end)) == (t, t + minutes * 60), name
+        t += minutes * 60
+    assert t == CLASS_MINUTES * 60
+    assert sum(most for *_rest, most in plan) <= outline_builder.MAX_SLIDES
 
 
 def test_blocks_match_the_run_of_show_in_the_instructor_guide():
@@ -139,3 +172,16 @@ def test_outline_time_lines_are_contiguous_and_add_up():
         assert end - start == round(float(m["minutes"]) * 60)
         position = end
     assert position == CLASS_MINUTES * 60
+
+
+def test_the_sources_slides_list_exactly_the_sources_the_deck_cites():
+    """Every source a slide marks or a note names is on a sources slide, and every source on a
+    sources slide is cited somewhere: the bibliography is neither short nor padded."""
+    blocks = [(name, outline_builder.load(name)) for name in outline_builder.block_order()]
+    cited, listed = outline_builder.cited_sources(blocks)
+    if not listed:
+        return
+    assert set(cited) == set(listed), {
+        "cited, not listed": sorted(set(cited) - set(listed)),
+        "listed, not cited": sorted(set(listed) - set(cited)),
+    }

@@ -1,0 +1,86 @@
+{
+  "about": "SHA-256 of each diagram source and of the renders made from it, written by platform/tools/diagrams/export_diagrams.py; do not edit by hand.",
+  "excalidraw": "0.18.1",
+  "renders": {
+    "pattern-agent-loop": {
+      "source": "5b249e42e5ead7eaaaaf35190de064f4898b28ab8fb1f1018f4e168e98804f8a",
+      "svg": "262fcc31abfb2eb389f5b6c65cceeadd5838c1e24adeb01da955671c3eda8878",
+      "png": "87e17dd8157c7f269d96a3b7fc6456ee31a0ce212ffeafac8a28b9b87f9d2f8d"
+    },
+    "pattern-autonomy-levels": {
+      "source": "f6d03df0f0d01007daf3116a27b209850bd10b7c7fdc2f62a412a2d7d4d9b8c1",
+      "svg": "f85648a9016ec6de32528a216c2ca803cfa717d8bd96508ec2c17a968e4ddbfd",
+      "png": "26a0a9f54c36b76a6c8f4b68e3af705b4a6cc3c0ec7b0668ec100511e73a32ca"
+    },
+    "pattern-bounded-retry": {
+      "source": "aa7967dc06a051f2a23df4a2982d0951b892e0b95113b358aa23578e90a90be8",
+      "svg": "c3565621f687d4cd912a4b0b469dd2b313a15a886928d35149fddf6757303483",
+      "png": "57259c9a12d260a5018ea4e0da7e19500e125b438184cc2ded95d8dcfe475d27"
+    },
+    "pattern-defence-in-depth": {
+      "source": "7b77bb5002f1a2b6ea089ead00b3d43d3a2a3e3b728d96538d5f35fd99e11852",
+      "svg": "ef76dc704f9c2276f9866c3e5f4e190ccf2e782f3169e9c297c784795beb712a",
+      "png": "4b2ff143ec6f612bd7d9205db97b26dd80971e10ce2f4632d96d31090115ee87"
+    },
+    "pattern-dev-holdout": {
+      "source": "74d09301ae3440ae63207a97635d60b3f951b6f558a5e217952eea41feec97fb",
+      "svg": "62990c445b84c5df2c15e775138e91bb77813edecec07dba02013e26a296ab7a",
+      "png": "0892414827f93e6132b21a87645d32e4f82af864abc0f3868fa8ea0bedc53fc0"
+    },
+    "pattern-durable-approval": {
+      "source": "7effbd8a8830f7c9a9a8153c423b7b0ea46d6e5d4e695f0c4b960168e441c268",
+      "svg": "beeb2f1e4b9ad2a66f6bbe9addc68c2e920f8bf2c67de8190de479726672da59",
+      "png": "00836bc44f4e3c992c0790555be736b752c131003787d2fb31bea7a8dddb0b52"
+    },
+    "pattern-eval-driven": {
+      "source": "8026cc28556c25af9b8e0424152ec5fd1569aaa83c624fb489c94d49255f2e8e",
+      "svg": "35ba295543180ec4c15f7f1fef25c90d564f63c6a8436dddfc2fa400087c64e9",
+      "png": "6c4570f8d06111256a2b96ff9556a33cc8171548f4d07b13413926239e8f9ffe"
+    },
+    "pattern-goodhart": {
+      "source": "b5cce5c641710bbfe28e3a90cddd4d43e2cbee32af72b1b897f102376b4b606a",
+      "svg": "72d8ee84c013060b73c5787feb33e511fd3cac4cc24de2512a76a277f71fc49c",
+      "png": "47481ca6a753cef1c202e4e5971e29764ee27ef3c3562e43a44307ce9d919b5a"
+    },
+    "pattern-idempotency-key": {
+      "source": "3a73e9e2ee4f965dc17ef175d285a1407b1cd3818c768df18d9625899529f7eb",
+      "svg": "138af72db91e00f83bf9bd12e5381537b5567e7de479f4b6a02e2c58c52abfb4",
+      "png": "4873ebab281c9fc3aee2de229d05e5d51f31c84472a14798319aa26120bf1f32"
+    },
+    "pattern-lease-queue": {
+      "source": "b9f62bb708254d614faf1532ef820d1c7ba5f29657de0773b507985cba452c38",
+      "svg": "7104e7c63b410491a4745847862ac0e45e037cbf2c550e0c6b7ffecde18a69ac",
+      "png": "b40739a93a9f46ce7f3d4c838e46794f581ba066268d23b36972f899cb28f16a"
+    },
+    "pattern-least-privilege": {
+      "source": "a00db0fc1bdc57503f84b293ba5d853a4273d4a47e291ba48dd3c6a416fc8e4c",
+      "svg": "7d3d85eab1a99e944ab03200619064c56a0f87bd771b965cc1f57fa1a007352e",
+      "png": "229d509302ef226202fe7427657d8c14dfdfa57e3dffc0e9e070da03a0794207"
+    },
+    "pattern-parse-allowlist": {
+      "source": "4cdee0bbbbd37db41abdcfc5ce42ac74ff4b4b5935f1716356069ab500c975b0",
+      "svg": "da78034a14413baa8e08d74e4856ba3996cecb545d10d33d69fb5d31ca0d20b0",
+      "png": "8e2aa40a8f568dfdeaa72a5725d5d9973cb372933769d3ea9aed852afa56f7f3"
+    },
+    "pattern-progressive-disclosure": {
+      "source": "41e197117d33f8fed46c7ca359aa208a9a377750712992706b1719db985c6ebb",
+      "svg": "4e5c5b99f4f92665f2093d483176b6a9a54bbdc416b9f8aa62b2f1819ca5792c",
+      "png": "04909cddbc2247f3e2fd6de3956938a06c0b3a0300765b3e07609c3348238a9a"
+    },
+    "pattern-promotion-gate": {
+      "source": "32dec1987f92ed496820883841bc83d067055ade0133d2be50ef7fdd569e19b0",
+      "svg": "2d1ab0aad70b8e906066137099e51413a29038b883f1aeee0cc7ae8dd6581bec",
+      "png": "d50a7ab99772d71c288da4590ec1df108be4e970c74724f9777d6d38ca646deb"
+    },
+    "pattern-structured-output": {
+      "source": "545a5216fe2fcdbeaf243fab5f346a612bde14f902dfcb4e7eec5c506f776fb7",
+      "svg": "586522a6995e17c1ec5b83350d62bbe0baedd7be4732d2207d73b1e99f0fc99d",
+      "png": "9704dc4122747705bc41eff7223db130a690fad2d259662763ace20ba2922293"
+    },
+    "pattern-tool-design": {
+      "source": "444c9ea29974d0eb1037ad47e3c95ec3b57f883ceba8f293cc5f7301e69711e3",
+      "svg": "ed6e6a4e1bff0911ee61d86b23bebc397f0392039219fe03f0e7316c0eca417e",
+      "png": "e95d50b2356557ce3c5fdcba39741b65ee9e0558c06378d9987538a9c1a25331"
+    }
+  }
+}

@@ -1,9 +1,10 @@
 """Export every Excalidraw diagram to SVG (font embedded) and PNG (scale 2), at authoring time only.
 
-Every slide diagram (a 1920 by 791 panel) is also exported for the deck: a PNG at scale 3 with a
-transparent background (the panel's fill left out, so the slide's own light panel shows through)
-into the deck's own diagrams folder (DECK below), which is private and never ships. Its
-renders.json records, for each PNG, the source it came from and the SHA-256 of both.
+Every slide diagram (a 1920 by 791 panel) and every pattern diagram (a 1920 by 540 panel) is also
+exported for the deck: a PNG at scale 3 with a transparent background (the panel's fill left
+out, so the slide's own light panel shows through) into the deck's own diagrams folder (DECK
+below), which is private and never ships. Its renders.json records, for each PNG, the source it
+came from and the SHA-256 of both.
 
 Learners never run this: the renders are committed beside their sources. It drives headless
 Chromium through Playwright for Python (the dev dependency group) on export_page.html, a local page
@@ -44,11 +45,17 @@ EXCALIDRAW_VERSION = "0.18.1"  # @excalidraw/excalidraw on npm, released 2026-04
 SCALE = 2
 DECK = REPO / "slides" / "assets" / "diagrams"
 DECK_SCALE = 3
-SLIDE_PANEL = (1920, 791)  # scene.WIDTH by scene.SLIDE_HEIGHT: the diagrams the deck shows
+SLIDE_PANEL = (1920, 791)  # scene.WIDTH by scene.SLIDE_HEIGHT: a slide's diagram panel
+PATTERN_PANEL = (1920, 540)  # scene.WIDTH by scene.PATTERN_HEIGHT: a pattern slide's panel
+DECK_PANELS = (SLIDE_PANEL, PATTERN_PANEL)  # the diagrams the deck shows
 
 
 def diagram_folders(root: Path = REPO) -> list[Path]:
-    folders = [root / "docs" / "diagrams", *sorted(root.glob("section-*/diagrams"))]
+    folders = [
+        root / "docs" / "diagrams",
+        root / "docs" / "diagrams" / "patterns",
+        *sorted(root.glob("section-*/diagrams")),
+    ]
     return [f for f in folders if f.is_dir()]
 
 
@@ -111,12 +118,13 @@ def panel_size(source: Path) -> tuple[float, float]:
 
 
 def deck_sources(root: Path = REPO) -> list[Path]:
-    """The slide diagrams: every source on the 1920 by 791 panel, without the step frames (no
-    slide builds a diagram up today, and each export is about a megabyte)."""
+    """The deck's diagrams: every source on a slide panel (1920 by 791) or a pattern panel (1920
+    by 540), without the step frames (no slide builds a diagram up today, and each export is about
+    a megabyte)."""
     return [
         s
         for s in sources(root)
-        if panel_size(s) == SLIDE_PANEL and not re.search(r"-step-\d+$", s.stem)
+        if panel_size(s) in DECK_PANELS and not re.search(r"-step-\d+$", s.stem)
     ]
 
 

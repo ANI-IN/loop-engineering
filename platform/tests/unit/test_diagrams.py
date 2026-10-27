@@ -101,11 +101,13 @@ def test_every_svg_embeds_its_font(sources: list[Path]) -> None:
 # where 40 pixels are 18.2 points; a page-only reference diagram is 1920 by 1080 with labels of 20
 # pixels or more. The deck rebuild of 26 October 2026 set the 18-point rule, first on a 1920 by 848
 # canvas (a panel of 12 by 5.3 inches), then on 1920 by 791 once the real panel was measured;
-# before it every diagram was a 1920 by 1080 panel with labels of 20 pixels or more.
-MIN_LABEL = {791: 40, 1080: 20}
+# before it every diagram was a 1920 by 1080 panel with labels of 20 pixels or more. The second
+# deck rebuild of 27 October 2026 added the pattern diagram, 1920 by 540, the shape of a pattern
+# slide's panel of 12.13 by 3.41 inches, with the same 40-pixel labels.
+MIN_LABEL = {791: 40, 540: 40, 1080: 20}
 
 
-def test_every_diagram_is_a_slide_or_page_panel_with_labels_of_its_minimum_size(
+def test_every_diagram_is_a_slide_pattern_or_page_panel_with_labels_of_its_minimum_size(
     sources: list[Path],
 ) -> None:
     for source in sources:
@@ -220,6 +222,12 @@ def test_the_deck_check_notices_a_missing_or_stale_export(
     step.write_text(json.dumps({"elements": [panel]}), encoding="utf-8")
     assert exporter.deck_sources(tmp_path) == [slide], "slide diagrams only, no step frames"
     assert exporter.deck_problems(tmp_path) == [], "no deck assets folder: nothing to check"
+    patterns = folder / "patterns"
+    patterns.mkdir()
+    pattern = patterns / "pattern.excalidraw"
+    pattern.write_text(json.dumps({"elements": [{**panel, "height": 540}]}), encoding="utf-8")
+    assert exporter.deck_sources(tmp_path) == [slide, pattern], "pattern diagrams go to the deck"
+    pattern.unlink()
 
     deck = tmp_path / exporter.DECK.relative_to(exporter.REPO)
     deck.mkdir(parents=True)
@@ -274,3 +282,52 @@ def test_the_run_lifecycle_names_the_writer_of_every_transition(exporter: Module
     text = "\n".join(_texts(source))
     for number, ((frm, to), by) in enumerate(TRANSITIONS.items(), start=1):
         assert f"{number:>2}  {frm.value} to {to.value}, {by}" in text
+
+
+PATTERNS = [
+    "pattern-agent-loop",
+    "pattern-tool-design",
+    "pattern-progressive-disclosure",
+    "pattern-structured-output",
+    "pattern-defence-in-depth",
+    "pattern-parse-allowlist",
+    "pattern-least-privilege",
+    "pattern-bounded-retry",
+    "pattern-idempotency-key",
+    "pattern-lease-queue",
+    "pattern-durable-approval",
+    "pattern-autonomy-levels",
+    "pattern-eval-driven",
+    "pattern-dev-holdout",
+    "pattern-goodhart",
+    "pattern-promotion-gate",
+]
+
+
+def test_the_pattern_diagrams_are_generic_neutral_pattern_panels(
+    exporter: ModuleType, sources: list[Path]
+) -> None:
+    """The second deck rebuild's sixteen pattern diagrams (27 October 2026), in
+    docs/diagrams/patterns/: each on the 1920 by 540 pattern panel, with 3 to 7 filled shapes, no
+    loop colour (docs/diagrams/patterns/README.md, "The fill rule"), and no name from DataPilot,
+    since each teaches the pattern for any agent."""
+    folder = exporter.REPO / "docs" / "diagrams" / "patterns"
+    found = sorted(s.stem for s in sources if s.parent == folder)
+    assert found == sorted(PATTERNS)
+    readme = (folder / "README.md").read_text(encoding="utf-8")
+    loop_fills = {"#3896D2", "#0097A7", "#FFAB40", "#EEFF41"}
+    for name in PATTERNS:
+        assert f"](./{name}.svg)" in readme, f"{name}: not shown in the README"
+        elements = _scene(folder / f"{name}.excalidraw")["elements"]
+        assert (elements[0]["width"], elements[0]["height"]) == (1920, 540), name
+        shapes = [
+            e
+            for e in elements[1:]
+            if e["type"] in ("rectangle", "ellipse", "diamond")
+            and e["backgroundColor"] != "transparent"
+        ]
+        assert 3 <= len(shapes) <= 7, (name, len(shapes))
+        assert not {e["backgroundColor"] for e in elements} & loop_fills, name
+        text = " ".join(_texts(folder / f"{name}.excalidraw")).lower()
+        for word in ("datapilot", "analyst", "schema scout", "harbor"):
+            assert word not in text, (name, word)

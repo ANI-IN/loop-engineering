@@ -1,7 +1,9 @@
 # Loop Engineering deck: design system and slide schema
 
 This page is the design system of the class deck and the schema every block module in
-`slides/source/` follows when it sets `RULES = "design system"`. The outline builder
+`slides/source/` follows when it sets `RULES = "design system"` or, for the second rebuild,
+`RULES = "design system 2"` (the same design system under its own block plan and the added checks
+of the section "The second rebuild" below). The outline builder
 (`slides/source/build.py`) checks every rule a script can; the deck builder draws one fixed layout
 per slide type from the same data. The sample block module, `slides/source/samples.py`, holds one
 slide of every type with full speaker notes: copy from it.
@@ -21,7 +23,8 @@ meaning alone. A loop colour is never text on the navy background.
 
 The template's neutrals stay: the navy background `324158` (white text on it, 10.33 to 1), the card
 `F0F3F6` (navy text on it, 9.28 to 1), white (navy text, 10.33 to 1), and the blue-grey `78909C`
-(dark text on it, 4.81 to 1; the "Without" side of a comparison and its chart series). Two tints
+(dark text on it, 4.81 to 1; the "Without" side of a comparison and its chart series, and the
+code highlight outside a loop). Two tints
 of those neutrals serve as backgrounds and quiet text, not as accents: `D9E0E6` for a neutral
 table header (dark text, 12.08 to 1) and `C5CFD8` for a tracker name that is not current (on navy,
 6.54 to 1).
@@ -43,9 +46,9 @@ opening, the design segment, the breaks, the poll, and the closing use the neutr
   value on a value card: 32.
 - Code: Fira Mono at 18, 16, or 14 points, the largest at which the longest line fits.
 - Nothing on a slide is under 14 points. Only these may go under 20, down to 14: the progress
-  tracker, code lines and their markers, the sources list, a chart's text and its sample line,
-  the DEMO badge (18), and a source marker. Their shapes are named with "(small)", which the fit
-  check reads.
+  tracker, code lines and their markers, the sources list, a chart's text and its sample line
+  (and the payoff's sample line), the scoreboard (16, the current section's state 18), the DEMO badge (18), and a source marker.
+  Their shapes are named with "(small)", which the fit check reads.
 
 ## Grid and margins
 
@@ -64,10 +67,12 @@ bullets.
 
 Every slide carries the tracker at its foot: first the block's state ("Opening", "Design" for
 the design segment, "Section 1" to "Section 4", "Break", "Poll", "Closing") in a white outlined
-pill, then the four loops by name. Every pill keeps its place on every slide: the state pill is
-1.2 inches wide, and each loop pill as wide as its name in bold. The current loop's pill is
-filled in its colour with dark bold text; the others are outlined, their names in quiet grey. The opening, the design segment, the breaks,
-and the poll fill no loop; the closing fills all four, the four loops together.
+pill, then the four loops by name. Every pill keeps its place on every slide: the state pill has
+one width, its longest label ("Foundations") in bold with the same side room as every loop pill
+(0.34 inches in all), and each loop pill is as wide as its name in bold with that room. The
+current loop's pill is filled in its colour with dark bold text; the others are outlined, their
+names in quiet grey. The opening, the design segment, the breaks, and the poll fill no loop; the
+closing fills all four, the four loops together.
 
 ## Cards
 
@@ -75,6 +80,17 @@ The left-bar card form belongs to the Insight callout alone. A card with a label
 slide's guaranteed moment and the design callout's DataPilot choice, is a white card with a full
 outline in the loop's colour (a neutral grey outside a loop) and its label in bold at the start of
 its text. Every other card is the card colour with navy text.
+
+A bold lead-in, a short "Label:" at the start of a line set in bold, belongs only to the types
+written as "Label: text": a problem statement item, an evidence slide's measure card, a DEMO
+slide's watch card, the pattern slide's lines, the payoff's cards and checks, and the insight
+slide's "Evidence:" line. A numbered callout, a checklist item, a recap card, and an option card
+keep their text as written, colon or not: a colon alone never makes a label.
+
+One exception to the loop's colour: the hill-climbing loop's lime reads at about 1.1 to 1 on
+white or the card colour, so wherever it would be an outline on a light fill (the labelled card,
+the demo page link pill, a done pill of the scoreboard) the outline is the dark text colour
+`212121` at the same weight. Lime stays wherever it is a fill.
 
 ## The Insight callout
 
@@ -106,7 +122,10 @@ measurements page) is cited in the speaker notes and listed in its own group on 
 
 A number in a white disc with a navy ring marks a place on annotated code or on a screenshot, and
 the same number heads its callout card. On code the marker sits in the left gutter of the first
-line it marks, and the marked fragments are highlighted in the loop's colour with dark bold text.
+line it marks, and the marked fragments are highlighted in the loop's colour with dark bold text;
+outside a loop (the opening's code) the highlight is the blue-grey `78909C`, since the neutral
+header tint reads at about 1.15 to 1 on the code panel. The callout cards in a row under code keep
+0.12 inches of side padding, so a short callout stays on one line.
 On a screenshot the marker sits over the picture at the position the slide data gives. The
 numbered lines of the slide must match the markers exactly.
 
@@ -151,7 +170,11 @@ size on the slide's "Sample:" line, printed under the chart.
 
 Tables carry their own fills: a header row (neutral, the loop's colour for a pitfalls table, or
 per column in a comparison: blue-grey for "Without", the loop colour for "With"), and body rows
-alternating white and the card colour, navy text at 20 points. At most 4 body rows.
+alternating white and the card colour, navy text at 20 points. At most 4 body rows. Each column
+is as wide as its longest cell on one line when the columns fit the panel; when they do not, a
+column whose longest cell fits an even share keeps its width, and the others share the rest by
+their longest cells, each at least its longest word and 1.3 inches wide. A comparison's "Without"
+and "With" columns stay equal.
 
 ## Slide types and their layouts
 
@@ -165,18 +188,21 @@ Each type has one fixed layout. The key is the slide's `kind`.
 | `insight` | Insight | The Insight callout at the top of the content area on every insight slide. With a screenshot or chart: the visual on 7 columns down the full content height, the compact callout and the evidence on 5, numbered callouts only for the screenshot's markers. Without one: the callout across the slide, then the evidence line and bulleted lines |
 | `story` | Problem story | The question across the top; the annotated code (or screenshot) on 8 columns with the value cards on 4; the numbered callouts in a row; the footer at the bottom. Code too wide for 8 columns takes the full width, and the values join the question's row |
 | `concept` | Concept diagram | A one-line title, then the diagram on the whole content area, 12.13 by 5.0 inches; no idea line and no points (both in the notes) |
-| `mechanism` | Mechanism | The idea line; the annotated code across the slide; the numbered callouts in a row, or four of them in two rows when that is lower |
+| `mechanism` | Mechanism | The idea line, opened by the code panel's label chip ("Pattern" on the neutral tint, "DataPilot" in the loop's colour) when the code names its panel; the annotated code across the slide; the numbered callouts in a row, or four of them in two rows when that is lower |
 | `demo` | Demo | The laptop, its screen navy, with the white DEMO badge as a shape on it and the labelled demo page link under it; what to watch for and the guaranteed moment card on the right |
 | `evidence` | Evidence | The native chart on 7 columns with its sample line; the measure cards and a compact Insight callout on 5 (or a table across the slide) |
 | `comparison` | Without and with | The comparison table across the slide; a compact Insight callout or a footer under it |
 | `design_callout` | Design callout | The "Text-to-SQL design" label in the loop's colour at the start of the decision line's row, the options table or cards, and the DataPilot card |
 | `checklist` | Apply it | Up to 6 items, each an empty check box and its card |
 | `pitfalls` | Pitfalls | A table: pitfall, what happens, what to do instead |
-| `recap` | Recap and question | Up to 3 recap cards on 7 columns; the "Check your understanding" card on 5 |
+| `recap` | Recap and question | With a `scoreboard` field, the scoreboard across the top; then up to 3 recap cards on 7 columns and the "Check your understanding" card on 5 (its question at 20 points under the scoreboard, 24 without) |
 | `poll` | Poll | The fixed poll wording, centred |
 | `break` | Break | The fixed break wording, centred |
 | `closing` | Closing | Up to 10 numbered items, in two columns past 5, every card as tall as the tallest so the columns end level; an item's disc takes the colour of the section named at its end |
-| `sources` | Sources | Two light panels: group headings and numbered entries with their full addresses; an address never breaks at its hyphens |
+| `sources` | Sources | Two light panels: group headings and numbered entries with their full addresses; an address never breaks at its hyphens. Each entry hangs from its number (its wrapped lines and its address lines start under its title) with 3 points between entries, and the fit estimate measures both |
+| `pattern` | Pattern | The one-line "Definition:"; the pattern diagram on the compact panel, 12.13 by 3.41 inches across the slide; "Use when:" and "Avoid when:" side by side, one line each; an optional "Elsewhere:" line with its source markers. No other line |
+| `problem` | Problem statement | The lead line at 24 points; up to 3 items as cards down the slide, or 4 to 6 in a grid of two columns (2 by 3 at most), every card as tall as the tallest and growing to fill the slide (1.2 inches at most); an item tagged with a loop is filled in its colour with the loop's name on its first line |
+| `payoff` | Payoff | "Before" and "After" cards side by side with the level it posted at, each a label over a value at 32 points, the three values starting at one height; Before and After as wide as their values need (3 to 4 columns), the level the rest; the scoreboard complete, each loop with what it contributed; the requirement groups checked off in two columns read down, each column as wide as its longest check needs on one line (three columns of two when the slide has no room for a third row); the sample line at the foot |
 
 ## The slide schema
 
@@ -197,8 +223,12 @@ Optional fields:
   outline), `lines` (the code lines as shown, an elided part as `...`), and `marks`, each
   `(line index, fragment, number)`; a fourth element `True` puts the number's disc on that mark's
   line instead of its first mark's. Required on `mechanism`; a `story` needs `code` or `image`.
+  Under design system 2 a mechanism's code also names its `panel`: `"Pattern"` for short generic
+  code or pseudocode (no DataPilot name in its lines or origin), `"DataPilot"` for its real code.
 - `figure`: a diagram: `diagram` (the name of its deck export) and `alt`. Required
-  on `concept`.
+  on `concept` and on `pattern`, whose diagram is a pattern diagram, named `pattern-<name>`; a
+  pattern diagram is shown only on a pattern slide.
+- `scoreboard`: on a `recap` slide, the section number (1 to 4) whose state the scoreboard shows.
 - `image`: a screenshot: `path`, `alt`, `crop`, and `callouts`, each `(x, y, number)`.
 - `chart`: `type` (`column` or `bar`), `title`, `categories`, `series` (each `(name, values)`),
   `x_label`, `y_label`, and an optional `maximum` for the value axis. An `evidence` slide needs a
@@ -211,6 +241,9 @@ Optional fields:
 | A line that starts with | Becomes |
 |---|---|
 | `Idea:`, `Fixes:`, `Insight:`, `Evidence:`, `Sample:`, `Decision:`, `DataPilot:`, `Question:`, `Footer:`, `Value:`, `Badge:`, `Guaranteed moment:`, `Group:` | the element of that name in the type's layout |
+| `Definition:`, `Use when:`, `Avoid when:`, `Elsewhere:` | a pattern slide's lines |
+| `Lead:` | a problem statement's lead line; its items are bullets, each optionally ending `\| <loop>` (a loop's name, or "Section 2") |
+| `Before: <label> \| <value>`, `After: <label> \| <value>`, `Level: <value>` (shown as "Posted at:" over the level at the value size; a few words, so it stays on one line), `Loop: Section N \| <what it contributed>` | the payoff's cards and its complete scoreboard; its requirement checks are bullets |
 | `- ` | a bullet: a check box item, a recap card, a watch card, an option card, an evidence line under an Insight callout |
 | `1. ` | a numbered line: a callout, an agenda row, a closing item |
 | `\|` | a table row (the separator row is left out) |
@@ -219,7 +252,8 @@ Optional fields:
 | `[n] <entry> <address>` | a source entry, on the sources slide only |
 
 Inside a line, `**bold**` is bold and `[^3]` is a source marker. A count such as "6 of 6" is
-joined by no-break spaces, so it never breaks across lines. A hyphenated word ("report-only") may
+joined by no-break spaces, so it never breaks across lines, and so are "Section" and
+"Assignment" and their number wherever the deck builder draws text. A hyphenated word ("report-only") may
 still break at its hyphen when a line is full: none of the deck fonts has a non-breaking hyphen. A value card is
 `Value: <label> | <value>`; a closing item may end `| Section 2` to name the section that proves
 it. No line on a slide holds a file name, a repository path, a make command, or a code span; the
@@ -246,6 +280,9 @@ code of a mechanism or a story lives in its `code` field.
 | `poll`, `break` | the fixed wording | 0 to 30 | 0 |
 | `closing` | 3 to 10 numbered items | 20 to 190 | 0 |
 | `sources` | `Group:` headings and `[n]` entries | 20 to 260 | 0 |
+| `pattern` | `Definition:`, `Use when:`, `Avoid when:`; `Elsewhere:` only with a source marker; each one line (at most 90, 44, 44 and 90 characters) | 12 to 60 | 0 |
+| `problem` | `Lead:` and 3 to 6 items | 20 to 90 | 6 |
+| `payoff` | `Before:`, `After:`, `Level:`, four `Loop:` lines in section order, 3 to 6 requirement checks, at most one `Sample:` | 40 to 130 | 6 |
 
 Numbered lines are at most 4 on every other type. What fits, measured on the full deck: a
 mechanism's code takes at most about 9 lines at 16 points with four short callouts (at most 93
@@ -271,8 +308,10 @@ Every slide's notes hold these labels, each line starting with its label, in thi
 8. `Transition:` the sentence into the next slide (at most 40 words).
 
 "What to say" has 150 to 300 words on an insight, problem story, concept, mechanism, evidence,
-comparison, design callout, checklist, or pitfalls slide; 80 to 300 on a DEMO slide; 60 to 200 on
-a recap or closing slide; 30 to 150 on a title, agenda, section opener, or sources slide.
+comparison, design callout, checklist, pitfalls, pattern, or payoff slide; 300 to 400 on a
+problem statement slide (the owner's specification: a full talk track, examples learners
+recognise, a question for the room); 80 to 300 on a DEMO slide; 60 to 200 on a recap or closing
+slide; 30 to 150 on a title, agenda, section opener, or sources slide.
 
 A DEMO slide gives each of its demos, after "What to say", as a group: `Demo: <title>.` (the demo's
 title in the demo registry), `Command:` (the make command or the console control), `Point at:`,
@@ -287,7 +326,11 @@ A make command is "make" and a target the Makefile defines ("make demo", "make r
 as "make the" is not one. Paths and commands appear only in a DEMO slide's notes (and a break's or the poll's, with
 `allow_commands`). The word "replay" never appears, and no provisional marker is left.
 
-## The block plan
+## The block plan of the first rebuild (superseded)
+
+This is the clock of the first rebuild, for modules that set `RULES = "design system"`
+(`BLOCK_PLAN` in `slides/source/build.py`). The class now runs on the second rebuild's plan below
+(`BLOCK_PLAN_2`); check timings against that table, not this one.
 
 | Block | Key | Clock | Minutes | Slides at most |
 |---|---|---|---|---|
@@ -304,14 +347,91 @@ as "make the" is not one. Paths and commands appear only in a DEMO slide's notes
 
 At most 85 slides in all. Each section has exactly one DEMO slide, with its demos in its notes.
 
+## The second rebuild (design system 2)
+
+A module that sets `RULES = "design system 2"` follows everything above, under this block plan
+(27 October 2026) and the checks after it.
+
+| Block | Key | Clock | Minutes | Slides at most |
+|---|---|---|---|---|
+| Opening | `opening` | 0:00-0:05 | 5 | 3 |
+| The problem | `problem` | 0:05-0:17 | 12 | 4 |
+| Foundations | `foundations` | 0:17-0:30 | 13 | 5 |
+| Designing text-to-SQL | `design` | 0:30-0:40 | 10 | 4 |
+| Section 1: Agent loop | `s1` | 0:40-1:15 | 35 | 13 |
+| Section 2: Verification loop | `s2` | 1:15-1:50 | 35 | 13 |
+| Break | `break1` | 1:50-2:00 | 10 | 1 |
+| Section 3: Event loop | `s3` | 2:00-2:48 | 48 | 13 |
+| Poll | `poll` | 2:48-2:53 | 5 | 1 |
+| Break | `break2` | 2:53-3:03 | 10 | 1 |
+| Section 4: Hill-climbing loop | `s4` | 3:03-3:45 | 42 | 13 |
+| Closing | `closing` | 3:45-4:00 | 15 | 14 (7 slides and at most 7 sources slides) |
+
+The progress tracker's state pill reads "Problem" and "Foundations" for the two new blocks, which
+fill no loop.
+
+### The pattern panel
+
+A pattern slide shows its pattern diagram on a compact panel, 12.13 by 3.41 inches, the full
+content width, with no inner margin. Pattern diagrams are drawn on a canvas of 1920 by 540 pixels,
+the panel's shape, and exported at scale 3 (5760 by 1620, transparent) with the other deck
+exports; a 40-pixel label renders at about 18.2 points there, and the build fails when a label
+would render under 18 points, as for the full diagrams. Generic: no DataPilot names. The sample
+module's pattern slide reads a stand-in drawing of the same size, kept with the deck's private
+assets, until the real export exists; the deck's own slides name exports only.
+
+### The scoreboard
+
+One recurring element tracks the fiscal year 2025 revenue question. A recap slide with
+`scoreboard: N` shows four pills across the top of the content area, Sections 1 to 4 in order,
+each headed by its loop's name, at 16 points. The current section's pill is filled in its loop's
+colour with dark text and "Now:" before its state, the state at 18 points, since it is the
+sentence the recap is about; the earlier ones are done, on the card colour with an outline in
+their loop's colour (dark for the lime, as under "Cards"), a check mark beside the name, and their state; the later
+ones are muted (outlined in blue-grey, the quiet tracker grey for text) and read "To come". The
+states are the owner's sentences, held once in the outline builder (`SCOREBOARD`):
+
+| After | State |
+|---|---|
+| Section 1 | The agent sees enough, but the answer is still wrong. |
+| Section 2 | The wrong answer is caught and flagged, but only while someone is watching. |
+| Section 3 | It runs safely unattended, but it is still wrong. |
+| Section 4 | Correct: $64,015,091.21, posted at the level its family has earned. |
+
+The payoff slide shows the scoreboard complete: all four pills filled, each with a check mark and
+what that loop contributed (its `Loop:` line). No deck font has a check mark glyph, so the mark is
+drawn as a line.
+
+### The checks of design system 2
+
+The outline builder adds these to every rule above:
+
+- **The evidence diet.** No run id (a word of 8 or more hexadecimal characters with a digit in
+  it), no date (a day and a month, a month and a day or a year, or a numeric date), and no
+  `Sample:` line on any slide except the evidence, demo and payoff slides (and the sources slides'
+  entries). They go into the speaker notes.
+- **One insight per section, on its opener.** Each section has one opener, which holds exactly one
+  `Insight:` line, and no other slide of the section holds one.
+- **At most two code slides per section**, the pattern in code and DataPilot's version, each
+  mechanism slide naming its panel `Pattern` or `DataPilot`.
+- **The scoreboard.** Each section's recap carries `scoreboard` set to its section's number.
+- **Structured Query Language** is spelled out once in the deck, on the title slide (the
+  opening's first slide), and on no other slide; SQL is written bare everywhere else in the deck.
+  The owner's decision is about this term alone: every other term (application programming
+  interface, JavaScript Object Notation, and the rest) is still spelled out on its first use on
+  each slide. The speaker notes are read as one page of their own and spell out each term at its
+  first use there, SQL included.
+
 ## Rule sets while the deck is rewritten
 
 The outline is built under one rule set. A block module without `RULES` follows the first
-outline's rules, the deck's rules before this design system. When every block module, the breaks
-module, and the new `design` module set `RULES = "design system"`, the outline is built under the
-block plan above. While the modules disagree, `make outline` names each block and its rule set and
-writes nothing, so the gate's outline check fails until the rewrite is merged whole. Check one
-rewritten block at any time:
+outline's rules, the deck's rules before this design system. When every block module of a plan
+sets that plan's rule set (`"design system"` for the first rebuild's plan; `"design system 2"` for
+the second's, with the new `problem` and `foundations` modules), the outline is built under that
+plan; a module of another plan's block on another rule set keeps it from building. While the
+modules disagree, `make outline` names each block and its rule set and writes nothing, so the
+gate's outline check fails until the rewrite is merged whole. Check one rewritten block at any
+time:
 
 ```bash
 uv run python slides/source/build.py --check s1

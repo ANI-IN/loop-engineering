@@ -2,7 +2,9 @@
 
 This folder holds the diagrams that more than one page uses: the diagram style, the whole system,
 the four loops as one system (with one variant per section), the text-to-Structured Query Language
-(SQL) reference architecture, the run lifecycle, and the warehouse data model. Each section has
+(SQL) reference architecture, the run lifecycle, and the warehouse data model. The four-loop map
+and the reference architecture also come in a version that names each part by its job, with no
+part of DataPilot, for the deck. Each section has
 its own `diagrams/` folder for the diagram of its loop.
 
 ## How to read these files
@@ -15,10 +17,14 @@ Every diagram has three files with the same name:
 | `.svg` | A render with the font embedded, for pages on GitHub |
 | `.png` | A render at 2x scale, for pages and anyone who needs a picture |
 
-There are two panel sizes. A slide diagram is 1920 by 791, the shape of the slide's diagram panel
-(12.13 by 5.0 inches), and its PNG is 3840 by 1582. The three reference diagrams that are too
-dense for a slide (the system, the run lifecycle, and the warehouse data model) are 1920 by 1080
-page diagrams, and their PNG is 3840 by 2160.
+There are three panel sizes. A slide diagram is 1920 by 791, the shape of the slide's diagram
+panel (12.13 by 5.0 inches), and its PNG is 3840 by 1582. A pattern diagram is 1920 by 540, the
+shape of a pattern slide's panel (12.13 by 3.41 inches), with the same labels of 40 pixels or
+more, and its PNG is 3840 by 1080; the sixteen pattern diagrams are in
+[`patterns/`](patterns/README.md), with their own fill rule: a pattern belongs to no single loop,
+so they use the neutral fills only. The three reference diagrams that are too dense for a slide
+(the system, the run lifecycle, and the warehouse data model) are 1920 by 1080 page diagrams, and
+their PNG is 3840 by 2160.
 
 Some diagrams are built up one step at a time. They also have step frames, named `-step-1`,
 `-step-2`, and so on. Each frame adds one part, and every frame is the same panel, so nothing
@@ -46,6 +52,7 @@ Every diagram is drawn from `platform/tools/diagrams/scene.py` with these values
 | Code font is for | Tool names, endpoints, and columns |
 | Text colour | `#212121` on every fill |
 | Label size, slide diagram | 40 pixels or more on 1920 by 791: 18.2 points on the 12.13-inch panel |
+| Label size, pattern diagram | 40 pixels or more on 1920 by 540: 18.2 points on the 12.13-inch panel |
 | Label size, page diagram | 20 pixels or more on the 1920 by 1080 panel |
 | Line height | 1.25 |
 | Outline | 2 pixels on every shape |
@@ -152,6 +159,26 @@ three muted (white, with a blue-grey outline), every label still readable:
   analyzer team may learn from them) and the 15 holdout questions (it never sees them) in
   `platform/packs/datapilot_us/benchmark/`.
 
+### The four loops by role
+
+![The four loops nested, each part named by its job: in the agent loop, a model answers with tools and code stops it; in the verification loop, layered checks, then a person decides a doubtful answer; in the event loop, events arrive, each is keyed once and queued with leases, a kill switch points at the queue and stops every run, and human approval comes before a post; beside them the hill-climbing loop, where failures on a benchmark lead agents to propose rules, the rules are judged on unseen questions, and a person promotes them, an arrow that runs under the event loop and up into the model](./four-loops-generic.svg)
+
+*Notice that this is the same map as the four loops as one system, with every part named by the job it does, so it fits any agent you build.*
+
+```markdown
+![The four loops nested, each part named by its job: in the agent loop, a model answers with tools and code stops it; in the verification loop, layered checks, then a person decides a doubtful answer; in the event loop, events arrive, each is keyed once and queued with leases, a kill switch points at the queue and stops every run, and human approval comes before a post; beside them the hill-climbing loop, where failures on a benchmark lead agents to propose rules, the rules are judged on unseen questions, and a person promotes them, an arrow that runs under the event loop and up into the model](diagrams/four-loops-generic.svg)
+
+*Notice that this is the same map as the four loops as one system, with every part named by the job it does, so it fits any agent you build.*
+```
+
+- **What it teaches**: the four loops as a pattern for any agent system, before the course shows
+  how DataPilot builds each part.
+- **Slide topic**: the four-loop map on the deck, where a slide teaches the pattern rather than
+  DataPilot's parts; the pages keep the four loops as one system.
+- **Files**: `four-loops-generic`.
+- **Source in the code**: the same files as the four loops as one system; no label names a part
+  of DataPilot or one of its counts.
+
 ### The text-to-SQL reference architecture
 
 ![The text-to-SQL reference architecture in nine stages, each with DataPilot's implementation and its loop: question routing by a fixed router; schema retrieval and linking by the schema scout agent; business knowledge in the knowledge version, a light semantic layer; value lookup, Assignment 1: Agent loop; SQL generation by the analyst agent; validation by the syntax-tree guard, the cost estimate, and the personal-data rules; capped execution through the read-only executor; an answer read by the reviewer agent, with its assumptions stated, or a clarifying question, which Assignment 2: Verification loop adds; and evaluation by execution match against gold queries on two databases, whose failures go back to the business knowledge, where the analyzer team proposes rules](./text-to-sql-architecture.svg)
@@ -179,6 +206,26 @@ three muted (white, with a blue-grey outline), every label still readable:
   `platform/src/datapilot/contracts/answer.py` (assumptions and the clarifying question) and
   Assignment 2 in `section-2-verification-loop/assignment/`; `loop4_hill_climbing/evaluator.py`
   (execution match on `warehouse` and `warehouse_alt`).
+
+### The text-to-SQL reference architecture by job
+
+![The text-to-SQL reference architecture in nine stages, each named by its job and its loop: question routing, where fixed code sends each question to its path; schema linking, which finds the tables and columns that matter; business knowledge as rules, versioned and tested; value lookup, which matches words to stored values; query generation, where a model writes the query; validation by syntax tree, cost, and personal-data checks; capped execution with a read-only role and a row cap; an answer that is reviewed, with its assumptions stated, or a question back; and evaluation, which compares results with gold answers on two databases and sends failures back to the business knowledge](./text-to-sql-architecture-generic.svg)
+
+*Notice that each stage is named by its job and its loop, so you can check your own system one stage at a time.*
+
+```markdown
+![The text-to-SQL reference architecture in nine stages, each named by its job and its loop: question routing, where fixed code sends each question to its path; schema linking, which finds the tables and columns that matter; business knowledge as rules, versioned and tested; value lookup, which matches words to stored values; query generation, where a model writes the query; validation by syntax tree, cost, and personal-data checks; capped execution with a read-only role and a row cap; an answer that is reviewed, with its assumptions stated, or a question back; and evaluation, which compares results with gold answers on two databases and sends failures back to the business knowledge](diagrams/text-to-sql-architecture-generic.svg)
+
+*Notice that each stage is named by its job and its loop, so you can check your own system one stage at a time.*
+```
+
+- **What it teaches**: the stages any text-to-SQL system needs, in general terms, so you can map
+  them onto your own warehouse.
+- **Slide topic**: the reference architecture on the deck; the pages keep the version with
+  DataPilot's parts.
+- **Files**: `text-to-sql-architecture-generic`.
+- **Source in the code**: `docs/text-to-sql-design.md`, and the same stages and arrows as the
+  text-to-SQL reference architecture; no label names a part of DataPilot.
 
 ### The run lifecycle
 
@@ -244,8 +291,9 @@ committed, and nothing in the app or the learner's setup uses Node.
 3. The script writes `<name>.svg` and `<name>.png` beside the source, and records the SHA-256 of
    the source and of both renders in the folder's `renders.json`. Renders are deterministic: the
    same source gives the same bytes.
-4. It also exports each slide diagram for the deck, without its step frames: a PNG at scale 3
-   (5760 by 2373) with a transparent background, the panel's fill left out so the slide's own
+4. It also exports each slide diagram and each pattern diagram for the deck, without step frames:
+   a PNG at scale 3 (5760 by 2373 for a slide diagram, 5760 by 1620 for a pattern diagram) with a
+   transparent background, the panel's fill left out so the slide's own
    light panel shows through. These exports belong to the deck, which is private and not part of
    this module.
 5. `platform/tests/unit/test_diagrams.py` runs in `make test` with no browser and no network. It

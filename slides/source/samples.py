@@ -7,7 +7,7 @@ deck: build.py --samples writes its outline, and the deck builder's --type-sampl
 Each slide names the block it would belong to, for its colour and its progress tracker.
 """
 
-RULES = "design system"
+RULES = "design system 2"
 
 SLIDES = [
     # 1 title -----------------------------------------------------------------------------------
@@ -72,6 +72,60 @@ SLIDES = [
             "Transition: Here is the plan for the four hours.",
         ],
     ),
+    # problem statement (the second rebuild) ----------------------------------------------------
+    dict(
+        kind="problem",
+        block="problem",
+        title="Just put a chatbot on the warehouse",
+        minutes=3,
+        says="The tutorial SQL agent looks done in a demo and fails five ways in production",
+        src="docs/calibration-report.md, Traps; section READMEs; .dev/deck-spec-2.md section 3",
+        on_slide=[
+            "Lead: The tutorial agent looks done in a demo. In production it fails five ways.",
+            "- Wrong numbers, no error: calendar dates for a fiscal year",
+            "- Unsafe or runaway queries: a join with no join condition",
+            "- Personal data leaks: a customer export with every email",
+            "- Breaks on events: a retried webhook posts its answer twice",
+            "- No safe way to improve: a new rule breaks a working answer",
+        ],
+        notes=[
+            "Purpose: Show why the obvious solution, a model with database access, looks finished "
+            "in a demo and fails in five specific ways in production.",
+            "What to say: Here is the ask every data team hears: just put a chatbot on the "
+            "warehouse. The obvious build is the standard tutorial SQL agent: give a model a "
+            "connection string, a tool to list tables, a tool to run a query, and a prompt. In a "
+            "demo it looks done. You ask for last week's orders, it writes a clean query, and the "
+            "number is right. The room applauds. Then it meets production, and it fails in five "
+            "ways, each with an example you will see live today. One: wrong numbers with no "
+            "error. Ask for net revenue in fiscal year 2025 and it filters on calendar dates, "
+            "because nothing in the schema says the fiscal year starts in February. The query "
+            "runs, the number looks plausible, and nobody is told. Two: unsafe or runaway "
+            "queries. A question that joins two large tables with no join condition multiplies "
+            "the rows until the database gives up, and a model that can write can also delete. "
+            "Three: leaks of personal data. Someone asks for a customer export for California, "
+            "and the agent returns every email address, because a column is just a column to it. "
+            "Four: it breaks when it runs from events. Webhooks are delivered at least once, so "
+            "the same request arrives twice and the answer is posted twice; a worker restarts "
+            "and a pending approval is lost; and there is no way to stop a run that has already "
+            "started. Five: there is no safe way to improve it. You add a rule to fix the fiscal "
+            "year, and an answer that worked last week quietly breaks, and nothing tells you "
+            "until a manager does. None of these show up in the demo, because a demo asks easy "
+            "questions once, with someone watching. Each of the four loops we build today exists "
+            "to close one or more of these gaps, and the next slide turns them into "
+            "requirements.",
+            "The point to land: A demo proves the agent can answer; production asks whether you "
+            "can trust the answer, run it unattended, and change it safely.",
+            "Example: A support agent shows the same shape: it answers well in a demo, then "
+            "refunds an order twice when the ticket system retries its webhook.",
+            'Ask the room: "Which of these five has your team already met?" Expect: wrong '
+            "numbers with no error, and duplicate posts from retries.",
+            "Misconceptions: That a stronger model removes these failures. Four of the five are "
+            "about the system around the model, and the first is about knowledge the data does "
+            "not hold.",
+            "Transition: So what would good have to mean? Here are the requirements, group by "
+            "group.",
+        ],
+    ),
     # 3 agenda ----------------------------------------------------------------------------------
     dict(
         kind="agenda",
@@ -82,7 +136,7 @@ SLIDES = [
         src="docs/instructor-guide.md",
         on_slide=[
             "1. Opening: why agents fail in production",
-            "2. Designing text-to-SQL (Structured Query Language)",
+            "2. Designing text-to-SQL",
             "3. Section 1: Agent loop (now)",
             "4. Section 2: Verification loop",
             "5. Section 3: Event loop",
@@ -246,6 +300,117 @@ SLIDES = [
             "Transition: Here is how one of those tools keeps the context small.",
         ],
     ),
+    # pattern (the second rebuild) --------------------------------------------------------------
+    dict(
+        kind="pattern",
+        block="s3",
+        title="Idempotency keys, keyed by meaning",
+        minutes=3,
+        says="A key from what the event means lets the store accept each event once",
+        src="section-3-event-loop/README.md; Source 29",
+        figure={
+            "diagram": "pattern-idempotency-key",
+            "alt": "The same event arrives three times; a key is derived from its meaning; the "
+            "store accepts the key once, with a unique constraint; one effect follows and two "
+            "repeats are absorbed. Delivery is at least once, the effect exactly once.",
+        },
+        on_slide=[
+            "Definition: Derive a key from what the event means; the store accepts each key once.",
+            "Use when: events can arrive more than once",
+            "Avoid when: the handler has no side effect",
+            "Elsewhere: Amazon's services take a client request token; a retry creates nothing "
+            "new[^29]",
+        ],
+        notes=[
+            "Purpose: Define the idempotency key as a reusable pattern before showing how the "
+            "course's event loop uses it.",
+            "What to say: The problem first, in general terms. Any system that receives events "
+            "over a network gets some of them more than once: a sender retries when an "
+            "acknowledgement is lost, a queue redelivers after a timeout, a person clicks twice. "
+            "Delivery is at least once, so your handler must make the effect exactly once. The "
+            "pattern is the idempotency key. Walk the diagram left to right: the same event "
+            "arrives three times; the handler derives a key from what the event means, such as "
+            "the kind of request, its subject, and the business date; the store accepts that key "
+            "once, through a unique constraint; so one effect happens and the two repeats are "
+            "absorbed. The important words are what the event means. A key taken from the "
+            "delivery identifier fails when the sender sends the same request with a new "
+            "identifier, which webhooks do. Alternatives: deduplicate in memory, which a restart "
+            "forgets, or make every effect naturally idempotent, which is ideal and rarely "
+            "possible when the effect is a posted message. Use it whenever an event can arrive "
+            "more than once and the handler changes something; skip it for handlers that only "
+            "read.",
+            "The point to land: Assume every event arrives twice; key the effect by what the "
+            "event means, and let a unique constraint, not memory, decide.",
+            "Example: A coding agent triggered by a pull request webhook: keyed by the "
+            "repository, the pull request and the commit, a redelivered webhook never opens a "
+            "second review. This example is illustrative.",
+            'Ask the room: "What would the key be for your busiest event?" Expect: the event\'s '
+            "identifier; push for what it means instead.",
+            "Misconceptions: That exactly-once delivery exists end to end. Brokers can promise it "
+            "inside their walls; your handler still sees repeats.",
+            "Transition: Here is the pattern as a few lines of code.",
+        ],
+    ),
+    # mechanism with a Pattern panel (the second rebuild) ---------------------------------------
+    dict(
+        kind="mechanism",
+        block="s3",
+        title="The pattern in code: an idempotent handler",
+        minutes=3,
+        says="Derive the key, insert it once, and return the stored result on a repeat",
+        src="generic pseudocode written for the course",
+        code={
+            "language": "python",
+            "panel": "Pattern",
+            "origin": "generic pseudocode written for the course, in Python syntax",
+            "lines": [
+                "def handle(event, store):",
+                '    key = f"{event.kind}:{event.subject}:{event.business_date}"',
+                "    if not store.insert_once(key):  # the key exists: a repeat",
+                "        return store.result_of(key)",
+                "    result = do_the_work(event)",
+                "    store.save_result(key, result)",
+                "    return result",
+            ],
+            "marks": [
+                (1, 'f"{event.kind}:{event.subject}:{event.business_date}"', 1),
+                (2, "store.insert_once(key)", 2),
+                (3, "store.result_of(key)", 3),
+            ],
+        },
+        on_slide=[
+            "Idea: the key comes from meaning, and the store says yes once",
+            "1. The key: what the event asks, not its delivery",
+            "2. A unique constraint decides, not memory",
+            "3. A repeat gets the first result back",
+        ],
+        notes=[
+            "Purpose: Show the idempotency key as short, generic code a learner can copy into any "
+            "event handler.",
+            "What to say: Seven lines, no framework. Line one: the handler takes the event and a "
+            "store, which is any database with a unique constraint. Marker one, line two: the key "
+            "is built from what the event means: its kind, its subject, and the business date. "
+            "Not the delivery identifier, because a sender that retries with a new identifier "
+            "would get past it. Marker two, line three: insert the key once. In a relational "
+            "database this is an insert that does nothing on a conflict; the database, not your "
+            "process, decides who was first, so two workers racing on the same event cannot both "
+            "win. Marker three, line four: a repeat returns the stored result of the first run, "
+            "so the sender sees the same answer and stops retrying. Lines five to seven: only the "
+            "first delivery does the work and saves its result under the key. The trade-off is "
+            "the window between line three and line six: if the worker dies there, the key "
+            "exists with no result, so a real handler stores a state with the key and lets a "
+            "lease or a timeout hand the work on. That is the next pattern.",
+            "The point to land: The database's unique constraint is the decision; everything "
+            "else is bookkeeping around it.",
+            "Example: The same seven lines guard a payment webhook, a ticket-created event, or a "
+            "scheduled report. This example is illustrative.",
+            'Ask the room: "Where would a crash between insert and save leave you?" Expect: a key '
+            "with no result, stuck until something reclaims it.",
+            "Misconceptions: That checking for the key before inserting is enough. Two workers "
+            "can both see no key; only the insert itself is atomic.",
+            "Transition: Now the same pattern in DataPilot's event loop.",
+        ],
+    ),
     # 7 mechanism -------------------------------------------------------------------------------
     dict(
         kind="mechanism",
@@ -256,6 +421,7 @@ SLIDES = [
         src="platform/src/datapilot/loop1_agent/tools.py lines 39-48; pack.yaml limits.row_cap",
         code={
             "language": "python",
+            "panel": "DataPilot",
             "origin": "platform/src/datapilot/loop1_agent/tools.py lines 39-48 (lines 41-44 "
             "left out; line 48 wrapped after its list)",
             "lines": [
@@ -629,6 +795,7 @@ SLIDES = [
         kind="recap",
         block="s4",
         title="Recap: the hill-climbing loop",
+        scoreboard=4,
         minutes=2,
         says="Three points to keep, and one question to check understanding",
         src="section-4-hill-climbing-loop/README.md; docs/benefits.md",
@@ -706,6 +873,58 @@ SLIDES = [
             "approve.",
         ],
     ),
+    # payoff (the second rebuild) ---------------------------------------------------------------
+    dict(
+        kind="payoff",
+        block="closing",
+        title="The question, answered",
+        minutes=3,
+        says="The fiscal year 2025 revenue question, wrong at the start and right at the end",
+        src="docs/calibration-report.md, What this session supersedes (runs 38f16596 and 7 "
+        "more); docs/evidence/section-4-hill-climbing-loop.md",
+        on_slide=[
+            "Before: first answer | $72,394,572.08",
+            "After: matches gold | $64,015,091.21",
+            "Level: unattended, earned",
+            "Loop: Section 1 | Tools showed the schema; the answer came back with its query",
+            "Loop: Section 2 | Checks flagged the wrong number before it went out",
+            "Loop: Section 3 | One run per event, stoppable, approved when held",
+            "Loop: Section 4 | Earned rules fixed the fiscal year, time zone and accounts",
+            "- Correctness: matches the gold answer",
+            "- Safety: read-only, no personal data",
+            "- Operations: one effect per event, stoppable",
+            "- Improvement: promoted with zero regressions",
+            "- Cost and latency: inside the run's stops",
+            "- Trust: every claim traced to a run",
+            "Sample: 8 runs at the unattended level, 25 October 2026",
+        ],
+        notes=[
+            "Purpose: Close the story: the question that was wrong at the start is right, posted "
+            "at an earned level, with each loop's part and every requirement checked.",
+            "What to say: Four hours ago this slide's left card was the whole story: the agent "
+            "answered 72,394,572.08 dollars, cleanly, and it was wrong. Now read across the top: "
+            "the same question answers 64,015,091.21, which matches the gold answer, and it "
+            "posted at the unattended level, because the revenue family earned that level on the "
+            "holdout questions. Under it, the scoreboard, complete. Section 1 gave the agent "
+            "tools that show the schema and an answer that carries its query, so it could be "
+            "checked. Section 2 flagged the wrong number before it went out, while someone was "
+            "watching. Section 3 made it run from events: one run per event, stoppable, held for "
+            "a person when needed. Section 4 earned the rules that fix the fiscal year, the time "
+            "zone, and the internal accounts, and promoted them with zero regressions. At the "
+            "bottom, the requirement groups from the problem statement, each checked off. The "
+            "sample line says how sure we are: 8 runs at the unattended level on 25 October, all "
+            "matching gold.",
+            "The point to land: No single loop fixed the answer; the four together made a "
+            "correct answer you can run unattended and trust.",
+            "Example: The run 38f16596 and seven more posted 64,015,091.21 dollars at the "
+            "unattended level, each passing the gold check.",
+            'Ask the room: "Which requirement would your current agent fail first?" Expect: '
+            "correctness on business rules, or operations under retries.",
+            "Misconceptions: That the last loop did the work. Without the first three there "
+            "would be nothing to check, run, or improve.",
+            "Transition: Here are the four loops together, as one system.",
+        ],
+    ),
     # 18 closing --------------------------------------------------------------------------------
     dict(
         kind="closing",
@@ -759,7 +978,7 @@ SLIDES = [
         says="Every external source and the course's own evidence, numbered as the markers",
         src="slides/source/sources.py",
         on_slide=[
-            "Group: Text-to-Structured Query Language (SQL) research and benchmarks",
+            "Group: Text-to-SQL research and benchmarks",
             "[3] Spider 2.0: Evaluating Language Models on Real-World Enterprise Text-to-SQL "
             "Workflows, Fangyu Lei and others, 2024, https://arxiv.org/abs/2411.07763",
             "[4] LinkAlign: Scalable Schema Linking for Real-World Large-Scale Multi-Database "

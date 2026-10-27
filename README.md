@@ -88,13 +88,13 @@ only. Logs: `make logs NAME=<service>`. The [architecture page](docs/architectur
 
 | Section | Folder | What you see in class | Time |
 |---|---|---|---|
-| Section 1: Agent loop | [section-1-agent-loop/](section-1-agent-loop/README.md) | The simple question, the confident wrong answer, unbounded rows | 0:25-1:03 |
-| Section 2: Verification loop | [section-2-verification-loop/](section-2-verification-loop/README.md) | Malicious SQL, the retry cap, every grader passes, still wrong | 1:03-1:45 |
-| Section 3: Event loop | [section-3-event-loop/](section-3-event-loop/README.md) | The webhook question, the approval across a restart, duplicates, the kill switch | 1:55-2:50 |
-| Section 4: Hill-climbing loop | [section-4-hill-climbing-loop/](section-4-hill-climbing-loop/README.md) | The baseline and candidate experiments, the analyzer team, the gate, the finale | 3:05-3:48 |
+| Section 1: Agent loop | [section-1-agent-loop/](section-1-agent-loop/README.md) | The simple question, the confident wrong answer, unbounded rows | 0:40-1:15 |
+| Section 2: Verification loop | [section-2-verification-loop/](section-2-verification-loop/README.md) | Malicious SQL, the retry cap, every grader passes, still wrong | 1:15-1:50 |
+| Section 3: Event loop | [section-3-event-loop/](section-3-event-loop/README.md) | The webhook question, the approval across a restart, duplicates, the kill switch | 2:00-2:48 |
+| Section 4: Hill-climbing loop | [section-4-hill-climbing-loop/](section-4-hill-climbing-loop/README.md) | Baseline and candidate experiments, the analyzer team, the gate, the last run | 3:03-3:45 |
 
-Before Section 1, the design segment, Designing text-to-SQL, runs 0:10-0:25; there are two breaks,
-1:45-1:55 and 2:55-3:05. The minute-by-minute plan is in the [instructor guide](docs/instructor-guide.md); every live demo, step by step, is in [guide/](guide/README.md).
+Before Section 1, the problem statement runs 0:05-0:17, the foundations 0:17-0:30, and the design
+segment, Designing text-to-SQL, 0:30-0:40; there are two breaks, 1:50-2:00 and 2:53-3:03. The minute-by-minute plan is in the [instructor guide](docs/instructor-guide.md); every live demo, step by step, is in [guide/](guide/README.md).
 
 ### What you build
 

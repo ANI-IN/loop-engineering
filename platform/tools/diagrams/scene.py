@@ -2,7 +2,9 @@
 
 Every diagram is a rounded panel 1920 pixels wide. A slide diagram is 1920 by 791, the shape of the
 deck's diagram panel (12.13 by 5.0 inches), so 40 pixels on the canvas are 18.2 points on a
-slide; a page-only reference diagram is 1920 by 1080 with labels of 20 pixels or more. The style
+slide; a pattern diagram is 1920 by 540, the shape of a pattern slide's panel (12.13 by 3.41
+inches), with the same 40-pixel labels; a page-only reference diagram is 1920 by 1080 with labels
+of 20 pixels or more. The style
 is fixed here and written down in docs/diagrams/README.md, "Diagram style": roughness 0 (the
 "architect" setting), Nunito for labels and Excalidraw's code font for code, three stroke widths,
 one arrow style, and the four loop colours as fills with dark text.
@@ -26,7 +28,8 @@ from typing import Any
 WIDTH = 1920
 SLIDE_HEIGHT = 791  # 1920 by 791 is the 12.13 by 5.0 inch panel: 40 pixels are 18.2 points
 PAGE_HEIGHT = 1080  # a page-only reference diagram, too dense for a slide
-MIN_FONT_SIZE = {SLIDE_HEIGHT: 40, PAGE_HEIGHT: 20}
+PATTERN_HEIGHT = 540  # a pattern slide's panel, 12.13 by 3.41 inches: 40 pixels are 18.2 points
+MIN_FONT_SIZE = {SLIDE_HEIGHT: 40, PAGE_HEIGHT: 20, PATTERN_HEIGHT: 40}
 
 PANEL = "#F0F3F6"
 DARK = "#212121"  # every label, every outline, every arrow
@@ -134,7 +137,10 @@ class Scene:
 
     def __post_init__(self) -> None:
         if self.height not in MIN_FONT_SIZE:
-            raise ValueError(f"{self.name}: a panel is 1920 by 791 (slide) or 1920 by 1080 (page)")
+            raise ValueError(
+                f"{self.name}: a panel is 1920 by 791 (slide), 1920 by 540 (pattern), "
+                "or 1920 by 1080 (page)"
+            )
         panel = self._base("rectangle", "panel", 0, 0, WIDTH, self.height)
         panel.update(
             strokeColor="transparent",

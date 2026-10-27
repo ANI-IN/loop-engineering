@@ -5,12 +5,16 @@ Usage:
   python3 build.py --check s1 [s2 ...] # check only these blocks, write nothing
   python3 build.py --samples OUT_PATH  # the sample block module: one slide of every type
 
-Two rule sets. A block module that sets RULES = "design system" follows the design system and the
-slide schema in slides/design-system.md: the block plan of the rebuild (BLOCK_PLAN, with a block
-total in minutes instead of fixed minutes per position), the eighteen slide types, and the speaker
-notes standard. A module without RULES follows the first outline's rules, described below, which
-stay selectable until every block module is rewritten. The whole outline is built under one rule
-set: when the blocks disagree, the build names each block and its rule set and writes nothing.
+Three rule sets. A block module that sets RULES = "design system" follows the design system and
+the slide schema in slides/design-system.md: the block plan of the first rebuild (BLOCK_PLAN, with
+a block total in minutes instead of fixed minutes per position), the slide types, and the speaker
+notes standard. A module that sets RULES = "design system 2" follows the same design system under
+the second rebuild's block plan (BLOCK_PLAN_2: the problem statement and foundations blocks) and
+its added checks: the evidence diet, at most two code slides per section, one insight per section
+on its opener, the scoreboard on each section's recap, and Structured Query Language spelled out
+once in the deck, on the title slide. A module without RULES follows the first outline's rules,
+described below. The whole outline is built under one rule set: when the blocks disagree, the build
+names each block and its rule set and writes nothing.
 
 First outline rules. Each block module (opening, s1, s2, s3, s4, closing) defines SLIDES, a list of
 dicts:
@@ -218,7 +222,7 @@ def rule_set(name: str) -> str | None:
 
 
 def load(name: str) -> list[dict]:
-    if rule_set(name) == DESIGN_SYSTEM:
+    if rule_set(name) in DESIGNED:
         return load_design(name)
     if name.startswith("break") or name == "poll":
         return importlib.import_module("breaks").BLOCKS[name]
@@ -497,6 +501,9 @@ def render_first_outline(out: str) -> None:
 
 FIRST_OUTLINE = "first outline"
 DESIGN_SYSTEM = "design system"
+# The second rebuild (27 October 2026): the same design system under its own block plan and checks.
+DESIGN_SYSTEM_2 = "design system 2"
+DESIGNED = (DESIGN_SYSTEM, DESIGN_SYSTEM_2)
 REPO_ROOT = HERE.parents[1]
 
 # (key, name, minutes, slides at most): the block plan of the rebuild, 26 October 2026. Each
@@ -513,6 +520,23 @@ BLOCK_PLAN = [
     ("s4", "Section 4: Hill-climbing loop", 43, 13),
     ("closing", "Closing", 12, 10),
 ]
+# The second rebuild's block plan, 27 October 2026 (.dev/review/deck2-brief.md): 78 slides plus at
+# most 7 sources slides, so the closing's cap is its 7 slides and 7 sources slides.
+BLOCK_PLAN_2 = [
+    ("opening", "Opening", 5, 3),
+    ("problem", "The problem", 12, 4),
+    ("foundations", "Foundations", 13, 5),
+    ("design", "Designing text-to-SQL", 10, 4),
+    ("s1", "Section 1: Agent loop", 35, 13),
+    ("s2", "Section 2: Verification loop", 35, 13),
+    ("break1", "Break", 10, 1),
+    ("s3", "Section 3: Event loop", 48, 13),
+    ("poll", "Poll", 5, 1),
+    ("break2", "Break", 10, 1),
+    ("s4", "Section 4: Hill-climbing loop", 42, 13),
+    ("closing", "Closing", 15, 14),
+]
+PLANS = {DESIGN_SYSTEM: BLOCK_PLAN, DESIGN_SYSTEM_2: BLOCK_PLAN_2}
 MAX_SLIDES = 85
 CLASS_SECONDS = 240 * 60
 LOOPS = {
@@ -520,6 +544,15 @@ LOOPS = {
     "s2": "Verification loop",
     "s3": "Event loop",
     "s4": "Hill-climbing loop",
+}
+# The scoreboard: the fiscal year 2025 revenue question's state after each section, as the owner's
+# specification of 27 October 2026 words it (section 4, item 8). A recap slide names its section in
+# its `scoreboard` field; the payoff slide shows the scoreboard complete.
+SCOREBOARD = {
+    1: "The agent sees enough, but the answer is still wrong.",
+    2: "The wrong answer is caught and flagged, but only while someone is watching.",
+    3: "It runs safely unattended, but it is still wrong.",
+    4: "Correct: $64,015,091.21, posted at the level its family has earned.",
 }
 
 
@@ -536,6 +569,7 @@ FULL = (150, 300)  # "What to say" on a concept-type slide
 TRANSITION = (30, 150)  # on a transition: title, agenda, section opener, sources
 WRAP_UP = (60, 200)  # on a recap or a closing slide
 SHORT = (15, 90)  # on a break or the poll, with the short notes form
+PROBLEM = (300, 400)  # on a problem statement slide: the owner's specification, section 3
 KINDS = {
     "title": Kind("title", (0, 30), say=TRANSITION),
     "agenda": Kind("agenda", (3, 45), bullets=0, say=TRANSITION),
@@ -561,7 +595,28 @@ KINDS = {
     "break": Kind("break", (0, 30), bullets=0, say=SHORT, short=True),
     "closing": Kind("closing", (20, 190), bullets=0, say=WRAP_UP),
     "sources": Kind("sources", (20, 260), ("Group:",), bullets=0, say=TRANSITION),
+    # The second rebuild's types (27 October 2026).
+    "pattern": Kind("pattern", (12, 60), ("Definition:", "Use when:", "Avoid when:"), bullets=0),
+    "problem": Kind("problem statement", (20, 90), ("Lead:",), bullets=6, say=PROBLEM),
+    "payoff": Kind(
+        "payoff", (40, 130), ("Before:", "After:", "Level:", "Loop:"), bullets=6, say=FULL
+    ),
 }
+# The lines a pattern slide may hold, each at most once; a payoff slide's lines besides its
+# requirement checks ("- ") and its optional sample line.
+PATTERN_LINES = ("Definition:", "Use when:", "Avoid when:", "Elsewhere:")
+PAYOFF_LINES = ("Before:", "After:", "Level:", "Loop:", "Sample:")
+# A pattern slide's lines are one line each: characters at most, measured on Fira Sans at 20 points
+# (bold label included) for the full width (Definition, Elsewhere) and for one of two columns (Use
+# when, Avoid when); the deck builder measures each line exactly and reports a second line.
+PATTERN_CHARACTERS = {"Definition:": 90, "Use when:": 44, "Avoid when:": 44, "Elsewhere:": 90}
+PATTERN_DIAGRAM = "pattern-"  # a pattern slide's diagram: a pattern diagram's deck export
+# The kinds whose slides may show a run id, a date, or a Sample line (the evidence diet), and the
+# sources slides, whose entries are a bibliography.
+EVIDENCE_KINDS = {"evidence", "demo", "payoff", "sources"}
+CODE_PANELS = ("Pattern", "DataPilot")  # the label of a code panel, under design system 2
+CODE_SLIDES_PER_SECTION = 2
+SPELLED_SQL = "Structured Query Language"
 # The types whose layout draws an "Insight:" line as the Insight callout; on any other type the
 # line would fall to plain text, so the check refuses it.
 INSIGHT_KINDS = {"insight", "opener", "evidence", "comparison", "pitfalls"}
@@ -642,9 +697,11 @@ def load_design(name: str) -> list[dict]:
     sample module names its own block, for its colour and its progress tracker)."""
     module = module_of(name)
     raw = module.BLOCKS[name] if hasattr(module, "BLOCKS") else module.SLIDES
+    rules = getattr(module, "RULES", DESIGN_SYSTEM)
+    rules = rules if rules in DESIGNED else DESIGN_SYSTEM
     out = []
     for s in raw:
-        s = {**s, "_rules": DESIGN_SYSTEM, "_block": s.get("block", name)}
+        s = {**s, "_rules": rules, "_block": s.get("block", name)}
         out.append(with_design_moments(s) if s["kind"] == "demo" else s)
     return out
 
@@ -735,6 +792,22 @@ def field_problems(s: dict, lines: list[str]) -> list[str]:
         problems.append("a problem story needs its code or its screenshot")
     if kind == "concept" and not figure:
         problems.append("a concept diagram slide needs its figure")
+    if kind == "pattern" and not figure:
+        problems.append("a pattern slide needs its figure, a pattern diagram")
+    if (
+        kind == "pattern"
+        and figure
+        and not str(figure.get("diagram", "")).startswith(PATTERN_DIAGRAM)
+    ):
+        problems.append(
+            f"a pattern slide shows a pattern diagram, named {PATTERN_DIAGRAM}<name>; "
+            f"{figure.get('diagram')!r} is not one"
+        )
+    if kind != "pattern" and figure and str(figure.get("diagram", "")).startswith(PATTERN_DIAGRAM):
+        problems.append(
+            "a pattern diagram is drawn for the pattern slide's compact panel; show it on a "
+            "pattern slide"
+        )
     if kind == "concept" and lines:
         problems.append(
             "a diagram slide holds its title and the diagram only, with no idea line; the idea "
@@ -783,6 +856,139 @@ def field_problems(s: dict, lines: list[str]) -> list[str]:
     return problems
 
 
+LOOP_LABEL = re.compile(r"^Section ([1-4])(?::\s*(.+))?$")
+
+
+def loop_tag(tag: str) -> str | None:
+    """The block key a tag names: a loop's name ("Agent loop"), or "Section 1" with or without its
+    loop's name; None when it names no loop."""
+    tag = tag.strip()
+    m = LOOP_LABEL.match(tag)
+    if m:
+        key = f"s{m.group(1)}"
+        return key if not m.group(2) or m.group(2).lower() == LOOPS[key].lower() else None
+    return next((k for k, name in LOOPS.items() if name.lower() == tag.lower()), None)
+
+
+def pattern_problems(s: dict, lines: list[str]) -> list[str]:
+    """A pattern slide: a definition, the use-when and avoid-when lines, an optional elsewhere line
+    with its source marker, and nothing else, each line short enough for one line."""
+    problems = []
+    for x in lines:
+        label = next((p for p in PATTERN_LINES if x.startswith(p)), None)
+        if label is None:
+            problems.append(
+                f"a pattern slide holds only {', '.join(PATTERN_LINES)} lines, not {x[:40]!r}"
+            )
+            continue
+        if sum(y.startswith(label) for y in lines) > 1:
+            problems.append(f"a pattern slide holds one {label} line")
+        shown = len(MARKER.sub("", x))
+        if shown > PATTERN_CHARACTERS[label]:
+            problems.append(
+                f"the {label} line is one line: at most {PATTERN_CHARACTERS[label]} characters, "
+                f"it has {shown}"
+            )
+        if label == "Elsewhere:" and not MARKER.search(x):
+            problems.append("an Elsewhere line names the other stack only where sourced: a marker")
+    return sorted(set(problems), key=problems.index)
+
+
+def problem_problems(s: dict, lines: list[str]) -> list[str]:
+    """A problem statement slide: one lead line and 3 to 6 short items, each item optionally
+    tagged "| <loop>" with the loop it maps to."""
+    problems = []
+    items = [x for x in lines if x.startswith("- ")]
+    if sum(x.startswith("Lead:") for x in lines) != 1:
+        problems.append("a problem slide holds one Lead line")
+    if not 3 <= len(items) <= 6:
+        problems.append(f"a problem slide holds 3 to 6 items, it has {len(items)}")
+    for x in lines:
+        if not x.startswith(("Lead:", "- ")):
+            problems.append(f"a problem slide holds a Lead line and items only, not {x[:40]!r}")
+    for x in items:
+        _text, bar, tag = x.partition("|")
+        if bar and loop_tag(tag) is None:
+            problems.append(f"an item's tag names a loop or a section: {tag.strip()!r}")
+    return problems
+
+
+def payoff_problems(s: dict, lines: list[str]) -> list[str]:
+    """The payoff slide: the wrong answer and the right one, the level it posted at, what each loop
+    contributed (one Loop line per section, in order), and the requirement groups checked."""
+    problems = []
+    for label in ("Before:", "After:", "Level:"):
+        found = [x for x in lines if x.startswith(label)]
+        if len(found) != 1:
+            problems.append(f"a payoff slide holds one {label} line")
+        elif label != "Level:" and "|" not in found[0]:
+            problems.append(f"a {label} line is '{label} <label> | <value>'")
+    loops = [x for x in lines if x.startswith("Loop:")]
+    named = [loop_tag(x.removeprefix("Loop:").split("|", 1)[0]) for x in loops]
+    if named != list(LOOPS) or not all("|" in x for x in loops):
+        problems.append(
+            "a payoff slide holds four Loop lines, 'Loop: Section 1 | <what it contributed>' to "
+            "Section 4, in order"
+        )
+    checks = [x for x in lines if x.startswith("- ")]
+    if not 3 <= len(checks) <= 6:
+        problems.append(f"a payoff slide checks 3 to 6 requirement groups, it has {len(checks)}")
+    if sum(x.startswith("Sample:") for x in lines) > 1:
+        problems.append("a payoff slide holds at most one Sample line")
+    for x in lines:
+        if not x.startswith((*PAYOFF_LINES, "- ")):
+            problems.append(f"a payoff slide holds no other line: {x[:40]!r}")
+    return problems
+
+
+# The evidence diet of the second rebuild: a run id is a word of 8 or more hexadecimal characters
+# with a digit in it; a date is a day and a month, a month and a day or a year, or a numeric date.
+RUN_ID = re.compile(r"\b(?=[0-9a-f]*\d)[0-9a-f]{8,}\b", re.I)
+MONTH = r"(?:January|February|March|April|May|June|July|August|September|October|November|December)"
+DATE = re.compile(
+    rf"\b(?:\d{{1,2}}(?:st|nd|rd|th)? {MONTH}\b|{MONTH} \d{{1,4}}\b|\d{{4}}-\d{{2}}-\d{{2}}\b"
+    rf"|\d{{1,2}}/\d{{1,2}}/\d{{2,4}}\b)"
+)
+URL_TEXT = re.compile(r"https?://\S+")
+
+
+def evidence_diet_problems(s: dict, lines: list[str]) -> list[str]:
+    """No run id, no date, and no Sample line on a slide, except the evidence, demo and payoff
+    slides (and the sources slides' entries): they go into the speaker notes."""
+    if s["kind"] in EVIDENCE_KINDS:
+        return []
+    problems = []
+    text = URL_TEXT.sub("", " ".join([s["title"], *lines]))
+    m = RUN_ID.search(text)
+    if m:
+        problems.append(f"a run id {m.group(0)!r} on the slide: run ids go into the notes")
+    m = DATE.search(text)
+    if m:
+        problems.append(f"a date {m.group(0)!r} on the slide: dates go into the notes")
+    if any(x.startswith("Sample:") for x in lines):
+        problems.append(
+            "a Sample line on the slide: only the evidence, demo and payoff slides state a sample "
+            "size; it goes into the notes"
+        )
+    return problems
+
+
+def code_panel_problems(s: dict) -> list[str]:
+    """Design system 2: a mechanism slide labels its code panel "Pattern" (generic code, no
+    DataPilot names) or "DataPilot" (its real code)."""
+    code = s.get("code")
+    if not code or s["kind"] != "mechanism":
+        return []  # a problem story's code is the agent's query, shown as evidence
+    panel = code.get("panel")
+    if panel not in CODE_PANELS:
+        return [f"the code names its panel: 'panel': 'Pattern' or 'DataPilot', not {panel!r}"]
+    if panel == "Pattern":
+        text = " ".join([*code.get("lines", []), code.get("origin", "")])
+        if re.search(r"datapilot", text, re.I):
+            return ["a Pattern panel is generic code: no DataPilot names in its lines or origin"]
+    return []
+
+
 def _comparison_heads(tables: list[list[list[str]]]) -> bool:
     heads = [c.lower() for t in tables[:1] for c in t[0]]
     return any(h.startswith("without") for h in heads) and any(
@@ -796,7 +1002,9 @@ def check_slide_design(tag: str, s: dict, sources_count: int) -> list[str]:
     if spec is None:
         return [f"{tag}: unknown slide type {kind!r}; the types are {', '.join(KINDS)}"]
     problems = []
-    if s.get("minutes", 0) <= 0:
+    # The sources slides are a bibliography, not presented: the owner's specification of 27
+    # October 2026 gives them zero minutes. Every other slide has time.
+    if s.get("minutes", 0) <= 0 and not (kind == "sources" and s.get("minutes") == 0):
         problems.append(f"{tag}: every slide has minutes")
     if words(s["title"]) > 10:
         problems.append(f"{tag}: title over 10 words")
@@ -853,6 +1061,15 @@ def check_slide_design(tag: str, s: dict, sources_count: int) -> list[str]:
         if not 1 <= int(m.group(1)) <= sources_count:
             problems.append(f"{tag}: source marker [{m.group(1)}] is not in the sources list")
     problems += [f"{tag}: {p}" for p in field_problems(s, lines)]
+    checks = {"pattern": pattern_problems, "problem": problem_problems, "payoff": payoff_problems}
+    if kind in checks:
+        problems += [f"{tag}: {p}" for p in checks[kind](s, lines)]
+    board = s.get("scoreboard")
+    if board is not None and (kind != "recap" or board not in SCOREBOARD):
+        problems.append(f"{tag}: a scoreboard is a recap slide's section number, 1 to 4")
+    if s.get("_rules") == DESIGN_SYSTEM_2:
+        problems += [f"{tag}: {p}" for p in evidence_diet_problems(s, lines)]
+        problems += [f"{tag}: {p}" for p in code_panel_problems(s)]
     notes = list(s["notes"])
     problems += [f"{tag}: {p}" for p in note_order_problems(kind, notes)]
     problems += [f"{tag}: {p}" for p in note_words_problems(kind, notes)]
@@ -892,13 +1109,75 @@ def cited_sources(blocks: list[tuple[str, list[dict]]]) -> tuple[list[int], list
     return sorted(cited), sorted(listed)
 
 
-def check_block_design(name: str, slides: list[dict]) -> list[str]:
-    """Every slide's rules, and, for a block of the plan, its total minutes and its slide cap."""
+def rules_of(slides: list[dict]) -> str:
+    """The rule set a block's slides were loaded under (the design system when unmarked)."""
+    return next((s["_rules"] for s in slides if s.get("_rules") in DESIGNED), DESIGN_SYSTEM)
+
+
+def section_problems(name: str, slides: list[dict]) -> list[str]:
+    """Design system 2, a section: at most two code slides; one insight, on its opener; its recap
+    carries the scoreboard of this section."""
+    problems = []
+    number = int(name[1])
+    code = [s for s in slides if s.get("code") or s["kind"] == "mechanism"]
+    if len(code) > CODE_SLIDES_PER_SECTION:
+        problems.append(
+            f"{name}: {len(code)} code slides, at most {CODE_SLIDES_PER_SECTION} (the pattern in "
+            "code, then DataPilot's version)"
+        )
+    openers = [s for s in slides if s["kind"] == "opener"]
+    insights = [(s, x) for s in slides for x in visible_lines(s) if x.startswith("Insight:")]
+    if len(openers) != 1:
+        problems.append(f"{name}: a section has one opener, it has {len(openers)}")
+    if len(insights) != 1 or (openers and insights and insights[0][0] is not openers[0]):
+        problems.append(
+            f"{name}: one insight per section, on its opener; it has {len(insights)}"
+            + (
+                " and one off the opener"
+                if any(s["kind"] != "opener" for s, _x in insights)
+                else ""
+            )
+        )
+    recaps = [s for s in slides if s["kind"] == "recap"]
+    if not recaps or any(s.get("scoreboard") != number for s in recaps):
+        problems.append(
+            f"{name}: its recap carries the scoreboard of Section {number}: scoreboard={number}"
+        )
+    return problems
+
+
+def spelled_out_problems(name: str, slides: list[dict]) -> list[str]:
+    """Design system 2: Structured Query Language is spelled out once in the deck, on the title
+    slide (the opening's first slide, or the sample module's), and on no other slide."""
+    problems = []
+    for i, s in enumerate(slides):
+        shown = SPELLED_SQL in " ".join([s["title"], *visible_lines(s)])
+        first = name in ("opening", "samples") and i == 0
+        if first and (s["kind"] != "title" or not shown):
+            problems.append(
+                f"{name}#1: the title slide spells out {SPELLED_SQL}, the one place in the deck"
+            )
+        elif shown and not first:
+            problems.append(
+                f"{name}#{i + 1} {s['title']!r}: {SPELLED_SQL} is spelled out once in the deck, "
+                "on the title slide; write SQL here"
+            )
+    return problems
+
+
+def check_block_design(name: str, slides: list[dict], rules: str | None = None) -> list[str]:
+    """Every slide's rules, and, for a block of the plan, its total minutes and its slide cap;
+    under design system 2 also the section checks and the one spelling out of SQL."""
+    rules = rules or rules_of(slides)
     count = sources_count()
     problems = []
     for i, s in enumerate(slides, 1):
         problems += check_slide_design(f"{name}#{i} {s['title']!r}", s, count)
-    plan = {key: (minutes, most) for key, _n, minutes, most in BLOCK_PLAN}
+    if rules == DESIGN_SYSTEM_2:
+        problems += spelled_out_problems(name, slides)
+        if name in LOOPS:
+            problems += section_problems(name, slides)
+    plan = {key: (minutes, most) for key, _n, minutes, most in PLANS[rules]}
     if name in plan:
         minutes, most = plan[name]
         total = sum(s["minutes"] for s in slides)
@@ -915,35 +1194,41 @@ def check_block_design(name: str, slides: list[dict]) -> list[str]:
 
 def check(name: str, slides: list[dict]) -> list[str]:
     """A block's problems under its own rule set."""
-    if rule_set(name) == DESIGN_SYSTEM:
+    if rule_set(name) in DESIGNED:
         return check_block_design(name, slides)
     return check_block(name, slides)
 
 
 def outline_rules() -> tuple[str | None, dict[str, str | None]]:
     """The rule set the whole outline is built under, and each block's own rule set. None when the
-    blocks disagree: some rewritten to the design system, some not yet."""
+    blocks disagree: some rewritten, some not yet. A plan's rule set is chosen when every block of
+    its plan follows it and no other block's module follows another rule set."""
     first = list(APPROVED)
-    plan = [key for key, *_ in BLOCK_PLAN]
-    sets = {n: rule_set(n) for n in dict.fromkeys(first + plan)}
-    if all(sets[n] == FIRST_OUTLINE for n in first) and sets["design"] is None:
+    keys = list(dict.fromkeys(first + [key for plan in PLANS.values() for key, *_ in plan]))
+    sets = {n: rule_set(n) for n in keys}
+    if all(sets[n] == FIRST_OUTLINE for n in first) and all(
+        sets[n] is None for n in keys if n not in first
+    ):
         return FIRST_OUTLINE, sets
-    if all(sets[n] == DESIGN_SYSTEM for n in plan):
-        return DESIGN_SYSTEM, sets
+    for rules, plan in PLANS.items():
+        own = [key for key, *_ in plan]
+        others = [n for n in keys if n not in own]
+        if all(sets[n] == rules for n in own) and all(sets[n] in (None, rules) for n in others):
+            return rules, sets
     return None, sets
 
 
 def block_order() -> list[str]:
     """The blocks of the outline, in class order, under the rule set it is built with."""
     rules, _sets = outline_rules()
-    return [key for key, *_ in BLOCK_PLAN] if rules == DESIGN_SYSTEM else list(APPROVED)
+    return [key for key, *_ in PLANS[rules]] if rules in PLANS else list(APPROVED)
 
 
 def block_names() -> dict[str, str]:
     """Each block's name under the rule set the outline is built with."""
     rules, _sets = outline_rules()
-    if rules == DESIGN_SYSTEM:
-        return {key: name for key, name, *_ in BLOCK_PLAN}
+    if rules in PLANS:
+        return {key: name for key, name, *_ in PLANS[rules]}
     return dict(BLOCK_NAMES)
 
 
@@ -968,8 +1253,9 @@ def slide_lines_design(n: int, s: dict, start: int) -> list[str]:
     code = s.get("code")
     if code:
         marks = ", ".join(f"{m[2]} on {m[1]!r}" for m in code.get("marks", []))
+        panel = f", labelled {code['panel']}" if code.get("panel") else ""
         lines += [
-            f"Annotated code on the slide, from {code['origin']}; markers {marks}:",
+            f"Annotated code on the slide{panel}, from {code['origin']}; markers {marks}:",
             "",
             f"```{code.get('language', 'text')}",
             *code["lines"],
@@ -994,6 +1280,16 @@ def slide_lines_design(n: int, s: dict, start: int) -> list[str]:
     image = s.get("image")
     if image:
         lines += [f"Screenshot, cropped, read from `{image['path']}`: {image['alt']}", ""]
+    board = s.get("scoreboard")
+    if board in SCOREBOARD:
+        lines += [f"Scoreboard after Section {board}:", ""]
+        for n, state in SCOREBOARD.items():
+            name = f"- Section {n}: {LOOPS[f's{n}']}"
+            if n > board:
+                lines.append(f"{name} (to come)")
+            else:
+                lines.append(f"{name} ({'now' if n == board else 'done'}): {state}")
+        lines.append("")
     lines += ["Speaker notes:", ""]
     note = with_timing(list(s["notes"]), s["minutes"], start)
     lines += [x + "  " if j < len(note) - 1 else x for j, x in enumerate(note)]
@@ -1001,12 +1297,17 @@ def slide_lines_design(n: int, s: dict, start: int) -> list[str]:
     return lines
 
 
-def render_design(out: str, blocks: list[tuple[str, list[dict]]], samples: bool = False) -> int:
-    """The outline under the design system (or the sample slides' outline); every problem is
-    printed, and the gate reads the "problems: N" line."""
-    problems = [p for n, sl in blocks for p in check_block_design(n, sl)]
-    names = {key: name for key, name, *_ in BLOCK_PLAN}
-    plan = {key: (minutes, most) for key, _n, minutes, most in BLOCK_PLAN}
+def render_design(
+    out: str,
+    blocks: list[tuple[str, list[dict]]],
+    samples: bool = False,
+    rules: str = DESIGN_SYSTEM,
+) -> int:
+    """The outline under a design-system rule set (or the sample slides' outline); every problem
+    is printed, and the gate reads the "problems: N" line."""
+    problems = [p for n, sl in blocks for p in check_block_design(n, sl, rules)]
+    names = {key: name for key, name, *_ in PLANS[rules]}
+    plan = {key: (minutes, most) for key, _n, minutes, most in PLANS[rules]}
     total = sum(len(sl) for _, sl in blocks)
     seconds = sum(int(round(s["minutes"] * 60)) for _, sl in blocks for s in sl)
     head = "sample slides, one of every type" if samples else "deck outline"
@@ -1078,8 +1379,7 @@ def render_design(out: str, blocks: list[tuple[str, list[dict]]], samples: bool 
     shown = sorted(set(cited) | set(listed))
     lines += ["## Sources cited on the slides and in the notes", ""]
     lines += [
-        "The sources slides list these, with the course's own evidence, under the numbers of the "
-        "verified source list.",
+        "The sources slides list these under the numbers of the verified source list.",
         "",
     ]
     lines += [f"- {sources.SOURCES[n - 1]}" for n in shown if 1 <= n <= len(sources.SOURCES)]
@@ -1090,6 +1390,11 @@ def render_design(out: str, blocks: list[tuple[str, list[dict]]], samples: bool 
             if missing:
                 problems.append(
                     "cited but not on the sources slides: " + ", ".join(map(str, missing))
+                )
+            uncited = [n for n in listed if n not in cited]
+            if uncited:
+                problems.append(
+                    "on the sources slides but cited nowhere: " + ", ".join(map(str, uncited))
                 )
         if total > MAX_SLIDES:
             problems.append(f"{total} slides, at most {MAX_SLIDES}")
@@ -1112,10 +1417,19 @@ def render_design(out: str, blocks: list[tuple[str, list[dict]]], samples: bool 
             "its notes; two breaks and one poll, after Section 3: Event loop.",
             f"- {box(not problems)} Every slide follows its type's layout rules and the speaker "
             "notes standard.",
-            "",
         ]
+        if rules == DESIGN_SYSTEM_2:
+            lines += [
+                f"- {box(not problems)} The evidence diet: run ids, dates and sample-size lines "
+                "only on the evidence, demo and payoff slides; one insight per section, on its "
+                "opener; at most two code slides per section, labelled Pattern or DataPilot; each "
+                "section's recap carries its scoreboard.",
+                f"- {box(not problems)} {SPELLED_SQL} is spelled out once in the deck, on the title "
+                "slide.",
+            ]
+        lines.append("")
     Path(out).write_text("\n".join(lines), encoding="utf-8", newline="\n")
-    print(f"rules: {DESIGN_SYSTEM}; slides {total}; minutes {seconds / 60:g}")
+    print(f"rules: {rules}; slides {total}; minutes {seconds / 60:g}")
     for name, slides in blocks:
         print(f"  {names.get(name, name)}: {len(slides)}")
     print(f"problems: {len(problems)}")
@@ -1130,14 +1444,15 @@ def render(out: str) -> int:
     if rules == FIRST_OUTLINE:
         render_first_outline(out)
         return 0
-    if rules == DESIGN_SYSTEM:
-        return render_design(out, [(key, load(key)) for key, *_ in BLOCK_PLAN])
-    print("The block modules follow two rule sets, so the outline is not built:")
+    if rules in PLANS:
+        return render_design(out, [(key, load(key)) for key, *_ in PLANS[rules]], rules=rules)
+    print("The block modules follow different rule sets, so the outline is not built:")
     for name, value in sets.items():
         print(f"  {name}: {value or 'no module yet'}")
     print(
-        f'Set RULES = "{DESIGN_SYSTEM}" in every block module, and add the design block, to build '
-        "under the design system; check one block meanwhile with --check <block>."
+        f'Set RULES = "{DESIGN_SYSTEM_2}" in every block module of the second rebuild\'s plan '
+        "(with the problem and foundations blocks) to build under it; check one block meanwhile "
+        "with --check <block>."
     )
     print("problems: 1")
     return 1
@@ -1153,7 +1468,8 @@ def main(argv: list[str]) -> int:
         print(f"problems: {len(problems)}")
         return 1 if problems else 0
     if argv[:1] == ["--samples"]:
-        return render_design(argv[1], [("samples", load_design("samples"))], samples=True)
+        slides = load_design("samples")
+        return render_design(argv[1], [("samples", slides)], samples=True, rules=rules_of(slides))
     return render(argv[0])
 
 

@@ -64,7 +64,7 @@ lists them. Run the commands in Ubuntu on WSL2, from the repository root.
       `ok make safeguard-activate takes it`. If it prints `x  make safeguard-activate refuses it`,
       the version is older than 7 days or not from a rehearsal session of this stack: treat it as
       no version. If it says no version is verified, the finale runs without the safeguard: read
-      [the instructor guide](instructor-guide.md#the-class-day-safeguard-for-the-finale) once.
+      [the instructor guide](instructor-guide.md#the-class-day-safeguard-for-the-last-run) once.
 
 ## LangSmith
 

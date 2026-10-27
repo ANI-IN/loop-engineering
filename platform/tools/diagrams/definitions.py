@@ -1,11 +1,12 @@
 """The course diagrams, written as code so every label can be traced to the file it comes from.
 
 Each function builds one scene. A slide diagram is a 1920 by 791 panel with labels of 40 pixels or
-more (18 points on the deck's diagram panel); the three dense reference diagrams (the system, the
-run lifecycle, the warehouse data model) are page-only 1920 by 1080 panels with labels of 20
-pixels or more. `export_diagrams.py --build` measures the labels in the browser, writes the
-.excalidraw sources (with the step frames when `steps` is set and one variant per loop in
-`highlights`), and renders them. After that the .excalidraw file is the source: open it at
+more (18 points on the deck's diagram panel); the pattern diagrams (patterns.py, one per pattern
+slide) are 1920 by 540 panels with the same 40-pixel labels; the three dense reference diagrams
+(the system, the run lifecycle, the warehouse data model) are page-only 1920 by 1080 panels with
+labels of 20 pixels or more. `export_diagrams.py --build` measures the labels in the browser,
+writes the .excalidraw sources (with the step frames when `steps` is set and one variant per loop
+in `highlights`), and renders them. After that the .excalidraw file is the source: open it at
 excalidraw.com to edit it, or change the function here and build again (a build overwrites hand
 edits).
 
@@ -22,6 +23,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from patterns import PATTERNS
+from scene import LOOPS as SCENE_LOOPS
 from scene import MUTED, PAGE_HEIGHT, WHITE, Scene
 
 REPO = Path(__file__).resolve().parents[3]
@@ -278,9 +281,75 @@ def four_loops() -> Scene:
     s.shape("code", 1390, 485, 470, 110, "Promotion gate:\nfour conditions")
     s.arrow([(1625, 597), (1625, 623)])
     s.shape("store", 1390, 625, 470, 130, "Active knowledge\nversion")
-    # The label sits on the arrow's last leg, where it rises into the analyst, clear of every box.
+    # The label sits just above the arrow's long leg, under the post box, clear of every box.
     s.arrow([(1388, 735), (765, 735), (765, 612)])
-    s.text(672, 668, "promoted", align="center")
+    s.text(1145, 703, "promoted", align="center")
+    return s
+
+
+def four_loops_generic() -> Scene:
+    """The four-loop map by role, for the deck (the second deck rebuild, 27 October 2026): the same
+    structure as four_loops, each part named by the job it does in any agent system, with no part
+    of DataPilot and no internal count. The agent loop: a model with tools answers, and code stops
+    it. The verification loop: layered checks, then a person for doubtful answers. The event loop:
+    events in, keyed once, queued with leases, approvals, a kill switch. The hill-climbing loop:
+    failures become proposed rules, judged on unseen questions, promoted by a person."""
+    s = Scene("four-loops-generic")
+    # The agent loop, inside the verification loop, inside the event loop.
+    s.loop = "agent"
+    s.shape("boundary", 420, 330, 480, 385)
+    s.chip(440, 346, 250, 70, "agent")
+    s.shape("code", 440, 440, 200, 80, "Tools")
+    s.shape("stop", 440, 540, 200, 110, "Stops in\ncode", loop=None)
+    s.shape("agent", 670, 440, 220, 170, "A model\nanswers")
+    s.arrow([(642, 480), (685, 480)], both=True)
+    s.arrow([(642, 595), (716, 595)])
+
+    # The verification loop around it: checks first, then a person for a doubtful answer.
+    s.loop = "verification"
+    s.shape("boundary", 60, 230, 860, 515)
+    s.chip(80, 246, 380, 70, "verification")
+    s.shape("code", 80, 334, 300, 106, "Layered\nchecks")
+    s.arrow([(418, 387), (382, 387)])
+    s.arrow([(240, 442), (240, 546)])
+    s.text(252, 469, "doubtful")
+    s.shape("human", 70, 548, 340, 192, "A person\ndecides", loop=None)
+
+    s.loop = "event"
+    s.shape("boundary", 30, 20, 1300, 755)
+    s.chip(50, 36, 260, 70, "event")
+    s.shape("outside", 340, 36, 240, 120, "Events\narrive")
+    s.arrow([(582, 96), (618, 96)])
+    s.shape("code", 620, 36, 270, 120, "Each event\nkeyed once")
+    s.arrow([(892, 96), (928, 96)])
+    s.shape("store", 930, 36, 370, 120, "Queued, with\nleases")
+    s.arrow([(1040, 158), (1040, 200), (765, 200), (765, 438)])
+    # The event column starts 60 pixels right of the verification loop, a corridor the promoted
+    # rules climb with 30 pixels clear on each side.
+    s.shape("stop", 980, 220, 320, 110, "Kill switch:\nstops every run")
+    # The kill switch points up at the queue it stops, clear of the queue's arrow to the model.
+    s.arrow([(1250, 218), (1250, 158)])
+    s.shape("human", 980, 342, 320, 186, "Human\napproval")
+    s.arrow([(922, 435), (978, 435)])
+    s.shape("code", 980, 546, 320, 108, "Post, or hold\nfor a person")
+    s.arrow([(1140, 530), (1140, 544)])
+
+    # The hill-climbing loop beside them, sending promoted rules back to the model.
+    s.loop = "hill-climbing"
+    s.shape("boundary", 1360, 20, 530, 755)
+    s.chip(1380, 36, 400, 70, "hill-climbing")
+    s.shape("store", 1390, 118, 470, 106, "Failures on\na benchmark")
+    s.arrow([(1625, 226), (1625, 242)])
+    s.shape("agent", 1390, 244, 470, 140, "Agents propose\nrules")
+    s.arrow([(1625, 386), (1625, 402)])
+    s.shape("code", 1390, 404, 470, 106, "Judged on\nunseen questions")
+    s.arrow([(1625, 512), (1625, 528)])
+    s.shape("human", 1390, 530, 470, 188, "A person\npromotes", loop=None)
+    # From the person's diamond down, left under the post box (40 pixels above the frames' bottom
+    # edge), up the corridor beside the verification loop, and into the model's right side; the
+    # label sits just above the long leg, under the post box.
+    s.arrow([(1625, 720), (1625, 735), (950, 735), (950, 525), (892, 525)])
+    s.text(1140, 695, "promoted rules", align="center")
     return s
 
 
@@ -296,8 +365,8 @@ def text_to_sql_architecture() -> Scene:
     (the reviewer agent reads the answer); contracts/answer.py (assumptions,
     clarifying_question) and section-2-verification-loop/assignment/ (Assignment 2, the
     clarify-or-abstain grader); loop4_hill_climbing/evaluator.py (execution match on warehouse and
-    warehouse_alt against the gold queries). No title on the 791-pixel canvas: stage 5 spells out
-    Structured Query Language on its first use."""
+    warehouse_alt against the gold queries). No title on the 791-pixel canvas; stage 5 says
+    "query", so the deck spells out Structured Query Language only on its title slide."""
     s = Scene("text-to-sql-architecture")
     stages = [
         # (loop, column, row, text)
@@ -310,7 +379,7 @@ def text_to_sql_architecture() -> Scene:
             "3 Business knowledge:\nthe knowledge version,\na light semantic layer",
         ),
         ("agent", 2, 1, "4 Value lookup: a tool\nfinds the stored value\n(Assignment 1)"),
-        ("agent", 1, 1, "5 Structured Query\nLanguage (SQL): the\nanalyst agent writes it"),
+        ("agent", 1, 1, "5 Query generation:\nthe analyst agent\nwrites the query"),
         (
             "verification",
             0,
@@ -358,6 +427,58 @@ def text_to_sql_architecture() -> Scene:
     s.arrow([(602, mid[2]), (678, mid[2])])
     s.arrow([(1242, mid[2]), (1318, mid[2])])
     # Evaluation feeds business knowledge: failures become new rules (the hill-climbing loop).
+    s.arrow([(1882, mid[2]), (1906, mid[2]), (1906, mid[0]), (1882, mid[0])])
+    return s
+
+
+def text_to_sql_architecture_generic() -> Scene:
+    """The nine stages of any text-to-query system (docs/text-to-sql-design.md), for the deck (the
+    second deck rebuild, 27 October 2026): the same stages, places, and arrows as
+    text_to_sql_architecture, each box the stage's job in general terms and the loop that does
+    it, with no part of DataPilot. Stage 5 says "query", so no label needs the spelled-out name."""
+    s = Scene("text-to-sql-architecture-generic")
+    stages = [
+        # (loop, column, row, text)
+        ("event", 0, 0, "1 Question routing:\nfixed code sends each\nquestion to its path"),
+        ("agent", 1, 0, "2 Schema linking: find\nthe tables and columns\nthat matter"),
+        ("hill-climbing", 2, 0, "3 Business knowledge:\nrules, versioned\nand tested"),
+        ("agent", 2, 1, "4 Value lookup: match\nwords to stored\nvalues"),
+        ("agent", 1, 1, "5 Query generation:\na model writes\nthe query"),
+        ("verification", 0, 1, "6 Validation: syntax\ntree, cost and\npersonal-data checks"),
+        ("verification", 0, 2, "7 Capped execution:\na read-only role,\na row cap"),
+        ("verification", 1, 2, "8 Answer: reviewed,\nassumptions stated,\nor a question back"),
+        (
+            "hill-climbing",
+            2,
+            2,
+            "9 Evaluation: compare\nresults with gold\nanswers on two databases",
+        ),
+    ]
+    xs, ys, w, h = (40, 680, 1320), (24, 290, 556), 560, 216
+    for loop, col, row, text in stages:
+        s.loop = loop
+        s.shape(
+            "code",
+            xs[col],
+            ys[row],
+            w,
+            h,
+            f"{text}\n{SCENE_LOOPS[loop][0]}",
+            align="left",
+            valign="top",
+        )
+    s.loop = None
+    mid = [y + h / 2 for y in ys]
+    # The same arrows as the original: row 1 left to right, row 2 right to left, row 3 left to
+    # right, and evaluation back to business knowledge.
+    s.arrow([(602, mid[0]), (678, mid[0])])
+    s.arrow([(1242, mid[0]), (1318, mid[0])])
+    s.arrow([(1600, ys[0] + h + 2), (1600, ys[1] - 2)])
+    s.arrow([(1318, mid[1]), (1242, mid[1])])
+    s.arrow([(678, mid[1]), (602, mid[1])])
+    s.arrow([(320, ys[1] + h + 2), (320, ys[2] - 2)])
+    s.arrow([(602, mid[2]), (678, mid[2])])
+    s.arrow([(1242, mid[2]), (1318, mid[2])])
     s.arrow([(1882, mid[2]), (1906, mid[2]), (1906, mid[0]), (1882, mid[0])])
     return s
 
@@ -922,7 +1043,9 @@ DIAGRAMS: list[Spec] = [
     Spec("diagram-style", "docs/diagrams", diagram_style),
     Spec("system-architecture", "docs/diagrams", system_architecture),
     Spec("four-loops", "docs/diagrams", four_loops, steps=True, highlights=LOOPS),
+    Spec("four-loops-generic", "docs/diagrams", four_loops_generic),
     Spec("text-to-sql-architecture", "docs/diagrams", text_to_sql_architecture),
+    Spec("text-to-sql-architecture-generic", "docs/diagrams", text_to_sql_architecture_generic),
     Spec("run-lifecycle", "docs/diagrams", run_lifecycle),
     Spec("warehouse-data-model", "docs/diagrams", warehouse_data_model),
     Spec("agent-loop", "section-1-agent-loop/diagrams", agent_loop, steps=True),
@@ -939,4 +1062,5 @@ DIAGRAMS: list[Spec] = [
         hill_climbing_loop,
         steps=True,
     ),
+    *(Spec(name, "docs/diagrams/patterns", build) for name, build in PATTERNS.items()),
 ]

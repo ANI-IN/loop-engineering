@@ -146,10 +146,16 @@ def test_code_markers_match_the_numbered_callouts():
 
 
 def test_a_block_adds_up_to_its_minutes_within_its_slide_cap():
+    """Each rule set checks a block against its own plan. The sample module moved to design
+    system 2 (27 October 2026), so the first plan is named explicitly here and the second plan's
+    design block (10 minutes, 4 slides) is checked too."""
     slides = [_sample("insight")] * 7
-    problems = outline.check_block_design("design", slides)
+    problems = outline.check_block_design("design", slides, outline.DESIGN_SYSTEM)
     assert any("add up to 21 minutes, the block has 15" in p for p in problems)
     assert any("7 slides, at most 6" in p for p in problems)
+    problems = outline.check_block_design("design", slides, outline.DESIGN_SYSTEM_2)
+    assert any("add up to 21 minutes, the block has 10" in p for p in problems)
+    assert any("7 slides, at most 4" in p for p in problems)
 
 
 def test_timing_follows_the_purpose_line():
@@ -165,3 +171,178 @@ def test_mixed_rule_sets_build_no_outline(monkeypatch, capsys):
     assert outline.outline_rules()[0] is None
     assert outline.render("unused-path") == 1
     assert "problems: 1" in capsys.readouterr().out
+
+
+# ------------------------------------------------------------------------------------------------
+# Design system 2: the second rebuild (27 October 2026)
+
+
+def _plan_keys(rules: str) -> list[str]:
+    return [key for key, *_ in outline.PLANS[rules]]
+
+
+def test_the_second_rebuild_is_chosen_only_when_every_block_follows_it(monkeypatch):
+    """The gate stays green while the modules are on the first design system: design system 2 is
+    built only when every block of its plan, the problem and foundations blocks too, sets it."""
+    two = {key: outline.DESIGN_SYSTEM_2 for key in _plan_keys(outline.DESIGN_SYSTEM_2)}
+    monkeypatch.setattr(outline, "rule_set", lambda name: two.get(name))
+    assert outline.outline_rules()[0] == outline.DESIGN_SYSTEM_2
+    assert outline.block_order() == _plan_keys(outline.DESIGN_SYSTEM_2)
+    one = {key: outline.DESIGN_SYSTEM for key in _plan_keys(outline.DESIGN_SYSTEM)}
+    mixed = {**one, "s1": outline.DESIGN_SYSTEM_2}
+    monkeypatch.setattr(outline, "rule_set", lambda name: mixed.get(name))
+    assert outline.outline_rules()[0] is None
+    early = {**one, "problem": outline.DESIGN_SYSTEM_2}  # a new block written before the rest
+    monkeypatch.setattr(outline, "rule_set", lambda name: early.get(name))
+    assert outline.outline_rules()[0] is None
+    monkeypatch.setattr(outline, "rule_set", lambda name: one.get(name))
+    assert outline.outline_rules()[0] == outline.DESIGN_SYSTEM
+
+
+def test_the_second_plan_holds_240_minutes_and_at_most_85_slides():
+    plan = outline.BLOCK_PLAN_2
+    assert sum(minutes for _k, _n, minutes, _c in plan) == 240
+    assert sum(most for *_rest, most in plan) == outline.MAX_SLIDES == 85
+
+
+def test_a_pattern_slide_holds_its_four_lines_and_a_pattern_diagram():
+    slide = _sample("pattern")
+    assert _problems(slide) == []
+    extra = {**slide, "on_slide": [*slide["on_slide"], "- A bullet"]}
+    assert any("holds only Definition:" in p for p in _problems(extra))
+    missing = {**slide, "on_slide": [x for x in slide["on_slide"] if not x.startswith("Avoid")]}
+    assert any("needs a line starting 'Avoid when:'" in p for p in _problems(missing))
+    unsourced = {
+        **slide,
+        "on_slide": [outline.MARKER.sub("", x) for x in slide["on_slide"]],
+    }
+    assert any("only where sourced" in p for p in _problems(unsourced))
+    long = {
+        **slide,
+        "on_slide": [
+            "Use when: " + "x" * 60 if x.startswith("Use") else x for x in slide["on_slide"]
+        ],
+    }
+    assert any("the Use when: line is one line" in p for p in _problems(long))
+    full = {**slide, "figure": {"diagram": "agent-loop", "alt": "a full diagram"}}
+    assert any("shows a pattern diagram" in p for p in _problems(full))
+    concept = {**_sample("concept"), "figure": slide["figure"]}
+    assert any("show it on a pattern slide" in p for p in _problems(concept))
+
+
+def test_a_problem_slide_holds_a_lead_and_three_to_six_items_with_loop_tags():
+    slide = _sample("problem")
+    assert _problems(slide) == []
+    seven = {**slide, "on_slide": [slide["on_slide"][0]] + [f"- Item {n}" for n in range(7)]}
+    assert any("7 bullets, at most 6" in p for p in _problems(seven))
+    tagged = {**slide, "on_slide": [*slide["on_slide"][:3], "- Item | Section 9"]}
+    assert any("names a loop or a section" in p for p in _problems(tagged))
+    assert outline.loop_tag("Section 2: Verification loop") == "s2"
+    assert outline.loop_tag("Event loop") == "s3"
+    assert outline.loop_tag("Section 2: Event loop") is None
+    short_notes = {
+        **slide,
+        "notes": [
+            "What to say: A short talk track." if x.startswith("What to say:") else x
+            for x in slide["notes"]
+        ],
+    }
+    assert any("want 300-400" in p for p in _problems(short_notes))
+
+
+def test_a_payoff_slide_holds_before_after_level_four_loops_and_the_checks():
+    slide = _sample("payoff")
+    assert _problems(slide) == []
+    shuffled = [x for x in slide["on_slide"] if not x.startswith("Loop: Section 2")]
+    assert any("four Loop lines" in p for p in _problems({**slide, "on_slide": shuffled}))
+    no_value = [
+        "Before: the first answer" if x.startswith("Before:") else x for x in slide["on_slide"]
+    ]
+    assert any(
+        "'Before: <label> | <value>'" in p for p in _problems({**slide, "on_slide": no_value})
+    )
+
+
+def test_the_scoreboard_field_is_a_recap_section_number():
+    assert _problems(_sample("recap")) == []
+    assert any("a scoreboard is" in p for p in _problems({**_sample("recap"), "scoreboard": 5}))
+    assert any("a scoreboard is" in p for p in _problems({**_sample("checklist"), "scoreboard": 1}))
+    assert set(outline.SCOREBOARD) == {1, 2, 3, 4}
+    assert outline.SCOREBOARD[4].startswith("Correct: $64,015,091.21")
+
+
+def test_the_evidence_diet_keeps_run_ids_dates_and_samples_off_concept_slides():
+    slide = _sample("checklist")
+    for line, words in (
+        ("- Compare with run 9182df01 by hand", "a run id"),
+        ("- Measured on 24 October 2026", "a date"),
+        ("- Measured on October 24", "a date"),
+        ("Sample: 21 runs per side", "a Sample line"),
+    ):
+        bad = {**slide, "on_slide": [*slide["on_slide"][:4], line]}
+        assert any(words in p for p in _problems(bad)), line
+    for kind in ("evidence", "demo", "payoff"):
+        assert not any(
+            "goes into the notes" in p or "go into the notes" in p for p in _problems(_sample(kind))
+        ), kind
+    # The first design system keeps its own rules: the diet is design system 2's.
+    first = {
+        **slide,
+        "_rules": outline.DESIGN_SYSTEM,
+        "on_slide": [*slide["on_slide"][:4], "- Measured on 24 October 2026"],
+    }
+    assert not any("a date" in p for p in _problems(first))
+    assert not outline.RUN_ID.search("72,394,572.08 and fiscal year 2025 and deadbeef")
+
+
+def test_a_mechanism_slide_labels_its_code_panel():
+    slide = copy.deepcopy(
+        next(s for s in SAMPLES if s["kind"] == "mechanism" and s["code"]["panel"] == "DataPilot")
+    )
+    unlabelled = {**slide, "code": {k: v for k, v in slide["code"].items() if k != "panel"}}
+    assert any("the code names its panel" in p for p in _problems(unlabelled))
+    named = {**slide, "code": {**slide["code"], "panel": "Pattern"}}
+    assert any("no DataPilot names" in p for p in _problems(named))
+
+
+def _section(kinds: list[str]) -> list[dict]:
+    slides = []
+    for kind in kinds:
+        s = _sample(kind)
+        s["_block"] = "s3"
+        if kind == "recap":
+            s["scoreboard"] = 3
+        slides.append(s)
+    return slides
+
+
+def test_a_section_has_two_code_slides_one_insight_on_its_opener_and_its_scoreboard():
+    good = _section(["opener", "pattern", "mechanism", "mechanism", "demo", "recap"])
+    problems = outline.check_block_design("s3", good, outline.DESIGN_SYSTEM_2)
+    assert not [p for p in problems if p.startswith("s3:") and "minutes" not in p], problems
+    three = _section(["opener", "mechanism", "mechanism", "mechanism", "demo", "recap"])
+    problems = outline.check_block_design("s3", three, outline.DESIGN_SYSTEM_2)
+    assert any("3 code slides, at most 2" in p for p in problems)
+    two_insights = _section(["opener", "comparison", "demo", "recap"])
+    problems = outline.check_block_design("s3", two_insights, outline.DESIGN_SYSTEM_2)
+    assert any("one insight per section, on its opener" in p for p in problems)
+    no_board = _section(["opener", "demo", "recap"])
+    no_board[-1]["scoreboard"] = 2
+    problems = outline.check_block_design("s3", no_board, outline.DESIGN_SYSTEM_2)
+    assert any("scoreboard of Section 3" in p for p in problems)
+
+
+def test_structured_query_language_is_spelled_out_once_on_the_title_slide():
+    title, agenda = _sample("title"), _sample("agenda")
+    assert outline.spelled_out_problems("opening", [title, agenda]) == []
+    spelled = {
+        **agenda,
+        "on_slide": ["1. Designing Structured Query Language agents", "2. b", "3. c"],
+    }
+    problems = outline.spelled_out_problems("opening", [title, spelled])
+    assert any("spelled out once in the deck" in p for p in problems)
+    bare = {**title, "on_slide": ["Module: Loop Engineering", "Turn questions into SQL"]}
+    assert any(
+        "the title slide spells out" in p for p in outline.spelled_out_problems("opening", [bare])
+    )
+    assert outline.spelled_out_problems("s1", [spelled])

@@ -51,7 +51,7 @@ the syntax-tree guard, the graders, and the reviewer.
 |---|---|---|
 | Runs answered correctly | 0 of 40 | 0 of 40 |
 | Wrong answers held for approval or escalated | 1 | 20 (17 held, 3 escalated) |
-| Wrong answers that went out unflagged | 39 | 19, each approved by the reviewer |
+| Wrong answers that went out unflagged | 39 | 20 (19 approved by the reviewer, 1 released when the reviewer gave no verdict) |
 | Attempts per run, on average | 1.1 | 1.88 |
 | Tokens per run, on average | 9,311 | 17,344 |
 | Cost of the 40 runs | 0.0361 dollars | 0.0605 dollars |

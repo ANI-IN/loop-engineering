@@ -234,7 +234,7 @@ moment is the same: the correct answer, posted at the level its family has earne
 
 If the version promoted live in class gives a wrong finale answer, the finale runs again, live, on
 the version promoted and verified in rehearsal: the class-day safeguard in the
-[instructor guide](../../docs/instructor-guide.md#the-class-day-safeguard-for-the-finale).
+[instructor guide](../../docs/instructor-guide.md#the-class-day-safeguard-for-the-last-run).
 
 ## If it fails
 

@@ -8,24 +8,29 @@
       "png": "35e4765de97e8d727f510d7a6760b07ac0e0bc64b39b3b8f36e9a9a9fd745d00"
     },
     "four-loops": {
-      "source": "4621822a614603731f16d57edb14cf2ea1a703eb49b066d37597675cd31cd5c8",
-      "svg": "0e23fd75e55dd60c210d05740972830b509a2faaf52f0c01a0e2d6ae283ac9d7",
-      "png": "606f98b1a5db92847d7a365097f46c83d6729c93a97f7caf7cfc8311ad0ffee6"
+      "source": "1a95fc1f5aa2cdfdb12d0c658b02fffd1688afcbd2ecd53725cccbe17d2dd814",
+      "svg": "7ca80dd2cb6ef8d346f55f3768aa7323d482ab42832983041b9dbd8969ff1931",
+      "png": "02a34ecf1d3a593406801eff4f3c498b1e31fdb0c8a1e9f1c694b72019f5d26a"
     },
     "four-loops-agent-loop": {
-      "source": "e7d3b006e76a9750415e84ff2d31741aa88107db4b50bdccbdba8666797e7b8b",
-      "svg": "77cc84e863339d6ec9cfc56b959750f6e6ddacde72c665fc6d13e0174e95823b",
-      "png": "d4f255b3dd88e6d963e2f7d7f65b4dc3c7f7c5e64b0c345f9f820679a1f4fa0f"
+      "source": "8b9a894ad80bb843818e09ad8d4bb1955b0d78855896a040ceae71b794dc7444",
+      "svg": "c96a2e3a00431885fde1e4b7f206019dea293836624ec451d6131e0d151e8bd8",
+      "png": "058f724066d8a10744909d0b822649be73bc107ceeecc67760cabd1824840eef"
     },
     "four-loops-event-loop": {
-      "source": "0595963c6cf4e8ea5249a912d5fd75273865a394f96e3178bcbd341ad7f8448e",
-      "svg": "dd5e9fdba6ba3d8850fe8335eb7303a5317fd3930fe88d94c96cb169d6a32408",
-      "png": "b8e37610c3ea97b18c1f4d1df1390b264f883e1ec57cd74ca615aff237234933"
+      "source": "a44008f6238eaa6de37d5d9552eeecea3b4e97ee112935a93ed2c71aa3d5b716",
+      "svg": "b8a3b125c5274e5bd629f965c1ded4e05feab42323fee2d0d3709d44c9a8220f",
+      "png": "f3627f11cfa3b3e94ae1a95a6c5dae8a89b8b7707391cff14c93847184d69b6b"
+    },
+    "four-loops-generic": {
+      "source": "041a1aa12631b132ddca00b35425462cfa81b33777bac080e2524d871ac9c605",
+      "svg": "e47f65ef59f6645ece7a9ef429c1b5dbf3772242a05638f4e1a908830f3cbcde",
+      "png": "92a977663a361ee041bbed9841d9431676b50848f19dc55eeb393099e2b8d6d3"
     },
     "four-loops-hill-climbing-loop": {
-      "source": "788d10cc5a584216a502975b48239d137211cfa0002be4024e90a64198109660",
-      "svg": "2f7f1296f7337d990630b768c2b6bde913f0a1a924aee69a69d84b3f43118c36",
-      "png": "8cd79cc8dc1a39e7833e42f09850f8cb7fb2cc3e9505a8ba1298c5c405026f70"
+      "source": "46886ddd56b856b1e0b07da413478c821984e2179402ef5453f601bef06b27fc",
+      "svg": "a540699a490983f7bc5b16a7fc7cb0465f9a3a981f98427910ee09383c3832cc",
+      "png": "9a800119ef6d50442ca9d025ff995a0c32d9d34c438fc8160d2a8dfd0624fe27"
     },
     "four-loops-step-1": {
       "source": "acc0de5d40417b481c056969eb4b51da6a6ea890a02cbfb44e81827959425180",
@@ -43,14 +48,14 @@
       "png": "ecdd0df3b1b094290087ca427121d2a3eb913aa1e7e51a6cedcc1b782751ff5c"
     },
     "four-loops-step-4": {
-      "source": "4621822a614603731f16d57edb14cf2ea1a703eb49b066d37597675cd31cd5c8",
-      "svg": "0e23fd75e55dd60c210d05740972830b509a2faaf52f0c01a0e2d6ae283ac9d7",
-      "png": "606f98b1a5db92847d7a365097f46c83d6729c93a97f7caf7cfc8311ad0ffee6"
+      "source": "1a95fc1f5aa2cdfdb12d0c658b02fffd1688afcbd2ecd53725cccbe17d2dd814",
+      "svg": "7ca80dd2cb6ef8d346f55f3768aa7323d482ab42832983041b9dbd8969ff1931",
+      "png": "02a34ecf1d3a593406801eff4f3c498b1e31fdb0c8a1e9f1c694b72019f5d26a"
     },
     "four-loops-verification-loop": {
-      "source": "1b4277b39480cdbe0db21784c07bc461b01927283cc3c62fe6243e2ce0a00b75",
-      "svg": "abc712e9c9e3b0894796290f1500fb88b20617d8718b905b67f84a1c6a51c0a2",
-      "png": "023dba3656b62b3ae40609d8bb2799470b3fa66b4e7c88432adebd51c50e57a9"
+      "source": "e853c2f31a432d9ed3a939fb12c64211e726a6ad8280c49aca6b73d158475fa4",
+      "svg": "f26bb7274987711cdc5318ffb73a1fa8c7debe23c5c26674e259b737edb90206",
+      "png": "10f07a5224f2694d114f50dd1e82c0a3768455a5402ed633ef71160a6128e27a"
     },
     "run-lifecycle": {
       "source": "e9083f3147c23434d12b937793faf3cc64d4e24c781e0537afb4663d8815b8f1",
@@ -63,9 +68,14 @@
       "png": "df474d3d277aa941317552b674e961f00f60cc622ee94192b46c74460f46b76d"
     },
     "text-to-sql-architecture": {
-      "source": "279331a6dc0c632e07def05ffb9f8e85ea6236eca4dcba06ed8bfcd5b404ea04",
-      "svg": "2ecb2dce8d38f80e3a5a15161ac7e63664b3dcf31dc799ce792d13c3ffab34a8",
-      "png": "4d8b6fd791e9445abcdb29663969fd9c6bba6b244a4fba4aa1c5be24d8448313"
+      "source": "d17e816fa3769480961dd0a0df5a0fea5c56d2875cca244a99d9511a94cba571",
+      "svg": "8446f9695146ec135f4b6042a672ba51106fadc42cc49af7698f08b938ad0c8e",
+      "png": "271b48f9907f3d49a3127a7c547ef3f9a59ad50b0f22a0095f399ec045bd9628"
+    },
+    "text-to-sql-architecture-generic": {
+      "source": "f1222843436a6d7615042a5ad81f20c986db79b22f507d7867a0d0c72134ddf7",
+      "svg": "547f30e2c987aba8cb5d602235efcbbf29b4f1bcf7afd8b8bad799566b7c8523",
+      "png": "10be0f8c8895236fdfd052f4e1411c552dff7d62fe53ddf7f0bb33c5bc7d97f5"
     },
     "warehouse-data-model": {
       "source": "3ca2474294a02cfc7042a96b9e579afa7fb72da4e8a2b4e11ad60fe2fd1112ef",

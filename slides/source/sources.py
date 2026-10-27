@@ -1,4 +1,6 @@
-"""The deck's source list, numbered as .dev/deck-sources.md numbers it, 26 October 2026.
+"""The deck's source list: [1] to [54] numbered as .dev/deck-sources.md numbers them (26 October
+2026), and [55] to [118] as .dev/deck2-sources.md numbers them (27 October 2026), grouped there by
+the deck's sections. No entry is ever renumbered.
 
 Terms the titles use: Structured Query Language (SQL), large language model (LLM), and
 application programming interface (API).
@@ -9,7 +11,8 @@ end of SOURCES. Each entry gives the source's full title, its authors or organis
 The sources slides of the closing show each entry in a shorter form (the short title: a paper's own
 name, such as "Spider 2.0", or a page's title cut at its colon), grouped by topic as deck-sources.md
 groups them, with the long products group split into four panels so that each slide balances its
-two columns. sources_slide(...) writes one slide's lines in the slide schema's grammar.
+two columns. sources_slide(...) writes one slide's lines in the slide schema's grammar. The
+sources slides list only what the deck cites; every entry here is on the course's sources page.
 """
 
 from collections.abc import Iterable
@@ -24,6 +27,7 @@ TOPICS = {
     "events": "Event-driven systems",
     "products": "Products and documentation",
     "course": "The course's own evidence, on GitHub",
+    "improvement": "Evaluation and improvement",
 }
 
 # (number, topic, full title, short title for the slide, authors or organisation, year, address)
@@ -54,7 +58,7 @@ ENTRIES = [
         "Building effective agents",
         "Erik Schluntz and Barry Zhang, Anthropic",
         "2024",
-        "https://www.anthropic.com/engineering/building-effective-agents",
+        "https://www.anthropic.com/research/building-effective-agents",
     ),
     (
         4,
@@ -63,7 +67,7 @@ ENTRIES = [
         "Writing effective tools for AI agents",
         "Ken Aizawa, Anthropic",
         "2025",
-        "https://www.anthropic.com/engineering/writing-tools-for-agents",
+        "https://www.anthropic.com/research/writing-tools-for-agents",
     ),
     (
         5,
@@ -334,7 +338,7 @@ ENTRIES = [
         "Introduction",
         "Cube Dev",
         "undated",
-        "https://cube.dev/docs/product/introduction",
+        "https://docs.cube.dev/docs/introduction",
     ),
     (
         34,
@@ -435,7 +439,7 @@ ENTRIES = [
         "Curate an effective Genie Agent",
         "Databricks",
         "undated",
-        "https://docs.databricks.com/aws/en/genie/best-practices",
+        "https://docs.databricks.com/aws/en/genie-agents/best-practices",
     ),
     (
         45,
@@ -525,14 +529,618 @@ ENTRIES = [
         "https://github.com/langchain-ai/langchain-community/blob/main/libs/community/"
         "langchain_community/utilities/sql_database.py",
     ),
+    # Added 27 October 2026 from .dev/deck2-sources.md (fetched that day, every page answered):
+    # the named patterns and their equivalents in other stacks, grouped by the deck's sections.
+    # Section 1: Agent loop
+    (
+        55,
+        "agent",
+        "Function calling",
+        "Function calling",
+        "OpenAI",
+        "undated",
+        "https://developers.openai.com/api/docs/guides/function-calling",
+    ),
+    (
+        56,
+        "agent",
+        "How tool use works",
+        "How tool use works",
+        "Anthropic",
+        "undated",
+        "https://platform.claude.com/docs/en/agents-and-tools/tool-use/how-tool-use-works",
+    ),
+    (
+        57,
+        "agent",
+        "Handle tool calls",
+        "Handle tool calls",
+        "Anthropic",
+        "undated",
+        "https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls",
+    ),
+    (
+        58,
+        "agent",
+        "Running agents (OpenAI Agents SDK documentation)",
+        "Running agents",
+        "OpenAI",
+        "undated",
+        "https://openai.github.io/openai-agents-python/running_agents/",
+    ),
+    (
+        59,
+        "agent",
+        "Graph API overview",
+        "Graph overview",
+        "LangChain",
+        "undated",
+        "https://docs.langchain.com/oss/python/langgraph/graph-api",
+    ),
+    (
+        60,
+        "agent",
+        "GRAPH_RECURSION_LIMIT",
+        "GRAPH_RECURSION_LIMIT",
+        "LangChain",
+        "undated",
+        "https://docs.langchain.com/oss/python/langgraph/errors/GRAPH_RECURSION_LIMIT",
+    ),
+    (
+        61,
+        "agent",
+        "Effective context engineering for AI agents",
+        "Effective context engineering for AI agents",
+        "Prithvi Rajasekaran, Ethan Dixon, Carly Ryan, Jeremy Hadfield, Anthropic",
+        "2025",
+        "https://www.anthropic.com/research/effective-context-engineering-for-ai-agents",
+    ),
+    (
+        62,
+        "agent",
+        "Equipping agents for the real world with Agent Skills",
+        "Equipping agents for the real world",
+        "Barry Zhang, Keith Lazuka, Mahesh Murag, Anthropic",
+        "2025",
+        "https://www.anthropic.com/research/equipping-agents-for-the-real-world-with-agent-skills",
+    ),
+    (
+        63,
+        "agent",
+        "Introducing advanced tool use on the Claude Developer Platform",
+        "Advanced tool use",
+        "Bin Wu and others, Anthropic",
+        "2025",
+        "https://www.anthropic.com/research/advanced-tool-use",
+    ),
+    (
+        64,
+        "agent",
+        "Structured model outputs",
+        "Structured model outputs",
+        "OpenAI",
+        "undated",
+        "https://developers.openai.com/api/docs/guides/structured-outputs",
+    ),
+    (
+        65,
+        "agent",
+        "How we built our multi-agent research system",
+        "How we built our multi-agent research system",
+        "Jeremy Hadfield, Barry Zhang, Kenneth Lien, Florian Scholz, Jeremy Fox, Daniel Ford, "
+        "Anthropic",
+        "2025",
+        "https://www.anthropic.com/research/multi-agent-research-system",
+    ),
+    # Section 2: Verification loop
+    (
+        66,
+        "verification",
+        "OWASP Top 10 for LLM Applications 2025",
+        "Top 10 for Large Language Model Applications 2025",
+        "OWASP Gen AI Security Project",
+        "2025",
+        "https://genai.owasp.org/llm-top-10/",
+    ),
+    (
+        67,
+        "verification",
+        "LLM01:2025 Prompt Injection",
+        "Prompt Injection",
+        "OWASP Gen AI Security Project",
+        "2025",
+        "https://genai.owasp.org/llmrisk/llm01-prompt-injection/",
+    ),
+    (
+        68,
+        "verification",
+        "LLM06:2025 Excessive Agency",
+        "Excessive Agency",
+        "OWASP Gen AI Security Project",
+        "2025",
+        "https://genai.owasp.org/llmrisk/llm062025-excessive-agency/",
+    ),
+    (
+        69,
+        "verification",
+        "LLM02:2025 Sensitive Information Disclosure",
+        "Sensitive Information Disclosure",
+        "OWASP Gen AI Security Project",
+        "2025",
+        "https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/",
+    ),
+    (
+        70,
+        "verification",
+        "LLM Prompt Injection Prevention Cheat Sheet",
+        "Prompt Injection Prevention Cheat Sheet",
+        "OWASP Cheat Sheet Series",
+        "undated",
+        "https://cheatsheetseries.owasp.org/cheatsheets/"
+        "LLM_Prompt_Injection_Prevention_Cheat_Sheet.html",
+    ),
+    (
+        71,
+        "verification",
+        "defense-in-depth (glossary)",
+        "Defense-in-depth",
+        "NIST Computer Security Resource Center",
+        "undated",
+        "https://csrc.nist.gov/glossary/term/defense_in_depth",
+    ),
+    (
+        72,
+        "verification",
+        "SQLGlot API documentation",
+        "SQLGlot",
+        "Toby Mao and contributors",
+        "undated",
+        "https://sqlglot.com/sqlglot.html",
+    ),
+    (
+        73,
+        "verification",
+        "WITH Queries (Common Table Expressions)",
+        "WITH Queries",
+        "PostgreSQL Global Development Group",
+        "undated",
+        "https://www.postgresql.org/docs/current/queries-with.html",
+    ),
+    (
+        74,
+        "verification",
+        "SET TRANSACTION",
+        "SET TRANSACTION",
+        "PostgreSQL Global Development Group",
+        "undated",
+        "https://www.postgresql.org/docs/current/sql-set-transaction.html",
+    ),
+    (
+        75,
+        "verification",
+        "Privileges",
+        "Privileges",
+        "PostgreSQL Global Development Group",
+        "undated",
+        "https://www.postgresql.org/docs/current/ddl-priv.html",
+    ),
+    (
+        76,
+        "verification",
+        "GRANT",
+        "GRANT",
+        "PostgreSQL Global Development Group",
+        "undated",
+        "https://www.postgresql.org/docs/current/sql-grant.html",
+    ),
+    (
+        77,
+        "verification",
+        "Overview of Access Control",
+        "Overview of Access Control",
+        "Snowflake",
+        "undated",
+        "https://docs.snowflake.com/en/user-guide/security-access-control-overview",
+    ),
+    (
+        78,
+        "verification",
+        "Access control privileges",
+        "Access control privileges",
+        "Snowflake",
+        "undated",
+        "https://docs.snowflake.com/en/user-guide/security-access-control-privileges",
+    ),
+    (
+        79,
+        "verification",
+        "BigQuery IAM roles and permissions",
+        "BigQuery roles and permissions",
+        "Google Cloud",
+        "2026",
+        "https://docs.cloud.google.com/bigquery/docs/access-control",
+    ),
+    (
+        80,
+        "verification",
+        "Not what you've signed up for: Compromising Real-World LLM-Integrated Applications with "
+        "Indirect Prompt Injection",
+        "Not what you've signed up for",
+        "Kai Greshake, Sahar Abdelnabi, Shailesh Mishra, Christoph Endres, Thorsten Holz, Mario "
+        "Fritz",
+        "2023",
+        "https://arxiv.org/abs/2302.12173",
+    ),
+    (
+        81,
+        "verification",
+        "Prompt Shields in Azure AI Content Safety",
+        "Prompt Shields",
+        "Microsoft",
+        "undated",
+        "https://learn.microsoft.com/en-us/azure/ai-services/content-safety/concepts/"
+        "jailbreak-detection",
+    ),
+    (
+        82,
+        "verification",
+        "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena",
+        "Judging large language models as judges",
+        "Lianmin Zheng and others",
+        "2023",
+        "https://arxiv.org/abs/2306.05685",
+    ),
+    (
+        83,
+        "verification",
+        "LLM Evaluators Recognize and Favor Their Own Generations",
+        "Evaluators Recognize and Favor Their Own Generations",
+        "Arjun Panickssery, Samuel R. Bowman, Shi Feng",
+        "2024",
+        "https://arxiv.org/abs/2404.13076",
+    ),
+    (
+        84,
+        "verification",
+        "Great Models Think Alike and this Undermines AI Oversight",
+        "Great Models Think Alike",
+        "Shashwat Goel and others",
+        "2025",
+        "https://arxiv.org/abs/2502.04313",
+    ),
+    (
+        85,
+        "verification",
+        "Timeouts, retries, and backoff with jitter",
+        "Timeouts, retries, and backoff with jitter",
+        "Amazon Builders' Library, Amazon Web Services",
+        "2019",
+        "https://builder.aws.com/content/3EumjoZascWd1oZiEgL8ORlv3qE/"
+        "timeouts-retries-and-backoff-with-jitter",
+    ),
+    # Section 3: Event loop
+    (
+        86,
+        "events",
+        "Idempotent requests",
+        "Idempotent requests",
+        "Stripe",
+        "undated",
+        "https://docs.stripe.com/api/idempotent_requests",
+    ),
+    (
+        87,
+        "events",
+        "Receive Stripe events in your webhook endpoint",
+        "Receive Stripe events",
+        "Stripe",
+        "undated",
+        "https://docs.stripe.com/webhooks",
+    ),
+    (
+        88,
+        "events",
+        "Amazon SQS at-least-once delivery",
+        "At-least-once delivery",
+        "Amazon Simple Queue Service Developer Guide, Amazon Web Services",
+        "undated",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/"
+        "standard-queues-at-least-once-delivery.html",
+    ),
+    (
+        89,
+        "events",
+        "Amazon SQS visibility timeout",
+        "Visibility timeout",
+        "Amazon Simple Queue Service Developer Guide, Amazon Web Services",
+        "undated",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/"
+        "sqs-visibility-timeout.html",
+    ),
+    (
+        90,
+        "events",
+        "Using dead-letter queues in Amazon SQS",
+        "Using dead-letter queues",
+        "Amazon Simple Queue Service Developer Guide, Amazon Web Services",
+        "undated",
+        "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/"
+        "sqs-dead-letter-queues.html",
+    ),
+    (
+        91,
+        "events",
+        "Extend ack time with lease management",
+        "Lease management",
+        "Google Cloud Pub/Sub documentation",
+        "2026",
+        "https://docs.cloud.google.com/pubsub/docs/lease-management",
+    ),
+    (
+        92,
+        "events",
+        "Design (Message Delivery Semantics), Apache Kafka documentation, version 4.4",
+        "Message Delivery Semantics",
+        "Apache Kafka",
+        "undated",
+        "https://kafka.apache.org/44/design/design/",
+    ),
+    (
+        93,
+        "events",
+        "What is Temporal?",
+        "What is Temporal?",
+        "Temporal Technologies",
+        "undated",
+        "https://docs.temporal.io/temporal",
+    ),
+    (
+        94,
+        "events",
+        "Temporal Workflow Execution overview",
+        "Workflow Execution overview",
+        "Temporal Technologies",
+        "undated",
+        "https://docs.temporal.io/workflow-execution",
+    ),
+    (
+        95,
+        "events",
+        "Activity Definition",
+        "Activity Definition",
+        "Temporal Technologies",
+        "undated",
+        "https://docs.temporal.io/activity-definition",
+    ),
+    (
+        96,
+        "events",
+        "Approval Pattern",
+        "Approval Pattern",
+        "Temporal Technologies",
+        "undated",
+        "https://docs.temporal.io/design-patterns/approval",
+    ),
+    (
+        97,
+        "events",
+        "Temporal Workflow message passing (Signals, Queries and Updates)",
+        "Workflow message passing",
+        "Temporal Technologies",
+        "undated",
+        "https://docs.temporal.io/encyclopedia/workflow-message-passing",
+    ),
+    (
+        98,
+        "events",
+        "Interrupts",
+        "Interrupts",
+        "LangChain",
+        "undated",
+        "https://docs.langchain.com/oss/python/langgraph/interrupts",
+    ),
+    (
+        99,
+        "events",
+        "Persistence",
+        "Persistence",
+        "LangChain",
+        "undated",
+        "https://docs.langchain.com/oss/python/langgraph/persistence",
+    ),
+    (
+        100,
+        "events",
+        "Practices for Governing Agentic AI Systems",
+        "Practices for Governing Agentic AI Systems",
+        "Yonadav Shavit, Sandhini Agarwal, Miles Brundage and others, OpenAI",
+        "2023",
+        "https://cdn.openai.com/papers/practices-for-governing-agentic-ai-systems.pdf",
+    ),
+    (
+        101,
+        "events",
+        "Feature Toggles (aka Feature Flags)",
+        "Feature Toggles",
+        "Pete Hodgson, martinfowler.com",
+        "2017",
+        "https://martinfowler.com/articles/feature-toggles.html",
+    ),
+    (
+        102,
+        "events",
+        "CircuitBreaker",
+        "CircuitBreaker",
+        "Martin Fowler",
+        "2014",
+        "https://martinfowler.com/bliki/CircuitBreaker.html",
+    ),
+    (
+        103,
+        "events",
+        "Levels of Autonomy for AI Agents",
+        "Levels of Autonomy for AI Agents",
+        "K. J. Kevin Feng, David W. McDonald, Amy X. Zhang",
+        "2025",
+        "https://arxiv.org/abs/2506.12469",
+    ),
+    (
+        104,
+        "events",
+        "Principles of Chaos Engineering",
+        "Principles of Chaos Engineering",
+        "The Chaos Community, principlesofchaos.org",
+        "2019",
+        "https://principlesofchaos.org/",
+    ),
+    # Section 4: Hill-climbing loop
+    (
+        105,
+        "improvement",
+        "Evaluation best practices",
+        "Evaluation best practices",
+        "OpenAI",
+        "undated",
+        "https://developers.openai.com/api/docs/guides/evaluation-best-practices",
+    ),
+    (
+        106,
+        "improvement",
+        "Demystifying evals for AI agents",
+        "Demystifying evals for AI agents",
+        "Mikaela Grace, Jeremy Hadfield, Rodrigo Olivares, Jiri De Jonghe, Anthropic",
+        "2026",
+        "https://www.anthropic.com/research/demystifying-evals-for-ai-agents",
+    ),
+    (
+        107,
+        "improvement",
+        "Evaluation concepts (LangSmith documentation)",
+        "Evaluation concepts",
+        "LangChain",
+        "undated",
+        "https://docs.langchain.com/langsmith/evaluation-concepts",
+    ),
+    (
+        108,
+        "improvement",
+        "Manage datasets (LangSmith documentation)",
+        "Manage datasets",
+        "LangChain",
+        "undated",
+        "https://docs.langchain.com/langsmith/manage-datasets",
+    ),
+    (
+        109,
+        "improvement",
+        "How to evaluate with repetitions (LangSmith documentation)",
+        "How to evaluate with repetitions",
+        "LangChain",
+        "undated",
+        "https://docs.langchain.com/langsmith/repetition",
+    ),
+    (
+        110,
+        "improvement",
+        "Datasets: Dividing the original dataset (Machine Learning Crash Course)",
+        "Dividing the original dataset",
+        "Google for Developers",
+        "2025",
+        "https://developers.google.com/machine-learning/crash-course/overfitting/dividing-datasets",
+    ),
+    (
+        111,
+        "improvement",
+        "Defeating Nondeterminism in LLM Inference",
+        "Defeating Nondeterminism in Large Language Model Inference",
+        "Horace He and others, Thinking Machines Lab",
+        "2025",
+        "https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/",
+    ),
+    (
+        112,
+        "improvement",
+        'Non-Determinism of "Deterministic" LLM Settings',
+        'Non-Determinism of "Deterministic" Settings',
+        "Berk Atil and others",
+        "2024",
+        "https://arxiv.org/abs/2408.04667",
+    ),
+    (
+        113,
+        "improvement",
+        '"When a Measure Becomes a Target, It Ceases to be a Good Measure"',
+        "When a Measure Becomes a Target",
+        "Christopher Mattson, Reamer L. Bushardt, Anthony R. Artino Jr., Journal of Graduate "
+        "Medical Education",
+        "2021",
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC7901608/",
+    ),
+    (
+        114,
+        "improvement",
+        "'Improving ratings': audit in the British University system",
+        "Improving ratings",
+        "Marilyn Strathern, European Review 5(3), pages 305 to 321",
+        "1997",
+        "https://www.cambridge.org/core/journals/european-review/article/abs/"
+        "improving-ratings-audit-in-the-british-university-system/"
+        "FC2EE640C0C44E3DB87C29FB666E9AAB",
+    ),
+    (
+        115,
+        "improvement",
+        "Categorizing Variants of Goodhart's Law",
+        "Categorizing Variants of Goodhart's Law",
+        "David Manheim, Scott Garrabrant",
+        "2018",
+        "https://arxiv.org/abs/1803.04585",
+    ),
+    (
+        116,
+        "improvement",
+        "MLOps: Continuous delivery and automation pipelines in machine learning",
+        "Continuous delivery and automation pipelines in machine learning",
+        "Google Cloud Architecture Center",
+        "2024",
+        "https://docs.cloud.google.com/architecture/"
+        "mlops-continuous-delivery-and-automation-pipelines-in-machine-learning",
+    ),
+    (
+        117,
+        "improvement",
+        "Managing environments for deployment",
+        "Managing environments for deployment",
+        "GitHub",
+        "undated",
+        "https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/"
+        "manage-environments",
+    ),
+    (
+        118,
+        "improvement",
+        "How is ChatGPT's behavior changing over time?",
+        "How is ChatGPT's behavior changing over time?",
+        "Lingjiao Chen, Matei Zaharia, James Zou",
+        "2023",
+        "https://arxiv.org/abs/2307.09009",
+    ),
 ]
 
 assert [e[0] for e in ENTRIES] == list(range(1, len(ENTRIES) + 1)), "numbered 1 to N in order"
 
+
 # The full entries, one per source, in number order: what the outline lists at its end and what the
 # learner-facing sources page mirrors. SOURCES[n - 1] is source n.
+def _full_entry(n: int, title: str, who: str, year: str, url: str) -> str:
+    """'[n] Title. Authors, year. Address', with no full stop added after a title that already
+    ends in a question mark."""
+    stop = "" if title.endswith("?") else "."
+    return f"[{n}] {title}{stop} {who}, {year}. {url}"
+
+
 SOURCES = [
-    f"[{n}] {title}. {who}, {year}. {url}" for n, _topic, title, _short, who, year, url in ENTRIES
+    _full_entry(n, title, who, year, url) for n, _topic, title, _short, who, year, url in ENTRIES
 ]
 
 
@@ -541,10 +1149,10 @@ SOURCES = [
 SLIDE_WHO = {
     1: "Sydney Runkle",
     3: "Anthropic",
-    4: "Ken Aizawa",
+    4: "Anthropic",
     11: "OpenAI community",
     12: "Ruiqi Zhong and others",
-    13: "Open Worldwide Application Security Project (OWASP)",
+    13: "OWASP",
     14: "PostgreSQL",
     15: "PostgreSQL",
     28: "PostgreSQL",
@@ -556,13 +1164,52 @@ SLIDE_WHO = {
     52: "Loop Engineering",
     53: "Loop Engineering",
     54: "LangChain",
+    61: "Anthropic",
+    62: "Anthropic",
+    63: "Anthropic",
+    65: "Anthropic",
+    66: "Open Worldwide Application Security Project (OWASP)",
+    67: "OWASP",
+    68: "OWASP",
+    69: "OWASP",
+    70: "OWASP",
+    71: "National Institute of Standards and Technology",
+    72: "Toby Mao",
+    73: "PostgreSQL",
+    74: "PostgreSQL",
+    75: "PostgreSQL",
+    76: "PostgreSQL",
+    80: "Kai Greshake and others",
+    83: "Arjun Panickssery and others",
+    85: "Amazon Web Services",
+    88: "Amazon Web Services",
+    89: "Amazon Web Services",
+    90: "Amazon Web Services",
+    91: "Google Cloud",
+    93: "Temporal",
+    94: "Temporal",
+    95: "Temporal",
+    96: "Temporal",
+    97: "Temporal",
+    100: "OpenAI",
+    101: "Pete Hodgson",
+    103: "Kevin Feng and others",
+    104: "Chaos Community",
+    106: "Anthropic",
+    110: "Google",
+    111: "Thinking Machines Lab",
+    113: "Christopher Mattson and others",
+    114: "Marilyn Strathern",
+    115: "David Manheim and others",
+    116: "Google Cloud",
+    118: "Lingjiao Chen and others",
 }
 
 
 def entry_line(n: int) -> str:
     """One entry as the sources slide shows it: '[n] Short title, authors, year, address'. A page
     that carries no date shows no year on the slide (the full entry says "undated"), so that the
-    three sources slides keep each entry to one line where the address allows."""
+    sources slides keep each entry to one line where the address allows."""
     _n, _topic, _title, short, who, year, url = ENTRIES[n - 1]
     when = "" if year == "undated" else f" {year},"
     return f"[{n}] {short}, {SLIDE_WHO.get(n, who)},{when} {url}"

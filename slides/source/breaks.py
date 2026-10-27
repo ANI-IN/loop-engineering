@@ -1,9 +1,14 @@
-"""The two breaks and the poll, one slide each, at their fixed clock times: the first break
-1:45-1:55, the poll 2:50-2:55, the second break 2:55-3:05. Short notes form (Purpose, What to
-say, Do lines, Transition); the Do lines name the instructor's commands, so allow_commands is on.
+"""The two breaks and the poll, one slide each, at their fixed clock times under the second
+rebuild's plan: the first break 1:50-2:00, the poll 2:48-2:53, the second break 2:53-3:03. Short
+notes form (Purpose, What to say, Do lines, Transition); the Do lines name the instructor's
+commands, so allow_commands is on.
+
+The poll asks the owner's question (specification of 27 October 2026, section 5, item 2): "Which of
+the four loops does your production agent have today?", with the four loops and "None". The slide
+keeps the fixed poll wording; the question and its options are the Zoom poll's own.
 """
 
-RULES = "design system"
+RULES = "design system 2"
 
 BREAK_TITLE = "Time for a Break"
 BREAK_TEXT = (
@@ -12,6 +17,8 @@ BREAK_TEXT = (
 )
 POLL_TITLE = "Live Zoom Poll"
 POLL_TEXT = "We are launching a poll on Zoom. Please take 2 minutes to fill out the form."
+POLL_QUESTION = "Which of the four loops does your production agent have today?"
+POLL_OPTIONS = ("Agent loop", "Verification loop", "Event loop", "Hill-climbing loop", "None")
 
 BLOCKS = {
     "break1": [
@@ -20,7 +27,7 @@ BLOCKS = {
             title=BREAK_TITLE,
             minutes=10,
             says=BREAK_TEXT,
-            src="docs/instructor-guide.md, Break (1:45-1:55)",
+            src="docs/instructor-guide.md, Break (1:50-2:00)",
             allow_commands=True,
             on_slide=[BREAK_TITLE, BREAK_TEXT],
             notes=[
@@ -32,8 +39,8 @@ BLOCKS = {
                 "Do: Reset the event loop during the break, so Section 3 starts clean: make reset "
                 "NAME=event-loop.",
                 "Do: Read Tokens today on the console's status line and note it.",
-                "Transition: Welcome back. Answers are now checked; next, who asks, when, and who "
-                "may approve: the event loop.",
+                "Transition: Welcome back. Wrong answers are now flagged while someone watches; "
+                "next, running the agent from events with nobody watching: the event loop.",
             ],
         )
     ],
@@ -43,23 +50,32 @@ BLOCKS = {
             title=POLL_TITLE,
             minutes=5,
             says=POLL_TEXT,
-            src="docs/instructor-guide.md, Poll (2:50-2:55)",
+            src="docs/instructor-guide.md, Poll (2:48-2:53); the owner's specification of 27 "
+            "October 2026, section 5, item 2",
             allow_commands=True,
             on_slide=[POLL_TITLE, POLL_TEXT],
             notes=[
-                "Purpose: Ask which autonomy level learners would grant, before Section 4 shows "
-                "the evidence each level should need.",
-                "What to say: One poll before the break: which autonomy level would you grant "
-                "the revenue digest today, and why: the report-only level, the assisted level, or "
-                "the unattended level? You have two minutes. Here is the result. Keep that answer "
-                "in mind; Section 4: Hill-climbing loop reads it back against what revenue and "
-                "orders actually earned.",
+                "Purpose: Ask which of the four loops learners' production agents have today; its "
+                "two counts are read back on slides 59 and 73.",
+                "What to say: One poll before the break. Which of the four loops does your "
+                "production agent have today? Choose every one that applies: the agent loop, the "
+                "verification loop, the event loop, the hill-climbing loop, or none. You have two "
+                "minutes. Here is the result. Hold on to it: Section 4 starts from how many of you "
+                "have a loop that improves your agent, and the closing reads two counts back "
+                "on the map.",
                 "Do: Before you launch the poll, start the class session's baseline experiment: "
                 "Improve > Run experiment on the active version, or make demo "
                 "NAME=improve-baseline-experiment. The console accepts no baseline from another "
                 "session, so never skip this step.",
-                "Do: Launch the Zoom poll, then check that the benchmark progress strip on the "
-                "run board is counting up.",
+                "Do: Launch the Zoom poll with the question 'Which of the four loops does your "
+                "production agent have today?', multiple choice, and the options Agent loop, "
+                "Verification loop, Event loop, Hill-climbing loop, None.",
+                "Do: Share the result, then note two counts for later: how many chose the "
+                "hill-climbing loop, and how many chose none. Both are read back on slides 59 and "
+                "73 only: Section 4's opener reads them, since an agent with no hill-climbing loop "
+                "improves by hand, one prompt patch at a time, the way of working that opener "
+                "shows going wrong; the closing reads both again on the four-loops slide.",
+                "Do: Check that the benchmark progress strip on the run board is counting up.",
                 "Transition: A 10-minute break now; the experiments keep running through it.",
             ],
         )
@@ -70,7 +86,7 @@ BLOCKS = {
             title=BREAK_TITLE,
             minutes=10,
             says=BREAK_TEXT,
-            src="docs/instructor-guide.md, Break (2:55-3:05)",
+            src="docs/instructor-guide.md, Break (2:53-3:03)",
             allow_commands=True,
             on_slide=[BREAK_TITLE, BREAK_TEXT],
             notes=[
@@ -87,8 +103,8 @@ BLOCKS = {
                 "usually finished when Section 4 opens by reading them.",
                 "Do: Check once that the grouped benchmark progress strip on the run board is "
                 "counting up.",
-                "Transition: Welcome back. The poll asked how much autonomy to grant; now we earn "
-                "it, with the hill-climbing loop.",
+                "Transition: Welcome back. Now the loop that makes the answer right: the "
+                "hill-climbing loop.",
             ],
         )
     ],
