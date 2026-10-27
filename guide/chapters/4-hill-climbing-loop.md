@@ -202,8 +202,10 @@ ran in the same session, so the comparison is fair.
 
 **Where:** The Improve page; scroll to the gate's verdict above the knowledge diff.
 
-**Type:** read the verdict, then press the approve button, which names the candidate version
-(version 13 in the chain of steps 5 and 7, version 19 in this step's frame).
+**Type:** read the verdict, type your name in "Your name, recorded as the approver", then press
+the approve button, which names the candidate version (version 13 in the chain of steps 5 and 7,
+version 19 in this step's frame). The button stays off until a name is typed; the gate refuses an
+empty name or "console".
 
 **You should see:** the verdict and its reason.
 
@@ -211,8 +213,9 @@ ran in the same session, so the comparison is fair.
 
 *25 October 2026, the chain whose candidate is version 19: the gate is waiting only for a person: more holdout passes and no regressions.*
 
-The frame predates the Run the naive analyzer (planted) button, so your Improve page shows one more
-button while demo controls are allowed.
+The frame predates the Run the naive analyzer (planted) button and the approver's name field, so
+your Improve page shows one more button while demo controls are allowed, and the name field
+beside the approve button.
 
 **Look at:** the reason after the label: "Ready for human approval".
 

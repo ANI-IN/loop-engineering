@@ -422,6 +422,242 @@ The outline builder adds these to every rule above:
   each slide. The speaker notes are read as one page of their own and spell out each term at its
   first use there, SQL included.
 
+## The third rebuild (design system 3)
+
+A module that sets `RULES = "design system 3"` follows the previous module's deck, "Harness
+Engineering for Coding Agents" (the reference deck, kept privately with the deck's build files
+and never published), in its slide order, layouts and recurring elements, with more detail on
+every teaching slide. Where this section and the sections above disagree, this section wins for
+design system 3. The reference's measured layouts are recorded in the build's private notes
+(`reference-format.md`); the sizes below are the reference's.
+
+### What changes from design system 2
+
+- **Titles** sit at the top, one line, 30 points, bold (the DEMO slide's: 25). A title with a
+  colon has a prefix: the words up to and including the first colon are blue `3896D2`, the rest
+  white ("Failure story: The revenue answer nobody questioned"). A title without a colon is blue
+  throughout ("Today's Agenda", "1) Cap rows in the tool"). A title is at most 60 characters.
+- **The lead line** sits under the title, one or two lines at 20 points, white: `Lead:`.
+- **Body text** on cards, rows, tables and the Key idea bar is 18 points; nothing is under 14
+  (the references tables, a chart's text, the scoreboard).
+- **The Key idea bar** closes every concept and technique slide: a card-colour bar across the
+  slide, 12.13 by 0.44 inches at 6.11 inches, with a 3-point orange `FFAB40` outline, its text
+  "Key idea:" and one sentence, bold, 18 points: `Key idea:`.
+- **No progress tracker and no Insight callout.** The agenda before each section does the
+  wayfinding; the Key idea does what the Insight callout did.
+- **Source markers** are written `[^n]` with n the source's stable number in
+  `slides/source/sources.py`; the deck numbers its sources in order of first citation (slides,
+  then speaker notes, in slide order), so the marker shows as "[k]" and a note citation
+  `Source [^n]` reads "Source k". A quote's attribution, "— Source k: short title", links to the
+  source. The deck cites at most 24 sources, all shown on the two references tables.
+- **Colour.** The reference's neutrals and blue: navy background `324158`, cards `F0F3F6`, the
+  second table row tint `DEE4EA`, the header and disc blue `3896D2` with white bold text, the
+  question slide's reason discs `78909C`, the failure step's red `E46962` (the costly end), and
+  the orange `FFAB40` of the Key idea. The four loop colours stay: the agenda's arches, the
+  scoreboard, the charts, the design callout's label and the DEMO slide's guaranteed moment card,
+  each with the loop's name beside it.
+
+### The block plan of design system 3 (27 October 2026)
+
+| Block | Key | Clock | Minutes | Slides at most |
+|---|---|---|---|---|
+| Opening | `opening` | 0:00-0:13 | 13 | 13 |
+| The problem | `problem` | 0:13-0:37 | 24 | 9 |
+| Designing text-to-SQL | `design` | 0:37-0:47 | 10 | 5 |
+| Section 1: Agent loop | `s1` | 0:47-1:22 | 35 | 12 |
+| Section 2: Verification loop | `s2` | 1:22-1:55 | 33 | 12 |
+| Break | `break1` | 1:55-2:05 | 10 | 1 |
+| Section 3: Event loop | `s3` | 2:05-2:48 | 43 | 12 |
+| Poll | `poll` | 2:48-2:53 | 5 | 1 |
+| Break | `break2` | 2:53-3:03 | 10 | 1 |
+| Section 4: Hill-climbing loop | `s4` | 3:03-3:38 | 35 | 12 |
+| Closing | `closing` | 3:38-4:00 | 22 | 12 |
+
+At most 90 slides in all. The references tables are slides of 0 minutes.
+
+Each section runs in the reference's rhythm, 12 slides in this order: the agenda with the star
+on its loop, the failure story, the question slide, the four technique slides "1)" to "4)", the
+text-to-SQL design callout, the cheat sheet, the DEMO slide, "Measured: with and without this
+loop" with the scoreboard, and "Ask about anything".
+
+### The types of design system 3
+
+| Key | Type | Layout (the reference slide it follows) |
+|---|---|---|
+| `title` | Title | The template's title layout: the title and the subtitle in the reference's style (slide 1) |
+| `intro` | Introduction | Copied from the reference: "Introduction - {Instructor_Details}" (slide 2) |
+| `profile` | Instructor profile | Copied from the reference's layout, its four details as placeholders (slide 3) |
+| `logistics` | Course logistics | Copied from the reference, one `variant` each: `structure`, `optimise`, `support_team`, `support_features`, `success`, `api_key`, `langsmith` (slides 4 to 10) |
+| `agenda` | Today's Agenda | The four arches in the loop colours, numbered 1 to 4, each with its icon and its loop's name and question; a star over the current loop (`Now: N`), none on the opening's agenda (slide 13) |
+| `problem` | Problem statement rows | The lead, then 3 to 5 rows, each a blue disc with an icon and a card whose text opens with a bold label; an optional bold footer (slides 15 and 65) |
+| `quotes` | The challenge | The lead, then 2 to 4 quote cards in two columns, each an orange left bar, the quote in italics and its linked attribution (slide 16) |
+| `costs` | Two panels | The lead, then two panels side by side, each a header band (the first blue-grey, the second blue) over its bullets (slide 17) |
+| `concept` | Concept diagram | The lead, the diagram on a card panel 12.13 by 4.5 inches, then the Key idea bar (slides 11, 18, 19) |
+| `table` | Table | The lead, then a table across the slide: a blue header row, alternating body rows, the first column bold, up to 10 body rows; a table of four columns is two term-meaning pairs; an optional Key idea bar (slides 20, 22, 29, 66, 67) |
+| `failure` | Failure story | The lead "An illustrative ...", then five numbered step cards left to right joined by arrows, the fifth outlined and numbered in red (slide 23) |
+| `question` | Question | The title "Loop name: Why not ...?", the lead, the KEY IDEA box (orange outline, "KEY IDEA" at 16 points over the answer, bold, 20), then 2 or 3 numbered reasons on cards (slide 24) |
+| `technique` | Numbered technique | The title "N) Name" or "N) Name: claim"; 3 to 5 lines of explanation (what it is, how it works, a small example, where else it appears); the technique's diagram on the pattern panel, 12.13 by 3.41 inches; the Key idea bar (slides 25 to 28, 36 to 39) |
+| `design_callout` | Text-to-SQL design | The title "Text-to-SQL design: ...", the lead; a label naming the loop in its colour before the decision line; the options in the table style at 18 points; the DataPilot card outlined in the loop's colour; the block centred under the lead |
+| `demo` | DEMO | The title "Section N: Loop name - Implementation Notes: ..." at 25 points; the reference's laptop with the DEMO badge; what to watch for, the guaranteed moment card and the demo page link (slide 30) |
+| `evidence` | Measured | As in design system 2, titled "Measured: ...", with the lead and the scoreboard across the top when the slide sets `scoreboard`; the chart has no title of its own (the slide's title says it) and its legend above the plot |
+| `qa` | Ask about anything | Copied from the reference (slide 31) |
+| `break`, `poll` | Break and poll | Copied from the reference (slides 32, 53 and 54) |
+| `payoff` | Final: the question answered | As in design system 2, titled "Final: ..." |
+| `closing` | Numbered list | The lead, then the key takeaways: up to ten cards at 18 points in two columns past 5, all as tall as the tallest, 0.14 inches apart; a card's section tag in a column of its own at its right edge |
+| `references` | References | "References (1 of 2): ..." and "(2 of 2)": a table, Source k, then the linked title, its author and its date, in order of first citation; the rows come from the citations, so the slide holds no entry lines; at most 12 rows a table (slide 72) |
+
+### The line grammar of design system 3
+
+Everything in the line grammar above holds, with these additions:
+
+| A line that starts with | Becomes |
+|---|---|
+| `Lead:` | the lead line under the title, on every drawn type |
+| `Key idea:` | the Key idea bar (concept, technique; optional on table, problem, costs); on a question slide, the KEY IDEA box |
+| `Now: N` | the agenda's star over loop N |
+| `- **Label:** text \| icon` | a problem row (the colon inside the bold): its icon is one of `warning`, `swap`, `copy`, `pause`, `branch`, `check`, `search`, `chart`, `lock`, `clock` |
+| `Footer:` | a problem slide's bold closing line, instead of a Key idea bar |
+| `Question:`, `Note:` | the poll's question, and a note under the LangSmith link, drawn on the copied slide |
+| `Quote: text \| n` | a quote card, attributed to source n |
+| `Panel: header` | a costs panel's header; the bullets after it are its points |
+| `1. ` to `5. ` | a failure step, a question slide's reason, an agenda row |
+| `- ` | a technique's line of explanation, a watch card, a costs panel's point |
+
+A cloned type (`intro`, `profile`, `logistics`, `qa`, `break`, `poll`) holds its visible text as
+lines in the order the deck builder fills the copied slide's text boxes, so the outline shows what
+the slide shows.
+
+### What each type must hold under design system 3
+
+| Type | Lines it must hold | Words on the slide | Notes |
+|---|---|---|---|
+| `title` | | 0 to 30 | short form |
+| `intro`, `profile`, `logistics`, `qa`, `break`, `poll` | the copied slide's text | 0 to 120 | short form |
+| `agenda` | 4 numbered rows; `Now:` on a section's agenda | 8 to 45 | transition |
+| `problem` | `Lead:`, 3 to 5 rows | 30 to 120 | 250 to 400 words |
+| `quotes` | `Lead:`, 2 to 4 `Quote:` lines | 25 to 100 | 250 to 400 words |
+| `costs` | `Lead:`, two `Panel:` lines, 2 to 4 points each | 25 to 90 | 250 to 400 words |
+| `concept` | `Lead:`, a `figure`, `Key idea:` | 10 to 45 | 250 to 400 words |
+| `table` | a table; `Lead:` | 20 to 200 | 250 to 400 words in the problem segment; full elsewhere |
+| `failure` | `Lead:`, 5 numbered steps, each a full sentence of at most 16 words | 50 to 110 | 250 to 400 words |
+| `question` | `Lead:`, `Key idea:`, 2 or 3 numbered reasons | 25 to 80 | 250 to 400 words |
+| `technique` | 3 to 5 lines, 60 to 100 words in all; a `figure`; `Key idea:` | 70 to 120 | 250 to 400 words |
+| `design_callout`, `evidence`, `payoff`, `closing`, `demo` | as in design system 2 | as in design system 2 | as in design system 2 |
+| `references` | `part` 1 or 2; at most a `Lead:` line, the rows come from the citations | | short form |
+
+"250 to 400 words" counts the whole speaker notes of the slide, every label included. The notes
+keep the eight labels and the DEMO groups of the standard above; the short form is `Purpose:`,
+`Timing:`, `What to say:` (15 to 90 words), any `Do:` lines and `Transition:`. On a concept or
+technique slide, at most one of the course's own numbers is on the slide; run ids and sample
+sizes go into the notes. Every term on the glossary slide is defined there before a slide uses
+it. Structured Query Language is spelled out once, in the opening.
+
+A technique diagram is drawn on the pattern canvas (1920 by 540 pixels) and named
+`pattern-<name>`; a concept diagram on the concept canvas, 1920 by 712 pixels, the 12.13 by 4.5
+inch panel's shape. On both, a 40-pixel label renders at about 18 points.
+
+### Measured in the sample slides of design system 3
+
+The deck builder's measures, checked against the reference's slides side by side in PowerPoint's
+renders (the sample module `slides/source/samples3.py` holds one slide of every type):
+
+- **Where things sit.** The title box is the reference's: 0.5 inches from the left, 0.22 from the
+  top, 12.33 by 0.60, its text inset 0.1 by 0.05 (the DEMO slide's: 0.35, 0.12, 12.42 by 0.83).
+  The lead line starts at 0.82 inches (on a question slide at 0.95), one or two lines at 20
+  points. A concept slide's panel starts at 1.45 inches, so its lead is one line and its Key idea
+  bar one line. A technique slide's lines start at 0.9 inches and its pattern panel sits 0.12
+  inches above the Key idea bar, which leaves room for 5 lines at 18 points: about 80 words, not
+  100, fit; the build reports any overflow. The Key idea bar ends at 6.55 inches and grows upward
+  by a line when its sentence wraps.
+- **A cheat sheet** ("Cheat Sheet: ...") sits as the reference's: its lead at 1.82 inches and its
+  table from 2.94, higher only when its rows need the room; its columns are sized by their content.
+- **Three quotes** put the third card in the middle of its row; four stand two by two.
+- **Round 1 (27 October 2026).** An evidence chart has no category-axis title, 1.3 times the
+  tallest bar of headroom, its legend in a row above the plot, a 1.5-point dark outline on every
+  bar (the lime reads on the light panel), and its sample line across the slide's foot; its
+  measure cards step down to 16 or 14 like the tables. The scoreboard row reads "Fiscal year 2025
+  net revenue:" above it and has one height on every Measured slide. A technique slide's lines
+  start at 0.93 inches and its panel sits 0.25 inches above the Key idea bar (0.12 at the least,
+  when five lines need the room). The agenda's and the DEMO slide's titles use the reference's
+  text frame (0.133-inch insets, top-anchored); an agenda label breaks after its colon; the star
+  is 0.38 inches across, 0.2 inches above its arch; the dividers run to 6.97 inches. A
+  references date reads "29 September 2025" and keeps to one line. Slide 3's details grow only
+  away from the middle, stop 0.45 inches short of the edge, and share one size. The guaranteed
+  moment card's text starts where the watch cards' does. A takeaway's section tag (or "All
+  sections") stands in a column as wide as the longest tag, 0.15 inches from the text; the cards
+  step down to 16 or 14 when ten do not fit at 18. The title slide's title takes one line or two
+  even ones, its subtitle 24 points below it. A cheat sheet needs no Key idea. A "Do:" line, an
+  instruction for the instructor, may stand in the full notes form of any slide (a DEMO slide's
+  run sheet before its demo groups), outside the label order and the spoken word count; it holds
+  a command only with `allow_commands`.
+- **Round 2 (27 October 2026).** An evidence chart has no value-axis title either (the sample
+  line names the denominator), and the scoreboard row is as tall as its tallest card, so the plot
+  takes the rest. A failure story keeps the reference's heights on every slide: its lead at 1.75
+  inches, its cards from 2.92. A question slide keeps them too: its lead at 1.07, the KEY IDEA box
+  at 2.03 and as tall as its text (1.06 inches for one line), its reasons at 3.73, 4.73 and 5.73,
+  lower and closer under a taller box. A technique slide's panel ends at 5.74 inches and its
+  picture is scaled to the room above that; were the labels to fall under 16 points, the panel
+  would keep the 0.25-inch gap above the Key idea bar instead (in the full deck they are 16.9 or
+  18.2). The references tables give the short author form (`SLIDE_WHO` in
+  `slides/source/sources.py`) and take one size on both. The agenda's and the DEMO slide's titles
+  have 150 percent line spacing, as the reference's do. The closing's section tag stands 0.20
+  inches inside its card. A source marker on a drawn line follows a no-break space. The payoff's
+  sample line sits at the foot, where the Measured slides put theirs. A design callout's label row
+  stays under its lead and its DataPilot card at the foot; the options and cards between them are
+  centred in that room.
+- **Round 3 (27 October 2026).** An evidence chart's value axis ends at its given maximum
+  whenever that is at least the tallest bar (40 runs per side ends at 40, a bar of 39 under it);
+  only a maximum under the tallest bar gives way to 1.3 times that bar, rounded up. When the axis
+  leaves less than a label's height (0.34 inches) above the tallest bar, the plot starts that much
+  lower under the legend's row, so the label never meets the legend.
+- **Problem rows** take 18 points, or 16 or 14 when the rows, their gaps closed to 0.1 inches, do not
+  fit at the larger size; one size for every row of the slide (the cards are then named "(small)").
+- **The references tables** split the sources in order of first citation where the two tables are
+  most nearly as tall (at most 12 rows each; 24 sources split 12 and 12), take 18, 16 or 14 points
+  to fit (the smaller of the two tables' sizes on both), keep insets of 0.03 inches above and below a row, and start 0.2 inches under their lead.
+  The deck builder prints each element it set under its usual size ("size: slide N: ...").
+- **Cost panel points** hang from a bullet 0.30 inches in, 6 points apart.
+- **A table** takes 18 points, or 16 or 14 when that is what fits (and is then named "(small)"),
+  with the reference's 1-point navy rules and its insets of 0.08 by 0.05 inches. A table is centred
+  in the room under its lead, as the reference's house rules and cheat sheets are; a references
+  table starts under its lead.
+- **The agenda.** Its title is the reference's text box (0.35, 0.12, 12.42 by 0.83 inches), 31
+  points bold blue, with a curly apostrophe ("Today’s Agenda"). Each arch's icon sits at 4.0
+  inches and its label from 5.0, 1.10 inches tall. Arches of 2.31 by 5.05 inches from 1.5 inches, 0.6 inches apart and centred,
+  a red divider between two as in the reference. Text on an arch is 18 points, bold: white on the
+  blue and the teal (3.25 and 3.51 to 1, large text), dark on the orange and the lime. A number
+  in its white disc takes the arch's colour where that reads at 3 to 1 on white (blue, teal), the
+  dark text colour otherwise. The star is a picture of the reference's star, centred over the
+  arch of `Now: N`.
+- **The problem rows' icons** are line drawings, white on the blue disc, one per icon name; the
+  reference used symbol characters of a font the deck does not carry.
+- **Links.** On the light panels (a quote's attribution, a references table, the demo page link)
+  a link is navy, the theme's link colour, at 9.28 to 1; the reference's teal reads at 3.15 to 1
+  there. A link on the navy slide itself (the API key slide's email address) is white, its
+  hyperlink told to use the run's colour.
+- **The title slide** is the reference's: one centred placeholder holding the title at 55 points,
+  bold, blue, and the subtitle lines at 24, white.
+- **A copied slide** is the reference's slide cloned onto the same master and layout, its pictures
+  and links with it; the deck builder fills its text slots from the slide's lines in a fixed order
+  (`COPIED` in `slides/source/build.py`). A slot whose paragraph has one format takes the line in
+  it; where the paragraph had two (a pink bold name and white text, a blue and a white title),
+  the line's `**bold**` spans take the emphasised format (the bold one, or the first) and the rest
+  the other; an email or web address in the line keeps the paragraph's link. A line break before
+  or after a slot's text stays. A slot that takes more lines than the reference's text did is a
+  fit problem (shorten the line); a word never breaks: a box too narrow for a placeholder such as
+  `{Instructor_Location}` widens away from the slide's middle (to 0.25 inches from the edge), then up
+  to 0.5 inches towards it, its centred text clear of the discs, and only then takes a smaller
+  size, never under 14. The poll's `Question:` line is drawn under its title, its picture made smaller to
+  make room; the LangSmith slide may hold one `Note:` line under its link; the API key slide's
+  last slot is a placeholder card where the reference showed an email. A break of 5 minutes takes
+  the reference's 5-minute timer, any other the 10-minute one. A copied frame's shrink-on-overflow
+  is turned off, and its pictures get alternative text where the reference had none.
+- **The fit check** reads design system 3's sizes with `--design-system 3`: titles 25 to 30
+  points and one line, body text at least 18 outside the shapes named "(small)", nothing under 14.
+  The reference's copied frames are smaller than their text (an export of Google Slides), so a
+  copied frame's overflow is printed, not counted; the builder's check of each slot's lines stands
+  in for it.
+
 ## Rule sets while the deck is rewritten
 
 The outline is built under one rule set. A block module without `RULES` follows the first
@@ -436,7 +672,13 @@ time:
 ```bash
 uv run python slides/source/build.py --check s1
 uv run python slides/source/build.py --samples /tmp/samples-outline.md
+uv run python slides/source/build.py --samples /tmp/samples3-outline.md samples3
 ```
 
 The deck builder's `--type-samples` flag builds the sample module into
-`slides/build/samples.pptx`, the folder git ignores.
+`slides/build/samples.pptx`, the folder git ignores; `--type-samples3` builds design system 3's
+sample module into `slides/build/samples3.pptx`.
+
+Design system 3 has no foundations block: once every block of its plan sets `RULES = "design
+system 3"`, the outline is built under it whatever rule set the left-over foundations module
+holds, and the deck numbers its sources in the order the whole deck cites them.

@@ -1,258 +1,525 @@
-"""The problem, 0:05-0:17: 4 problem statement slides under design system 2.
+"""The problem, 0:13-0:37: 9 slides, 24 minutes, under design system 3.
 
-The owner's specification of 27 October 2026, section 3: the business situation, the obvious
-solution and its five failures, the requirements, and the acceptance criteria, mapped onto the four
-loops, whose names are revealed on the last slide. Each slide is 3 minutes with 300 to 400 words of
-talk track and a question for the room.
+The owner's specification of 27 October 2026, section 3, in the reference deck's format (its
+slides 14 to 22): what we are building, the week of failures, the challenge in four quotes, what a
+failure and the loops cost, the four critical gaps, the data model, the business rules in plain
+words, how we measure, and the glossary. It absorbs the second rebuild's problem slides and its
+foundations block (the five traps, the four failures, how we measure).
 
-Grounding: the company, its warehouse, its business rules and its questions come from
-platform/packs/datapilot_us/ (pack.yaml, benchmark/business_rules.md, benchmark/dev.yaml) and the
-demo registry. The four teams, the ticket queue and the mismatched definitions between teams are
-not in the course materials: the notes say they are part of the scenario. No statistic is invented;
-the slides hold no number from our runs, which belong to later sections.
+Grounding: the week of failures in the true form of .dev/deck3-evidence.md, part 1 (the writers'
+guide, "The week of failures, as the evidence allows it"); the costs from part 2; the quotes word
+for word from part 4; the rules from platform/packs/datapilot_us/benchmark/business_rules.md and
+pack.yaml; the terms from docs/glossary.md. Run ids, sample sizes and dates are in the notes only.
+The four asking teams are the owner's scenario; the repository names no asking teams.
 """
 
-RULES = "design system 2"
+RULES = "design system 3"
 
 SLIDES = [
-    # 1 the business situation ------------------------------------------------------------------
+    # 14 what are we building -------------------------------------------------------------------
     dict(
-        kind="problem",
-        title="Harbor & Pine needs answers it can trust",
+        kind="concept",
+        title="Problem statement: What are we building?",
         minutes=3,
-        says="Four teams ask the warehouse everyday questions; today they wait on tickets and get "
-        "mismatched numbers",
-        src="platform/packs/datapilot_us/pack.yaml (display name); benchmark/dev.yaml (fiscal "
-        "year revenue, best-selling products, first and repeat customers); "
-        "platform/src/datapilot/demo_questions.py (the webhook question); demo registry, The "
-        "approval that survives a restart (the California export); the teams and the ticket "
-        "queue are the scenario's",
+        says="DataPilot for Harbor & Pine Outfitters: who asks, how they ask, and what it must "
+        "give back",
+        src="the owner's specification of 27 October 2026, section 3, item 1; pack.yaml "
+        "(display name, digest); the demo registry (webhook, digest); "
+        ".dev/review/deck3-diagrams-concept.md, what-we-build",
+        figure={
+            "diagram": "what-we-build",
+            "alt": "DataPilot for Harbor & Pine Outfitters: who asks, finance, sales, operations, "
+            "and marketing; how they ask, through the console, webhooks, and a daily digest; "
+            "DataPilot, the analyst agent with its four loops, the agent loop, the verification "
+            "loop, the event loop, and the hill-climbing loop, reading a read-only warehouse; and "
+            "what it must give back, answers that are right, safe, unattended, and improving.",
+        },
         on_slide=[
-            "Lead: An outdoor retailer's teams ask the warehouse questions every day, and wait.",
-            "- Finance: what was our net revenue in fiscal year 2025?",
-            "- Operations: how many orders were placed the previous day?",
-            "- Sales: which products sold the most units, by category?",
-            "- Marketing: how many customers came back and ordered again?",
-            "- Marketing: export our California customers for a campaign",
-            "- Today: a ticket to a small data team, a wait, and two teams' numbers that disagree",
+            "Lead: DataPilot, a text-to-SQL agent for Harbor & Pine Outfitters, an American "
+            "outdoor retailer.",
+            "Key idea: Same model; we add loops that make its answers right, safe, unattended and "
+            "improving.",
         ],
         notes=[
-            "Purpose: Set the business situation: who asks the warehouse what, how they get "
-            "answers today, and what slow or mismatched answers cost.",
-            "What to say: Meet the company behind every question today. Harbor & Pine "
-            "Outfitters is a fictional outdoor retailer, the course's scenario. It sells camping "
-            "and hiking gear through its website and its app, and every order, customer and "
-            "product sits in one warehouse. Four teams ask that warehouse questions. The team "
-            "names and the way they work today are part of the scenario; the questions are drawn "
-            "from the course's benchmark and demos. Finance asks for net revenue in fiscal "
-            "year 2025, for the board. Operations asks every morning how many orders came in the "
-            "day before. Sales asks which products sold the most units, by category. Marketing "
-            "asks how many customers came back and ordered again, and then asks for an export of "
-            "its California customers for a campaign. These are ordinary questions. Now the last "
-            "card: how they get answered today. Each question becomes a ticket to a small data "
-            "team. The ticket waits behind others. An analyst writes a query, checks it by eye, "
-            "and sends a number back. If that analyst is out, the question waits for the one "
-            "person who knows which tables to trust. And when finance and marketing both ask "
-            "about revenue, they can get two different numbers, because each team carries its own definition. "
-            "One counts cancelled orders and one leaves them out; one means the calendar year and "
-            "one the fiscal year. What does that cost? Decisions wait for the queue, or they are "
-            "made on numbers that do not match, and the next meeting is spent arguing about "
-            "whose number is right instead of what to do. Notice what nobody here asks for: a "
-            "cleverer model. They ask for answers they can trust, fast enough to use, and for "
-            "personal data to be handled with care. That is the bar for everything we build "
-            "today. Keep these four teams in mind: each failure on the next slide lands on one "
-            "of them.",
-            "The point to land: The business does not want a chatbot; it wants answers it can "
-            "trust, on its own definitions, without waiting in a queue.",
-            "Example: At your company: the weekly review where the finance deck and the sales "
-            "dashboard show different revenue for the same week, one before refunds and one "
-            "after. This example is illustrative.",
-            'Ask the room: "Who has seen two teams report different revenue for the same month?" '
-            "Expect: most hands; the cause is almost always a definition, not a bug.",
-            "Misconceptions: That the data team is the bottleneck because it is slow. The "
-            "bottleneck is that the definitions live in a few people's heads, so every answer "
-            "needs one of them.",
-            "Transition: The obvious fix for the queue is to let anyone ask the warehouse "
-            "directly: just put a chatbot on it. Here is why that fails.",
+            "Purpose: Show what the class builds: who asks DataPilot questions, how the questions "
+            "arrive, and what every answer must be.",
+            "What to say: Today we build one agent and the four loops around it. The agent is "
+            "DataPilot, a text-to-SQL agent: it turns a question in plain words into a query, "
+            "runs it on the warehouse, and answers. The company is Harbor & Pine Outfitters, a "
+            "fictional outdoor retailer that sells camping and hiking gear. Walk the diagram from "
+            "left to right. First column, who asks: finance, sales, operations and marketing. "
+            "The teams are our scenario; their questions come from the course's benchmark. "
+            "Finance wants net revenue for the board, operations wants the previous day's order count, "
+            "sales wants the best-selling products, marketing wants an export of its California "
+            "customers. Second column, how they ask. Someone types into the console. Another "
+            "system sends a webhook, a request that arrives with nobody watching. And a "
+            "scheduler asks for a daily digest at 8 a.m. Eastern time. Third column, DataPilot: "
+            "the analyst agent, the blue oval, and under it the four loops we build today, one "
+            "per section. To the right, the warehouse, which DataPilot may only read. And last, "
+            "what it must give back: answers that are right, safe, unattended and improving. "
+            "Right needs all four loops; the business rules arrive last, in Section 4: "
+            "Hill-climbing loop. Safe needs checks in code and in the database. "
+            "Unattended needs events, approvals and a stop that survive restarts. Improving "
+            "needs changes measured before they go live. Notice what never changes: the model. "
+            "We use the same model in every run today.",
+            "The point to land: The model stays the same all day; what we build are the four "
+            "loops of code around it.",
+            "Example: The question that runs through every section is finance's: what was our "
+            "net revenue in fiscal year 2025? Its checked answer is 64,015,091.21 dollars.",
+            'Ask the room: "Which of these three ways in does your own agent support today?" '
+            "Expect: a chat box, the console; rarely webhooks or a schedule.",
+            "Misconceptions: That a stronger model would make the loops unnecessary. A stronger "
+            "model reads the same schema, gets the same duplicate events, and still needs "
+            "someone to measure its changes.",
+            "Transition: Here is what happens when a team gives this agent a week of real "
+            "questions without the loops.",
         ],
     ),
-    # 2 the ask, and why the obvious solution fails ---------------------------------------------
+    # 15 the week of failures -------------------------------------------------------------------
     dict(
         kind="problem",
-        title="Just put a chatbot on the warehouse",
+        title="Problem statement: The problem in the real world",
         minutes=3,
-        says="A model with database access looks done in a demo and fails five ways in production",
-        src=".dev/deck-sources.md [5] (the tutorial's own warning); docs/calibration-report.md, "
-        "Traps; demo registry: The cost guard, Malicious SQL, The approval that survives a "
-        "restart, Duplicate events, The kill switch in flight, The over-broad rule, blocked",
+        says="A week of business questions, one costly failure a day, each from the course's runs",
+        src="the owner's specification of 27 October 2026, section 3, item 2; "
+        ".dev/deck3-evidence.md, part 1 (the true form of each day); docs/benefits.md",
         on_slide=[
-            "Lead: A tutorial-style model with database access[^5] fails in production five ways.",
-            "- Wrong numbers, no error: calendar dates for a fiscal year",
-            "- Unsafe or runaway queries: a join with no join condition",
-            "- Personal data leaks: a customer export with every email",
-            "- Breaks on events: posts twice, forgets approvals, cannot be stopped",
-            "- No safe way to improve: a new rule breaks a working answer",
-            "- Why it looks done: demo questions are easy, and a person is watching",
+            "Lead: Your team gives a week of business questions to a data agent.",
+            "- **Monday:** Finance asks for fiscal year 2025 net revenue; the agent answers "
+            "$72,394,572.08, wrong by about 8.4 million dollars. | warning",
+            "- **Tuesday:** A first-word check passes a DELETE hidden behind a SELECT; 10,000 "
+            "rows burn three run budgets. | lock",
+            "- **Wednesday:** A question sent three times is answered three times; two digests "
+            "disagree on one day. | copy",
+            "- **Thursday:** A worker restart loses a customer export's approval; after stop is "
+            "pressed, a run posts anyway. | pause",
+            "- **Friday:** A plausible rule, exclude discounted orders, turns nine right answers "
+            "wrong, and nothing errors. | branch",
+            "Footer: Each failure costs more than the question saved.",
         ],
         notes=[
-            "Purpose: Show why the obvious solution, a model with database access, looks finished "
-            "in a demo and fails in five specific ways in production.",
-            "What to say: Here is the ask every data team hears: just put a chatbot on the "
-            "warehouse. The obvious build is the standard tutorial SQL agent: a model, a "
-            "connection string, a tool to list tables, a tool to run a query, and a prompt that "
-            "says do not write. In a demo it looks done. You ask an easy question once, it "
-            "writes a clean query, and the number is right. The tutorial itself, Source 5, warns "
-            "that its tools are not intended to be secure or used in production. We did not run "
-            "the tutorial itself; these are the five ways a build like it fails in production. "
-            "Today you see most of them live; the runaway join is an optional demo, and the rule "
-            "that breaks a working answer is told at the start of Section 4. One: wrong numbers "
-            "with no error. Finance asks for fiscal year 2025, the agent filters on calendar "
-            "dates, and nothing says it was wrong. Two: unsafe or runaway queries. A join with "
-            "no join condition multiplies the rows until the database times out, and a model "
-            "that can run a statement can run a delete, whatever the prompt says. Three: leaks "
-            "of personal data. Marketing asks for the California export, and the agent returns "
-            "every email address, because to it a column is just a column. Four: it breaks when "
-            "it runs from events. Webhooks are delivered at least once, so the same request "
-            "arrives twice and the answer is posted twice; a worker restarts and a pending "
-            "approval is lost; and nothing can stop a run already under way. Five: no safe way "
-            "to improve it. You add a rule to fix the fiscal year, and an answer that worked "
-            "last week quietly breaks. The last card is why none of this shows in the demo: a "
-            "demo asks easy questions, once, with someone watching. Production asks hard "
-            "questions, many times, with nobody watching. Each loop we build today closes one or "
-            "more of these gaps, and the next slide turns them into requirements.",
-            "The point to land: A demo proves the agent can answer; production asks whether you "
-            "can trust the answer, run it unattended, and change it safely.",
-            "Example: A support agent fails the same way: it answers well in a demo, then "
-            "refunds one order twice when the ticket system retries its webhook. This example is "
-            "illustrative.",
-            'Ask the room: "Which of these five has your team already met?" Expect: wrong '
-            "numbers with no error, and duplicates from retries; rarely a change measured before "
-            "release.",
-            "Misconceptions: That the tutorial's warning is boilerplate. It names the gap: its "
-            "no-write rule is a prompt line, and its query check is another model call, Source 5.",
-            "Transition: So what would good have to mean? Next, the requirements, group by group.",
+            "Purpose: Make the problem concrete: one week of business questions, one costly "
+            "failure a day, each taken from the course's own runs.",
+            "What to say: Monday: "
+            "finance asks for net revenue in fiscal year 2025. The agent answers 72,394,572.08 "
+            "dollars in one fluent sentence. The right figure is 64,015,091.21, so it is wrong "
+            "by about 8.4 million dollars, and nothing errors. Tuesday: a product name could carry "
+            "hidden instructions to delete orders, our illustration; we ran the statement itself. A guard that reads only the first "
+            "word passes a DELETE hidden behind a SELECT, and only the database stops it: the "
+            "read-only transaction refuses the write, and the role has no write grant behind it. "
+            "The same day, a request runs a query of 10,000 rows and every row reaches the "
+            "model: about three run budgets. Wednesday: a "
+            "chat tool "
+            "resends a question three times and it is answered three times; the morning digest "
+            "fires twice, and leadership gets two digests for the same day with different "
+            "revenue. Thursday: a California customer export waits for a person's approval, the "
+            "worker restarts, the approval is gone and the run fails. Someone presses stop, and "
+            "a run already under way posts anyway. Friday: someone adds a rule that sounds "
+            "right, exclude discounted orders from revenue, and nine answers that used to be "
+            "right are now wrong.",
+            "The point to land: Every failure this week looked like a success; none of them "
+            "raised an error.",
+            "Example: The runs behind each day. Monday, run 9182df01: in our runs the reviewer, "
+            "a second model that reads each answer before it posts, held that answer, so it never posted; the gold answer is run 59174f10. Tuesday, "
+            "runs 1d9b4169 and be82d6f6: no row changed, and the uncapped run took 182,654 "
+            "tokens against a run budget of 60,000. Wednesday, run d5817278: 3 answers and 2 "
+            "digests, in 5 of 5 planted runs. Thursday, runs 88a0227a and 47ad546f, "
+            "6 of 6 each. Friday, experiment 84417bfe: a planted demo version, "
+            "9 regressions, blocked by the gate.",
+            'Ask the room: "Which day has your team already lived through?" Expect: Monday and '
+            "Wednesday.",
+            "Misconceptions: That these are model failures. Each one is a missing piece of the "
+            "system around the model.",
+            "Transition: The rules for all of this exist somewhere. So why does the agent still "
+            "miss them?",
         ],
     ),
-    # 3 the requirements and constraints --------------------------------------------------------
+    # 16 the challenge, in four quotes ----------------------------------------------------------
     dict(
-        kind="problem",
-        title="What 'good' has to mean",
+        kind="quotes",
+        title="The challenge is: The rules exist, the agent still misses",
         minutes=3,
-        says="Six groups of requirements: correctness, safety, operations, improvement, cost and "
-        "latency, trust",
-        src="platform/packs/datapilot_us/benchmark/business_rules.md (the definitions, the "
-        "product names with injected text); pack.yaml limits, budgets and levels; demo registry "
-        "(webhooks, the digest, restarts, the kill switch); .dev/deck-spec-2.md section 3, item 3",
+        says="Four verified sources on context, repeated delivery, overfitting and improvement",
+        src=".dev/deck3-evidence.md, part 4 (each quote read on its page on 27 October 2026); "
+        "sources.py entries 61, 88, 110 and 1",
         on_slide=[
-            "Lead: Before any design, write down what the system must do. Six groups.",
-            "- Correctness: business definitions the schema never states",
-            "- Safety: never writes; personal data only with approval; ignores instructions "
-            "hidden in data",
-            "- Operations: runs from webhooks and schedules; one effect per event; survives "
-            "restarts; stops mid-run",
-            "- Improvement: learns new rules without breaking working answers",
-            "- Cost and latency: a fixed bound on every question",
-            "- Trust: every claim provable; autonomy granted only when earned",
+            "Lead: The rules live in heads and runbooks, not the schema; four sources name the "
+            "failures.",
+            "Quote: Context, therefore, must be treated as a finite resource with diminishing "
+            "marginal returns. | 61",
+            "Quote: Design your applications to be idempotent (they should not be affected "
+            "adversely when processing the same message more than once). | 88",
+            "Quote: Doing many rounds of this procedure might cause the model to implicitly fit "
+            "the peculiarities of the test set. | 110",
+            "Quote: The first three loops automate work. The fourth (and arguably most "
+            "important) automates improvement! | 1",
         ],
         notes=[
-            "Purpose: Turn the five failures into requirements a team can write down and test, "
-            "before any design choice is made.",
-            "What to say: Before we pick a single tool or framework, write down what good has to "
-            "mean. Six groups. Correctness: the answer follows the business's definitions, and "
-            "most of them are written nowhere in the schema. At Harbor & Pine the fiscal year "
-            "starts in February, net revenue is subtotal minus discount, and cancelled orders "
-            "carry a status code that no table explains: the rules from the hook. Safety: the "
-            "system never writes to the warehouse, whatever the question or the prompt; personal data, such as customer "
-            "emails, leaves only with a person's approval; and it resists instructions hidden in "
-            "the data itself. In this warehouse, a few product names carry text that tells the "
-            "agent to ignore its instructions, and a product name is just data. Operations: it "
-            "runs from webhooks and schedules, not only from a chat box, such as the daily digest "
-            "at 8 a.m. Eastern time; each event has exactly one effect, however many times it "
-            "arrives; a pending approval survives a restart; and a person can stop it mid-run, "
-            "including the run already in flight. Improvement: it learns new rules without "
-            "breaking answers that already work, and you can show that it did not. Cost and "
-            "latency: every question has a fixed bound on model calls, tool calls, tokens and "
-            "query time, set in code, not hoped for in a prompt. A question that cannot be "
-            "answered inside the bound stops and says so, instead of running up a bill. In "
-            "class, DataPilot bounds model calls, tool calls, tokens and the time of each query; "
-            "it has no deadline on a whole run's wall-clock time, so add one in yours. Trust: "
-            "every claim it makes can be proved, with the query, the result and the run behind it, so a reviewer can check "
-            "an answer without trusting the agent; and it gets autonomy, "
-            "from report-only up to unattended, only when evidence has earned it. Notice that "
-            "you can write a test for every group before you write a line of agent code.",
-            "The point to land: Write the requirements first, in six groups, each one testable "
-            "before you choose a tool or a framework.",
-            "Example: A coding agent has the same six: tests that define correct, no push to the "
-            "main branch, one run per pull request event, new prompts checked against old tasks, "
-            "a budget per task, and a diff a person can review. This example is illustrative.",
-            'Ask the room: "Which of these six did your team write down before building?" Expect: '
-            "correctness, sometimes cost; operations and improvement almost never.",
-            "Misconceptions: That safety is a prompt line. A prompt asks; a database role, a "
-            "parser and a person's approval enforce.",
-            "Transition: Requirements are not yet proof. Next: what we must prove by the end of "
-            "today, and the four loops that prove it.",
+            "Purpose: Show, in four published sources' own words, why an agent misses rules that "
+            "exist: context, repeated delivery, overfitting, and improvement.",
+            "What to say: Every rule behind this week's failures exists somewhere: in the "
+            "finance lead's head, in a policy, in a runbook. None of it is in the schema, and "
+            "the agent reads only the schema and what its tools return. Four sources name the "
+            "failures the loops answer. Top left, Anthropic's guide to "
+            "context engineering, Source [^61]: context is a finite resource with diminishing "
+            "returns. Paste every rule and every row in, and the rule that matters drowns. That "
+            "is Section 1: Agent loop. Top right, Amazon's guide to its message queue, Source [^88]: design "
+            "your applications to be idempotent, because the same message can arrive more than "
+            "once. Delivery systems promise at least once, not exactly once. That is "
+            "Wednesday, and Section 3: Event loop. Bottom left, Google's machine learning course, Source "
+            "[^110], in the answer to one of its own quiz questions: many rounds of tuning "
+            "against the same test questions make a model fit the peculiarities of that test "
+            "set. A rule that fixes the questions you looked at can "
+            "break the ones you did not. That is Friday, and Section 4: Hill-climbing loop. Bottom right, "
+            "LangChain's article that names the four loops, Source [^1]: the first three loops "
+            "automate work, the fourth automates improvement, and the author calls it arguably "
+            "the most important. Read the four together. The agent misses because it sees too "
+            "much or too little, because the world around it repeats and restarts, and because "
+            "changes made to fix it are not measured. Checking the answer, the verification "
+            "loop, sits between them: nothing on this slide checks anything.",
+            "The point to land: Writing rules down is not enough; the agent must see them, be "
+            "checked against them, and learn them under measurement.",
+            "Example: The fiscal year rule is in the course's business rules page all along; the "
+            "agent never reads that page, and learns the rule only in Section 4.",
+            'Ask the room: "Where do your business rules live today?" Expect: a wiki, a few '
+            "people, or a query someone wrote years ago.",
+            "Misconceptions: That a longer prompt holding every rule solves it. It crowds the "
+            "context, goes stale, and nothing checks it.",
+            "Transition: So what does a failure cost a data team, and what do the loops cost?",
         ],
     ),
-    # 4 the success criteria, mapped onto the four loops ----------------------------------------
+    # 17 what failures and loops cost -----------------------------------------------------------
     dict(
-        kind="problem",
-        title="What we must prove by the end of today",
-        minutes=3,
-        says="Acceptance criteria, one group per loop; the fiscal year 2025 revenue question "
-        "tests correctness across all four",
-        src=".dev/deck-spec-2.md section 3, item 4, and section 4, item 8 (the scoreboard); "
-        "docs/architecture.md (the four loops); pack.yaml (levels, the promotion gate); "
-        "benchmark/dev.yaml (the fiscal year 2025 revenue question and its gold answer)",
+        kind="costs",
+        title="Why this matters for data teams",
+        minutes=2.5,
+        says="What a failure costs, and what each loop cost in the course's measured runs",
+        src=".dev/deck3-evidence.md, part 2; docs/benefits.md, Section 1: Agent loop and Section 2: Verification loop; "
+        "docs/calibration-report.md, Agents on and off, Model bake-off, Wall time",
         on_slide=[
-            "Lead: Each requirement becomes a test; ours is fiscal year 2025 net revenue.",
-            "- Grounded answers, bounded cost: each shows its query and assumptions, on a fixed "
-            "budget | Agent loop",
-            "- Safety: no write runs; personal data waits for a person; doubtful answers are "
-            "held | Verification loop",
-            "- Operations: one effect per event; approvals survive a restart; a stop reaches "
-            "each job | Event loop",
-            "- Improvement and trust: new rules break no working answer; autonomy is earned | "
-            "Hill-climbing loop",
+            "Lead: Each failure costs the team; each loop costs too. No run measured the whole "
+            "stack on and off.",
+            "Panel: What a failure costs",
+            "- A wrong number in a board deck, believed",
+            "- Personal data in an export nobody approved",
+            "- A duplicate alert: two digests for one day",
+            "- A broken metric nobody notices",
+            "Panel: What the loops cost, measured",
+            "- Agent loop: about 1,100 more tokens a run",
+            "- Verification loop: 8,000 more tokens a run",
+            "- Event loop: no extra model calls",
+            "- Hill-climbing: 6 to 9 cents an experiment",
         ],
         notes=[
-            "Purpose: Turn the requirements into acceptance criteria, reveal the four loops as "
-            "their owners, and set the fiscal year 2025 revenue question as the class's test.",
-            "What to say: Requirements become tests, and each group of tests belongs to one "
-            "loop. A test is a condition you can check with a run, and pass or fail without "
-            "debate. This is the first time you see the loops by name. The agent loop: the "
-            "model, its tools and its stops. It passes when every answer is grounded, carrying "
-            "its query and the assumptions it made, inside a bounded cost and latency per "
-            "question: grounded answers, bounded cost. The verification loop: checks around the "
-            "agent. It passes when no write ever runs, personal data waits for a person, and a doubtful answer is held instead "
-            "of posted. That is safety. The event loop: the agent run from webhooks and "
-            "schedules. It passes when one event has one effect however often it arrives, an "
-            "approval survives a restart, and a stop reaches a run already in flight. That is "
-            "operations. The hill-climbing loop: improvement with evidence. It passes when a "
-            "new rule helps questions it never saw and breaks no answer that worked; breaking a "
-            "working answer is called a regression. In class I click Approve at the promotion "
-            "gate, the check that decides whether a new version of the rules goes live. The "
-            "console records the approver as console, a known gap you meet in Section 4; in "
-            "your system, record a signed-in person. A family of questions, the questions about "
-            "one measure such as revenue, earns more autonomy only on that evidence. That "
-            "is improvement and trust. Now the lead line: the test that runs through the class, "
-            "what was our net revenue in fiscal year 2025? That is correctness, and no single "
-            "loop owns it: it needs all four, and it is met only after Section 4. At the end of "
-            "each section a scoreboard shows where this question stands. It passes only when it "
-            "matches the gold answer, a hand-checked result, and posts at a level its family has "
-            "earned. Each criterion is checked live today. If one fails live, you will see that "
-            "too, and I will say what it means.",
-            "The point to land: Four loops, each owning a group of acceptance criteria; one "
-            "question, fiscal year 2025 revenue, tests correctness across all four.",
-            "Example: In your own system: pick one question your executives actually ask, write "
-            "its correct answer by hand, and make it the test every change must pass. This "
-            "example is illustrative.",
-            'Ask the room: "Which of these four could your agent pass today?" Expect: the agent '
-            "loop's, sometimes the verification loop's; rarely the event or hill-climbing "
-            "loop's.",
-            "Misconceptions: That a better score on one run proves a criterion. Each criterion "
-            "is checked by a run you can repeat, on questions the system never learned from.",
-            "Transition: First, why was that number wrong? Next, the five traps hidden in that "
-            "one question.",
+            "Purpose: Weigh what a failure costs a data team against what each loop cost in the "
+            "course's measured runs, and say plainly what was not measured.",
+            "What to say: Left panel, what a failure costs. A wrong number in a board deck is "
+            "the worst kind, because it is believed. Personal data "
+            "in an export nobody approved costs a disclosure and an audit. A duplicate alert "
+            "costs attention: after two digests for one day, people stop reading digests. A "
+            "broken metric nobody notices costs every decision made on it until someone does. "
+            "Right panel, what the loops cost, each measured against its own without. The agent "
+            "loop's better tools took about 1,100 more tokens a run; the dollar figures come "
+            "from different runs, so they are not comparable, and we claim no saving. The verification loop took about 8,000 more tokens a run, about six "
+            "hundredths of a cent. The event loop adds no model calls: its keys, leases, "
+            "approvals and kill switch are database and code checks. The hill-climbing loop "
+            "costs per improvement, not per run: one experiment of 70 runs measured 6 to 9 cents, "
+            "and a whole improvement, baseline, analyzer team and candidate, about 25 to 34 "
+            "cents, our estimate. Now what "
+            "we did not measure. No run turned the whole stack on and off on the same "
+            "questions, and seconds were measured only for the two helper agents. So read these "
+            "as each loop's own cost, not a total.",
+            "The point to land: The loops cost tokens and cents on every run; one wrong number "
+            "in a board deck costs trust for a long time.",
+            "Example: Agent loop: 3,738 against 4,857 tokens a run, "
+            "seven questions, 21 runs a side, rehearsal session 56894641. Verification loop: "
+            "9,311 against 17,344 tokens, 0.0361 against 0.0605 dollars for 40 runs a side, "
+            "twenty trap questions. An experiment of 70 runs: 0.0594 to 0.0914 dollars. Seconds: "
+            "the schema helper and the reviewer each added about 2.7 seconds a question, on 4 "
+            "questions with 1 run each.",
+            'Ask the room: "What did your last wrong number cost?" Expect: a meeting, a '
+            "correction email, and some trust.",
+            "Misconceptions: That the loops are free. They are not, so we measure their cost the "
+            "same way we measure their benefit.",
+            "Transition: Each failure of the week has a cause. There are only four.",
+        ],
+    ),
+    # 18 the four critical gaps -----------------------------------------------------------------
+    dict(
+        kind="concept",
+        title="Why we need loops: The four critical gaps",
+        minutes=3,
+        says="Each story of the week has a cause, and each cause gets one loop",
+        src="the owner's specification of 27 October 2026, section 3, item 5; "
+        ".dev/review/deck3-diagrams-concept.md, four-gaps; docs/benefits.md",
+        figure={
+            "diagram": "four-gaps",
+            "alt": "Four rows of story, cause, and loop, each story named by its day: Tuesday, 10,000 "
+            "rows flood the run, because the agent can't see enough, or sees too much, answered "
+            "by the agent loop; Monday and Tuesday, a wrong number nobody checks and a hidden "
+            "DELETE that reaches the database, because nothing checks the answer, answered by the"
+            " verification loop; Wednesday and Thursday, duplicates, a lost approval, and an "
+            "ignored stop, because events repeat and processes restart, answered by the event "
+            "loop; and Friday, a plausible rule breaks nine answers, because changes aren't "
+            "measured, answered by the hill-climbing loop",
+        },
+        on_slide=[
+            "Lead: Each day's failure has a cause, and each cause gets one loop; Monday's answer "
+            "needs all four.",
+            "Key idea: One loop per cause.",
+        ],
+        notes=[
+            "Purpose: Turn the week of failures into four causes, give each cause the one loop "
+            "that answers it, and show why Monday needs all four.",
+            "What to say: Five days, four causes, one per row: the story, its cause, the "
+            "loop. Row one: the agent can't "
+            "see enough, or sees too much. That is Tuesday's 10,000 rows flooding the run, and "
+            "the start of Monday: a column named total says nothing about tax. The agent loop "
+            "answers it with tools that show the right view, capped, and stops in code. Row two: "
+            "nothing checks the answer. That is Monday's wrong number, which nothing in the agent could "
+            "check; in our runs the reviewer held it, and it never went out. And Tuesday's DELETE "
+            "hidden behind a SELECT. The verification loop answers it: parse the query, "
+            "rely on the database's grants, retry with feedback, and hold doubtful answers for "
+            "a person. Row three, Wednesday and Thursday: duplicates, a lost approval, an "
+            "ignored stop. The cause underneath is that events repeat and processes restart, "
+            "while the state lived in one process. The event loop answers it: keys by meaning, "
+            "leases, approvals that survive a restart, and a kill switch checked at every step. "
+            "Row four, Friday: a plausible rule breaks nine answers, because changes aren't "
+            "measured. The hill-climbing loop answers it: gold questions, holdout questions the "
+            "rule writers never see, and a gate. Now Monday again. Its answer needs all four: "
+            "the agent loop shows the right columns, the verification loop flags the number, "
+            "the event loop holds it safely while nobody watches, and only the hill-climbing "
+            "loop learns the fiscal year rule. Nothing here changes the model.",
+            "The point to land: Each failure has a cause outside the model; one loop answers "
+            "each cause, and the hardest question needs all four.",
+            "Example: Without a reviewer, 39 of 40 wrong answers to trap questions went out "
+            "unflagged, in 40 runs on twenty development trap questions; with the guard, graders "
+            "and reviewer, 20 still went out, so a check that shares the writer's knowledge is "
+            "half an answer.",
+            'Ask the room: "Which row is your agent missing today?" Expect: the second or the '
+            "fourth.",
+            "Misconceptions: That one loop can cover two rows. A checker cannot stop a "
+            "duplicate event, and a gate cannot widen what the agent sees.",
+            "Transition: Before we build anything, here is the data the agent works on.",
+        ],
+    ),
+    # 19 the data model -------------------------------------------------------------------------
+    dict(
+        kind="concept",
+        title="Harbor & Pine: The data model",
+        minutes=2,
+        says="Five tables, their key columns, the business date, and no business rule anywhere",
+        src="platform/ops/sql/warehouse_schema.sql and warehouse_indexes.sql; "
+        "benchmark/business_rules.md, Business date; .dev/review/deck3-diagrams-concept.md, "
+        "data-model",
+        figure={
+            "diagram": "data-model",
+            "alt": "Harbor & Pine's warehouse: five tables with their key columns, customers, "
+            "orders, order_items, products, and categories; arrows join orders to customers, "
+            "order_items to orders and to products, products to categories, and categories to "
+            "their parent category; a box gives the business date, 31 January 2026; and a grey "
+            "box says no column or comment states a business rule: not the fiscal year, net "
+            "revenue, what status 5 means, Eastern time, or which accounts are internal.",
+        },
+        on_slide=[
+            "Lead: Five tables and a fixed business date; not one column or comment states a "
+            "business rule.",
+            "Key idea: Nothing in the schema states the business rules.",
+        ],
+        notes=[
+            "Purpose: Show the warehouse the agent reads, its five tables and business date, and "
+            "that no business rule is written anywhere in it.",
+            "What to say: This is everything the agent can learn from the schema. Five tables. "
+            "Customers, with an email, a state, and a flag for customers who opted out of "
+            "the sale of their personal data. Orders, the heart of it: a customer, a timestamp, "
+            "a status, and money columns in cents: subtotal, discount, tax, shipping and total; "
+            "the diagram shows three. Order items join orders "
+            "to products, with a quantity. Products belong to categories, and categories nest "
+            "under a parent category. Follow the arrows: they are the foreign keys, the joins "
+            "the agent can trust. Now the box on the left, under customers: the business date. DataPilot "
+            "treats 31 January 2026 as today, the last day of fiscal year 2026, so the previous day, "
+            "last month and this quarter always mean the same days, in class and in every "
+            "measurement. And the grey box, the point of the slide. No column or comment says "
+            "the fiscal year starts in February. Nothing says net revenue is subtotal minus "
+            "discount, and total sits right there looking like revenue. Nothing says status 5 "
+            "means cancelled. Nothing says days count in Eastern time while the timestamps are "
+            "stored in Coordinated Universal Time. Nothing says which accounts are staff and "
+            "test accounts. A model with perfect reading of this schema still has to guess "
+            "every one of them. That is why Monday's answer was fluent and wrong.",
+            "The point to land: A schema stores the data, not the business; every rule that "
+            "decides the answer lives somewhere else.",
+            "Example: The warehouse holds three fiscal years, 2024 to 2026, and a second "
+            "database with the same schema and different data, which we use to check answers.",
+            'Ask the room: "Where is your fiscal calendar written down?" Expect: a finance '
+            "spreadsheet, a wiki, or one person.",
+            "Misconceptions: That column comments would fix this. Comments describe storage; "
+            "these rules describe the business and change with it.",
+            "Transition: So here are those rules, in plain words.",
+        ],
+    ),
+    # 20 the business rules in plain words ------------------------------------------------------
+    dict(
+        kind="table",
+        title="Business rules: The rules in plain words",
+        minutes=3,
+        says="The five traps and three safety rules, each with a concrete example",
+        src="platform/packs/datapilot_us/benchmark/business_rules.md, rules 1 and 3 to 6; "
+        "pack.yaml personal_data and autonomy; docs/glossary.md; .dev/deck-evidence.md E5, E6",
+        on_slide=[
+            "Lead: Five kinds of trap and three safety rules, each with Harbor & Pine's example.",
+            "| Kind of rule | Example |",
+            "|---|---|",
+            "| Fiscal year | Runs February to January, named for the year it ends |",
+            "| Net revenue | Subtotal minus discount; total adds tax and shipping |",
+            "| Cancelled orders | Status 5 means cancelled, written nowhere; leave them out |",
+            "| Eastern time | A 9 p.m. order lands on the next Coordinated Universal Time day |",
+            "| Internal accounts | Staff and test accounts on the company domain; left out |",
+            "| Read-only | The agent only reads; the database refuses every write |",
+            "| Personal data | A query returning emails, phones or names waits for approval |",
+            "| Approvals | A held answer posts only after a person approves it |",
+        ],
+        notes=[
+            "Purpose: State every business rule and safety rule in plain words, each with an "
+            "example, so learners recognise each trap when it appears later.",
+            "What to say: These are the rules an answer must follow, as the finance team would "
+            "say them. The first five are the traps. Fiscal year: it runs February to January "
+            "and is named for the year it ends, so fiscal year 2025 is mostly calendar 2024. "
+            "Net revenue: subtotal minus discount; the total column adds tax and shipping, and "
+            "it looks like revenue. Cancelled orders: status 5 means cancelled, the codes are "
+            "written down nowhere in the warehouse, and cancelled orders are left out of every "
+            "count. Eastern time: timestamps are stored in Coordinated Universal Time, but the "
+            "business counts its days in Eastern time, so an order at 9 in the evening lands on "
+            "the next day if you do not convert it. Internal accounts: staff and test accounts "
+            "use the company's own email domain and are left out of every metric. The last three "
+            "are safety rules. Read-only: the agent only reads, and the database itself refuses "
+            "any write, whatever the query says. Personal data: a query that returns customer "
+            "emails, phone numbers or names waits for a person's approval; using an email in a "
+            "filter, as every revenue query does to drop internal accounts, does not. Approvals: an answer "
+            "that is held posts only after a person approves it, and when a new version of the "
+            "rules is promoted, the approver types their name. Every answer must follow all "
+            "eight, and the schema states none of them.",
+            "The point to land: The rules that decide whether an answer is right live outside "
+            "the schema, so the agent cannot read them there.",
+            "Example: Monday's answer broke three at once: calendar dates, the wrong time zone, "
+            "and internal accounts left in. With none of the rules written for the agent, 0 of "
+            "99 runs on 33 trap questions passed, calibration experiment 322f604d.",
+            'Ask the room: "Which of these five traps does your warehouse have?" Expect: a '
+            "fiscal calendar and test accounts, almost everyone.",
+            "Misconceptions: That a prompt line saying read-only makes the agent safe. The "
+            "database's grants enforce it; the prompt only asks.",
+            "Transition: With the rules in place, here is how we measure whether each loop helps.",
+        ],
+    ),
+    # 21 how we measure -------------------------------------------------------------------------
+    dict(
+        kind="concept",
+        title="How we'll measure: The same questions, before and after",
+        minutes=2.5,
+        says="The same question with and without each loop, checked on two databases, run "
+        "several times, on development and holdout questions, with planted bugs",
+        src=".dev/review/deck3-diagrams-concept.md, how-we-measure; docs/benefits.md; "
+        "docs/calibration-report.md, Setup; pack.yaml evaluation; sources.py entry 12",
+        figure={
+            "diagram": "how-we-measure",
+            "alt": "Benchmark questions, development or holdout, asked two ways with the same questions,"
+            " model, and data: without the change, its protection off by a planted bug or the "
+            "starting version, and with the change, its protection on; repeated runs on each "
+            "side; every run checked against gold results on two databases, or by the forced "
+            "failure seen; and the results read as counts per side, not rates",
+        },
+        on_slide=[
+            "Lead: Each loop is measured as a pair: same questions, model and data, with and "
+            "without it.",
+            "Key idea: One question, measured the same way, before and after each loop.",
+        ],
+        notes=[
+            "Purpose: Show how every measurement today was made, so each number later can be "
+            "read the same way.",
+            "What to say: Every number today comes from a pair like this, and each section's "
+            "evidence slide says which questions and how many runs. The key idea says one question: every question is asked both ways, the same way. Five ideas. One: the same "
+            "questions with and without a change. Start at the left: benchmark questions. They "
+            "go down two paths, and the dashed box says what stays fixed: the same questions, "
+            "model and data. Two: planted bugs where a failure must be forced. On the top path "
+            "the protection is off, by a planted bug or, in Section 4: Hill-climbing loop, the "
+            "starting rules; in the demos the failure then happens every time. On the bottom "
+            "path the protection is on. Three: repeated runs. The model can answer differently "
+            "on the next run, so each side runs several times. Four: gold checked on two "
+            "databases, where a gold answer exists. The result is compared with the "
+            "hand-checked gold result on two databases with the same schema and different data, "
+            "so a query that only recalls a number cannot match both; Zhong and colleagues "
+            "showed that one database can pass a wrong query, Source [^12]. The event loop's "
+            "demos have no gold answer: there we count what happened, posts, losses and stops. "
+            "Five: development and holdout questions. The rule writers may study the development "
+            "questions; the holdout questions are kept from them and decide whether a change "
+            "goes live. Last box: counts per side, such as 17 of 21, not rates.",
+            "The point to land: Change one thing, keep everything else fixed, repeat the runs, "
+            "and check the result, never the query text.",
+            "Example: The benchmark holds 25 development and 15 holdout questions. A holdout "
+            "question runs three times and passes on two of the three; one experiment is 70 "
+            "runs.",
+            'Ask the room: "How does your team know a prompt change helped?" Expect: someone '
+            "tried a few questions by hand.",
+            "Misconceptions: That one passing run proves a fix. Answers vary between runs, so "
+            "one pass is a sample of one.",
+            "Transition: Last, the words we use for all of this, on one slide.",
+        ],
+    ),
+    # 22 the glossary ---------------------------------------------------------------------------
+    dict(
+        kind="table",
+        title="Glossary: The terms used in every section",
+        minutes=2,
+        says="The specification's terms and the reviewer, two term-meaning pairs a row",
+        src="the owner's specification of 27 October 2026, section 3, item 9; docs/glossary.md; "
+        "pack.yaml limits and evaluation",
+        on_slide=[
+            "Lead: Two terms a row; come back here when a word is new.",
+            "| Term | Meaning | Term | Meaning |",
+            "|---|---|---|---|",
+            "| Agent loop | Call tools, read results, repeat | "
+            "Idempotency key | Repeats of one meaning absorbed |",
+            "| Run budget | Tokens one run may spend | "
+            "At-least-once delivery | An event may arrive more than once |",
+            "| Answer envelope | Status, answer, evidence, assumptions | "
+            "Lease | A job claim that expires |",
+            "| Gold answer | The checked right result | "
+            "Checkpoint | Saved state a restart resumes |",
+            "| Execution match | Matches gold on two databases | "
+            "Kill switch | Stops every run, checked each step |",
+            "| Trap question | Hinges on an unstated business rule | "
+            "Autonomy level | Report-only, assisted, or unattended |",
+            "| Run | One question, start to final status | "
+            "Overfitting | Fits the questions, not the rule |",
+            "| Development, holdout | Studied; kept back from the rule writers | "
+            "Promotion gate | Decides if new rules go live |",
+            "| Regression | Passed before a change, fails after | "
+            "Metric family | Questions on one measure |",
+            "| Planted bug | A flag that turns one protection off | "
+            "Reviewer | Judges each answer before it posts |",
+        ],
+        notes=[
+            "Purpose: Define the twenty terms every section uses, in a few words each, and expand "
+            "the few whose meaning is not obvious.",
+            "What to say: Twenty terms; read the slide, and I expand the few whose "
+            "meaning is not obvious. The answer envelope is what a run returns: its status, its "
+            "answer, the evidence behind it, the query and its rows, and the assumptions it "
+            "made, so a check can read it instead of trusting prose. A run ends posted, held for a "
+            "person's approval, or escalated: stopped without an answer and handed to a person "
+            "with its reasons. An execution match means the agent's query returns the same "
+            "result as the gold query on both databases; we compare results, never query text. "
+            "The run budget is the most tokens one run may spend, 60,000 here, beside limits on "
+            "model calls and tool calls, all enforced in code. On the right, an idempotency key is one key per meaning of an "
+            "event, so a repeat finds its key and does nothing new; we need it because of "
+            "at-least-once delivery. A lease is a job's claim on a worker that expires if the "
+            "worker dies, so another worker can take the job. And the promotion gate is the "
+            "check a new version of the rules must pass before it goes live. The reviewer is "
+            "DataPilot's judge: a second model that reads each answer before it posts.",
+            "The point to land: Every word on a later slide is defined here first.",
+            "Example: The fiscal year 2025 question is a trap question in the revenue family; "
+            "its first answer was held by the reviewer.",
+            'Ask the room: "Which term do you use differently at work?" Expect: lease.',
+            "Misconceptions: That an execution match compares query text. It compares results.",
+            "Transition: Next: how a text-to-SQL system is designed, before any loop.",
         ],
     ),
 ]

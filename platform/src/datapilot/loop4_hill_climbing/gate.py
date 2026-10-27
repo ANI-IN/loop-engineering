@@ -2,7 +2,7 @@
 
 1. its holdout passes exceed the active version's,
 2. it has zero confirmed regressions on the dev split and on the holdout split,
-3. a person approved it, and
+3. a person approved it, under their name (an empty name or "console" approves nothing), and
 4. every rule it adds to the active version passes the overfit guard (overfit_flags, from
    overfit_guard.new_rule_flags), so a version written without the guard is blocked whatever its
    holdout count.
@@ -32,6 +32,7 @@ from typing import Any, Literal, Protocol
 from uuid import UUID
 
 from datapilot.contracts import BenchmarkItem, Split
+from datapilot.contracts.api import approver_name
 from datapilot.loop4_hill_climbing.experiment import Confirmation, ExperimentResult
 from datapilot.loop4_hill_climbing.measurement import Scheme
 
@@ -112,8 +113,10 @@ def decide(
     approved_by: str | None,
     overfit_flags: Sequence[str] = (),
 ) -> GateDecision:
+    given = approved_by
     if active.session_id != candidate.session_id:
         raise ValueError("both experiments must come from the same live session")
+    approved_by = approver_name(given)
     a, c = active.passes(Split.HOLDOUT), candidate.passes(Split.HOLDOUT)
     total = candidate.total(Split.HOLDOUT)
     better = c > a
@@ -126,8 +129,7 @@ def decide(
         f"{'pass' if not regressions.holdout else 'fail'}: holdout regressions "
         f"{len(regressions.holdout)}"
         + (f" ({', '.join(regressions.holdout)})" if regressions.holdout else ""),
-        f"{'pass' if approved_by else 'fail'}: human approval"
-        + (f" by {approved_by}" if approved_by else " not given yet"),
+        approval_reason(approved_by, given),
         f"{'pass' if not overfit_flags else 'fail'}: overfit guard on the new rules"
         + (f" ({', '.join(overfit_flags)})" if overfit_flags else ""),
     ]
@@ -174,6 +176,14 @@ def decide(
         regressions=regressions,
         approved_by=approved_by,
     )
+
+
+def approval_reason(named: str | None, given: str | None) -> str:
+    if named:
+        return f"pass: human approval by {named}"
+    if given is None:
+        return "fail: human approval not given yet"
+    return "fail: human approval needs a person's name"
 
 
 def confirming_step(n: int, *, both: bool = False) -> str:

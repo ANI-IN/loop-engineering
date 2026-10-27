@@ -1,151 +1,400 @@
-"""Opening block, 0:00-0:05: 3 slides under design system 2 (slides/design-system.md).
+"""Opening block, 0:00-0:13: 13 slides under design system 3 (slides/design-system.md, "The third
+rebuild").
 
-The title (the one place in the deck that spells out Structured Query Language), the instructor,
-and the hook: the agent answered the fiscal year 2025 revenue question, and the answer was wrong.
-The hook's notes lead into the problem statement (slides/source/problem.py). The slides that taught
-the traps, the failure classes, the four loops and the class plan moved to the foundations block.
-Every number comes from .dev/deck2-reconcile.md ("The hook") and .dev/deck-evidence.md; the run id
-and the date stay in the notes, as the evidence diet sets.
+The title (the one place in the deck that spells out Structured Query Language), the instructor
+and the seven logistics slides copied from the previous module's deck and adapted only where this
+module differs or the course's style requires it, the two-slide recap of the previous module
+(harness engineering made one run trustworthy; Loop Engineering makes the system trustworthy over
+time), and Today's Agenda with the four loops and no star. The copied slides hold their visible
+text as lines in the order the deck builder fills the reference slide's text slots (`COPIED` in
+slides/source/build.py). Logistics facts come from docs/costs.md ("The learner key limit",
+"LangSmith traces") and sources 119 and 120; the four loops from source 1.
 """
 
-RULES = "design system 2"
+RULES = "design system 3"
+
+
+def short(purpose: str, say: str, transition: str, *do: str) -> list[str]:
+    """The short notes form: Purpose, What to say, any Do lines, Transition."""
+    return [
+        f"Purpose: {purpose}",
+        f"What to say: {say}",
+        *(f"Do: {x}" for x in do),
+        f"Transition: {transition}",
+    ]
+
 
 SLIDES = [
-    # 1 title -----------------------------------------------------------------------------------
+    # 1 title -------------------------------------------------------------------------------------
     dict(
         kind="title",
-        title="Module: Loop Engineering",
-        minutes=0.5,
-        says="The course title, and the skill learners leave with",
-        src="README.md; .dev/deck-spec-2.md, section 4, item 1, and section 5, item 3",
-        on_slide=[
-            "Module: Loop Engineering",
-            "An agent that turns questions into Structured Query Language (SQL)",
-            "Design, check, run and improve it: four loops, every demo live",
-        ],
-        notes=[
-            "Purpose: Open the class and name the skill: designing, checking, running and "
-            "improving a text-to-SQL agent you can trust in production.",
-            "What to say: Welcome to Module: Loop Engineering. You already build agents, so "
-            "today is about what comes after the demo works. You will learn to design an agent "
-            "that turns plain questions into Structured Query Language, SQL, for a real "
-            "warehouse, then to check it, run it from events, and improve it with evidence. "
-            "Four loops around one agent, and every demo runs live.",
-            "The point to land: The agent is the easy part; the loops around it decide whether "
-            "you can trust it.",
-            "Example: DataPilot, the course's data agent, answers plain-language questions about "
-            "the warehouse of Harbor & Pine Outfitters, a fictional outdoor retailer.",
-            "Ask the room: Not on this slide; the first question to the room comes on the next "
-            "one, in the chat.",
-            "Misconceptions: That this is a course about one framework. The loops are patterns "
-            "that transfer to any agent whose output you can check.",
-            "Transition: First, who is teaching today.",
-        ],
-    ),
-    # 2 title: the instructor (the owner's decision: this exact line) ---------------------------
-    dict(
-        kind="title",
-        title="Your instructor",
+        title="Loop Engineering for Data Agents",
         minutes=1,
-        says="Who is teaching, and where questions go",
-        src="DECISIONS.md, 26 October 2026, the owner's decisions after session 7, item 3",
+        says="The course title, the subtitle in the reference's style, and what the agent does",
+        src="the owner's specification of 27 October 2026, section 2, item 1",
         on_slide=[
-            "Your instructor",
-            "Taught by [INSTRUCTOR NAME]; questions go in the class chat",
+            "Loop Engineering for Data Agents",
+            "Agent, verification, events, improvement: build each loop, then measure it",
+            "One agent that writes Structured Query Language (SQL)",
+        ],
+        notes=short(
+            "Open the class and name what learners leave able to do: build and measure the four "
+            "loops around a data agent.",
+            "Welcome to Loop Engineering for Data Agents. Today we take one agent that turns plain "
+            "business questions into Structured Query Language, SQL, and build the four loops "
+            "around it: the agent loop, the verification loop, the event loop and the "
+            "hill-climbing loop. We build each loop, then we measure it, and every demo runs live "
+            "on the real model.",
+            "First, who is teaching today.",
+        ),
+    ),
+    # 2 introduction (copied, reference slide 2) ----------------------------------------------------
+    dict(
+        kind="intro",
+        title="Introduction",
+        minutes=0.5,
+        says="The instructor introduces themselves",
+        src="the reference deck, slide 2, copied as it is",
+        on_slide=["**Introduction -** {Instructor_Details}"],
+        notes=short(
+            "Introduce the instructor in under a minute.",
+            "Introduce yourself in two sentences: what you build, and one loop that saved you, or "
+            "cost you, in production.",
+            "Before we begin, tell us about yourself in the chat.",
+            "Replace {Instructor_Details} with your name and title before class.",
+            "Before class, check that the Improve page shows Run the naive analyzer (planted); it "
+            "appears only while demo controls are on, and the approval demo and the naive "
+            "analyzer need them.",
+        ),
+    ),
+    # 3 instructor profile (copied, reference slide 3) ----------------------------------------------
+    dict(
+        kind="profile",
+        title="Welcome to today's class",
+        minutes=0.5,
+        says="Learners post their name, role, location and organization in the chat",
+        src="the reference deck, slide 3; its instructor's details replaced by placeholders",
+        on_slide=[
+            "Welcome to today’s class, before we begin,",
+            "pop into the chat:",
+            "{Instructor_Name}",
+            "{Instructor_Role}",
+            "{Instructor_Location}",
+            "{Instructor_Company}",
+        ],
+        notes=short(
+            "Get every learner talking in the chat in the first minutes.",
+            "Welcome, everyone! Before we begin, pop into the chat and tell us four things about "
+            "yourself: your name, your role, your location and your organization. I will go "
+            "first, with the four on the slide.",
+            "Here is how the class runs.",
+            "Fill in the four placeholders with your own details before class.",
+        ),
+    ),
+    # 4 structure of class (copied, reference slide 4) ----------------------------------------------
+    dict(
+        kind="logistics",
+        variant="structure",
+        title="Structure of Class",
+        minutes=1,
+        says="The live class on Sunday, then the coding assignments",
+        src="the reference deck, slide 4; the course's four assignments and Thursday review",
+        on_slide=[
+            "Structure of Class",
+            "Sunday Class - 4 hours (Sunday)",
+            "**Assignments -** Coding assignments, reviewed on Thursday",
+        ],
+        notes=short(
+            "Set the shape of the class: the live session, then the coding assignments.",
+            "This class has the same structure as every class in the program: a four-hour live "
+            "class on Sunday, then coding assignments, one for each loop, reviewed in the Thursday "
+            "session. Pace yourself: four hours is long, and the breaks are there for a reason. "
+            "The class is recorded, in case you miss a part or want to review it.",
+            "How to get the most out of it.",
+        ),
+    ),
+    # 5 optimize your experience (copied, reference slide 5) ----------------------------------------
+    dict(
+        kind="logistics",
+        variant="optimise",
+        title="Optimize Your Experience",
+        minutes=0.5,
+        says="Interact, ask, do the assignments, use the resources",
+        src="the reference deck, slide 5",
+        on_slide=[
+            "Optimize Your Experience",
+            "Interact with your instructors via Sunday live class.",
+            "Don’t be shy to speak up and get clarifications!",
+            "Solve your assignments and other assessments and get feedback (Thursday review "
+            "session)",
+            "Use your resources! It’s your experience – what you put in is what you’ll get out.",
+        ],
+        notes=short(
+            "Ask learners to take part, to ask, and to use the review session.",
+            "Interact with us in the live class, and speak up when something is unclear. Solve "
+            "the assignments and bring them to the Thursday review session for feedback. What you "
+            "put in is what you get out.",
+            "And you are not on your own.",
+        ),
+    ),
+    # 6 support team (copied, reference slide 6) ----------------------------------------------------
+    dict(
+        kind="logistics",
+        variant="support_team",
+        title="Don't worry! We are here to help",
+        minutes=0.5,
+        says="The support team is there at every step",
+        src="the reference deck, slide 6",
+        on_slide=["Don’t worry!", "We are here to help at your every step!", "But, how???"],
+        notes=short(
+            "Reassure learners that help is there at every step.",
+            "Don't worry: we are here to help at every step of the course, in class and after it. "
+            "So how, exactly? Here is how.",
+            "The support features.",
+        ),
+    ),
+    # 7 support features (copied, reference slide 7) ------------------------------------------------
+    dict(
+        kind="logistics",
+        variant="support_features",
+        title="Support features",
+        minutes=0.5,
+        says="Uplevel, post-class videos, coaching, Discord, teaching assistants, support tickets",
+        src="the reference deck, slide 7; the program's support features, kept as the reference "
+        "states them",
+        on_slide=[
+            "Are you using all these support features?",
+            "**Uplevel** - contains all the learning resources - videos, assignments",
+            "Optional **Post-class videos** for additional reference",
+            "**Technical coaching sessions** on Wednesday to clarify all your queries",
+            "**Discord** community for peer learning",
+            "**Teaching assistants** to help answer the queries in the live class",
+            "**Support tickets** - Raise them any time you want clarifications or technical help "
+            "on Uplevel",
+        ],
+        notes=short(
+            "Name every support channel once, so learners know where each kind of question goes.",
+            "Uplevel holds every learning resource. The coaching sessions on Wednesday answer "
+            "your technical questions, Discord is for learning from each other, the teaching "
+            "assistants answer in the chat today, and a support ticket on Uplevel reaches us any "
+            "time.",
+            "Some habits that help.",
+        ),
+    ),
+    # 8 success hacks (copied, reference slide 8) ---------------------------------------------------
+    dict(
+        kind="logistics",
+        variant="success",
+        title="Success Hacks",
+        minutes=0.5,
+        says="Habits that help learners finish",
+        src="the reference deck, slide 8, and its notes",
+        on_slide=[
+            "Success Hacks",
+            "Be prepared for the class by watching the pre-class videos",
+            "Attend every class",
+            "Participate in class",
+            "Attempt all the assignments",
+            "Actively advocate for yourself",
+            "Keep your goal in mind",
+            "Consistency is the key",
+            "Be patient with yourself!",
+        ],
+        notes=short(
+            "Share the habits that help learners finish the course.",
+            "Please note: the pre-class videos are required, and watching them before class makes "
+            "today easier to follow. The post-class videos are optional, and nothing later "
+            "depends on them. Above all, be consistent, and be patient with yourself.",
+            "Now the two keys you need today.",
+        ),
+    ),
+    # 9 the OpenAI key (copied, reference slide 9) --------------------------------------------------
+    dict(
+        kind="logistics",
+        variant="api_key",
+        title="Check Your Email for Your OpenAI Key",
+        minutes=1,
+        says="The OpenAI key from operations, its 3-dollar limit, and where to ask",
+        src="the reference deck, slide 9; docs/costs.md, The learner key limit; sources.py "
+        "entry 120",
+        on_slide=[
+            "Check Your Email for Your OpenAI Key",
+            "Operations emailed you an OpenAI application programming interface (API) key with a "
+            "3-dollar limit.",
+            "If you do not see this email:",
+            "Please check your inbox",
+            "Also check your spam or junk folder",
+            # the deck fills the address from the copied reference slide; it is never published
+            "If you still cannot find it, please reach out to the Operations Team "
+            "{operations_email}",
+            "{API_Key_Email_Screenshot}",
+        ],
+        notes=short(
+            "Make sure every learner has the OpenAI key the demos and assignments use.",
+            "The Operations Team emailed each of you an OpenAI key with a spending limit of 3 "
+            "dollars. Running every assignment check five times costs about 1.16 dollars, so the "
+            "limit leaves room. Only a hard spend limit makes calls fail once it is reached, and "
+            "spend can run slightly past it, Source [^120]. If the email is not in your inbox or "
+            "your spam folder, write to operations at the address on the slide.",
+            "And the tracing key.",
+            "Replace the placeholder card with a screenshot of the real email, its key hidden, "
+            "once operations sends it.",
+        ),
+    ),
+    # 10 LangSmith (copied, reference slide 10) -----------------------------------------------------
+    dict(
+        kind="logistics",
+        variant="langsmith",
+        title="LangSmith Setup Guide",
+        minutes=1,
+        says="The steps to a LangSmith key, and the free plan's trace limit",
+        src="the reference deck, slide 10; docs/costs.md, LangSmith traces; sources.py entry 119",
+        on_slide=[
+            "LangSmith Setup Guide",
+            "Steps to Generate a LangSmith API Key",
+            "Note: Free Developer plan, no payment method on file: 5,000 traces a month[^119]",
+        ],
+        notes=short(
+            "Make sure every learner can open the traces of their own runs.",
+            "Every run you make today and in the assignments sends a trace to LangSmith, so you "
+            "can open each model call and tool call. The free Developer plan, with no payment "
+            "method on file, includes 5,000 traces a month, Source [^119]; past that, uploads are "
+            "refused until the month resets. The course "
+            "traces a sample of its benchmark runs, so one learner's whole course fits about "
+            "three times over. Follow the guide behind the button to create your key.",
+            "Before the problem, a two-slide recap of the previous module.",
+        ),
+    ),
+    # 11 recap: harness engineering -----------------------------------------------------------------
+    dict(
+        kind="concept",
+        title="Recap: Harness engineering made one run trustworthy",
+        minutes=2.5,
+        says="The previous module: four layers around one agent run, from start to done",
+        src="the reference deck, slides 1, 13 and 14 (its subtitle, its agenda's four layers)",
+        figure={
+            "diagram": "recap-harness",
+            "alt": "Harness engineering, the previous module: one agent run, the same model calling its "
+            "tools, with four layers around it, each with an arrow into the run: instructions, "
+            "what it knows; state, what it remembers; scope, what it may change; and "
+            "verification, what proves it is done",
+        },
+        on_slide=[
+            "Lead: Last module: four layers around one agent run, from its start to done.",
+            "Key idea: A harness makes one run trustworthy: what it knows, keeps, may change, "
+            "and proves.",
         ],
         notes=[
-            "Purpose: Introduce the instructor and set where questions go. Replace the name in "
-            "square brackets before class.",
-            "What to say: Introduce yourself in two sentences: what you build, and one loop that "
-            "saved you or cost you in production. Then: questions go in the class chat at any "
-            "time, and I answer them between slides. A question that needs more than a minute "
-            "goes to the Thursday review session, which answers every parked question in "
-            "writing.",
-            "The point to land: Ask early in the chat; nothing is too small.",
-            "Example: A loop that saved you, such as a retry cap that stopped a runaway bill.",
-            'Ask the room: "Post one line: which agent do you run, and what stops it when it is '
-            'wrong?" Expect: a person reads the output, or nothing.',
-            "Misconceptions: That questions wait until the end. They go in the chat as they come.",
-            "Transition: Keep your answer in mind. Here is one question we asked our own agent, "
-            "and the answer it gave.",
+            "Purpose: Recall the previous module's four layers, so learners see what one "
+            "trustworthy run needs before we ask what many runs need.",
+            "What to say: Let's start from where the last module ended. Harness engineering was "
+            "about one agent run: one task, from its start to done. Look at the middle of the "
+            "diagram. The same model calls its tools in a loop, and nothing about the model "
+            "changes. What changed was the harness, the four layers around the run, each with an "
+            "arrow into it. Top left, instructions: what the agent knows, given as a map it can "
+            "follow, not a manual it must memorise. Top right, state: what it remembers between "
+            "steps and between sessions, so a long task does not start again from nothing. Bottom "
+            "left, scope: what it may change, so a run that goes wrong stays inside its sandbox. "
+            "Bottom right, verification: what proves the task is done, a check outside the model "
+            "rather than the model's own word. With those four layers, one run of a coding agent "
+            "became something you could trust: it knew the rules, kept its place, stayed in "
+            "bounds, and proved its result. Hold on to that picture, one run inside a boundary, "
+            "because the next slide keeps the same shape and changes what sits in the middle.",
+            "The point to land: Harness engineering made one run trustworthy by adding four "
+            "layers of code around the same model.",
+            "Example: In the last module a coding agent worked tickets on TeamTrack, a small "
+            "multi-tenant issue tracker; its first failure story was a search that showed another "
+            "organization's issues.",
+            'Ask the room: "Which of the four layers did you add to your own agent after the last '
+            'module?" Expect: instructions and verification most often; scope least.',
+            "Misconceptions: That the harness made the model smarter. The model was the same in "
+            "every run; the harness changed what it knew, kept, touched and had to prove.",
+            "Transition: One trustworthy run is not a trustworthy system. Here is what changes "
+            "when the runs never stop.",
         ],
     ),
-    # 3 the hook: the agent answered, and the answer was wrong ----------------------------------
+    # 12 recap: Loop Engineering --------------------------------------------------------------------
     dict(
-        kind="story",
-        title="The agent answered. The answer was wrong.",
-        minutes=3.5,
-        says="A clean run returns $72,394,572.08 for fiscal year 2025; the correct answer is "
-        "$64,015,091.21",
-        src="docs/images/agent-confident-wrong-answer-sql.png and the capture "
-        "agent-loop-20261025T144436Z.json (run 9182df01, 25 October 2026, held, never posted); "
-        ".dev/deck2-reconcile.md, The hook; platform/packs/datapilot_us/benchmark/"
-        "business_rules.md, rules 1, 5 and 6",
-        on_slide=[
-            '"What was our net revenue in fiscal year 2025?"',
-            "Value: The agent answered | $72,394,572.08",
-            "Value: The correct answer | $64,015,091.21",
-            "1. Internal accounts included",
-            "2. Calendar dates, both bounds",
-            "3. Coordinated Universal Time, both bounds",
-            "Footer: No error and no warning; only a reviewer's doubt held it for a person",
-        ],
-        code={
-            "language": "sql",
-            "origin": "the agent's query in run 9182df01, 25 October 2026, as the console showed "
-            "it (docs/images/agent-confident-wrong-answer-sql.png), rewrapped so every line holds "
-            "at most 50 characters; no clause changed",
-            "lines": [
-                "SELECT ROUND(SUM(subtotal_cents - discount_cents)",
-                "    / 100.0, 2) AS net_revenue_usd FROM orders",
-                "WHERE order_ts >=",
-                "        TIMESTAMPTZ '2025-01-01 00:00:00+00'",
-                "  AND order_ts <",
-                "        TIMESTAMPTZ '2026-01-01 00:00:00+00'",
-                "  AND status = 4",
-            ],
-            # numbered top to bottom; traps 2 and 3 are highlighted on both bounds, disc 2 on
-            # the first bound and disc 3 on the second, so no two discs share or touch a line
-            "marks": [
-                (1, "FROM orders", 1),
-                (3, "'2025-01-01", 2),
-                (5, "'2026-01-01", 2),
-                (3, "+00'", 3),
-                (5, "+00'", 3, True),
-            ],
+        kind="concept",
+        title="Recap: Loop Engineering makes the system trustworthy",
+        minutes=2.5,
+        says="This module: many runs, events and changes over time, and the four loops around them",
+        src="sources.py entry 1; the owner's specification of 27 October 2026, section 2, item 3",
+        figure={
+            "diagram": "recap-loops",
+            "alt": "Loop Engineering: the system over time, many runs, events that arrive at any hour, "
+            "and rules that change, with the same model in every run; around it the four loops, "
+            "each with an arrow into the system: the agent loop, what the agent sees; the "
+            "verification loop, what checks the answer; the event loop, what runs unattended; and"
+            " the hill-climbing loop, measured improvement",
         },
+        on_slide=[
+            "Lead: From one run to the system: many runs, events at any hour, rules that change.",
+            "Key idea: Four loops make the system trustworthy across many runs, events and "
+            "changes.",
+        ],
         notes=[
-            "Purpose: Make the failure felt before anything is explained: a fluent, clean run "
-            "returned a wrong number, and nothing in the run reported an error.",
-            "What to say: Here is a real run from this course, run 9182df01 on 25 October. The "
-            "question is the one that runs through the whole class: what was our net revenue in "
-            "fiscal year 2025? The agent did everything a good agent does. It listed the "
-            "tables, described them, wrote one clean SQL query, and returned one number: "
-            "72,394,572.08 dollars. The correct answer is 64,015,091.21. Look at the query. "
-            "Marker one, from orders: it reads every order with no join to customers, so staff "
-            "and test accounts stay in, and they are known only by their email domain. Marker two, on both bounds: calendar dates, "
-            "January to December 2025. This company's fiscal year runs February to January "
-            "and is named for the year it ends, so fiscal year 2025 ended on 31 January 2025. "
-            "Marker three, again on both bounds: the plus zero zero means Coordinated Universal "
-            "Time, while the business counts its days in Eastern time, so evening orders land on "
-            "the wrong day. "
-            "None of the three is in the schema; each lives in someone's head. And notice what "
-            "did not happen: no error, no exception, and every automatic check passed on its "
-            "last attempt. Only a reviewer's doubt about the fiscal year, a second model that "
-            "reads each answer and which you meet in Section 2, held this run for a person, so "
-            "it never posted. Without that reviewer, as you will see, answers like it go "
-            "out. Keep this number in mind: we come back to this question at the end "
-            "of every section, and by the close of class it comes back right.",
-            "The point to land: The dangerous agent failure is not a crash; it is a confident, "
-            "plausible number that is wrong.",
-            'Example: The agent even wrote its assumption into the answer, "for calendar year '
-            '2025", in a clean sentence a busy reader would skim past.',
-            'Ask the room: "How would your current stack have caught this?" Expect: tests on the '
-            "SQL, a person reading it, or nothing; most say nothing.",
-            'Misconceptions: "A better model fixes this." It does not: the rules are not in the '
-            "data, so no model can read them there.",
-            "Transition: So who asks a question like this, and why does a wrong answer matter so "
-            "much? Meet Harbor & Pine, the business behind it.",
+            "Purpose: Frame this module: trust across many runs, events and changes over time, "
+            "earned by four loops around the same model.",
+            "What to say: Same shape as the last slide, on purpose. The boundary no longer holds "
+            "one run; it holds the system, over time. Inside it, many runs, a stack of them, "
+            "because a data agent answers questions all day. Events arrive at any hour, from a "
+            "chat tool or a schedule, and start runs with nobody watching. And the rules change: "
+            "the business rules the answers depend on are learned and revised. At the bottom, the "
+            "same model in every run: we never change the model today. Around the system, four "
+            "loops, each in its colour. The agent loop, blue: what the agent sees, through tools "
+            "that show the right view, capped. The verification loop, teal: what checks the "
+            "answer before anyone reads it. The event loop, orange: what lets the system run "
+            "unattended, when events repeat, workers restart and someone presses stop. The "
+            "hill-climbing loop, lime: what improves the system, measured on questions the "
+            "rule writers never saw. The four names come from LangChain's article on loop "
+            "engineering, Source [^1], which says the first three loops automate work and the "
+            "fourth, arguably the most important, automates improvement. Each of today's sections "
+            "builds one of these loops, then measures it.",
+            "The point to land: A harness made one run trustworthy; the four loops make the whole "
+            "system trustworthy across many runs, events and changes.",
+            "Example: One question runs through the whole class, net revenue in fiscal year "
+            "2025, and each section shows what its loop does to that answer.",
+            'Ask the room: "Which of these loops has failed you in production?" Expect: the '
+            "verification loop, a wrong answer nobody checked, and the event loop, a duplicate "
+            "message.",
+            "Misconceptions: That a better model removes the need for loops. Each loop is code "
+            "around the model; a stronger model still repeats events and misses unwritten rules.",
+            "Transition: Here is the plan for today, one loop at a time.",
+        ],
+    ),
+    # 13 today's agenda: the four loops, no star -----------------------------------------------------
+    dict(
+        kind="agenda",
+        title="Today's Agenda",
+        minutes=1,
+        says="The four loops in order, one per section, no star",
+        src="the owner's specification of 27 October 2026, section 2, item 4",
+        on_slide=[
+            "1. Agent loop: what it sees",
+            "2. Verification loop: is it right?",
+            "3. Event loop: runs unattended",
+            "4. Hill-climbing loop: improves safely",
+        ],
+        notes=[
+            "Purpose: Show the plan of the day and what learners will be able to do by its end: "
+            "four sections, one loop each.",
+            "What to say: Before Section 1, about half an hour on the problem and on how a "
+            "text-to-SQL system is designed. Then four sections, one loop each. By 4:00 you will "
+            "be able to design what an agent sees, check its answers in code and in the "
+            "database, run it safely from events, and improve it on questions it never saw. "
+            "First the agent loop, what it sees; then the verification loop, whether the answer "
+            "is right. After the first break, the event loop, running unattended; after the "
+            "second, the hill-climbing loop, improving safely. Every later loop checks, runs or "
+            "improves what the agent loop produces, and each section ends with a live demo and a "
+            "measurement with and without its loop.",
+            "The point to land: Four loops, one per section, each built and then measured.",
+            "Example: The fiscal year 2025 revenue question comes back in every section.",
+            "Ask the room: none here; the first question to the room comes with the problem.",
+            "Misconceptions: That the loops are layers of one prompt. Each is code around the "
+            "model.",
+            "Transition: First, the problem: what we are building, and what goes wrong without "
+            "the loops.",
         ],
     ),
 ]

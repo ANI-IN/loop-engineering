@@ -178,7 +178,8 @@ ENTRIES = [
         "BIRD",
         "Jinyang Li and others",
         "2023",
-        "https://arxiv.org/abs/2305.03111",
+        "https://proceedings.neurips.cc/paper_files/paper/2023/hash/"
+        "83fc8fab1710363050bbd1d4b8cc0021-Abstract-Datasets_and_Benchmarks.html",
     ),
     (
         17,
@@ -310,7 +311,7 @@ ENTRIES = [
         "dbt Semantic Layer",
         "dbt Semantic Layer",
         "dbt Labs",
-        "undated",
+        "2026",
         "https://docs.getdbt.com/docs/use-dbt-semantic-layer/dbt-sl",
     ),
     (
@@ -420,7 +421,7 @@ ENTRIES = [
         "Genie",
         "Genie",
         "Databricks",
-        "undated",
+        "2026",
         "https://docs.databricks.com/aws/en/genie/",
     ),
     (
@@ -590,7 +591,7 @@ ENTRIES = [
         61,
         "agent",
         "Effective context engineering for AI agents",
-        "Effective context engineering for AI agents",
+        "Effective context engineering",
         "Prithvi Rajasekaran, Ethan Dixon, Carly Ryan, Jeremy Hadfield, Anthropic",
         "2025",
         "https://www.anthropic.com/research/effective-context-engineering-for-ai-agents",
@@ -1125,9 +1126,50 @@ ENTRIES = [
         "2023",
         "https://arxiv.org/abs/2307.09009",
     ),
+    # Added 27 October 2026 for the third rebuild's opening (.dev/deck3-evidence.md, part 5).
+    (
+        119,
+        "products",
+        "Usage and billing",
+        "LangSmith usage and billing",
+        "LangChain",
+        "undated",
+        "https://docs.langchain.com/langsmith/usage-and-billing",
+    ),
+    (
+        120,
+        "products",
+        "Spend limits",
+        "Spend limits",
+        "OpenAI",
+        "undated",
+        "https://developers.openai.com/api/docs/guides/spend-limits",
+    ),
 ]
 
 assert [e[0] for e in ENTRIES] == list(range(1, len(ENTRIES) + 1)), "numbered 1 to N in order"
+
+# The exact date of a source, by its number, where the page states one (year-month-day, as the
+# references tables of the deck show it); a source without an entry here keeps its year, or
+# "undated". Fill an entry only from the page itself; no entry is ever renumbered.
+DATES: dict[int, str] = {
+    1: "2026-06-16",
+    4: "2025-09-11",
+    12: "2020-10-06",
+    17: "2024-11-12",
+    27: "2026-07-17",
+    30: "2026-09-29",
+    42: "2026-09-18",
+    61: "2025-09-29",
+    62: "2025-10-16",
+    65: "2025-06-13",
+    84: "2025-02-06",
+    103: "2025-06-14",
+    106: "2026-01-09",
+    110: "2025-12-03",
+    113: "2021-02-13",
+}
+assert all(1 <= n <= len(ENTRIES) for n in DATES), "a date names a listed source"
 
 
 # The full entries, one per source, in number order: what the outline lists at its end and what the

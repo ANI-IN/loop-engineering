@@ -37,7 +37,7 @@ from datetime import date, datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from datapilot.contracts.autonomy import AutonomyLevel
 from datapilot.contracts.lifecycle import EventType, RunEventKind, RunStatus
@@ -88,8 +88,26 @@ class AnalyzerIn(Request):
     requested_by: str = "console"
 
 
+REFUSED_APPROVERS = frozenset({"", "console"})
+
+
+def approver_name(name: str | None) -> str | None:
+    """The person's name an approval records, or None: an empty name or "console" approves nothing
+    (owner's decision, 27 October 2026). A production system takes a signed-in identity instead."""
+    cleaned = (name or "").strip()
+    return None if cleaned.casefold() in REFUSED_APPROVERS else cleaned
+
+
 class KnowledgeApprovalIn(Request):
-    approved_by: str = "console"
+    approved_by: str  # no default: the console asks the approver for their name
+
+    @field_validator("approved_by")
+    @classmethod
+    def _a_persons_name(cls, value: str) -> str:
+        named = approver_name(value)
+        if named is None:
+            raise ValueError("the approval needs a person's name, not an empty name or 'console'")
+        return named
 
 
 # --- responses --------------------------------------------------------------------------------

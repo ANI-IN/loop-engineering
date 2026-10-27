@@ -63,7 +63,7 @@ LOOP4 = PLATFORM / "src" / "datapilot" / "loop4_hill_climbing"
 # Fingerprints of what the assignment must not change. A unit test of the course build keeps them
 # equal to the class files, so a change on the class side updates them in the same commit.
 UNCHANGED = {
-    "gate.py": "905f65621abe286b1b4ce57a57412381de3838b41be0f36146380e36816888d1",
+    "gate.py": "644ff1e04e92ce57783ff607733c40b560bf7de60eaa5498a83c058d90cd5a93",
     "overfit_guard.py": "4e01dcac8a2c6cd4e408193a79440c3f2b2ee7e87c9d1d5cb22abceb1f3781c8",
     "measurement.py": "03d13f5b2c2fb94ed07775b14539935e4bd92626b66be4cdfdf47be016db4323",
 }

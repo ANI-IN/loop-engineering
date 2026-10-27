@@ -13,6 +13,7 @@ from datapilot_console import components, frame, improve_view, ops_reads, views,
 from datapilot_console.api_client import OVERBROAD_RULE
 from datapilot_console.frame import Live
 
+from datapilot.contracts import api as contract
 from datapilot.settings import get_settings
 
 frame.check_api()
@@ -70,8 +71,18 @@ def body(live: Live) -> None:
         st.caption(view["selection"])
     st.code(view["diff"] or "No change from the active version.", language="diff")
     if candidate["status"] == "draft":
-        if st.button(f"Approve {candidate['version']}", key="improve-approve"):
-            frame.act(lambda: frame.api().approve_version(candidate["version"]))
+        # The gate records the approver's name and refuses an empty name or "console"; a
+        # production system takes the signed-in person's identity instead of a typed name.
+        name_column, approve_column = st.columns([2, 1])
+        approver = name_column.text_input(
+            "Your name, recorded as the approver", key="improve-approver"
+        ).strip()
+        if approve_column.button(
+            f"Approve {candidate['version']}",
+            key="improve-approve",
+            disabled=contract.approver_name(approver) is None,
+        ):
+            frame.act(lambda: frame.api().approve_version(candidate["version"], approver))
     else:
         st.write(f"{candidate['version']} is {candidate['status']}.")
 

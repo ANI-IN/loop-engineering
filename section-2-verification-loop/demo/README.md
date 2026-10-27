@@ -127,7 +127,7 @@ and what may differ from run to run.
 - **Tier**: core
 - **Start it**: Verify > Send malicious SQL in the console, or `make demo NAME=verify-malicious-sql`
 - **Guaranteed by**: the naive guard (`BUG_NAIVE_GUARD`)
-- **What appears**: With the naive guard, "SELECT 1; DELETE FROM orders" and a data-modifying common table expression pass the guard and the read-only role refuses them (error code 25006); with the syntax-tree guard, its parse step stops the stacked statements and its statement policy the data-modifying common table expression, before execution. A raw DELETE as the agent role is refused by the role.
+- **What appears**: With the naive guard, "SELECT 1; DELETE FROM orders" and a data-modifying common table expression pass the guard and the read-only transaction refuses them (error code 25006); with the syntax-tree guard, its parse step stops the stacked statements and its statement policy the data-modifying common table expression, before execution. A raw DELETE as the agent role is refused by the role's grants (error code 42501).
 - **Expected live outcome**: The defense-layer panel shows which layer stopped each statement; no warehouse row changes.
 - **What can vary**: nothing in the outcome; timings only
 - **Recovery**: `make reset NAME=verification-loop`, then the same trigger again

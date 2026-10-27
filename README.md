@@ -88,13 +88,13 @@ only. Logs: `make logs NAME=<service>`. The [architecture page](docs/architectur
 
 | Section | Folder | What you see in class | Time |
 |---|---|---|---|
-| Section 1: Agent loop | [section-1-agent-loop/](section-1-agent-loop/README.md) | The simple question, the confident wrong answer, unbounded rows | 0:40-1:15 |
-| Section 2: Verification loop | [section-2-verification-loop/](section-2-verification-loop/README.md) | Malicious SQL, the retry cap, every grader passes, still wrong | 1:15-1:50 |
-| Section 3: Event loop | [section-3-event-loop/](section-3-event-loop/README.md) | The webhook question, the approval across a restart, duplicates, the kill switch | 2:00-2:48 |
-| Section 4: Hill-climbing loop | [section-4-hill-climbing-loop/](section-4-hill-climbing-loop/README.md) | Baseline and candidate experiments, the analyzer team, the gate, the last run | 3:03-3:45 |
+| Section 1: Agent loop | [section-1-agent-loop/](section-1-agent-loop/README.md) | The simple question, the confident wrong answer, unbounded rows | 0:47-1:22 |
+| Section 2: Verification loop | [section-2-verification-loop/](section-2-verification-loop/README.md) | Malicious SQL, the retry cap, every grader passes, still wrong | 1:22-1:55 |
+| Section 3: Event loop | [section-3-event-loop/](section-3-event-loop/README.md) | The webhook question, the approval across a restart, duplicates, the kill switch | 2:05-2:48 |
+| Section 4: Hill-climbing loop | [section-4-hill-climbing-loop/](section-4-hill-climbing-loop/README.md) | Baseline and candidate experiments, the analyzer team, the gate, the last run | 3:03-3:38 |
 
-Before Section 1, the problem statement runs 0:05-0:17, the foundations 0:17-0:30, and the design
-segment, Designing text-to-SQL, 0:30-0:40; there are two breaks, 1:50-2:00 and 2:53-3:03. The minute-by-minute plan is in the [instructor guide](docs/instructor-guide.md); every live demo, step by step, is in [guide/](guide/README.md).
+Before Section 1: the opening 0:00-0:13, the problem statement 0:13-0:37, and Designing
+text-to-SQL 0:37-0:47; two breaks, 1:55-2:05 and 2:53-3:03; the closing 3:38-4:00. The minute-by-minute plan is in the [instructor guide](docs/instructor-guide.md); every live demo, step by step, is in [guide/](guide/README.md).
 
 ### What you build
 

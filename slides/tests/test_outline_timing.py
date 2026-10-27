@@ -80,10 +80,12 @@ def test_the_outline_builds_under_one_rule_set():
 
 def test_every_slide_minutes_add_up_to_the_class_length():
     """Every slide has time, except the sources slides: a bibliography, not presented, which the
-    owner's specification of 27 October 2026 gives zero minutes."""
+    owner's specification of 27 October 2026 gives zero minutes (design system 3's references
+    tables, the same decision under that design system's name for them)."""
     slides = [s for name in outline_builder.block_order() for s in outline_builder.load(name)]
-    assert all(s["minutes"] > 0 for s in slides if s["kind"] != "sources"), "every slide has time"
-    assert all(s["minutes"] == 0 for s in slides if s["kind"] == "sources")
+    listing = ("sources", "references")
+    assert all(s["minutes"] > 0 for s in slides if s["kind"] not in listing), "every slide has time"
+    assert all(s["minutes"] == 0 for s in slides if s["kind"] in listing)
     assert sum(s["minutes"] for s in slides) == CLASS_MINUTES
 
 

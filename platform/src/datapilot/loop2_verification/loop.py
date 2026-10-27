@@ -345,19 +345,24 @@ class VerificationLoop:
                     attempts=attempt,
                 )
             if failure is None:
-                verdict = await self._review(envelope, result)
+                reviewed, verdict = await self._review(envelope, result)
                 if verdict is not None and verdict.outcome is ReviewOutcome.CONCERN:
                     if not concern_fed_back and attempt_allowed(attempt + 1, self._cap):
                         concern_fed_back = True
                         payload = self._feedback("The reviewer raised a concern", verdict.reasons)
                         attempt = self._retry(attempt)
                         continue
-                    return self._held(envelope, verdict, attempt)
+                    reason = "the reviewer's concern persists: " + "; ".join(verdict.reasons)
+                    return self._held(envelope, verdict, attempt, reason)
                 if self.guard.stop_reason is not None:
                     # A stop seen during the review ends the run as on the retry path below: a
                     # kill switch stop is blocked by the kill switch, not escalated, so it never
                     # counts toward the demotion after consecutive escalations.
                     return self._stopped_while_verifying(envelope, attempt)
+                if reviewed and verdict is None:
+                    # Fail closed (owner's decision, 27 October 2026): a reviewer that ran and gave
+                    # no verdict never counts as an approval, so the answer waits for a person.
+                    return self._held(envelope, None, attempt, "the reviewer gave no verdict")
                 return self._outcome(
                     RunStatus.ANSWERED, envelope=envelope, verdict=verdict, attempts=attempt
                 )
@@ -426,11 +431,12 @@ class VerificationLoop:
 
     async def _review(
         self, envelope: AnswerEnvelope, result: QueryResult | None
-    ) -> ReviewVerdict | None:
+    ) -> tuple[bool, ReviewVerdict | None]:
+        """Whether the reviewer ran, and its verdict (None when it ran and gave none)."""
         if not self.s.limits.reviewer_enabled or result is None or not envelope.final_sql:
-            return None
+            return False, None
         if self.guard.check() is not None:
-            return None
+            return False, None
         reviewer = Reviewer(self.s.models, middleware=self.guarded)
         verdict = await reviewer.review(
             self.request.question,
@@ -444,7 +450,11 @@ class VerificationLoop:
                 RunEventKind.REVIEWER_VERDICT,
                 {"outcome": verdict.outcome.value, "reasons": verdict.reasons},
             )
-        return verdict
+        elif self.guard.stop_reason is None:
+            self.hooks.event(
+                RunEventKind.REVIEWER_VERDICT, {"outcome": "no verdict", "reasons": []}
+            )
+        return True, verdict
 
     # --- outcomes ------------------------------------------------------------------------------
     def _outcome(self, status: RunStatus, **kwargs: Any) -> RunOutcome:
@@ -490,11 +500,13 @@ class VerificationLoop:
         )
         return self._outcome(RunStatus.AWAITING_APPROVAL, approval=approval, attempts=attempt)
 
-    def _held(self, envelope: AnswerEnvelope, verdict: ReviewVerdict, attempt: int) -> RunOutcome:
+    def _held(
+        self, envelope: AnswerEnvelope, verdict: ReviewVerdict | None, attempt: int, reason: str
+    ) -> RunOutcome:
         approval = ApprovalRequest(
             kind="held_answer",
             action=f"post the answer: {envelope.answer_text}",
-            reason="the reviewer's concern persists: " + "; ".join(verdict.reasons),
+            reason=reason,
             sql=envelope.final_sql,
             row_estimate=envelope.row_count,
         )

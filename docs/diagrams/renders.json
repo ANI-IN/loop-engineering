@@ -2,10 +2,20 @@
   "about": "SHA-256 of each diagram source and of the renders made from it, written by platform/tools/diagrams/export_diagrams.py; do not edit by hand.",
   "excalidraw": "0.18.1",
   "renders": {
+    "data-model": {
+      "source": "b631396a2b9c7c186bb4b2e2400825f8fec26965155df8f1ae9d53fbf37e2686",
+      "svg": "80555b02a0dcffc72038eab2069a7fad599e5cb286e6c2c4c5c705d407dddb1d",
+      "png": "571efd03683f01cf37a100bf1b13111367d38c4c6c875ff6c278594aea588172"
+    },
     "diagram-style": {
       "source": "7bd0858f92de9b909bd8051946594fe39de0f08bcc194322190aff51599480ca",
       "svg": "18ddaff8fe88377fa572455343f271de5d88cee9e613582466be1af81b07b5fc",
       "png": "35e4765de97e8d727f510d7a6760b07ac0e0bc64b39b3b8f36e9a9a9fd745d00"
+    },
+    "four-gaps": {
+      "source": "35b717b551d569c36f5246c19c1b6b02bcd8ed5127be9f74e75641c43bbc49d9",
+      "svg": "9f40dc0b7345166231b3707f1872ca5370ce126e3f9ec719ea90c0474e033892",
+      "png": "36408b2bd805569eac805a0ed91fc134127230f08ff3f13d775707c77d05f590"
     },
     "four-loops": {
       "source": "1a95fc1f5aa2cdfdb12d0c658b02fffd1688afcbd2ecd53725cccbe17d2dd814",
@@ -16,6 +26,11 @@
       "source": "8b9a894ad80bb843818e09ad8d4bb1955b0d78855896a040ceae71b794dc7444",
       "svg": "c96a2e3a00431885fde1e4b7f206019dea293836624ec451d6131e0d151e8bd8",
       "png": "058f724066d8a10744909d0b822649be73bc107ceeecc67760cabd1824840eef"
+    },
+    "four-loops-concept": {
+      "source": "1b9abbaaab42bfccf8c5aeeb6ef39e3f1882cea77717430028d460259c623ddd",
+      "svg": "78f7210cf9955c2fe7369711419cd6704b96405ba2051a91e0200ddbc98515dc",
+      "png": "91db5eca371735c9a7cd9bc55249749336d0ebb2dfa009927fef0acea40e14ab"
     },
     "four-loops-event-loop": {
       "source": "a44008f6238eaa6de37d5d9552eeecea3b4e97ee112935a93ed2c71aa3d5b716",
@@ -57,6 +72,21 @@
       "svg": "f26bb7274987711cdc5318ffb73a1fa8c7debe23c5c26674e259b737edb90206",
       "png": "10f07a5224f2694d114f50dd1e82c0a3768455a5402ed633ef71160a6128e27a"
     },
+    "how-we-measure": {
+      "source": "4052e0cf2d895c97fb721dea506294461db2f48ac55d65e022783db77a47e57c",
+      "svg": "6357b38c09ab1238d6da696fd279ec9ce9e333f7f716c4f55cb5535d40bcdbe0",
+      "png": "d3bf4d52466927954a5375c4bd3251ab8a5675e45cedda02cd2ac1de090c305b"
+    },
+    "recap-harness": {
+      "source": "ae88c7d811eb281fb0f00fde36e0535e19b415f349832b011b5dfffc7356eaf8",
+      "svg": "27334d634dcc6e07174a872d0c2cd6543e8c067ce033785e16c9d7b8de38240f",
+      "png": "3d7fe5f55c06ee8ee38c30a84da8f6d43b4e8bff75d836216ef927673b599147"
+    },
+    "recap-loops": {
+      "source": "17bac94ccab5c44629c2daec362bcd69f9b40a0b0b21c8dee476655786243267",
+      "svg": "5b8c61a84481a37faab6872b72b9369463c871e80c99e5e7beb5066a12b96310",
+      "png": "869cba1db0cad45b65bf034fdcf6a5c561bd76441e990d63d54792fbf711b4c8"
+    },
     "run-lifecycle": {
       "source": "e9083f3147c23434d12b937793faf3cc64d4e24c781e0537afb4663d8815b8f1",
       "svg": "6195b1669d5b23288c5035b27c9b309ddea2b7945bfb9a1b9431e144bade8457",
@@ -72,6 +102,11 @@
       "svg": "8446f9695146ec135f4b6042a672ba51106fadc42cc49af7698f08b938ad0c8e",
       "png": "271b48f9907f3d49a3127a7c547ef3f9a59ad50b0f22a0095f399ec045bd9628"
     },
+    "text-to-sql-architecture-concept": {
+      "source": "7315e253bd0b98f031943b42e96e159866a0dd2d20501bf933879785fa2faf1c",
+      "svg": "672426fda2603bc803948b2b380bd493cb8cb38af88f783f2708ec88c3a7d93a",
+      "png": "6767a757e526625c9ea14d7c8e6c7f10dba40bcee5880991053fa42866b8ef1d"
+    },
     "text-to-sql-architecture-generic": {
       "source": "f1222843436a6d7615042a5ad81f20c986db79b22f507d7867a0d0c72134ddf7",
       "svg": "547f30e2c987aba8cb5d602235efcbbf29b4f1bcf7afd8b8bad799566b7c8523",
@@ -81,6 +116,11 @@
       "source": "3ca2474294a02cfc7042a96b9e579afa7fb72da4e8a2b4e11ad60fe2fd1112ef",
       "svg": "95351b7c86ef1fbd651c7d997e619dc6211354e217249c678f0e9365747a889a",
       "png": "1f31a5c4e5052822a5a355e12f51548c0b9286183781bbe6ea0362668e1c22bb"
+    },
+    "what-we-build": {
+      "source": "d9198c92d2dd9f35929c6d9f968ef4c477325a47e30033705b98cc03fce178b4",
+      "svg": "63668e57ca5033a7ca9f1eb3ef350e5ec1dc6ebebdfcc8352e6b05fae804bc8f",
+      "png": "ecaa3459f88661aefcbc5b9999d15fa5fb467e3a79b27bcbcf5c6fcdc17cc98a"
     }
   }
 }

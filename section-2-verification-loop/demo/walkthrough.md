@@ -109,10 +109,10 @@ prefix check passes. With the naive guard (`BUG_NAIVE_GUARD`) on, a `startswith`
 both the parse and the statement policy graders, and only the read-only transaction and the role's
 grants are left to refuse the write.
 
-### platform/src/datapilot/loop2_verification/loop.py, lines 364-369
+### platform/src/datapilot/loop2_verification/loop.py, lines 369-374
 
 ```python
-# platform/src/datapilot/loop2_verification/loop.py (lines 364-369)
+# platform/src/datapilot/loop2_verification/loop.py (lines 369-374)
             reasons = [f"{failure.grader}: {failure.reason}"]
             if not attempt_allowed(attempt + 1, self._cap):
                 reasons.append(f"retry cap reached after {attempt} attempts")

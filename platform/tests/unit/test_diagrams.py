@@ -103,8 +103,10 @@ def test_every_svg_embeds_its_font(sources: list[Path]) -> None:
 # canvas (a panel of 12 by 5.3 inches), then on 1920 by 791 once the real panel was measured;
 # before it every diagram was a 1920 by 1080 panel with labels of 20 pixels or more. The second
 # deck rebuild of 27 October 2026 added the pattern diagram, 1920 by 540, the shape of a pattern
-# slide's panel of 12.13 by 3.41 inches, with the same 40-pixel labels.
-MIN_LABEL = {791: 40, 540: 40, 1080: 20}
+# slide's panel of 12.13 by 3.41 inches, with the same 40-pixel labels. The third deck rebuild
+# (design system 3, 27 October 2026) added the concept diagram, 1920 by 712, the shape of a
+# concept slide's panel of 12.13 by 4.5 inches, with the same 40-pixel labels.
+MIN_LABEL = {791: 40, 712: 40, 540: 40, 1080: 20}
 
 
 def test_every_diagram_is_a_slide_pattern_or_page_panel_with_labels_of_its_minimum_size(
@@ -301,6 +303,13 @@ PATTERNS = [
     "pattern-dev-holdout",
     "pattern-goodhart",
     "pattern-promotion-gate",
+    # The third deck rebuild (27 October 2026) adds one per technique where none fitted.
+    "pattern-row-cap",
+    "pattern-stops-envelope",
+    "pattern-value-lookup",
+    "pattern-judge-two-databases",
+    "pattern-agents-propose",
+    "pattern-autonomy-per-family",
 ]
 
 

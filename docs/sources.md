@@ -1,15 +1,19 @@
 # Sources
 
 Every verified outside source behind the course, with the course's own evidence pages at the end:
-118 sources. The class slides and their speaker notes cite 82 of them, numbered as here, and the
-rest support the course's pages. A slide marks a sourced claim with a small number, such as [16];
-that number is the entry here. Many titles name Structured Query Language (SQL), a large language model
+120 sources. The numbers on this page are stable: an entry keeps its number. The class slides and
+their speaker notes cite 24 of these sources, and the rest support the course's pages. The deck
+numbers its 24 in its own order, not by this page's numbers: 1 to 24, in the order the deck first
+cites each one, and its two references tables at the end give each one's title and link. A slide
+marks a sourced claim with the deck's number: [3] on a slide is the deck's third source, The Art of
+Loop Engineering, which is [1] on this page. To find a deck source here, look up its title.
+Many titles name Structured Query Language (SQL), a large language model
 (LLM), artificial intelligence (AI), or an application programming interface (API).
 
 Each entry gives the title, the authors or the organisation, the year (or "undated" when the page
 carries no date), the full address, and what the course uses it for. Sources [1] to [54] were
-opened and read on 26 October 2026, and [55] to [118], the named patterns and their equivalents in
-other stacks, on 27 October 2026. The pages of the OWASP Gen AI Security Project, [66] to [69],
+opened and read on 26 October 2026; [55] to [118], the named patterns and their equivalents in
+other stacks, and [119] and [120], the trace limit and the spend limit, on 27 October 2026. The pages of the OWASP Gen AI Security Project, [66] to [69],
 answered 200 on 27 October 2026, with every quote the course uses, but they may answer a script
 with a browser check (403), which a link checker reports as refused. A benchmark figure keeps
 the form its source publishes, with its condition; course numbers are counts and come from the
@@ -79,7 +83,7 @@ evidence pages in the last group.
 
 - <a id="source-16"></a>**[16]** Can LLM Already Serve as A Database Interface? A BIg Bench for
   Large-Scale Database Grounded Text-to-SQLs (BIRD). Jinyang Li and others, 2023.
-  <https://arxiv.org/abs/2305.03111>
+  <https://proceedings.neurips.cc/paper_files/paper/2023/hash/83fc8fab1710363050bbd1d4b8cc0021-Abstract-Datasets_and_Benchmarks.html>
   Used for business knowledge outside the schema, with and without its evidence sentences.
 - <a id="source-17"></a>**[17]** Spider 2.0: Evaluating Language Models on Real-World Enterprise
   Text-to-SQL Workflows. Fangyu Lei and others, 2024. <https://arxiv.org/abs/2411.07763>
@@ -137,7 +141,7 @@ evidence pages in the last group.
 
 ## Products and documentation
 
-- <a id="source-30"></a>**[30]** dbt Semantic Layer. dbt Labs, undated.
+- <a id="source-30"></a>**[30]** dbt Semantic Layer. dbt Labs, 2026 (last updated 29 September 2026).
   <https://docs.getdbt.com/docs/use-dbt-semantic-layer/dbt-sl>
   Used for metrics defined once and shared by every tool, an alternative home for business rules.
 - <a id="source-31"></a>**[31]** About MetricFlow. dbt Labs, undated.
@@ -176,7 +180,7 @@ evidence pages in the last group.
   undated.
   <https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-analyst/admin-observability>
   Used for logging every request so the semantic model can be refined.
-- <a id="source-42"></a>**[42]** Genie. Databricks documentation, undated.
+- <a id="source-42"></a>**[42]** Genie. Databricks documentation, 2026 (last updated 18 September 2026).
   <https://docs.databricks.com/aws/en/genie/>
   Used for the Genie product family and its Genie Agents.
 - <a id="source-43"></a>**[43]** Test and monitor a Genie Agent. Databricks documentation, 2026.
@@ -444,6 +448,15 @@ evidence pages in the last group.
 - <a id="source-118"></a>**[118]** How is ChatGPT's behavior changing over time? Lingjiao Chen,
   Matei Zaharia, James Zou, 2023. <https://arxiv.org/abs/2307.09009>
   Used for one model's behaviour changing behind the same name, and the need to monitor.
+- <a id="source-119"></a>**[119]** Usage and billing. LangSmith
+  documentation, LangChain, undated (read 27 October 2026).
+  <https://docs.langchain.com/langsmith/usage-and-billing>
+  Used for the free Developer plan's 5,000 traces a month, after which uploads are refused until
+  the next month.
+- <a id="source-120"></a>**[120]** Spend limits. OpenAI application programming interface (API)
+  documentation, undated (read 27 October 2026).
+  <https://developers.openai.com/api/docs/guides/spend-limits>
+  Used for a project's hard spend limit, which refuses calls once the configured amount is spent.
 
 ## The course's own evidence
 

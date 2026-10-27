@@ -332,6 +332,17 @@ def test_the_gate_waits_for_human_approval() -> None:
     assert decision.sentence.startswith("Ready for human approval")
 
 
+@pytest.mark.parametrize("name", ["", "  ", "console", "Console"])
+def test_the_gate_refuses_an_empty_approver_or_console(name: str) -> None:
+    """Owner's decision, 27 October 2026: the approval needs a person's name; "console", which the
+    console recorded for every approval before, approves nothing."""
+    active, candidate = _pair({"h1": False, "h2": False}, {"h1": True, "h2": True})
+    decision = decide(active, candidate, Regressions(), approved_by=name)
+    assert decision.verdict == "blocked" and decision.ready_for_approval
+    assert decision.approved_by is None
+    assert "fail: human approval needs a person's name" in decision.reasons
+
+
 def test_the_gate_blocks_regressions_even_with_more_holdout_passes() -> None:
     active, candidate = _pair({"h1": False, "h2": False}, {"h1": True, "h2": True})
     decision = decide(active, candidate, Regressions(dev=["d1"]), approved_by="instructor")

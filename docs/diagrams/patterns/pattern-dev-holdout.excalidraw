@@ -336,9 +336,9 @@
       "id": "pattern-dev-holdout-line-9",
       "type": "line",
       "x": 1015,
-      "y": 20,
+      "y": 30,
       "width": 0,
-      "height": 500,
+      "height": 480,
       "angle": 0,
       "strokeColor": "#212121",
       "backgroundColor": "transparent",
@@ -366,7 +366,7 @@
         ],
         [
           0,
-          500
+          480
         ]
       ],
       "lastCommittedPoint": null,
@@ -379,7 +379,7 @@
       "id": "pattern-dev-holdout-text-10",
       "type": "text",
       "x": 1060,
-      "y": 20,
+      "y": 30,
       "width": 472.11,
       "height": 50,
       "angle": 0,

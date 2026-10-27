@@ -748,8 +748,30 @@ def test_a_draft_knowledge_version_can_be_approved(client) -> None:
     try:
         approved = client.post("/knowledge/loops-draft/approve", json={"approved_by": "owner"})
         assert approved.json()["status"] == "approved"
-        assert client.post("/knowledge/loops-draft/approve", json={}).status_code == 409
-        assert client.post("/knowledge/no-such/approve", json={}).status_code == 404
+        again = client.post("/knowledge/loops-draft/approve", json={"approved_by": "owner"})
+        assert again.status_code == 409
+        missing = client.post("/knowledge/no-such/approve", json={"approved_by": "owner"})
+        assert missing.status_code == 404
+    finally:
+        execute("DELETE FROM ops.knowledge_versions WHERE version = 'loops-draft'")
+
+
+def test_a_knowledge_approval_without_a_persons_name_is_refused(client) -> None:
+    """Owner's decision, 27 October 2026: an empty name or "console" is refused (422) and the
+    draft stays a draft."""
+    execute(
+        "INSERT INTO ops.knowledge_versions (version, yaml, created_by) "
+        "VALUES ('loops-draft', 'version: loops-draft', 'test')"
+    )
+    try:
+        for body in ({}, {"approved_by": ""}, {"approved_by": "console"}):
+            assert client.post("/knowledge/loops-draft/approve", json=body).status_code == 422
+        with db.connect(db.Role.OWNER) as conn:
+            row = conn.execute(
+                "SELECT status, approved_by FROM ops.knowledge_versions "
+                "WHERE version = 'loops-draft'"
+            ).fetchone()
+        assert row is not None and row["status"] == "draft" and row["approved_by"] is None
     finally:
         execute("DELETE FROM ops.knowledge_versions WHERE version = 'loops-draft'")
 

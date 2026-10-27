@@ -4,7 +4,8 @@ This folder holds the diagrams that more than one page uses: the diagram style, 
 the four loops as one system (with one variant per section), the text-to-Structured Query Language
 (SQL) reference architecture, the run lifecycle, and the warehouse data model. The four-loop map
 and the reference architecture also come in a version that names each part by its job, with no
-part of DataPilot, for the deck. Each section has
+part of DataPilot, for the deck, and the concept diagrams draw the class's opening ideas, from
+the recap to how each loop is measured, for the deck's concept slides. Each section has
 its own `diagrams/` folder for the diagram of its loop.
 
 ## How to read these files
@@ -17,10 +18,13 @@ Every diagram has three files with the same name:
 | `.svg` | A render with the font embedded, for pages on GitHub |
 | `.png` | A render at 2x scale, for pages and anyone who needs a picture |
 
-There are three panel sizes. A slide diagram is 1920 by 791, the shape of the slide's diagram
-panel (12.13 by 5.0 inches), and its PNG is 3840 by 1582. A pattern diagram is 1920 by 540, the
+There are four panel sizes. A slide diagram is 1920 by 791, the shape of the slide's diagram
+panel (12.13 by 5.0 inches), and its PNG is 3840 by 1582. A concept diagram is 1920 by 712, the
+shape of a concept slide's panel (12.13 by 4.5 inches), with the same labels of 40 pixels or
+more, and its PNG is 3840 by 1424; the eight concept diagrams are listed under
+[The concept diagrams](#the-concept-diagrams). A pattern diagram is 1920 by 540, the
 shape of a pattern slide's panel (12.13 by 3.41 inches), with the same labels of 40 pixels or
-more, and its PNG is 3840 by 1080; the sixteen pattern diagrams are in
+more, and its PNG is 3840 by 1080; the twenty-two pattern diagrams are in
 [`patterns/`](patterns/README.md), with their own fill rule: a pattern belongs to no single loop,
 so they use the neutral fills only. The three reference diagrams that are too dense for a slide
 (the system, the run lifecycle, and the warehouse data model) are 1920 by 1080 page diagrams, and
@@ -52,6 +56,7 @@ Every diagram is drawn from `platform/tools/diagrams/scene.py` with these values
 | Code font is for | Tool names, endpoints, and columns |
 | Text colour | `#212121` on every fill |
 | Label size, slide diagram | 40 pixels or more on 1920 by 791: 18.2 points on the 12.13-inch panel |
+| Label size, concept diagram | 40 pixels or more on 1920 by 712: 18.2 points on the 12.13-inch panel |
 | Label size, pattern diagram | 40 pixels or more on 1920 by 540: 18.2 points on the 12.13-inch panel |
 | Label size, page diagram | 20 pixels or more on the 1920 by 1080 panel |
 | Line height | 1.25 |
@@ -269,6 +274,117 @@ three muted (white, with a blue-grey outline), every label still readable:
   `platform/packs/datapilot_us/benchmark/business_rules.md`; the personal-data columns in
   `platform/packs/datapilot_us/pack.yaml`.
 
+## The concept diagrams
+
+Eight diagrams on the 1920 by 712 concept panel, for the deck's concept slides, in the order the
+class shows them. Each is drawn in `platform/tools/diagrams/definitions.py`, in the functions of
+section 10, whose docstrings name the files each fact comes from. The embed snippet of each is
+its image line and caption with the path `diagrams/<name>.svg`, as for the diagrams above.
+
+### The recap: harness engineering
+
+![Harness engineering, the previous module: one agent run, the same model calling its tools, with four layers around it, each with an arrow into the run: instructions, what it knows; state, what it remembers; scope, what it may change; and verification, what proves it is done](./recap-harness.svg)
+
+*Notice that the model in the middle never changes: each layer changes only what reaches one run.*
+
+- **What it teaches**: what the previous module built, so this one can start from it.
+- **Slide topic**: the first recap slide of the opening.
+- **Files**: `recap-harness`.
+- **Source**: the previous module's four layers, in its own words.
+
+### The recap: Loop Engineering
+
+![Loop Engineering: the system over time, many runs, events that arrive at any hour, and rules that change, with the same model in every run; around it the four loops, each with an arrow into the system: the agent loop, what the agent sees; the verification loop, what checks the answer; the event loop, what runs unattended; and the hill-climbing loop, measured improvement](./recap-loops.svg)
+
+*Notice that the picture has the same shape as the recap of harness engineering, but the middle is no longer one run: it is every run, every event, and every change.*
+
+- **What it teaches**: the step from one trustworthy run to a trustworthy system.
+- **Slide topic**: the second recap slide of the opening.
+- **Files**: `recap-loops`.
+- **Source in the code**: the four loops as the root `README.md` and `docs/architecture.md` name
+  them.
+
+### What we are building
+
+![DataPilot for Harbor & Pine Outfitters: who asks, finance, sales, operations, and marketing; how they ask, through the console, webhooks, and a daily digest; DataPilot, the analyst agent with its four loops, the agent loop, the verification loop, the event loop, and the hill-climbing loop, reading a read-only warehouse; and what it must give back, answers that are right, safe, unattended, and improving](./what-we-build.svg)
+
+*Notice that the agent is one box: everything else on the page is who asks, how the question arrives, what the agent may read, and what its answer must be.*
+
+- **What it teaches**: the system the class builds, before any loop is explained.
+- **Slide topic**: the problem statement, "What are we building?".
+- **Files**: `what-we-build`.
+- **Source in the code**: the services table of the root `README.md` (the console, the webhook
+  through `POST /events`, the scheduler's digest at 8 a.m. Eastern time);
+  `docs/architecture.md` (the analyst and the four loops); `platform/ops/sql/roles.sql` (the
+  read-only role).
+
+### The four critical gaps
+
+![Four rows of story, cause, and loop, each story named by its day: Tuesday, 10,000 rows flood the run, because the agent can't see enough, or sees too much, answered by the agent loop; Monday and Tuesday, a wrong number nobody checks and a hidden DELETE that reaches the database, because nothing checks the answer, answered by the verification loop; Wednesday and Thursday, duplicates, a lost approval, and an ignored stop, because events repeat and processes restart, answered by the event loop; and Friday, a plausible rule breaks nine answers, because changes aren't measured, answered by the hill-climbing loop](./four-gaps.svg)
+
+*Notice that each cause gets exactly one loop; Monday's wrong number needs all four before it is right, and its business rules arrive last, through the hill-climbing loop.*
+
+- **What it teaches**: why the class has four loops and not one.
+- **Slide topic**: "Why we need loops: The four critical gaps", in the problem segment.
+- **Files**: `four-gaps`.
+- **Source**: the week of failures on the problem slides; each loop's section.
+
+### The data model
+
+![Harbor & Pine's warehouse: five tables with their key columns, customers, orders, order_items, products, and categories; arrows join orders to customers, order_items to orders and to products, products to categories, and categories to their parent category; a box gives the business date, 31 January 2026; and a grey box says no column or comment states a business rule: not the fiscal year, net revenue, what status 5 means, Eastern time, or which accounts are internal](./data-model.svg)
+
+*Notice that every column is plain and every join is a key: the rules that make an answer right are nowhere in the schema.*
+
+- **What it teaches**: the warehouse every question runs on, and why reading the schema is not
+  enough.
+- **Slide topic**: "Harbor & Pine: The data model", in the problem segment. The page diagram of
+  the warehouse data model above shows every column and where each trap hides.
+- **Files**: `data-model`.
+- **Source in the code**: `platform/ops/sql/warehouse_schema.sql` (tables, columns, and comments)
+  and `warehouse_indexes.sql` (the keys); `DATAPILOT_BUSINESS_DATE` in `.env.example`;
+  `platform/packs/datapilot_us/benchmark/business_rules.md`.
+
+### How we measure
+
+![Benchmark questions, development or holdout, asked two ways with the same questions, model, and data: without the change, its protection off by a planted bug or the starting version, and with the change, its protection on; repeated runs on each side; every run checked against gold results on two databases, or by the forced failure seen; and the results read as counts per side, not rates](./how-we-measure.svg)
+
+*Notice that the two sides differ in one thing only, the change, and that the same check decides both: gold results where a gold answer exists, the forced failure where one is planted.*
+
+- **What it teaches**: how every claim the class makes about a loop is measured.
+- **Slide topic**: "How we'll measure", in the problem segment.
+- **Files**: `how-we-measure`.
+- **Source in the code**: `docs/benefits.md` (the paired runs, the planted bugs, the gold check on
+  `warehouse` and `warehouse_alt`, 2 or 3 runs a question); `docs/calibration-report.md`,
+  "Setup" (holdout items 3 runs each, passing on 2 of 3);
+  `platform/packs/datapilot_us/benchmark/` (the development and holdout questions).
+
+### The text-to-SQL reference architecture on a concept slide
+
+![The text-to-SQL reference architecture in nine stages, each box its job in two lines and its loop's name on a white tag: question routing, where fixed code sends the question to its path, event loop; schema linking, which finds the tables and columns needed, agent loop; business knowledge, rules versioned and tested, hill-climbing loop; value lookup, which matches words to stored values, agent loop; query generation, where a model writes the query, agent loop; validation by syntax tree, cost, and personal data, verification loop; capped execution with a read-only role and a row cap, verification loop; an answer that is reviewed, states its assumptions, or asks back, verification loop; and evaluation, which matches gold answers on two databases and sends failures back to the business knowledge, hill-climbing loop](./text-to-sql-architecture-concept.svg)
+
+*Notice that each stage is named by its job and its loop, so you can check your own system one stage at a time.*
+
+- **What it teaches**: the same as the reference architecture by job, above.
+- **Slide topic**: "Text-to-SQL: The nine-stage reference architecture", in the design segment.
+- **Files**: `text-to-sql-architecture-concept`.
+- **Source in the code**: the same as the reference architecture by job, with every stage, place,
+  and arrow kept.
+
+### The four loops on a concept slide
+
+![The four loops nested, each part named by its job: in the agent loop, a model answers with tools, code stops it, and it reads the promoted rules; in the verification loop, layered checks, then a person decides a doubtful answer; in the event loop, events arrive, each is keyed once and queued with leases, a kill switch read before every step points at the model, and each answer posts or is held for a person, then waits for human approval; beside them the hill-climbing loop, where failures on a benchmark lead agents to propose rules, the rules are judged on unseen questions, and a person promotes them into the promoted rules the model reads](./four-loops-concept.svg)
+
+*Notice that the kill switch points at the model, not the queue, because it is read before every step, and that promoted rules arrive inside the agent loop.*
+
+- **What it teaches**: the same as the four loops by role, above.
+- **Slide topic**: "The loops in one picture", in the closing.
+- **Files**: `four-loops-concept`.
+- **Source in the code**: the same parts as the four loops by role. Review round 2 replaced the
+  long "promoted rules" arrow with a promoted-rules store inside the agent loop, and put the hold
+  before human approval, the order of Section 3: Event loop. Review round 3 points the kill
+  switch at the model, read before every step (`loop3_events/killswitch.py`, checked at claim,
+  before every model call, and before every tool call).
+
 ## How the renders are made
 
 The renders are made at authoring time only. Learners never run the export, the renders are
@@ -291,8 +407,9 @@ committed, and nothing in the app or the learner's setup uses Node.
 3. The script writes `<name>.svg` and `<name>.png` beside the source, and records the SHA-256 of
    the source and of both renders in the folder's `renders.json`. Renders are deterministic: the
    same source gives the same bytes.
-4. It also exports each slide diagram and each pattern diagram for the deck, without step frames:
-   a PNG at scale 3 (5760 by 2373 for a slide diagram, 5760 by 1620 for a pattern diagram) with a
+4. It also exports each slide diagram, each concept diagram, and each pattern diagram for the
+   deck, without step frames: a PNG at scale 3 (5760 by 2373 for a slide diagram, 5760 by 2136
+   for a concept diagram, 5760 by 1620 for a pattern diagram) with a
    transparent background, the panel's fill left out so the slide's own
    light panel shows through. These exports belong to the deck, which is private and not part of
    this module.

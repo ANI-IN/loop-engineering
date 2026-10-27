@@ -110,10 +110,11 @@ development split against the session's baseline, then more development items pa
 rules. The holdout split never takes part in the choice, so it still measures questions no decision
 was tuned on. The Improve page shows both candidates and the one kept above the knowledge diff.
 
-### platform/src/datapilot/loop4_hill_climbing/gate.py, lines 117-135
+### platform/src/datapilot/loop4_hill_climbing/gate.py, lines 119-137
 
 ```python
-# platform/src/datapilot/loop4_hill_climbing/gate.py (lines 117-135)
+# platform/src/datapilot/loop4_hill_climbing/gate.py (lines 119-137)
+    approved_by = approver_name(given)
     a, c = active.passes(Split.HOLDOUT), candidate.passes(Split.HOLDOUT)
     total = candidate.total(Split.HOLDOUT)
     better = c > a
@@ -126,8 +127,7 @@ was tuned on. The Improve page shows both candidates and the one kept above the 
         f"{'pass' if not regressions.holdout else 'fail'}: holdout regressions "
         f"{len(regressions.holdout)}"
         + (f" ({', '.join(regressions.holdout)})" if regressions.holdout else ""),
-        f"{'pass' if approved_by else 'fail'}: human approval"
-        + (f" by {approved_by}" if approved_by else " not given yet"),
+        approval_reason(approved_by, given),
         f"{'pass' if not overfit_flags else 'fail'}: overfit guard on the new rules"
         + (f" ({', '.join(overfit_flags)})" if overfit_flags else ""),
     ]
@@ -143,7 +143,9 @@ always against this session's baseline. The runner records that baseline when th
 (`store.record_gate_baseline` in `runner.py`), and a promotion after a later approval decides on the
 same experiment. The over-broad rule is blocked by `clean`. The naive analyzer's version is blocked
 by `overfit_flags` whatever its holdout count, because the guard rejects every rule that quotes a
-question.
+question. The first line keeps only a person's name: `approver_name` turns an empty name or
+"console" into no approval, so the gate waits; a production system takes the signed-in person's
+identity instead of a typed name.
 
 ### platform/src/datapilot/loop4_hill_climbing/eligibility.py, lines 72-80
 

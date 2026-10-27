@@ -237,8 +237,8 @@ class ApiClient:
             ),
         ]
 
-    def approve_version(self, version: str) -> contract.KnowledgeApproved:
-        request = contract.KnowledgeApprovalIn(approved_by="console")
+    def approve_version(self, version: str, approver: str) -> contract.KnowledgeApproved:
+        request = contract.KnowledgeApprovalIn(approved_by=approver)
         path = f"/knowledge/{version}/approve"
         return self._call("POST", path, contract.KnowledgeApproved, request)
 

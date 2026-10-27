@@ -75,7 +75,7 @@ def test_the_console_actions_send_and_read_contract_models(console_client: ApiCl
     with pytest.raises(ApiError, match="The api refused the request \\(409\\)"):
         console_client.decide(str(asked.run_id), "approve")  # not awaiting approval
     with pytest.raises(ApiError, match="404"):
-        console_client.approve_version("no-such-version")
+        console_client.approve_version("no-such-version", "Priya")
 
 
 WEBHOOK_BUTTON = "Events > Send webhook question"

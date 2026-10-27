@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import ast
 
+import pytest
 from fastapi.routing import APIRoute
+from pydantic import ValidationError
 
 from datapilot.contracts import api as contract
 from datapilot.loop3_events.api import control, demo, events, improve, runs
@@ -66,3 +68,17 @@ def test_every_model_in_the_table_is_documented_in_the_module() -> None:
         assert entry.response.__name__ in doc
         if entry.request is not None:
             assert entry.request.__name__ in doc
+
+
+@pytest.mark.parametrize("name", ["", "   ", "console", "CONSOLE"])
+def test_a_knowledge_approval_needs_a_persons_name(name: str) -> None:
+    """Owner's decision, 27 October 2026: no default approver; an empty name or "console" is
+    refused before anything is stored (the api answers 422)."""
+    with pytest.raises(ValidationError, match="a person's name"):
+        contract.KnowledgeApprovalIn(approved_by=name)
+    with pytest.raises(ValidationError):
+        contract.KnowledgeApprovalIn()
+
+
+def test_a_knowledge_approval_keeps_the_name_as_given_without_its_spaces() -> None:
+    assert contract.KnowledgeApprovalIn(approved_by=" Priya ").approved_by == "Priya"

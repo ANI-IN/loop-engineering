@@ -195,7 +195,7 @@ def test_each_action_is_one_documented_api_call() -> None:
     client.decide(RUN, "approve")
     client.stop_all()
     client.run_experiment("active", plus_rule="knowledge-v2-overbroad")
-    client.approve_version("v2")
+    client.approve_version("v2", "Priya")
     paths = [(m, p) for m, p, _ in calls]
     assert paths == [
         ("POST", "/events"),

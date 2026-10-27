@@ -51,10 +51,14 @@ the syntax-tree guard, the graders, and the reviewer.
 |---|---|---|
 | Runs answered correctly | 0 of 40 | 0 of 40 |
 | Wrong answers held for approval or escalated | 1 | 20 (17 held, 3 escalated) |
-| Wrong answers that went out unflagged | 39 | 20 (19 approved by the reviewer, 1 released when the reviewer gave no verdict) |
+| Wrong answers that went out unflagged | 39 | 20 (19 approved by the reviewer, 1 with no verdict) |
 | Attempts per run, on average | 1.1 | 1.88 |
 | Tokens per run, on average | 9,311 | 17,344 |
 | Cost of the 40 runs | 0.0361 dollars | 0.0605 dollars |
+
+These runs measured the loop as it was on 24 October 2026, when an answer the reviewer gave no
+verdict on was released (run b95481b8). Since 27 October 2026 the loop fails closed: such an answer is held for
+human approval, as a concern is. The runs were not repeated after that change.
 
 One run of each half of three demos:
 

@@ -447,6 +447,31 @@ def test_a_reviewer_concern_is_fed_back_once_then_holds_for_approval(services_fo
     assert hooks.statuses[-1] == RunStatus.VERIFYING and outcome.attempts == 2
 
 
+def test_a_reviewer_that_gives_no_verdict_holds_the_answer_for_approval(services_for) -> None:
+    """Live, run b95481b8 posted an answer the reviewer gave no verdict on, as if it had approved.
+    The owner's decision of 27 October 2026: no verdict fails closed, so the answer waits for a
+    person."""
+
+    def no_verdict(messages: Sequence[BaseMessage]) -> AIMessage:
+        return AIMessage("I cannot tell.", usage_metadata=usage(300, 20))
+
+    script = query_then_answer(COUNT_SQL, "There are 2000 orders.")
+    services = services_for({"analyst": script, "reviewer": no_verdict}, reviewer=True)
+    hooks = ListHooks()
+    outcome = run(VerificationLoop(services, hooks), request())
+    assert outcome.status is RunStatus.AWAITING_APPROVAL and outcome.verdict is None
+    assert outcome.approval and outcome.approval.kind == "held_answer"
+    assert outcome.approval.reason == "the reviewer gave no verdict"
+    assert hooks.kinds("reviewer_verdict")[0]["outcome"] == "no verdict"
+
+
+def test_a_run_without_the_reviewer_is_answered_without_a_verdict(services_for) -> None:
+    script = query_then_answer(COUNT_SQL, "There are 2000 orders.")
+    services = services_for({"analyst": script}, reviewer=False)
+    outcome = run(VerificationLoop(services, ListHooks()), request())
+    assert outcome.status is RunStatus.ANSWERED and outcome.verdict is None
+
+
 def test_a_resumed_run_keeps_its_attempt_and_the_reviewers_one_concern(services_for) -> None:
     """Live, every reviewer concern after an approval sent the analyst back to rewrite the export,
     and each rewrite was held again, to about 110,000 tokens: a resume started the concern count

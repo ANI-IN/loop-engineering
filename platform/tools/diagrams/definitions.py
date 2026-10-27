@@ -1,7 +1,9 @@
 """The course diagrams, written as code so every label can be traced to the file it comes from.
 
 Each function builds one scene. A slide diagram is a 1920 by 791 panel with labels of 40 pixels or
-more (18 points on the deck's diagram panel); the pattern diagrams (patterns.py, one per pattern
+more (18 points on the deck's diagram panel); a concept diagram (section 10, the third deck
+rebuild) is a 1920 by 712 panel, the shape of a concept slide's 12.13 by 4.5 inch panel, with the
+same 40-pixel labels; the pattern diagrams (patterns.py, one per pattern
 slide) are 1920 by 540 panels with the same 40-pixel labels; the three dense reference diagrams
 (the system, the run lifecycle, the warehouse data model) are page-only 1920 by 1080 panels with
 labels of 20 pixels or more. `export_diagrams.py --build` measures the labels in the browser,
@@ -24,8 +26,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from patterns import PATTERNS
+from scene import CONCEPT_HEIGHT, MUTED, PAGE_HEIGHT, WHITE, Scene
 from scene import LOOPS as SCENE_LOOPS
-from scene import MUTED, PAGE_HEIGHT, WHITE, Scene
 
 REPO = Path(__file__).resolve().parents[3]
 
@@ -1037,7 +1039,405 @@ def warehouse_data_model() -> Scene:
     return s
 
 
+# --- 10. The concept diagrams of the third deck rebuild (27 October 2026) -----------------------
+# Each is drawn on the concept canvas, 1920 by 712, the shape of a concept slide's 12.13 by 4.5
+# inch panel (slides/design-system.md, "The third rebuild"), with labels of 40 pixels or more.
+
+
+def _around_one_center(s: Scene, layers: list[tuple[str | None, str]]) -> None:
+    """Four boxes at the corners, in reading order, each with an arrow into the centre's
+    boundary (580 to 1340 across, 130 to 582 down)."""
+    corners = [(40, 40), (1380, 40), (40, 492), (1380, 492)]
+    for (x, y), (loop, text) in zip(corners, layers, strict=True):
+        s.shape("code", x, y, 500, 180, text, loop=loop)
+    s.loop = None
+    s.arrow([(542, 180), (618, 250)])
+    s.arrow([(1378, 180), (1302, 250)])
+    s.arrow([(542, 532), (618, 462)])
+    s.arrow([(1378, 532), (1302, 462)])
+
+
+def recap_harness() -> Scene:
+    """The previous module's recap (slides/reference, its slides 14 and 70, redrawn in the
+    course's style): harness engineering puts four layers around one agent run, instructions
+    (what it knows), state (what it remembers), scope (what it may change), and verification
+    (what proves it is done), with the same model in the middle."""
+    s = Scene("recap-harness", height=CONCEPT_HEIGHT)
+    s.text(960, 70, "Harness engineering", align="center")
+    s.shape("boundary", 620, 130, 680, 452)
+    s.text(644, 142, "One agent run")
+    s.shape("agent", 650, 230, 330, 200, "The same\nmodel")
+    s.shape("code", 1060, 260, 210, 140, "Tools")
+    s.arrow([(982, 330), (1058, 330)], both=True)
+    s.text(960, 530, "one task, start to done", align="center")
+    _around_one_center(
+        s,
+        [
+            (None, "Instructions:\nwhat it knows"),
+            (None, "State:\nwhat it remembers"),
+            (None, "Scope:\nwhat it may change"),
+            (None, "Verification:\nwhat proves it is done"),
+        ],
+    )
+    return s
+
+
+def recap_loops() -> Scene:
+    """Loop Engineering, the step after the recap: the four loops make the system trustworthy
+    across many runs, events at any hour, and rules that change, with the same model in every
+    run; each loop named with the question it answers (README.md, "Terms on this page";
+    docs/architecture.md, the table of the four loops)."""
+    s = Scene("recap-loops", height=CONCEPT_HEIGHT)
+    s.text(960, 70, "Loop Engineering", align="center")
+    s.shape("boundary", 620, 130, 680, 452)
+    s.text(644, 142, "The system, over time")
+    # Three cards, one behind the other: many runs.
+    s.shape("state", 650, 214, 260, 140)
+    s.shape("state", 668, 232, 260, 140)
+    s.shape("state", 686, 250, 260, 140, "Many runs")
+    s.shape("outside", 1020, 206, 250, 120, "Events at\nany hour")
+    s.shape("store", 1020, 362, 250, 120, "Rules that\nchange")
+    s.arrow([(1018, 266), (948, 296)])
+    s.arrow([(1018, 422), (948, 372)])
+    s.text(960, 535, "The same model in every run", align="center")
+    _around_one_center(
+        s,
+        [
+            ("agent", "Agent loop:\nwhat the agent sees"),
+            ("verification", "Verification loop:\nwhat checks the answer"),
+            ("event", "Event loop:\nwhat runs unattended"),
+            ("hill-climbing", "Hill-climbing loop:\nmeasured improvement"),
+        ],
+    )
+    return s
+
+
+def what_we_build() -> Scene:
+    """DataPilot for Harbor & Pine Outfitters: who asks (the owner's specification: finance,
+    sales, operations, marketing), how (README.md, the services table: the console, webhooks
+    through POST /events, the scheduler's daily digest at 8 a.m. Eastern time), the analyst agent
+    with its four loops (docs/architecture.md), the warehouse it reads through a read-only role
+    (platform/ops/sql/roles.sql), and what every answer must be (the owner's Key idea)."""
+    s = Scene("what-we-build", height=CONCEPT_HEIGHT)
+    s.shape("boundary", 30, 20, 320, 672)
+    s.text(54, 34, "Who asks")
+    who_asks = ("Finance", "Sales", "Operations", "Marketing")
+    for top, who in zip((110, 250, 390, 530), who_asks, strict=True):
+        s.shape("outside", 60, top, 260, 110, who)
+    s.arrow([(352, 375), (408, 375)])
+    s.shape("boundary", 410, 20, 400, 672)
+    s.text(434, 34, "How it asks")
+    how_it_asks = ("The console", "Webhooks", "A daily digest")
+    for top, how in zip((110, 290, 470), how_it_asks, strict=True):
+        s.shape("outside", 440, top, 340, 140, how)
+    s.arrow([(812, 375), (868, 375)])
+    s.shape("boundary", 870, 20, 580, 672)
+    s.text(894, 34, "DataPilot")
+    s.shape("agent", 900, 100, 520, 180, "The analyst\nagent", loop="agent")
+    for top, loop in zip((300, 395, 490, 585), LOOPS, strict=True):
+        s.chip(900, top, 520, 80, loop)
+    s.shape("store", 1520, 40, 360, 200, "Warehouse,\nread-only")
+    s.arrow([(1452, 140), (1518, 140)], both=True)
+    s.shape(
+        "state", 1520, 330, 360, 280, "Answers that are\nright, safe,\nunattended,\nand improving"
+    )
+    s.arrow([(1452, 470), (1518, 470)])
+    return s
+
+
+def four_gaps() -> Scene:
+    """The four critical gaps (the owner's specification, section 3, item 5, drawn like the
+    reference's slide 18): each story of the week of failures, named by its day, its cause, and
+    the one loop that answers the cause, in the loop's colour. Review round 1 (lead ruling 12):
+    Tuesday's rows go to the agent loop; Monday's wrong number and Tuesday's DELETE to the
+    verification loop (Monday's answer needs all four loops, which the slide and its notes say);
+    Wednesday and Thursday to the event loop, whose cause is a cause, not the symptoms; Friday
+    to the hill-climbing loop."""
+    s = Scene("four-gaps", height=CONCEPT_HEIGHT)
+    for x, head in ((430, "Story"), (1080, "Cause"), (1690, "Loop")):
+        s.text(x, 50, head, align="center")
+    s.line([(40, 92), (1880, 92)])
+    rows = [
+        ("Tuesday: 10,000 rows\nflood the run", "Can't see enough,\nor sees too much", "agent"),
+        (
+            "Monday and Tuesday: a wrong number\n"
+            "nobody checks; a hidden DELETE\nreaches the database",
+            "Nothing checks\nthe answer",
+            "verification",
+        ),
+        (
+            "Wednesday and Thursday: duplicates,\na lost approval, an ignored stop",
+            "Events repeat;\nprocesses restart",
+            "event",
+        ),
+        (
+            "Friday: a plausible rule\nbreaks nine answers",
+            "Changes aren't\nmeasured",
+            "hill-climbing",
+        ),
+    ]
+    # Row 2's story takes three lines (review round 3), so the rows are spaced unevenly.
+    for cy, (story, cause, loop) in zip((160, 315, 475, 625), rows, strict=True):
+        s.text(430, cy, story, align="center")
+        s.arrow([(840, cy), (900, cy)])
+        s.text(1080, cy, cause, align="center")
+        s.arrow([(1262, cy), (1498, cy)])
+        s.chip(1500, cy - 50, 380, 100, loop)
+    return s
+
+
+def _key_table(s: Scene, x: float, y: float, w: float, name: str, columns: list[str]) -> None:
+    """A table at 40 pixels: its name in the code font, a rule under it, its key columns."""
+    s.shape(
+        "store",
+        x,
+        y,
+        w,
+        24 + 50 * (len(columns) + 1),
+        "\n".join([name, *columns]),
+        align="left",
+        valign="top",
+        code=True,
+    )
+    s.line([(x + 10, y + 12 + 50 + 2), (x + w - 10, y + 12 + 50 + 2)])
+
+
+def _key_row(y: float, index: int) -> float:
+    """The middle of row `index` of a table drawn at `y` with 40-pixel rows (0 is its name)."""
+    return y + 12 + 50 * (index + 0.5)
+
+
+def data_model() -> Scene:
+    """Harbor & Pine's warehouse for a concept slide: the five tables of
+    platform/ops/sql/warehouse_schema.sql with their key columns, the joins of
+    warehouse_indexes.sql (each foreign key to the key it names, and the categories' parent),
+    the business date (DATAPILOT_BUSINESS_DATE in .env.example; docs/architecture.md), and what
+    no column or comment states (the schema's own header: "business rules live in the knowledge
+    versions, never here"; platform/packs/datapilot_us/benchmark/business_rules.md)."""
+    s = Scene("data-model", height=CONCEPT_HEIGHT)
+    top = 30
+    _key_table(s, 40, top, 400, "customers", ["customer_id", "email", "state", "ccpa_opt_out"])
+    orders = [
+        "order_id",
+        "customer_id",
+        "order_ts",
+        "status",
+        "subtotal_cents",
+        "discount_cents",
+        "total_cents",
+    ]
+    _key_table(s, 520, top, 420, "orders", orders)
+    items = ["order_item_id", "order_id", "product_id", "quantity"]
+    _key_table(s, 1020, top, 400, "order_items", items)
+    _key_table(s, 1500, top, 380, "products", ["product_id", "name", "category_id"])
+    categories_top = 330
+    _key_table(s, 1500, categories_top, 380, "categories", ["category_id", "name", "parent_id"])
+    # Joins: each arrow runs from a column to the key it names.
+    s.arrow(
+        [
+            (518, _key_row(top, 2)),
+            (480, _key_row(top, 2)),
+            (480, _key_row(top, 1)),
+            (442, _key_row(top, 1)),
+        ]
+    )
+    s.arrow(
+        [
+            (1018, _key_row(top, 2)),
+            (980, _key_row(top, 2)),
+            (980, _key_row(top, 1)),
+            (942, _key_row(top, 1)),
+        ]
+    )
+    s.arrow(
+        [
+            (1422, _key_row(top, 3)),
+            (1460, _key_row(top, 3)),
+            (1460, _key_row(top, 1)),
+            (1498, _key_row(top, 1)),
+        ]
+    )
+    s.arrow(
+        [
+            (1882, _key_row(top, 3)),
+            (1904, _key_row(top, 3)),
+            (1904, _key_row(categories_top, 1)),
+            (1882, _key_row(categories_top, 1)),
+        ]
+    )
+    s.arrow(
+        [
+            (1498, _key_row(categories_top, 3)),
+            (1470, _key_row(categories_top, 3)),
+            (1470, _key_row(categories_top, 1)),
+            (1498, _key_row(categories_top, 1)),
+        ]
+    )
+    s.shape("store", 40, 350, 400, 160, "Business date:\n31 January 2026")
+    s.shape(
+        "stop",
+        40,
+        572,
+        1840,
+        124,
+        "No column or comment states a business rule: not the fiscal year, net revenue,\n"
+        "what status 5 means, Eastern time, or which accounts are internal",
+        loop=None,
+    )
+    return s
+
+
+def how_we_measure() -> Scene:
+    """How every loop is measured, as the measurements were made (docs/benefits.md;
+    docs/calibration-report.md, "Setup"; review round 1, lead ruling 13): the same benchmark
+    questions, development and holdout, with and without a change (a loop's protection, or a
+    knowledge version), everything else the same; a planted bug where a failure must be forced;
+    repeated runs (2 or 3 on the comparison rows; holdout items 3 times, passing on 2 of 3);
+    each run checked against the gold answer on both databases, warehouse and warehouse_alt,
+    where a gold answer exists, or by the forced failure seen (posted, held, stopped); the
+    results read as counts per side, not rates."""
+    s = Scene("how-we-measure", height=CONCEPT_HEIGHT)
+    s.shape("store", 40, 236, 400, 240, "Benchmark\nquestions,\ndevelopment\nor holdout")
+    s.shape(
+        "state",
+        540,
+        20,
+        500,
+        210,
+        "Without the change:\nits protection off\n(a planted bug or the\nstarting version)",
+    )
+    s.shape("fence", 540, 270, 500, 170, "Same questions,\nmodel, and data")
+    s.shape("state", 540, 482, 500, 210, "With the change:\nits protection on")
+    s.arrow([(442, 320), (490, 320), (490, 125), (538, 125)])
+    s.arrow([(442, 392), (490, 392), (490, 587), (538, 587)])
+    s.shape(
+        "code",
+        1130,
+        240,
+        460,
+        230,
+        "Check: gold results on\ntwo databases, or the\nforced failure seen",
+    )
+    s.arrow([(1042, 125), (1360, 125), (1360, 238)])
+    s.arrow([(1042, 587), (1360, 587), (1360, 472)])
+    s.text(1070, 50, "repeated runs")
+    s.text(1070, 602, "repeated runs")
+    s.shape("state", 1640, 250, 240, 210, "Counts\nper side,\nnot rates")
+    s.arrow([(1592, 355), (1638, 355)])
+    return s
+
+
+def text_to_sql_architecture_concept() -> Scene:
+    """text_to_sql_architecture_generic on the concept canvas: the same nine stages, places, and
+    arrows (docs/text-to-sql-design.md). Review round 1 (lead ruling 29): each stage's job in two
+    lines, and its loop's name on a white tag under it, so the name reads as a label, not as the
+    stage's text."""
+    s = Scene("text-to-sql-architecture-concept", height=CONCEPT_HEIGHT)
+    stages = [
+        # (loop, column, row, text)
+        ("event", 0, 0, "1 Question routing: fixed\ncode sends it to its path"),
+        ("agent", 1, 0, "2 Schema linking: find the\ntables and columns needed"),
+        ("hill-climbing", 2, 0, "3 Business knowledge:\nrules, versioned, tested"),
+        ("agent", 2, 1, "4 Value lookup: match\nwords to stored values"),
+        ("agent", 1, 1, "5 Query generation: a\nmodel writes the query"),
+        ("verification", 0, 1, "6 Validation: syntax tree,\ncost, personal data"),
+        ("verification", 0, 2, "7 Capped execution: a\nread-only role, a row cap"),
+        ("verification", 1, 2, "8 Answer: reviewed, states\nassumptions, or asks back"),
+        ("hill-climbing", 2, 2, "9 Evaluation: match gold\nanswers on two databases"),
+    ]
+    tag_widths = {"agent": 260, "event": 260, "verification": 400, "hill-climbing": 420}
+    xs, ys, w, h = (40, 670, 1300), (12, 252, 492), 580, 208
+    for loop, col, row, text in stages:
+        x, y = xs[col], ys[row]
+        s.loop = loop
+        s.shape("code", x, y, w, h, text, align="left", valign="top")
+        s.shape("state", x + 20, y + 132, tag_widths[loop], 62, SCENE_LOOPS[loop][0], loop=None)
+    s.loop = None
+    mid = [y + h / 2 for y in ys]
+    s.arrow([(622, mid[0]), (668, mid[0])])
+    s.arrow([(1252, mid[0]), (1298, mid[0])])
+    s.arrow([(1590, ys[0] + h + 2), (1590, ys[1] - 2)])
+    s.arrow([(1298, mid[1]), (1252, mid[1])])
+    s.arrow([(668, mid[1]), (622, mid[1])])
+    s.arrow([(330, ys[1] + h + 2), (330, ys[2] - 2)])
+    s.arrow([(622, mid[2]), (668, mid[2])])
+    s.arrow([(1252, mid[2]), (1298, mid[2])])
+    s.arrow([(1882, mid[2]), (1906, mid[2]), (1906, mid[0]), (1882, mid[0])])
+    return s
+
+
+def four_loops_concept() -> Scene:
+    """four_loops_generic on the concept canvas: the same parts, nesting, and arrows, each part
+    named by its job in any agent system, laid out again in 712 pixels."""
+    s = Scene("four-loops-concept", height=CONCEPT_HEIGHT)
+    # The agent loop, inside the verification loop, inside the event loop.
+    s.loop = "agent"
+    s.shape("boundary", 420, 274, 480, 392)
+    s.chip(440, 286, 250, 60, "agent")
+    s.shape("code", 440, 362, 200, 76, "Tools")
+    s.shape("stop", 440, 456, 200, 106, "Stops in\ncode", loop=None)
+    s.shape("agent", 670, 362, 220, 158, "A model\nanswers")
+    s.arrow([(642, 400), (685, 400)], both=True)
+    s.arrow([(642, 505), (718, 505)])
+    # Review round 2 (lead ruling 2): no line crosses a frame. The rules a person promotes in the
+    # hill-climbing loop arrive in the agent loop as a store the model reads, named in words.
+    s.shape("store", 670, 548, 220, 106, "Promoted\nrules", loop="hill-climbing")
+    s.arrow([(780, 546), (780, 522)])
+
+    s.loop = "verification"
+    s.shape("boundary", 60, 186, 860, 494)
+    s.chip(80, 198, 380, 60, "verification")
+    s.shape("code", 80, 274, 300, 106, "Layered\nchecks")
+    s.arrow([(418, 327), (382, 327)])
+    s.arrow([(240, 382), (240, 474)])
+    s.text(252, 400, "doubtful")
+    s.shape("human", 70, 476, 340, 196, "A person\ndecides", loop=None)
+
+    s.loop = "event"
+    s.shape("boundary", 30, 6, 1300, 700)
+    s.chip(50, 20, 260, 60, "event")
+    s.shape("outside", 340, 20, 240, 106, "Events\narrive")
+    s.arrow([(582, 73), (618, 73)])
+    s.shape("code", 620, 20, 270, 106, "Each event\nkeyed once")
+    s.arrow([(892, 73), (928, 73)])
+    s.shape("store", 930, 20, 370, 106, "Queued, with\nleases")
+    s.arrow([(1040, 128), (1040, 160), (765, 160), (765, 360)])
+    # Review round 3: the kill switch is read before every step, not only when a job is claimed
+    # (a switch read only at claim is the bug of Section 3), so it points at the model. Its arrow
+    # crosses two frames, as the queue's arrow into the model does.
+    s.shape("stop", 940, 168, 360, 104, "Kill switch: read\nbefore every step")
+    s.arrow([(938, 220), (830, 220), (830, 369)])
+    # Post, or hold for a person, then human approval (slide 57's order).
+    s.shape("code", 980, 290, 320, 106, "Post, or hold\nfor a person")
+    s.arrow([(922, 343), (978, 343)])
+    s.arrow([(1140, 398), (1140, 412)])
+    s.shape("human", 980, 414, 320, 186, "Human\napproval")
+
+    s.loop = "hill-climbing"
+    s.shape("boundary", 1360, 6, 530, 700)
+    s.chip(1380, 20, 400, 60, "hill-climbing")
+    s.shape("store", 1390, 92, 470, 106, "Failures on\na benchmark")
+    s.arrow([(1625, 200), (1625, 214)])
+    s.shape("agent", 1390, 216, 470, 138, "Agents propose\nrules")
+    s.arrow([(1625, 356), (1625, 370)])
+    s.shape("code", 1390, 372, 470, 106, "Judged on\nunseen questions")
+    s.arrow([(1625, 480), (1625, 494)])
+    s.shape("human", 1390, 496, 470, 186, "A person\npromotes", loop=None)
+    return s
+
+
 LOOPS = ("agent", "verification", "event", "hill-climbing")
+
+CONCEPTS: dict[str, Callable[[], Scene]] = {
+    "recap-harness": recap_harness,
+    "recap-loops": recap_loops,
+    "what-we-build": what_we_build,
+    "four-gaps": four_gaps,
+    "data-model": data_model,
+    "how-we-measure": how_we_measure,
+    "text-to-sql-architecture-concept": text_to_sql_architecture_concept,
+    "four-loops-concept": four_loops_concept,
+}
 
 DIAGRAMS: list[Spec] = [
     Spec("diagram-style", "docs/diagrams", diagram_style),
@@ -1063,4 +1463,5 @@ DIAGRAMS: list[Spec] = [
         steps=True,
     ),
     *(Spec(name, "docs/diagrams/patterns", build) for name, build in PATTERNS.items()),
+    *(Spec(name, "docs/diagrams", build) for name, build in CONCEPTS.items()),
 ]

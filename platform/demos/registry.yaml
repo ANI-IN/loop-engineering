@@ -120,8 +120,8 @@
   planted: [BUG_NAIVE_GUARD]
   guaranteed_moment: >-
     With the naive guard, "SELECT 1; DELETE FROM orders" and a data-modifying common table expression pass the guard and
-    the read-only role refuses them (error code 25006); with the syntax-tree guard, its parse step
-    stops the stacked statements and its statement policy the data-modifying common table expression, before execution. A raw DELETE as the agent role is refused by the role.
+    the read-only transaction refuses them (error code 25006); with the syntax-tree guard, its parse step
+    stops the stacked statements and its statement policy the data-modifying common table expression, before execution. A raw DELETE as the agent role is refused by the role's grants (error code 42501).
   expected_outcome: "The defense-layer panel shows which layer stopped each statement; no warehouse row changes."
   can_vary: ["nothing in the outcome; timings only"]
   target_minutes: 4
@@ -164,7 +164,7 @@
   can_vary: ["cost per attempt", "the agent's retries' SQL"]
   target_minutes: 4
   code:
-    - {path: platform/src/datapilot/loop2_verification/loop.py, lines: "364-369"}
+    - {path: platform/src/datapilot/loop2_verification/loop.py, lines: "369-374"}
 
 - id: verify-graders-pass-still-wrong
   section: verification-loop
@@ -341,7 +341,7 @@
   target_minutes: 4
   code:
     - {path: platform/src/datapilot/loop4_hill_climbing/analyzer.py, lines: "206-210"}
-    - {path: platform/src/datapilot/loop4_hill_climbing/gate.py, lines: "117-135"}
+    - {path: platform/src/datapilot/loop4_hill_climbing/gate.py, lines: "119-137"}
 
 - id: improve-overbroad-rule-blocked
   section: hill-climbing-loop
@@ -360,7 +360,7 @@
   can_vary: ["which questions regress"]
   target_minutes: 4
   code:
-    - {path: platform/src/datapilot/loop4_hill_climbing/gate.py, lines: "117-135"}
+    - {path: platform/src/datapilot/loop4_hill_climbing/gate.py, lines: "119-137"}
 
 - id: improve-analyzer-team-approve
   section: hill-climbing-loop
@@ -408,7 +408,7 @@
   target_minutes: 5
   code:
     - {path: platform/src/datapilot/loop4_hill_climbing/experiment.py, lines: "192-194"}
-    - {path: platform/src/datapilot/loop4_hill_climbing/gate.py, lines: "117-135"}
+    - {path: platform/src/datapilot/loop4_hill_climbing/gate.py, lines: "119-137"}
 
 - id: improve-cleared-unattended
   section: hill-climbing-loop
