@@ -50,6 +50,7 @@ run_check "naming check, outline"        "$UV" run python platform/scripts/short
 run_check "naming check, commit messages" commit_messages_check
 run_check "docs check"                   "$UV" run python platform/tools/generators/render.py --check
 run_check "outline check"                outline_check
+run_check "slide references"             "$UV" run python platform/scripts/check_slide_refs.py
 run_check "Markdown linter"              "$UV" run python platform/scripts/lint_markdown.py
 run_check "relative links and anchors"   "$UV" run python platform/scripts/check_links.py
 run_check "data files and schemas"       "$UV" run python platform/scripts/check_repo_files.py data schemas structure

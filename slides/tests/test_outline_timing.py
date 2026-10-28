@@ -1,13 +1,14 @@
 """Zero-token checks on the timings in slides/source: every slide's minutes add up to the
-240-minute class, and each block starts and ends where the run of show in
-docs/instructor-guide.md says it does.
+240-minute class, and each block plan is contiguous.
 
 slides/source is superseded (DECISIONS.md, 28 October 2026): slides/outline.md is now a transcript
-of the owner's final deck, so the check that its "Timing:" lines came from these minutes went with
-that decision; the outline check compares the outline with the deck instead. The sources are
-built under one of two rule sets (slides/source/build.py). Under the first outline's rules the
-minutes are fixed per position (APPROVED); under the design system each block has a total
-(BLOCK_PLAN, the rebuild's block plan of 26 October 2026) and its slides add up to it.
+of the owner's final deck, and the instructor guide's run of show is the deck's. So the checks
+that the outline's "Timing:" lines and the guide's run of show came from these minutes went with
+that decision; the outline check compares the outline with the deck, and
+platform/scripts/check_slide_refs.py compares the guide's run of show with the outline. The
+sources are built under one of two rule sets (slides/source/build.py). Under the first outline's
+rules the minutes are fixed per position (APPROVED); under the design system each block has a
+total (BLOCK_PLAN, the rebuild's block plan of 26 October 2026) and its slides add up to it.
 
 uv run pytest -q slides/tests
 """
@@ -15,19 +16,13 @@ uv run pytest -q slides/tests
 from __future__ import annotations
 
 import importlib.util
-import re
 import sys
 from pathlib import Path
 
 SLIDES_DIR = Path(__file__).resolve().parents[1]
-REPO = SLIDES_DIR.parent
-GUIDE = REPO / "docs" / "instructor-guide.md"
 CLASS_MINUTES = 240
-# A block heading of the run of show, such as "### Section 1: Agent loop (0:10-0:55)".
-BLOCK_HEADING = re.compile(r"^### (?P<name>.+?) \((?P<start>\d:\d\d)-(?P<end>\d:\d\d)\)$", re.M)
 # The rebuild's block plan as the lead fixed it (name, start, end, slides at most): the design
-# system's BLOCK_PLAN must say the same, and the guide's run of show follows it once the outline is
-# built under the design system.
+# system's BLOCK_PLAN must say the same.
 REBUILD_PLAN = [
     ("Opening", "0:00", "0:10", 10),
     ("Designing text-to-SQL", "0:10", "0:25", 6),
@@ -59,17 +54,6 @@ def _clock(text: str) -> int:
     hours, minutes = parts[0], parts[1]
     seconds = parts[2] if len(parts) > 2 else 0
     return hours * 3600 + minutes * 60 + seconds
-
-
-def _blocks() -> list[tuple[str, int, int]]:
-    """(block name, start, end) in seconds, from the outline data, in class order."""
-    names = outline_builder.block_names()
-    out, t = [], 0
-    for name in outline_builder.block_order():
-        seconds = sum(int(round(s["minutes"] * 60)) for s in outline_builder.load(name))
-        out.append((names[name], t, t + seconds))
-        t += seconds
-    return out
 
 
 def test_the_outline_builds_under_one_rule_set():
@@ -145,17 +129,6 @@ def test_the_second_design_system_plan_is_the_second_rebuild_plan():
         t += minutes * 60
     assert t == CLASS_MINUTES * 60
     assert sum(most for *_rest, most in plan) <= outline_builder.MAX_SLIDES
-
-
-def test_blocks_match_the_run_of_show_in_the_instructor_guide():
-    """The guide's run of show has one "### <block> (h:mm-h:mm)" heading per block, in order, as
-    the outline's rule set times them. Under the design system that is REBUILD_PLAN above."""
-    guide = [
-        (m["name"], _clock(m["start"]), _clock(m["end"]))
-        for m in BLOCK_HEADING.finditer(GUIDE.read_text(encoding="utf-8"))
-    ]
-    assert guide == _blocks()
-    assert guide[0][1] == 0 and guide[-1][2] == CLASS_MINUTES * 60
 
 
 def test_the_sources_slides_list_exactly_the_sources_the_deck_cites():

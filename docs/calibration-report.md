@@ -467,9 +467,9 @@ Built and tested this session without tokens, for the live checks still owed:
 - The autonomy policy's docstrings say a family is cleared on the confirmed standard
   (eligibility.confirmed_clearance), and improve-cleared-unattended points at that function, with
   its excerpt in the walkthrough of Section 4: Hill-climbing loop.
-- Needed in the slides, not edited here: the notes of slide 64, "Autonomy is earned per metric
-  family", should add that a family is cleared on the gate's confirmed standard (every holdout item
-  passes 2 of 3 runs, an item that fell short passing 2 of 3 more runs), not on one experiment.
+- A family is cleared on the gate's confirmed standard (every holdout item passes 2 of 3 runs, an
+  item that fell short passing 2 of 3 more runs), not on one experiment. The slides were not edited
+  here; the final class deck of 28 October 2026 is a finished file and stands as it is.
 
 Commits: 1e9b4f4 (the cap probe and the console's activity header), then the docstrings, the code
 pointer, and this section.

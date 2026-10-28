@@ -21,17 +21,17 @@ speaker notes.
 
 | Time | Block | What you do |
 |---|---|---|
-| 0:00-0:13 | Opening | Full screen; title, introduction, logistics, the two-slide recap, agenda |
+| 0:00-0:13 | Opening | Full screen; title, introduction, logistics, the recap, agenda |
 | 0:13-0:37 | The problem | What we build, the week of failures, the gaps, the data, the rules, the method |
 | 0:37-0:47 | Designing text-to-SQL | Hard warehouses, nine stages, seven decisions, the callouts; no demo |
-| 0:47-1:22 | Section 1: Agent loop | Concept slides to 1:05:30; demos 1:05:30-1:17:30; evidence, questions |
-| 1:22-1:55 | Section 2: Verification loop | Concept slides to 1:40:30; demos 1:40:30-1:50:30; evidence, questions |
+| 0:47-1:22 | Section 1: Agent loop | Concept slides to 1:05:30; demos 1:05:30-1:17:30; questions |
+| 1:22-1:55 | Section 2: Verification loop | Concept slides to 1:40:30; demos 1:40:30-1:50:30; questions |
 | 1:55-2:05 | Break | Write the return time in the chat; reset the event loop |
-| 2:05-2:48 | Section 3: Event loop | Concept slides to 2:23:30; demos 2:23:30-2:43:30; evidence, questions |
+| 2:05-2:48 | Section 3: Event loop | Concept slides to 2:23:30; demos 2:23:30-2:43:30; questions |
 | 2:48-2:53 | Poll | Start the baseline experiment first, then launch the Zoom poll |
 | 2:53-3:03 | Break | Queue the naive analyzer behind the baseline: `make demo NAME=improve-naive-analyzer-blocked PLANTED=1` |
-| 3:03-3:38 | Section 4: Hill-climbing loop | Chain from about 3:05 under slides 68 to 74; demo 3:21:30-3:33:30; exit 3:33 |
-| 3:38-4:00 | Closing | The answer, results, which loop when, build or buy, project, assignments |
+| 3:03-3:38 | Section 4: Hill-climbing loop | Chain from about 3:05 under slides 63 to 69; demo 3:21:30-3:33:30; exit 3:33 |
+| 3:38-4:00 | Closing | Which loop when, build or buy, the kit, the project, takeaways, questions |
 
 Three terminals, opened before the class:
 
@@ -196,6 +196,19 @@ The [preflight checklist](preflight-checklist.md) holds these steps as one tick 
 
 ## Section by section
 
+The tables below are the run of show of the final class deck, 81 slides, with each slide's time
+as its speaker notes give it. The notes time 206.25 of the class's 240 minutes. The rest is in
+three places:
+
+- **Slides 2 to 10** (the course logistics, 0:01-0:07) have no time in the notes: 6 minutes.
+- **Eight stretches of 28 minutes in all** belong to no slide, shown as "No slide" rows. One is
+  the break from 2:53 to 3:03, which slide 60's notes name.
+- **Slide 81** is timed 3:59:45-4:00, inside slide 80's 3:56:30-4:00: a quarter of a minute
+  counted twice.
+
+Where a slide's notes say to go to "the evidence slide", the final deck has none: go on to the
+section's Ask about anything.
+
 Each section runs the same way: the concept slides, then the DEMO slide, whose speaker notes open
 with a run sheet, not said aloud: each demo's start time and trigger, the one fallback, said
 once, and the cutoff. Below the run sheet the notes hold every core demo in order with its
@@ -239,41 +252,41 @@ a running service has a flag on, and name it: set it to 0 in `.env`, then `make 
 | Time | Slide | What you do |
 |---|---|---|
 | 0:00-0:01 | 1. Loop Engineering for Data Agents | The title: build and measure the four loops around a data agent |
-| 0:01-0:01:30 | 2. Introduction | Your name and title, filled in before class; two sentences about yourself |
-| 0:01:30-0:02 | 3. Welcome to today's class | Learners post their name, role, location and organization in the chat |
-| 0:02-0:03 | 4. Structure of Class | The four-hour live class, then one assignment per loop, reviewed on Thursday |
-| 0:03-0:03:30 | 5. Optimize Your Experience | Take part, ask, bring the assignments to the Thursday review |
-| 0:03:30-0:04 | 6. Don't worry! We are here to help | Help at every step |
-| 0:04-0:04:30 | 7. Support features | Each support channel once |
-| 0:04:30-0:05 | 8. Success Hacks | The pre-class videos are required; the post-class videos are optional |
-| 0:05-0:06 | 9. Check Your Email for Your OpenAI Key | The key and its 3-dollar limit; the email's screenshot, its key hidden |
-| 0:06-0:07 | 10. LangSmith Setup Guide | The tracing key, and the free plan's 5,000 traces a month |
+| None in the notes | 2. Introduction | Your name and title, filled in before class; two sentences about yourself |
+| None in the notes | 3. Welcome to today's class | Learners post their name, role, location and organization in the chat |
+| None in the notes | 4. Structure of Class | The four-hour live class, then one assignment per loop, reviewed on Thursday |
+| None in the notes | 5. Optimize Your Experience | Take part, ask, bring the assignments to the Thursday review |
+| None in the notes | 6. Don't worry! We are here to help | Help at every step |
+| None in the notes | 7. Support features | Each support channel once |
+| None in the notes | 8. Success Hacks | The pre-class videos are required; the post-class videos are optional |
+| None in the notes | 9. Check Your Email for API Key | The key and its 3-dollar limit; the email's screenshot, its key hidden |
+| None in the notes | 10. LangSmith Setup Guide | The tracing key, and the free plan's 5,000 traces a month |
 | 0:07-0:09:30 | 11. Recap: Harness engineering made one run trustworthy | The previous module's four layers around one run |
-| 0:09:30-0:12 | 12. Recap: Loop Engineering makes the system trustworthy | The same shape, holding the system over time, and the four loops around it |
-| 0:12-0:13 | 13. Today's Agenda | Four sections, one loop each, in the order each builds on the last |
+| 0:09:30-0:12 | No slide | The notes give these 2.5 minutes to no slide |
+| 0:12-0:13 | 12. Today's Agenda | Four sections, one loop each, in the order each builds on the last |
 
 ### The problem (0:13-0:37)
 
 | Time | Slide | What you do |
 |---|---|---|
-| 0:13-0:16 | 14. Problem statement: What are we building? | Who asks, how they ask, DataPilot and its four loops, what it must give back |
-| 0:16-0:19 | 15. Problem statement: The problem in the real world | One costly failure a day; Monday's 72,394,572.08 against 64,015,091.21 dollars |
-| 0:19-0:22 | 16. The challenge is: The rules exist, the agent still misses | Four sources: context, repeated delivery, overfitting, improvement |
-| 0:22-0:24:30 | 17. Why this matters for data teams | What a failure costs, and what each loop cost, measured |
-| 0:24:30-0:27:30 | 18. Why we need loops: The four critical gaps | Each story has a cause, and each cause gets one loop |
-| 0:27:30-0:29:30 | 19. Harbor & Pine: The data model | Five tables, the business date, and no business rule in the schema |
-| 0:29:30-0:32:30 | 20. Business rules: The rules in plain words | The five traps and three safety rules, each with an example |
-| 0:32:30-0:35 | 21. How we'll measure: The same questions, before and after | The one method behind every number today |
-| 0:35-0:37 | 22. Glossary: The terms used in every section | Nineteen terms, two a row |
+| 0:13-0:16 | 13. Problem statement: What are we building? | Who asks, how they ask, DataPilot and its four loops, what it must give back |
+| 0:16-0:19 | 14. Problem statement: The problem in the real world | One costly failure a day; Monday's 72,394,572.08 against 64,015,091.21 dollars |
+| 0:19-0:22 | 15. The challenge is: The rules exist, the agent still misses | Four sources: context, repeated delivery, overfitting, improvement |
+| 0:22-0:24:30 | 16. Why this matters for data teams | What a failure costs, and what each loop cost, measured |
+| 0:24:30-0:27:30 | 17. Why we need loops: The four critical gaps | Each story has a cause, and each cause gets one loop |
+| 0:27:30-0:29:30 | 18. Harbor & Pine: The data model | Five tables, the business date, and no business rule in the schema |
+| 0:29:30-0:32:30 | 19. Business rules: The rules in plain words | The five traps and three safety rules, each with an example |
+| 0:32:30-0:35 | 20. How we'll measure: The same questions, before and after | The one method behind every number today |
+| 0:35-0:37 | 21. Glossary: The terms used in every section | Nineteen terms, two a row |
 
 ### Designing text-to-SQL (0:37-0:47)
 
 | Time | Slide | What you do |
 |---|---|---|
-| 0:37-0:39:30 | 23. Text-to-SQL: Why real warehouses are hard | Five hard parts, each about meaning, not syntax |
-| 0:39:30-0:42:30 | 24. Text-to-SQL: The nine-stage reference architecture | Walk the nine stages; the model writes the query in only one |
-| 0:42:30-0:45 | 25. Text-to-SQL: The key design decisions | Seven decisions, each with its options and its trade-off |
-| 0:45-0:47 | 26. Text-to-SQL: One design callout in each section | Where each decision comes back |
+| 0:37-0:39:30 | 22. Text-to-SQL: Why real warehouses are hard | Five hard parts, each about meaning, not syntax |
+| 0:39:30-0:42:30 | 23. Text-to-SQL: The nine-stage reference architecture | Walk the nine stages; the model writes the query in only one |
+| 0:42:30-0:45 | 24. Text-to-SQL: The key design decisions | Seven decisions, each with its options and its trade-off |
+| 0:45-0:47 | 25. Text-to-SQL: One design callout in each section | Where each decision comes back |
 
 No demo runs in this block: keep the console on the Agent page, ready for Section 1.
 
@@ -281,23 +294,23 @@ No demo runs in this block: keep the console on the Agent page, ready for Sectio
 
 | Time | Slide or demo | What you do |
 |---|---|---|
-| 0:47-0:47:30 | 27. Today's Agenda | The star on the agent loop |
-| 0:47:30-0:50 | 28. Failure story: 10,000 rows, three run budgets, no answer | Five steps to a run that spends three token budgets and answers nothing |
-| 0:50-0:52:30 | 29. Agent loop: Why not give it the whole schema and all rows? | The naive fix, and three reasons it fails |
-| 0:52:30-0:55 | 30. 1) Tools decide what the agent sees | Names first, details on demand |
-| 0:55-0:57:30 | 31. 2) Cap rows and values in the tool, with a notice | The row cap, the value cap, the total count, the notice |
-| 0:57:30-1:00 | 32. 3) Stops in code, and the answer envelope | Code checks the limits every turn and validates a typed answer |
-| 1:00-1:02:30 | 33. 4) Value lookup and helper agents, and their cost | Look values up before filtering; measure a helper before you keep it |
-| 1:02:30-1:04 | 34. Text-to-SQL design: Schema exposure and value lookup | By the size of the warehouse (Assignment 1: Agent loop) |
-| 1:04-1:05:30 | 35. Cheat Sheet: The agent loop in four techniques | Each technique, what it does, how to apply it |
-| 1:05:30-1:17:30 | 36. Section 1: Agent loop - Implementation Notes: The confident wrong answer | Three demos, in the slots below |
+| 0:47-0:47:30 | 26. Today's Agenda | The star on the agent loop |
+| 0:47:30-0:50 | 27. Failure story: 10,000 rows, three run budgets, no answer | Five steps to a run that spends three token budgets and answers nothing |
+| 0:50-0:52:30 | 28. Agent loop: Why not give it the whole schema and all rows? | The naive fix, and three reasons it fails |
+| 0:52:30-0:55 | 29. 1) Tools decide what the agent sees | Names first, details on demand |
+| 0:55-0:57:30 | 30. 2) Cap rows and values in the tool, with a notice | The row cap, the value cap, the total count, the notice |
+| 0:57:30-1:00 | 31. 3) Stops in code, and the answer envelope | Code checks the limits every turn and validates a typed answer |
+| 1:00-1:02:30 | 32. 4) Value lookup and helper agents, and their cost | Look values up before filtering; measure a helper before you keep it |
+| 1:02:30-1:04 | 33. Text-to-SQL design: Schema exposure and value lookup | By the size of the warehouse (Assignment 1: Agent loop) |
+| 1:04-1:05:30 | 34. Cheat Sheet: The agent loop in four techniques | Each technique, what it does, how to apply it |
+| 1:05:30-1:17:30 | 35. Section 1: Agent loop - Implementation Notes: The confident wrong answer | Three demos, in the slots below |
 | 1:05:30-1:08:30 | Demo: the simple question | Status line; type "How many orders have been placed in total?", Agent > Ask, or `make demo NAME=agent-simple-question` |
 | 1:08:30-1:13:30 | Demo: the confident wrong answer | Agent > Ask the spine question, or `make demo NAME=agent-confident-wrong-answer`; leave a held run held |
 | 1:13:30-1:17:30 | Demo: unbounded rows | `make demo NAME=agent-unbounded-rows PLANTED=1`, then Agent > Run large query |
-| 1:17:30-1:19:30 | 37. Measured: With and without the agent loop's tools | 17 of 21 correct against 12 of 21, and the scoreboard after Section 1 |
-| 1:19:30-1:22 | 38. Ask about anything | The chat's questions; if quiet, the support agent's ticket search |
+| 1:17:30-1:19:30 | No slide | The notes give these 2 minutes to no slide |
+| 1:19:30-1:22 | 36. Ask about anything | The chat's questions; if quiet, the support agent's ticket search |
 
-The three demos run on the DEMO slide, slide 36, 1:05:30-1:17:30, in the slots above; its
+The three demos run on the DEMO slide, slide 35, 1:05:30-1:17:30, in the slots above; its
 speaker notes hold each demo's cues.
 
 Demo cues:
@@ -325,23 +338,23 @@ A retry that would end after 1:16:30 is skipped: name the moment for the Thursda
 
 | Time | Slide or demo | What you do |
 |---|---|---|
-| 1:22-1:22:30 | 39. Today's Agenda | The star on the verification loop |
-| 1:22:30-1:25 | 40. Failure story: The DELETE a first-word check let through | Five steps to a write only the database refused |
-| 1:25-1:27:30 | 41. Verification loop: Why not prompt for SELECT queries only? | The naive fix, a prompt line; checks live in code and in the grants |
-| 1:27:30-1:30 | 42. 1) Parse, don't pattern-match: the syntax-tree allowlist | The syntax tree against an allowlist; data never becomes an instruction |
-| 1:30-1:32:30 | 43. 2) Least privilege: grants are walls, not preferences | The database enforces a grant; personal columns wait for a person |
-| 1:32:30-1:35 | 44. 3) Bounded retries with actionable feedback | Fix-it feedback up to a cap in code, then escalate |
-| 1:35-1:37:30 | 45. 4) A judge with the same knowledge shares its blind spots | A second opinion; no verdict holds the answer; results checked on two databases |
-| 1:37:30-1:39 | 46. Text-to-SQL design: Validate before, during and after | Gold results in evaluation |
-| 1:39-1:40:30 | 47. Cheat Sheet: The verification loop | Each technique, what it does, how to apply it |
-| 1:40:30-1:50:30 | 48. Section 2: Verification loop - Implementation Notes: Layers, cap, gold | Three demos, in the slots below |
+| 1:22-1:22:30 | 37. Today's Agenda | The star on the verification loop |
+| 1:22:30-1:25 | 38. Failure story: The DELETE a first-word check let through | Five steps to a write only the database refused |
+| 1:25-1:27:30 | 39. Verification loop: Why not prompt for SELECT queries only? | The naive fix, a prompt line; checks live in code and in the grants |
+| 1:27:30-1:30 | 40. 1) Parse, don't pattern-match: the syntax-tree allowlist | The syntax tree against an allowlist; data never becomes an instruction |
+| 1:30-1:32:30 | 41. 2) Least privilege: grants are walls, not preferences | The database enforces a grant; personal columns wait for a person |
+| 1:32:30-1:35 | 42. 3) Bounded retries with actionable feedback | Fix-it feedback up to a cap in code, then escalate |
+| 1:35-1:37:30 | 43. 4) A judge with the same knowledge shares its blind spots | A second opinion; no verdict holds the answer; results checked on two databases |
+| 1:37:30-1:39 | 44. Text-to-SQL design: Validate before, during and after | Gold results in evaluation |
+| 1:39-1:40:30 | 45. Cheat Sheet: The verification loop | Each technique, what it does, how to apply it |
+| 1:40:30-1:50:30 | 46. Section 2: Verification loop - Implementation Notes: Layers, cap, gold | Three demos, in the slots below |
 | 1:40:30-1:43 | Demo: malicious SQL | `make reset NAME=verification-loop`; `make demo NAME=verify-malicious-sql PLANTED=1`, then Verify > Send malicious SQL |
 | 1:43-1:46:30 | Demo: the retry cap | `make demo NAME=verify-retry-cap PLANTED=1`, then Verify > Inject failing grader |
 | 1:46:30-1:50:30 | Demo: every grader passes, still wrong | Verify > Ask the spine question, or `make demo NAME=verify-graders-pass-still-wrong` |
-| 1:50:30-1:52:30 | 49. Measured: With and without the verification layer | 0 correct either way; 20 of 40 wrong answers held or escalated against 1 |
-| 1:52:30-1:55 | 50. Ask about anything | The chat's questions; if quiet, the coding agent's patch |
+| 1:50:30-1:52:30 | No slide | The notes give these 2 minutes to no slide |
+| 1:52:30-1:55 | 47. Ask about anything | The chat's questions; if quiet, the coding agent's patch |
 
-The three demos run on the DEMO slide, slide 48, 1:40:30-1:50:30, in the slots above; its
+The three demos run on the DEMO slide, slide 46, 1:40:30-1:50:30, in the slots above; its
 speaker notes hold each demo's cues.
 
 Demo cues:
@@ -366,7 +379,7 @@ Retries: the core demos keep their slots, 1:40:30-1:43, 1:43-1:46:30, and 1:46:3
 
 | Time | Slide | What you do |
 |---|---|---|
-| 1:55-2:05 | 51. Time for a Break | Return time in the chat; `make reset NAME=event-loop`; read Tokens today on the status line |
+| 1:55-2:05 | 48. Time for a Break | Return time in the chat; `make reset NAME=event-loop`; read Tokens today on the status line |
 
 Write the return time, the local time 10 minutes from now, in the chat. Run
 `make reset NAME=event-loop` during the break.
@@ -375,25 +388,25 @@ Write the return time, the local time 10 minutes from now, in the chat. Run
 
 | Time | Slide or demo | What you do |
 |---|---|---|
-| 2:05-2:05:30 | 52. Today's Agenda | The star on the event loop |
-| 2:05:30-2:08 | 53. Failure story: The digest that posted twice | Five steps to two different numbers for one day |
-| 2:08-2:10:30 | 54. Event loop: Why not call the agent from the webhook? | The naive design, a direct call per webhook, and why it fails unattended |
-| 2:10:30-2:13 | 55. 1) Idempotency keys by meaning | The sender's event id first, else what the event means |
-| 2:13-2:15:30 | 56. 2) A job queue with leases | A dead worker's job returns and may run twice |
-| 2:15:30-2:18 | 57. 3) Durable approval with a checkpointer | A waiting run is a checkpoint in a database; it resumes after any restart |
-| 2:18-2:20:30 | 58. 4) A kill switch checked every step, and autonomy levels | Report-only, assisted, unattended; any stop drops to report-only |
-| 2:20:30-2:22 | 59. Text-to-SQL design: Which queries wait for a person | Hold by the columns a query returns; start report-only |
-| 2:22-2:23:30 | 60. Cheat Sheet: The event loop | Each technique, what it does, how to apply it |
-| 2:23:30-2:43:30 | 61. Section 3: Event loop - Implementation Notes: Repeat, restart, stop | Four demos and a reserve, in the slots below |
+| 2:05-2:05:30 | 49. Today's Agenda | The star on the event loop |
+| 2:05:30-2:08 | 50. Failure story: The digest that posted twice | Five steps to two different numbers for one day |
+| 2:08-2:10:30 | 51. Event loop: Why not call the agent from the webhook? | The naive design, a direct call per webhook, and why it fails unattended |
+| 2:10:30-2:13 | 52. 1) Idempotency keys by meaning | The sender's event id first, else what the event means |
+| 2:13-2:15:30 | 53. 2) A job queue with leases | A dead worker's job returns and may run twice |
+| 2:15:30-2:18 | 54. 3) Durable approval with a checkpointer | A waiting run is a checkpoint in a database; it resumes after any restart |
+| 2:18-2:20:30 | 55. 4) A kill switch checked every step, and autonomy levels | Report-only, assisted, unattended; any stop drops to report-only |
+| 2:20:30-2:22 | 56. Text-to-SQL design: Which queries wait for a person | Hold by the columns a query returns; start report-only |
+| 2:22-2:23:30 | 57. Cheat Sheet: The event loop | Each technique, what it does, how to apply it |
+| 2:23:30-2:43:30 | 58. Section 3: Event loop - Implementation Notes: Repeat, restart, stop | Four demos and a reserve, in the slots below |
 | 2:23:30-2:26:30 | Demo: the webhook question | Events > Send webhook question, or `make demo NAME=events-webhook-question` |
 | 2:26:30-2:32:30 | Demo: the approval that survives a restart | `make demo NAME=events-approval-survives-restart PLANTED=1`, `make reset NAME=event-loop`, then Events > Request California export |
 | 2:32:30-2:36:30 | Demo: duplicate events | `make demo NAME=events-duplicate-events PLANTED=1`, `make reset NAME=event-loop`, then Events > Send the same event three times |
 | 2:36:30-2:42:30 | Demo: the kill switch in flight | `make demo NAME=events-kill-switch-in-flight PLANTED=1`, `make reset NAME=event-loop`, `make demo NAME=events-kill-switch-in-flight`, `make reset NAME=event-loop` |
 | 2:42:30-2:43:30 | Reserve | Time for a retry started by 2:40:30, otherwise questions |
-| 2:43:30-2:45:30 | 62. Measured: With and without the event loop's safeguards | Planted bugs failed in 17 of 17 runs; the fixes held in 23 of 23 |
-| 2:45:30-2:48 | 63. Ask about anything | The chat's questions; if quiet, the refund agent |
+| 2:43:30-2:45:30 | No slide | The notes give these 2 minutes to no slide |
+| 2:45:30-2:48 | 59. Ask about anything | The chat's questions; if quiet, the refund agent |
 
-The demos run on the DEMO slide, slide 61, 2:23:30-2:43:30, in the slots above; its speaker
+The demos run on the DEMO slide, slide 58, 2:23:30-2:43:30, in the slots above; its speaker
 notes hold each demo's cues.
 
 Demo cues:
@@ -449,8 +462,8 @@ answered on the wrong clock.
   (`BUG_KILLSWITCH_AT_CLAIM_ONLY`, the `PLANTED=1` half, first), it keeps going; with the check
   before every step, the in-flight run moves to blocked by kill switch, and the status line shows
   the report-only level. Each half leaves the switch engaged, and an engaged switch blocks every
-  new run at claim: **`make reset NAME=event-loop` after each half**, the second before the
-  evidence slide, or the last run is blocked too.
+  new run at claim: **`make reset NAME=event-loop` after each half**, the second before
+  Ask about anything, or the last run is blocked too.
 - Optional, cut first: the digest now, `make demo NAME=events-digest-now`, or Events > Run digest
   now, only when the section is at least 3 minutes ahead of the clock, before the kill switch
   demo.
@@ -459,14 +472,14 @@ Retries: the one fallback for every demo is `make reset NAME=event-loop`, then t
 A retry spends the 1-minute reserve, 2:42:30-2:43:30. Start no retry after 2:40:30: skip it, say
 so, and name that demo for the Thursday review.
 
-During the evidence slide and the questions, check that the status line's button reads Kill switch, not
+During the questions, check that the status line's button reads Kill switch, not
 Release kill switch.
 
 ### Poll (2:48-2:53)
 
 | Time | Slide | What you do |
 |---|---|---|
-| 2:48-2:53 | 64. Live Zoom Poll | Start the baseline experiment first, then the poll; share the result |
+| 2:48-2:53 | 60. Live Zoom Poll | Start the baseline experiment first, then the poll; share the result |
 
 First start the baseline experiment: Improve > Run experiment on the active version, or
 `make demo NAME=improve-baseline-experiment`. It is the class session's baseline; the console
@@ -474,17 +487,17 @@ accepts no baseline from another session, so never skip this step. Then launch t
 "Which of the four loops does your production agent have today?", multiple choice, with the
 options Agent loop, Verification loop, Event loop, Hill-climbing loop, and None. Share the result,
 and note two counts for later: how many chose the hill-climbing loop, and how many chose none.
-Both counts are read back twice: at Section 4's agenda, slide 66, since an agent with no
+Both counts are read back twice: at Section 4's agenda, slide 61, since an agent with no
 hill-climbing loop improves by hand, one patch at a time, the way of working that section's
-failure story shows going wrong; and in the closing, on slide 80, Which loop when: Match the loop
-to the failure. Check that the benchmark
+failure story shows going wrong; and in the closing, on slide 72, "Which loop when: Match the loop
+to the failure". Check that the benchmark
 progress strip on the run board is counting up.
 
 ### Break (2:53-3:03)
 
 | Time | Slide | What you do |
 |---|---|---|
-| 2:53-3:03 | 65. Time for a Break | Return time in the chat; queue the naive analyzer; check the progress strip once |
+| 2:53-3:03 | No slide | The break: no slide; slide 60's notes call it the break |
 
 Write the return time, the local time 10 minutes from now, in the chat. The baseline experiment
 keeps running at concurrency 8
@@ -507,22 +520,22 @@ analyzer team runs in Section 4 with nothing to switch back.
 
 | Time | Slide or demo | What you do |
 |---|---|---|
-| 3:03-3:03:30 | 66. Today's Agenda | The star on the hill-climbing loop; read the poll's two counts back |
-| 3:03:30-3:06 | 67. Failure story: The rule that broke nine answers | At 3:04 the baseline and the naive verdict; reset; the chain about 3:05 |
-| 3:06-3:08:30 | 68. Hill-climbing loop: Why not add a rule for each failure? | The chain runs |
-| 3:08:30-3:11 | 69. 1) Gold questions and the development and holdout split | The analyzer team ends by about 3:11 |
-| 3:11-3:13:30 | 70. 2) Agents propose, code decides | At 3:11, glance at the Improve page on your own screen |
-| 3:13:30-3:16 | 71. 3) The gate's four conditions, and overfitting | The gate reads about 3:13 to 3:19 |
-| 3:16-3:18:30 | 72. 4) Autonomy earned per metric family | Stalled at 3:16 (as step 2 says)? Stop, reset, start; none after 3:17 |
-| 3:18:30-3:20 | 73. Text-to-SQL design: Where learned rules live | Where learned rules live; execution match |
-| 3:20-3:21:30 | 74. Cheat Sheet: The hill-climbing loop | Each technique, what it does, how to apply it |
-| 3:21:30-3:33:30 | 75. Section 4: Hill-climbing loop - Implementation Notes: The gate decides | The run sheet: steps 3 to 5 below; exit at 3:33 |
-| 3:33:30-3:35:30 | 76. Measured: With and without the hill-climbing loop | Version 1 against 11: 2 against 13 of 15 holdout questions, 0 regressions |
-| 3:35:30-3:38 | 77. Ask about anything | The chat's questions; if quiet, the support prompt that beat last month's run |
+| 3:03-3:03:30 | 61. Today's Agenda | The star on the hill-climbing loop; read the poll's two counts back |
+| 3:03:30-3:06 | 62. Failure story: The rule that broke nine answers | At 3:04 the baseline and the naive verdict; reset; the chain about 3:05 |
+| 3:06-3:08:30 | 63. Hill-climbing loop: Why not add a rule for each failure? | The chain runs |
+| 3:08:30-3:11 | 64. 1) Gold questions and the development and holdout split | The analyzer team ends by about 3:11 |
+| 3:11-3:13:30 | 65. 2) Agents propose, code decides | At 3:11, glance at the Improve page on your own screen |
+| 3:13:30-3:16 | 66. 3) The gate's four conditions, and overfitting | The gate reads about 3:13 to 3:19 |
+| 3:16-3:18:30 | 67. 4) Autonomy earned per metric family | Stalled at 3:16 (as step 2 says)? Stop, reset, start; none after 3:17 |
+| 3:18:30-3:20 | 68. Text-to-SQL design: Where learned rules live | Where learned rules live; execution match |
+| 3:20-3:21:30 | 69. Cheat Sheet: The hill-climbing loop | Each technique, what it does, how to apply it |
+| 3:21:30-3:33:30 | 70. Section 4: Hill-climbing loop - Implementation Notes: The gate decides | The run sheet: steps 3 to 5 below; exit at 3:33 |
+| 3:33:30-3:35:30 | No slide | The notes give these 2 minutes to no slide |
+| 3:35:30-3:38 | 71. Ask about anything | The chat's questions; if quiet, the support prompt that beat last month's run |
 
 The chain needs more machine time than the 12-minute demo slot, so it starts on the failure
-story, slide 67, and you teach slides 68 to 74 while it runs. The cues are `Do:` lines in the
-speaker notes of slides 67, 70 and 72, and the run sheet at the top of slide 75's notes, which
+story, slide 62, and you teach slides 63 to 69 while it runs. The cues are `Do:` lines in the
+speaker notes of slides 62, 65 and 67, and the run sheet at the top of slide 70's notes, which
 gives each fallback once. Glance at the Improve page on your own screen, never the shared one.
 
 Measured over every recorded run, 23 to 25 October 2026
@@ -538,16 +551,16 @@ Measured over every recorded run, 23 to 25 October 2026
 | The last run after a promotion, from its first send | 50 to 162 seconds when held for the clearance re-runs | In the block |
 | The last run on the class-day safeguard | 19 and 21 seconds | Only if the safeguard is used |
 
-Started at about 3:05, the analyzer team ends by about 3:11 (326 to 377 seconds), as slide 69
-gives way to slide 70. The candidate experiment follows during slides 70 to 73, and the gate
+Started at about 3:05, the analyzer team ends by about 3:11 (326 to 377 seconds), as slide 64
+gives way to slide 65. The candidate experiment follows during slides 65 to 68, and the gate
 reads about 3:13 to 3:19: the 459 seconds at the top of its range ran at analyzer reasoning effort high, and
 `pack.yaml` runs the analyzer team at medium. In the class run-through of 25 October 2026 the
 two took 362 + 237 seconds, about 10 minutes. Approval, the promotion's clearance re-runs, and
 the published run (50 to 162 seconds after its first send in 8 recorded runs) follow, so the last run
 lands about 3:24 to 3:28. A fresh chain needs about 8 to 14 minutes to the gate, plus up to
 3 minutes for approval and the last run, so start no new chain after 3:17; when the demo slot starts, say
-so and go on to the evidence slide, and read the class chain at the Thursday review. If the gate blocks the class candidate, leave the verdict on screen and go to the
-evidence slide (no safeguard). A hill-climbing reset refuses while the runner serves a request
+so and go on to Ask about anything, and read the class chain at the Thursday review. If the gate blocks the class candidate, leave the verdict on screen and go on to
+Ask about anything (no safeguard). A hill-climbing reset refuses while the runner serves a request
 (it says "not reset"); otherwise it takes about 7 seconds. To end a running request:
 `docker compose stop hill-climbing-runner`, then `make reset NAME=hill-climbing-loop`, then
 `docker compose start hill-climbing-runner`, about 20 seconds in all (stop 11.0, reset 6.6,
@@ -555,7 +568,7 @@ start 2.9, timed with no request running on 26 October 2026; rehearse it once wi
 running). Never restart the runner instead: a restarted runner keeps serving, so the reset
 refuses again. The plan:
 
-1. On the failure story, slide 67, at 3:04, before any reset: read the baseline's holdout ledger (2 of 15), then
+1. On the failure story, slide 62, at 3:04, before any reset: read the baseline's holdout ledger (2 of 15), then
    the naive analyzer's blocked verdict. Both ran before the block. If no verdict shows at 3:04,
    read the baseline, keep talking, and look again at 3:05. If the reset prints "not reset", the naive
    request is still running: never reset mid-request; wait until the Improve page shows it
@@ -566,7 +579,7 @@ refuses again. The plan:
    team's candidate next.
 2. Right after the reset, about 3:05: Improve > Run analyzer, then at once Improve > Run experiment on the candidate.
    The runner runs the experiment as soon as the team's candidate is written, on that candidate.
-   Teach slides 68 to 74 while the chain runs. If the team is still writing at 3:11, say: two
+   Teach slides 63 to 69 while the chain runs. If the team is still writing at 3:11, say: two
    analyzer runs and 50 development runs are in flight. If the gate has not read at 3:17, say: 70
    benchmark runs are still in flight, and a confirming re-run lengthens them. If the baseline
    never started, at 3:05 reset, press its trigger, then at once the two buttons: the runner
@@ -577,13 +590,13 @@ refuses again. The plan:
    candidate at 3:16 is not a stall on that path.
    Only then end it with the stop, reset, and start above, then Run analyzer and Run experiment
    on the candidate; a restarted chain lands past the 3:33 exit, so read its gate at the Thursday
-   review. Start no new chain after 3:17; when the demo slot starts, say so and go on to the
-   evidence slide.
-3. At 3:21:30, on the demo slide, slide 75: the analyzer team's diff, then the candidate's ledger
+   review. Start no new chain after 3:17; when the demo slot starts, say so and go on to
+   Ask about anything.
+3. At 3:21:30, on the demo slide, slide 70: the analyzer team's diff, then the candidate's ledger
    against this session's baseline. If the experiment confirms apparent regressions and runs
    long, narrate the cues below, and come back for the approval. If the chain or the last run
-   has not landed by 3:33, go on to the evidence slide, return to the demo when it lands, and pay
-   for it by skipping the evidence slide's room question and shortening Ask about anything.
+   has not landed by 3:33, go on to Ask about anything, return to the demo when it lands, and pay
+   for it by shortening Ask about anything.
 4. Approve when the gate reads ready: type your name in "Your name, recorded as the approver"
    above the knowledge diff, then click Approve. The button stays off until a name is typed, and
    the gate refuses an empty name or "console"; say so, and that a production system takes the
@@ -600,11 +613,11 @@ refuses again. The plan:
    question, whether a family cleared or none did. The machine time of the whole chain is about
    9 to 17 minutes, and approval waits for the demo slot, so the last run lands about 3:24 to
    3:28. If it lands early, use the time left on the candidate's ledger and the LangSmith trace
-   list, then go to the evidence slide early. If it has not landed by 3:33, step 3's exit applies.
+   list, then go on to Ask about anything early. If it has not landed by 3:33, step 3's exit applies.
    If its strip reads "Gold check failed", use the class-day safeguard below.
 
 The demo slide's notes hold no optional demo for this block: the 12 minutes are the chain's.
-The over-broad rule is told on the failure story, slide 67, as a story, not run.
+The over-broad rule is told on the failure story, slide 62, as a story, not run.
 
 Demo cues:
 
@@ -695,18 +708,18 @@ at the failed gold check on the first published run's strip, as the evidence of 
 
 | Time | Slide | What you do |
 |---|---|---|
-| 3:38-3:41 | 78. Final: The question, answered | Today's last run aloud first; then the published run and each loop's part |
-| 3:41-3:43:30 | 79. All results: Four loops, one picture | One row per loop, without and with, and its sample |
-| 3:43:30-3:45:30 | 80. Which loop when: Match the loop to the failure | Each failure points to one loop; read the poll's two counts back |
-| 3:45:30-3:47:30 | 81. Text-to-SQL design: Build or buy layers and assistants | When to buy, when to build, and why the loops are built either way |
-| 3:47:30-3:49:30 | 82. Use it in your repository: The kit and the pack setting | The pack, its setting, the template, the pack check, a read-only role |
-| 3:49:30-3:51 | 83. Final project: The four loops on your own data | Five things to build, and a before-and-after report |
-| 3:51-3:53 | 84. Assignments: One loop each, reviewed on Thursday | The deadline in the class chat; solutions when the review starts |
-| 3:53-3:54:30 | 85. The loops in one picture | Four loops around one model, each with its job |
-| 3:54:30-3:56:30 | 86. Summary: Key takeaways | Ten lessons; the evidence and the design checklist are in the notes |
-| 3:56:30 | 87. References (1 of 2): Sources in the order cited | No time of its own: page past it |
-| 3:56:30 | 88. References (2 of 2): The remaining sources | No time of its own |
-| 3:56:30-4:00 | 89. Ask about anything | The last questions; mark the ones left for the Thursday review; close at 4:00 |
+| 3:38-3:43:30 | No slide | The notes give these 5.5 minutes to no slide |
+| 3:43:30-3:45:30 | 72. Which loop when: Match the loop to the failure | Each failure points to one loop; read the poll's two counts back |
+| 3:45:30-3:47:30 | 73. Text-to-SQL design: Build or buy layers and assistants | When to buy, when to build, and why the loops are built either way |
+| 3:47:30-3:49:30 | 74. Use it in your repository: The kit and the pack setting | The pack, its setting, the template, the pack check, a read-only role |
+| 3:49:30-3:51 | 75. Final project: The four loops on your own data | Five things to build, and a before-and-after report |
+| 3:51-3:53 | No slide | The notes give these 2 minutes to no slide |
+| 3:53-3:54:30 | 76. The loops in one picture | Four loops around one model, each with its job |
+| 3:54:30-3:56:30 | 77. Summary: Key takeaways | Ten lessons; the evidence and the design checklist are in the notes |
+| 3:56:30 | 78. References (1 of 2): Sources in the order cited | No time of its own: page past it |
+| 3:56:30 | 79. References (2 of 2): The remaining sources | No time of its own |
+| 3:56:30-4:00 | 80. Ask about anything | The last questions; mark the ones left for the Thursday review; close at 4:00 |
+| 3:59:45-4:00 | 81. No text | Thank the room, the session's one line, the repository; within slide 80's time |
 
 ## If something breaks
 

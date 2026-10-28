@@ -111,7 +111,7 @@ of that purpose on its own stack unless one of the same purpose opened there tod
 | `make registries` | Validates the demo and planted-item registries | None |
 | `make docs` | Regenerates every generated page from its registry | None |
 | `make docs-check` | Fails if a generated page is out of date | None |
-| `make outline` | Rebuilds `slides/outline.md` from `slides/source/` and checks every slide rule | None |
+| `make outline` | Writes `slides/outline.md` from the final class deck, which it only reads | None |
 | `make style-tile` | The console style tile on port 8531, with specimen data | None |
 | `make check` | Everything the continuous integration runs without a database | None |
 | `make ci-local REPO=<release clone>` | The continuous integration workflow's own steps in a clean clone, no secrets | None |
@@ -254,7 +254,7 @@ never a regression.
 | `use-in-your-repo/` | Pointing DataPilot at your own Postgres, or building a new domain pack |
 | `docs/` | Start here, this reference, costs, the glossary, the instructor guide |
 | `guide/` | The Live Demo Guide: every live demo step by step |
-| `slides/` | The class deck's outline and its sources; the deck is handed out separately |
+| `slides/` | The outline of the class deck, which is handed out separately |
 | `platform/src/datapilot/` | The package: one folder per loop, plus `contracts/` and `observability/` |
 | `platform/packs/datapilot_us/` | The Harbor & Pine domain pack: settings, data generator, benchmark, knowledge |
 | `platform/packs/_template/` | A domain pack to copy for your own warehouse |

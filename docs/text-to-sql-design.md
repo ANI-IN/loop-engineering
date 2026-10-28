@@ -20,7 +20,7 @@ decisions to make, the mistakes to avoid, and where the course teaches it.
 A number from the course links to the evidence page that records it, with its sample size. A
 number or claim from outside links to its entry on the [sources page](sources.md), shown as the
 source number the slides use, such as [16]. "Designing text-to-SQL" below is the design segment of
-the class, right after the four-loop map; this page holds what it teaches.
+the class, right after the problem statement; this page holds what it teaches.
 
 ## Why your warehouse is harder than a benchmark
 

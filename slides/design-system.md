@@ -1,5 +1,11 @@
 # Loop Engineering deck: design system and slide schema
 
+**Superseded.** Since 28 October 2026 the class deck is a final, hand-edited file of 81 slides,
+and [outline.md](outline.md) is its transcript. This page and `slides/source/` describe how the
+earlier versions were built; their slide counts, block plans and times are not the final deck's,
+and a slide number in a "reference slide it follows" column is a slide of the reference deck.
+The final deck's run of show is in the [instructor guide](../docs/instructor-guide.md).
+
 This page is the design system of the class deck and the schema every block module in
 `slides/source/` follows when it sets `RULES = "design system"` or, for the second rebuild,
 `RULES = "design system 2"` (the same design system under its own block plan and the added checks

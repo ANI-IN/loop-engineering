@@ -69,8 +69,10 @@ jobs:
         run: uv run python platform/scripts/lint_markdown.py
       - name: every relative link and anchor resolves
         run: uv run python platform/scripts/check_links.py
-      - name: the slide outline is up to date with its sources
+      - name: the slide outline is the final deck's transcript, whole and fingerprinted
         run: uv run python platform/scripts/check_outline.py
+      - name: every slide a page names is in the final deck, and the run of show is its timing
+        run: uv run python platform/scripts/check_slide_refs.py
       - name: diagram sources parse; their SVG and PNG exports are the recorded renders
         run: uv run python platform/tools/diagrams/export_diagrams.py --check
       - name: images (size, clipping, blank areas, alt text)

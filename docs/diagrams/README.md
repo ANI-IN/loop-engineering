@@ -198,7 +198,7 @@ three muted (white, with a blue-grey outline), every label still readable:
 
 - **What it teaches**: the stages any text-to-SQL system needs, and how DataPilot does each one,
   so you can map them onto your own warehouse.
-- **Slide topic**: the reference architecture, in the design segment after the four-loop map.
+- **Slide topic**: the reference architecture, in the design segment after the problem statement.
 - **Files**: `text-to-sql-architecture`.
 - **Source in the code**: `platform/src/datapilot/loop3_events/router.py` (a fixed table, never a
   model); `loop1_agent/scout.py` (the schema brief: tables, joins, caveats);
@@ -299,7 +299,8 @@ its image line and caption with the path `diagrams/<name>.svg`, as for the diagr
 *Notice that the picture has the same shape as the recap of harness engineering, but the middle is no longer one run: it is every run, every event, and every change.*
 
 - **What it teaches**: the step from one trustworthy run to a trustworthy system.
-- **Slide topic**: the second recap slide of the opening.
+- **Slide topic**: none in the final class deck, whose opening has one recap slide; it stays
+  on this page.
 - **Files**: `recap-loops`.
 - **Source in the code**: the four loops as the root `README.md` and `docs/architecture.md` name
   them.
